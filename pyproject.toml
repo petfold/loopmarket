@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "loopmarket"
+version = "0.1.0"
+description = "Universal combinatorial marketplace: uniform offers over an OntoDAG catalogue, a versioned offer book on recordstore/Swarm, and solver agents hunting profitable loops"
+readme = "README.md"
+license = { text = "BSD-3-Clause" }
+requires-python = ">=3.11"
+keywords = [
+    "marketplace", "combinatorial-exchange", "ontology", "dag", "subsumption",
+    "swarm", "web3", "decentralized", "solver", "negative-cycle", "barter",
+    "mutual-credit", "coincidence-of-wants",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "ontodag>=0.3.1",        # the catalogue: subsumption queries, EagerOntoDAG
+    "recordstore>=0.13.1",   # the book: canonical versioned KV, merge, snapshots
+]
+
+[project.optional-dependencies]
+# The Swarm deployment path: BeeBytesStore blobs + signed SwarmFeedPointer
+# head, both reached through recordstore so versions stay in step with it
+# (mirrors ontodag's own [swarm] extra).
+swarm = ["recordstore[bee,feeds]>=0.13.1"]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.urls]
+Homepage = "https://github.com/petfold/loopmarket"
+Repository = "https://github.com/petfold/loopmarket"
+Issues = "https://github.com/petfold/loopmarket/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
