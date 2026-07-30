@@ -75,8 +75,10 @@ discs also touch neighbours), which is safe because cells are hints:
 `matching.py` re-checks everything exactly.
 
 **Update 2026-07-30 — ontodag dimension lattices.** ontodag's
-parametric-items design is agreed (`ontodag/docs/DIMENSIONS.md`;
-implementation queued there). It changes the P1 shape of this section:
+parametric-items design is agreed (`ontodag/docs/DIMENSIONS.md`) and
+**shipped the same day as ontodag 0.4.0 on PyPI** — including
+`get_overlapping`, the possibly-satisfies query op the time/geo gates
+want, and `LazyOntoDAG` support. It changes the P1 shape of this section:
 time windows become exact linear-interval terms (`time(a..b)`), queryable
 as *virtual* terms — generated time-bucket nodes drop out entirely;
 geohash cells become a `prefix-dimension` whose containment is computed
