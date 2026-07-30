@@ -74,6 +74,25 @@ geometry as the refinement. Cells index disc centres only (boundary-crossing
 discs also touch neighbours), which is safe because cells are hints:
 `matching.py` re-checks everything exactly.
 
+**Update 2026-07-30 — ontodag dimension lattices.** ontodag's
+parametric-items design is agreed (`ontodag/docs/DIMENSIONS.md`;
+implementation queued there). It changes the P1 shape of this section:
+time windows become exact linear-interval terms (`time(a..b)`), queryable
+as *virtual* terms — generated time-bucket nodes drop out entirely;
+geohash cells become a `prefix-dimension` whose containment is computed
+from the name, so only used cells materialize; named service regions
+become ordinary nodes over their interior cells (any shape, holes,
+disconnected), with coverage queries as ancestor walks; and a
+`get_overlapping` query op (ontodag's first follow-up) eventually replaces
+bucket fan-out for the overlap-shaped time/geo gates. Two rules to observe
+on adoption: **never multi-parent an offer under several cells** — that
+asserts the (near-empty) intersection, not the union; use a region node
+(ontodag will reject provably-disjoint parametric parents) — and **pin
+ontodag's dimension-registry version alongside the ontology root**, since
+the computed order participates in canonical reduction. None of this
+moves the truth: `check_match` stays exact and self-contained; cells and
+cones remain recall-safe hints.
+
 ## 4. The catalogue (ontology.py)
 
 `Ontology` wraps an `OntoDAG` with the one primitive matching needs:
