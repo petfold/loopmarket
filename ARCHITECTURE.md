@@ -78,7 +78,16 @@ discs also touch neighbours), which is safe because cells are hints:
 parametric-items design is agreed (`ontodag/docs/DIMENSIONS.md`) and
 **shipped the same day as ontodag 0.4.0 on PyPI** — including
 `get_overlapping`, the possibly-satisfies query op the time/geo gates
-want, and `LazyOntoDAG` support. It changes the P1 shape of this section:
+want, and `LazyOntoDAG` support. **Adopted here 2026-07-30 as
+`dimensions.py`**: a `DimensionIndex` files asks under their exact service
+window (one linear-interval value) and centre cell (one prefix value) in a
+*derived deepcopy* of the catalogue — never the shared catalogue itself, so
+offer-pinned roots stay stable — and `candidate_matches_indexed` generates a
+bid's candidates from `get(wanted)` ∩ `get_overlapping(window)`, recall-exact
+against the baseline product (tests/test_dimensions.py proves equality over
+randomized books). Geo deliberately stays with the exact check. The original
+plan below is kept for context; the bucket/cell chains it describes are
+superseded:
 time windows become exact linear-interval terms (`time(a..b)`), queryable
 as *virtual* terms — generated time-bucket nodes drop out entirely;
 geohash cells become a `prefix-dimension` whose containment is computed

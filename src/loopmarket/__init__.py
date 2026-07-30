@@ -21,6 +21,7 @@ from .schema import (
 from .ontology import Ontology
 from .registry import OfferRegistry, swarm_offer_book
 from .matching import Match, candidate_matches, check_match
+from .dimensions import DimensionIndex, candidate_matches_indexed
 from .graph import ExchangeGraph, Loop
 from .settlement import LoopProposal, MockSettlement, Receipt, Settlement
 from .solver.agent import SolverAgent
@@ -30,6 +31,7 @@ __version__ = "0.1.0"
 __all__ = [
     "ASK", "BID", "GeoDisc", "Offer", "Thing", "TimeWindow", "Tokens",
     "ask", "bid", "Ontology", "OfferRegistry", "swarm_offer_book",
-    "Match", "candidate_matches", "check_match", "ExchangeGraph", "Loop",
+    "Match", "candidate_matches", "check_match",
+    "DimensionIndex", "candidate_matches_indexed", "ExchangeGraph", "Loop",
     "LoopProposal", "MockSettlement", "Receipt", "Settlement", "SolverAgent",
 ]

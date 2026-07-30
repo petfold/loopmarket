@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "ontodag>=0.3.1",        # the catalogue: subsumption queries, EagerOntoDAG
+    "ontodag>=0.4.0",        # catalogue: subsumption + parametric dimensions
     "recordstore>=0.13.1",   # the book: canonical versioned KV, merge, snapshots
 ]
 
