@@ -41,7 +41,15 @@ PYTHONPATH=src python3 examples/demo_triangle.py
 
 The demo publishes the smallest nontrivial book — a piano teacher, a market
 gardener and a bicycle mechanic, no pair of whom can trade — and watches the
-solver find, verify and settle the triangle at a 12% surplus. Swap the
+solver find, verify and settle the triangle at a 12% surplus.
+
+Candidate generation can also run through ontodag's **parametric
+dimensions** (ontodag ≥ 0.4.0): `DimensionIndex` files asks under their
+exact service window and centre cell, and `candidate_matches_indexed`
+prunes by concept cones and window overlap — provably the same matches as
+the exhaustive baseline (the recall test enforces set-equality), with far
+fewer exact checks. The index is a derived, per-solver copy; the shared
+catalogue and its pinned roots never move because of it. Swap the
 in-memory store for `recordstore.swarm_store("offers", signer=...)`
 (extra: `pip install -e ".[swarm]"`, plus a Bee node and a postage batch)
 and the same code runs with the book on Swarm.
