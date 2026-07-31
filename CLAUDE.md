@@ -43,7 +43,7 @@ PYTHONPATH=src python3 examples/demo_triangle.py  # end-to-end smoke: must find 
 
 Installing deps: this environment's Python may be PEP-668 externally managed — use `pip install --break-system-packages` (or a venv). `pip install -e ".[test]"` for development; add `.[swarm]` only when running against a Bee node.
 
-Live-node runs follow ontodag's convention: skip unless `BEE_API` **and** `BEE_BATCH` are set, and always pass a real purchased batch id so nothing auto-buys.
+Live-node runs follow ontodag's convention: skip unless `BEE_API` **and** `BEE_BATCH` are set, and always pass a real purchased batch id so nothing auto-buys. The Swarm-book test additionally needs `BEE_SIGNER` (a throwaway key: it writes feeds under timestamped topics so reruns don't inherit an old book).
 
 ## Architecture map (one line per module)
 
@@ -69,7 +69,7 @@ Live-node runs follow ontodag's convention: skip unless `BEE_API` **and** `BEE_B
 ## Roadmap phases
 
 - **P0 (this repo, done)** — in-memory prototype: uniform schema, book over recordstore, exact matching, negative-cycle solver, trust-nothing mock settlement, triangle demo green.
-- **P1 Swarm book** — run the demo against a Bee node (`swarm_offer_book`), per-maker books + merge aggregation, spacetime as ontodag parametric dimension terms (was: generated bucket categories — superseded 2026-07-30, see ARCHITECTURE.md §3 update note), persistent ontology with pinned roots end-to-end.
+- **P1 Swarm book** — ~~run the demo against a Bee node (`swarm_offer_book`)~~ **done 2026-08-01**, permanent as the gated `tests/test_swarm_book.py` (needs `BEE_API`+`BEE_BATCH`+`BEE_SIGNER`): catalogue on Swarm, offers pinning its root end-to-end, book head in a signed feed, triangle solved and settled in ~51s on a Gnosis-mainnet light node, a scorched-earth follower reading the settled loop and all six atomic fills back from the network, second pass empty. Still open in P1: per-maker books + merge aggregation; spacetime as ontodag parametric dimension terms in the *shared* catalogue (the derived DimensionIndex landed 2026-07-30 — see ARCHITECTURE.md §3).
 - **P2 Verifiable settlement** — POT-backed book index so a Gnosis Chain contract verifies offer inclusion under the pinned root via ForkPathProof (`ethersphere/proximity-order-trie`'s `pkg/proof` + `POTProofVerifier`); batch auctions over competing proposals; real settlement pricing.
 - **P3 Guarantee fabric** — bond escrow and slashing, oracle adapters (countersign, locker, photo, digital proof), arbitrator hooks, bonded ontology assertions, aggregated risk markets feeding rate premia.
 - **P4 Privacy** — staged disclosure, committed offers, ZK fits-within/range proofs, private matching experiments.
