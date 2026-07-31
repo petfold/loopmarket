@@ -35,7 +35,7 @@ agent.step()                          # snapshot → match → hunt loops → se
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 25 tests
+python3 -m pytest tests/ -v           # 32 tests (one needs a live Bee node)
 PYTHONPATH=src python3 examples/demo_triangle.py
 ```
 
@@ -67,6 +67,8 @@ and the same code runs with the book on Swarm.
 
 ## Status
 
-P0 — a runnable in-memory prototype of the full pipeline, with the Swarm
-deployment path wired through recordstore but not yet exercised against a
-live node. Alpha; interfaces will move.
+P0 complete, P1 begun — the full pipeline runs in memory, and since
+2026-08-01 the Swarm deployment path is *exercised live*: the triangle demo
+publishes, solves and settles on a real Gnosis-mainnet Bee node (catalogue
+and book both on Swarm, book head in a signed feed, fills atomic — the gated
+`tests/test_swarm_book.py`). Alpha; interfaces will move.
