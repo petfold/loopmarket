@@ -109,7 +109,14 @@ cones remain recall-safe hints.
 `Ontology` wraps an `OntoDAG` with the one primitive matching needs:
 `satisfies(offered_concepts, wanted_concepts)` — every wanted category is
 covered by some offered concept (equal or an ancestor of it). Unknown
-vocabulary fails closed.
+vocabulary fails closed. Since 2026-07-31 the per-pair coverage test runs on
+ontodag's Boolean `is_below` (>= 0.7.0): an upward walk from the offered
+concept with early exit, bounded by its shallow ancestor cone — never by
+enumerating the wanted category's descendants. Division of labor with §6:
+*queries* (`get`/`get_overlapping`, the DimensionIndex) generate candidates
+one-to-many; the *Boolean* answers the pairwise truth that settlement
+re-verifies — same fits-within relation, set-valued for discovery,
+point-valued for proof.
 
 Persistence goes through `EagerOntoDAG` over a duck-typed RecordStore;
 `commit()` yields a canonical root. Offers pin the root they were written
