@@ -73,12 +73,18 @@ class Ontology:
         return concept in self.dag.nodes
 
     def covers(self, wanted: str, offered: str) -> bool:
-        """True iff `offered` fits within `wanted` (equal, or a descendant)."""
-        if wanted == offered:
-            return self.known(wanted)
+        """True iff `offered` fits within `wanted` (equal, or a descendant).
+
+        Vocabulary strictness stays explicit here (invariant U7: unknown
+        never matches), then ontodag's `is_below` (>= 0.7.0) answers the
+        subsumption: an upward walk from `offered` with early exit,
+        bounded by its shallow ancestor cone — never by enumerating
+        `wanted`'s descendant cone, which for a broad category is most of
+        the catalogue (and, on a lazy catalogue, most of the fetches).
+        """
         if not self.known(wanted) or not self.known(offered):
             return False
-        return any(d.name == offered for d in self.dag.get_descendants(wanted))
+        return self.dag.is_below(offered, wanted)
 
     def satisfies(self, offered: Iterable[str], wanted: Iterable[str]) -> bool:
         """Every wanted category is covered by some offered concept.
