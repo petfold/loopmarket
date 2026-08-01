@@ -127,6 +127,33 @@ crate" is answerable forever. Bonded assertions (stakes on ⊑ edges, scaled to
 centrality) are P3; `assert_edge(sub, supers, bond=)` already carries the
 argument.
 
+**Update 2026-08-01 — the P3 mechanism design has a home: factbond**
+(github.com/petfold/factbond, design stage; grew out of the
+prediction-markets-for-facts discussion). Its bonded-assertion /
+optimistic-oracle design — bonds sized to adjudication cost not notional,
+odds-weighted disputes set by the asserter's stated confidence, a shared
+yield-bearing bond pool, an escalating adjudication ladder — is exactly the
+machinery "stakes on ⊑ edges" needs, so P3 should adopt it rather than
+redesign it. Two loopmarket-specific consequences worked out in factbond's
+`docs/INTEGRATION.md` §8:
+
+- **Settlement-attached information insurance.** A settling loop *relied
+  on* specific catalogue edges (`satisfies` walked them; settlement
+  re-verified them) — exactly the facts whose falsity costs the
+  participants money, i.e. insurable facts with natural consumers.
+  Settlement can auto-attach a hedge on those edges; a payout auto-funds a
+  dispute on the edge that lied. Loop participants become the shared
+  catalogue's verification workforce, and the pool's loss experience
+  becomes a per-edge reliability audit of the catalogue — the data P3's
+  "aggregated risk markets feeding rate premia" needs.
+- **Claims about the pinned catalogue adjudicate mechanically.** "The
+  catalogue at root R says the cello fits the crate" settles by certificate
+  (ontodag `CONTRACT.md` §7 — `is_below` witness paths, trie
+  inclusion/absence proofs), the same proof family as the §8 POT settlement
+  path below; only "and the crate really held it" needs oracles,
+  countersigning, or arbitrators. The split keeps the expensive machinery
+  off the structural half of every dispute.
+
 ## 5. The book (registry.py)
 
 One book = one recordstore keyspace = one root reference per version:
@@ -249,8 +276,10 @@ wins, the rest are rejected on the `fill/` check.
 
 ## 10. What is deliberately absent
 
-Bonds/oracles/arbitrators (carried, unenforced — P3), aggregated risk
-markets and rate premia (P3), batch auctions and settlement pricing (P2),
+Bonds/oracles/arbitrators (carried, unenforced — P3; the mechanism design
+now lives in the **factbond** sister repo — see the §4 update), aggregated
+risk markets and rate premia (P3, fed by factbond's per-edge loss
+experience), batch auctions and settlement pricing (P2),
 privacy — staged disclosure, committed offers, ZK fits-within proofs (P4),
 bridges to legacy inventory (thin adapters that publish ASK/BID pairs plus a
 currency leg; they are ordinary makers and need no new mechanism, so they
