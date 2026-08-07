@@ -174,6 +174,15 @@ occurs. Announcements are idempotent and re-emittable, so measurement is
 cheap. PSS stays out: best-effort, receiver-must-be-listening — at most
 ephemeral solver gossip, never discovery.
 
+**Upstream watch (noted 2026-08-07).** GSOC and Swarm pub/sub are under
+active development (Viktor Trón and Viktor Tóth are working on both), so
+the "experimental, no delivery guarantees" caveat above has a live path to
+obsolescence. Track that work and feed our burn-in loss measurements back
+as the consumer evidence it needs; a pub/sub primitive with delivery
+semantics would also revisit the "PSS stays out" ruling for solver-facing
+feeds. Channel: the Swarm ecosystem directly (Solar Punk maintains
+`@solarpunkltd/gsoc`).
+
 ## 5. Lifecycle: withdrawal, expiry, compaction
 
 Today an offer has no exit but expiry, and the book grows forever.
