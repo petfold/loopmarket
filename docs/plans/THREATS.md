@@ -44,7 +44,7 @@ never shape policing.
 **Maintenance rule.** The register is normative: **no phase goes green
 while any entry lacks an owning work package or, once its surface is
 live, an instrumented tripwire.** P2 blocks specifically on T1/T3
-(`docs/plans/README.md`).
+(the phase↔document map on the repo front page, `../../README.md`).
 
 **Content-sync rule.** Mirrored entries name a primary owner: T1–T3, T7,
 T8 here; T4–T6, T9 in `factbond/docs/plans/THREATS.md`. Secondary copies

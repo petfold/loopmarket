@@ -39,8 +39,8 @@ from roadmap item to primary target. What changes is who writes where;
 nothing about the keyspace, the solver interface, or settlement's
 trust-nothing stance moves. The full work package, including the
 announcement channel and the aggregator's operational footprint, is
-`docs/plans/P1-federated-book.md`; the design-plan corpus is indexed at
-`docs/plans/README.md`.
+`docs/plans/P1-federated-book.md`; the design-plan corpus is indexed on
+the repo front page (`README.md`).
 
 ## 2. The uniform offer (schema.py)
 
@@ -421,7 +421,7 @@ multiplier are in `docs/plans/adoption-and-thickness.md`), and
 postage-stamp economics (framed in the §5 update, numbers in
 `docs/plans/P1-federated-book.md`). Each absence is a scheduled decision,
 not an oversight; see CLAUDE.md "Known simplifications" and the plan index
-`docs/plans/README.md`.
+on the front page (`README.md`).
 
 ## 11. Economic security (planned; specified 2026-08-07)
 
@@ -451,7 +451,7 @@ The threat register — nine attacks ordered by expected damage to a *young*
 system, each with its economics, by-construction defense, residual risk and
 tripwire metric — is `docs/plans/THREATS.md` (mirrored in factbond). The
 full set of planned invariants U8–U14 is specified across the plan docs
-that motivate each (index: `docs/plans/README.md`; U8/U10 in §2's update
+that motivate each (index: the front-page `README.md`; U8/U10 in §2's update
 note above, U11 in §5's, U9 in §7's, U12–U14 here); they enter CLAUDE.md
 as binding invariants only when the enforcing code and tests land.
 
