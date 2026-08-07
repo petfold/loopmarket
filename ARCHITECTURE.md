@@ -31,6 +31,17 @@ rationale; `CLAUDE.md` records the working rules derived from it.
 One catalogue, one book, many solvers, one verifier. Discovery is expensive,
 competitive and untrusted; verification is cheap, neutral and mandatory.
 
+**Update 2026-08-07 — the book federates.** The diagram above remains the
+*logical* shape; the committed *deployment* shape (P1, decided 2026-08) is
+one book per maker under the maker's own feed and signer, folded by
+aggregators into a published snapshot — deployment shape 3 of §5, promoted
+from roadmap item to primary target. What changes is who writes where;
+nothing about the keyspace, the solver interface, or settlement's
+trust-nothing stance moves. The full work package, including the
+announcement channel and the aggregator's operational footprint, is
+`docs/plans/P1-federated-book.md`; the design-plan corpus is indexed at
+`docs/plans/README.md`.
+
 ## 2. The uniform offer (schema.py)
 
 Every offer exchanges a **Thing** (conjunction of catalogue categories +
@@ -54,6 +65,28 @@ assigns is a storage detail; the logical id is the application-layer key.
 `bond`, `oracle`, `arbitrator` ride in the encoding from day one (identity
 stability for P3) but are not yet enforced.
 
+**Update 2026-08-07 — authenticity and the v2 record (decided 2026-08,
+lands with the v2 bump).** The multi-writer book needs makers to be
+unforgeable, and the code today does not enforce that. The decided design
+(planned invariant U8) is two-layer: in per-maker books, *feed ownership*
+is the primary authenticity — an offer is the maker's because it arrived on
+the maker's signed feed — and a *detached* signature over `canonical_bytes`
+covers offers circulating outside their home feed. The signature never
+enters the canonical bytes (root purity and `offer_id` stability are the
+treaty with ontodag; nothing that varies between honest replicas may enter
+identity), and aggregators record `origin/<offer_id>` so provenance
+survives the merge. The same v2 bump carries: pins widened to
+{`book_root`, `ontology_root`, `REGISTRY_VERSION`, `CONTRACT_VERSION`}
+(planned U10 — the dimension registry participates in canonical reduction,
+so the ontology root alone under-specifies the pinned semantics; the
+current fail-open empty-pin gate in `check_match` closes), `from_record`
+version dispatch that *raises* on unknown versions (U2 enforced rather
+than assumed), and a decision on `loop_id` encoding leg pairing (open —
+distinct pairings over the same offer set must not collide on one `loop/`
+key). One scope rule enters schema validation now: flat roles are sound
+only for one filler per role per offer (ontodag `BINDING` §1) — composite
+offers are separate legs joined by the solver, never bundles.
+
 ## 3. Time and place are catalogue dimensions (spacetime.py)
 
 Interval containment, region containment and category subsumption are the
@@ -73,6 +106,12 @@ intersection of descendant cones of {concept, cell, bucket} — with exact
 geometry as the refinement. Cells index disc centres only (boundary-crossing
 discs also touch neighbours), which is safe because cells are hints:
 `matching.py` re-checks everything exactly.
+
+The full catalogue contract — the completion of this migration, unit
+families for quantities and personal tokens, the match-degree ladder, and
+the upstream-vs-local tripwire table — is `docs/plans/ontodag-coupling.md`
+(2026-08-07); the seeding and governance of the catalogue's *content* is
+`docs/plans/catalogue-bootstrap.md`.
 
 **Update 2026-07-30 — ontodag dimension lattices.** ontodag's
 parametric-items design is agreed (`ontodag/docs/DIMENSIONS.md`) and
@@ -149,10 +188,24 @@ redesign it. Two loopmarket-specific consequences worked out in factbond's
 - **Claims about the pinned catalogue adjudicate mechanically.** "The
   catalogue at root R says the cello fits the crate" settles by certificate
   (ontodag `CONTRACT.md` §7 — `is_below` witness paths, trie
-  inclusion/absence proofs), the same proof family as the §8 POT settlement
+  inclusion/absence proofs), the same proof family as the §8 settlement
   path below; only "and the crate really held it" needs oracles,
   countersigning, or arbitrators. The split keeps the expensive machinery
   off the structural half of every dispute.
+
+**Update 2026-08-07 — the coupling is now committed mechanism, not
+analysis.** The two consequences above graduated from "worked out in
+factbond's INTEGRATION.md" to a specified work package on both sides:
+`docs/plans/P3-guarantee-coupling.md` here (witness-edge instrumentation —
+settlement emits the exact ⊑ edges `satisfies` walked per settled loop;
+insurance payouts capped by *provable reliance* on those edges, which
+settlement roots supply for free; per-edge loss experience feeding solver
+rate premia; the oracle roster; solver bonds routed through the shared
+pool) and `docs/plans/loopmarket-coupling.md` in factbond (sequencing: the
+coupling ships only after factbond's Phase-0 simulation is green *and*
+P2's record formats freeze — witness telemetry alone lands earlier, since
+it depends on nothing). The boundary discipline is unchanged: the core
+model keeps running with no guarantee fabric present.
 
 ## 5. The book (registry.py)
 
@@ -196,9 +249,39 @@ Deployment shapes, same key layout throughout:
    canonical trie makes O(divergence). Publication authenticity comes from
    feed ownership; nothing about the layout changes.
 
-Postage-stamp economics (who pays for an offer's chunks, for how long — the
-validity window has a natural counterpart in stamp TTL) is deliberately not
-modelled yet; it belongs with P1's live-node work.
+**Update 2026-08-07 — shape 3 is the production shape; shape 2 is demoted
+to a development and demo tool.** The demotion is forced by an honest look
+at the substrate, not a change of heart: `SwarmFeedPointer.compare_and_set`
+is best-effort (Swarm has no feed index-claim primitive), so two writers on
+one feed can race — the one-signer-per-feed rule of shape 3 *is* the safety
+model, and settlement atomicity must never rest on the feed CAS. The
+2026-08-01 live milestone stands as proof the stack works end-to-end on a
+real network; it is the write-authority shape that does not survive
+multi-writer production. With federation come the decided mechanics
+(`docs/plans/P1-federated-book.md`): maker→aggregator announcement over
+GSOC with a Gnosis registry-event fallback; the aggregator (a full Bee
+node) publishing a manifest tuple {book_root, provenance_root, index_root}
+as the one solver-speed read path (feed lookups cost seconds — polling
+per-maker feeds does not scale); withdrawal as signed tombstones under
+grow-only merge; and two merge-discipline fixes found by code review
+(planned invariant U11): fill records lose their wall-clock timestamp —
+equal settlements must produce equal roots — and fill-conflict resolution
+moves from per-key to loop granularity, checked by a post-merge invariant
+that every `loop/` record has all its `fill/` keys. The ops posture is
+equally explicit: the network is thin (~4,000 reachable full nodes,
+provider-concentrated), so the book always keeps one self-hosted pinning
+node; blobs get erasure coding, feed heads cannot (single-chunk — they rely
+on neighbourhood replication); feed batches are mutable, and postage expiry
+is silent data loss, so stamp TTL is treated as a *hard offer-lifetime
+bound* with a TTL monitor.
+
+Postage-stamp economics went from "deliberately not modelled" to a decided
+frame (2026-08-07): the stamp is the offer's rent — validity windows must
+fit inside batch TTL; anyone may top up a batch permissionlessly, which
+makes "solvers subsidize the books that feed them loops" a concrete
+solver-ecology mechanism; and the per-offer postage cost doubles as the
+sybil floor (§11). Numbers, granularity and the open steady-state question
+live in `docs/plans/P1-federated-book.md`.
 
 ## 6. Matching (matching.py)
 
@@ -242,6 +325,31 @@ to beat it (motif libraries, planners over the index prefixes, learned
 candidate generators); nothing they do is trusted, so nothing they do is
 restricted.
 
+**Update 2026-08-07 — the boundary has a name, and the baseline has a
+recorded defect.** The divisibility caveat is exactly the complexity
+boundary of the clearing literature: with divisible legs the clearing
+problem is a min-cost-flow LP (polynomial — the Cycles protocol's
+formulation, validated against Slovenia's compulsory set-off data); with
+indivisible
+legs and bounded cycle length it is maximum-weight vertex-disjoint cycle
+packing, NP-hard (Abraham–Blum–Sandholm), solved exactly at realistic beat
+sizes by ILP. Greedy negative-cycle extraction provably blocks better
+packings, so at P2 it is demoted from settlement-facing selector to the
+protocol's *reserve bid* (§8) — a promotion to normative status that is
+**preconditioned** on fixing or documenting a recorded defect: the
+best-rate-per-pair edge reduction can lose feasible loops (a lower-rate
+parallel edge may satisfy the per-node condition where the best-rate edge
+fails), and the post-hoc `min_surplus` check can mask qualifying cycles
+behind a sub-threshold one. Two further commitments land with P2: *chains*
+alongside cycles — receive-before-give ordering degrades gracefully
+(renege = truncation, the kidney-chain result), while any give-before-
+receive leg is a bridge donor and needs a bond, i.e. P3 machinery — and
+*exact arithmetic* (planned invariant U9): every quantity, price and rate
+settlement re-verifies becomes a reduced rational via ontodag unit
+families; `−log` weights remain a search heuristic, never a truth an
+on-chain verifier is asked to reproduce. Formulations, the failure-aware
+objective and pre-commit netting: `docs/plans/P2-loop-selection.md`.
+
 ## 8. Settlement (settlement.py)
 
 `LoopProposal` = the loop + the pinned `book_root` and `ontology_root` + the
@@ -257,13 +365,35 @@ solver's identity. `MockSettlement.submit`:
 The interface (`Settlement.submit(proposal) → Receipt`) is the stable
 boundary. The P2 on-chain backend keeps its shape: a Gnosis Chain contract
 receives the loop plus **inclusion proofs** that each offer is present under
-the pinned book root. This is precisely what the Proximity Order Trie
-provides — `ForkPathProof` (BMT proofs over Swarm chunks) verified on-chain
-by `POTProofVerifier` (`ethersphere/proximity-order-trie`) — and is the main
-reason the book's index should converge with the POT track planned in
-recordstore: the same structure then serves queries off-chain and proofs
-on-chain. Batch auctions (collect proposals per beat, rank by participant
-surplus, rebate it — the anti-sniping design) are P2 alongside.
+the pinned book root.
+
+**Update 2026-08-07 — the proof route is reversed (flagged decision).**
+An earlier revision of this section committed to the Proximity Order Trie
+(`ForkPathProof` + `POTProofVerifier`). That commitment is withdrawn:
+recordstore's canonical-trie **inclusion and absence proofs shipped**
+(`RecordStore.prove` / `verify_proof`, recordstore ≥ 0.16.0) and prove
+against the very root the book already pins — no mirroring step, and
+absence proofs come free (a settlement dispute can prove "offer X is *not*
+in book root R"). POT remains the conditional fallback if the on-chain
+verifier demands BMT-native proofs, adopted only after a mirroring step
+(recordstore roots are not POT roots), self-benchmarked gas (none
+published), and pinning a vetted commit of a pre-1.0 repo whose proof
+logic saw fixes as late as 2026. The decision rule, the certificate
+envelope policy, the four-element pin table, and the role of `is_below`
+certificates in settlement (double-check now; whether they may ever
+*replace* re-derivation is a flagged doctrine fork on U3) are
+`docs/plans/proof-fabric.md`.
+
+The vague "rank by participant surplus, rebate it" is replaced by a
+committed beat design (2026-08-07): sealed per-beat proposals (a loop
+proposal is trivially copyable), numeraire-free scoring, a per-offer
+fairness floor generalized from CoW's CIP-67 (subsuming `per_node_ok` as
+policy), marginal-contribution solver rewards capped by the fees the
+solver's own loops generated, and the deterministic baseline as permanent
+reserve bid — `docs/plans/P2-batch-auction.md`. The pricing rule that
+turns a winning loop's surplus into per-leg prices — equal log-surplus
+split under uniform directional clearing — is
+`docs/plans/P2-settlement-pricing.md`.
 
 ## 9. The solver agent (solver/agent.py)
 
@@ -279,9 +409,62 @@ wins, the rest are rejected on the `fill/` check.
 Bonds/oracles/arbitrators (carried, unenforced — P3; the mechanism design
 now lives in the **factbond** sister repo — see the §4 update), aggregated
 risk markets and rate premia (P3, fed by factbond's per-edge loss
-experience), batch auctions and settlement pricing (P2),
-privacy — staged disclosure, committed offers, ZK fits-within proofs (P4),
+experience), batch auctions and settlement pricing (P2 — now specified in
+`docs/plans/P2-batch-auction.md` and `docs/plans/P2-settlement-pricing.md`),
+privacy — staged disclosure, committed offers, ZK fits-within proofs (P4 —
+now staged in `docs/plans/P4-privacy.md`, whose Tier 1 needs no new
+cryptography and whose format-freeze list *constrains P2*),
 bridges to legacy inventory (thin adapters that publish ASK/BID pairs plus a
 currency leg; they are ordinary makers and need no new mechanism, so they
-live outside this repo), and postage-stamp economics (P1). Each absence is a
-scheduled decision, not an oversight; see CLAUDE.md "Known simplifications".
+live outside this repo — their economics as the cheapest thickness
+multiplier are in `docs/plans/adoption-and-thickness.md`), and
+postage-stamp economics (framed in the §5 update, numbers in
+`docs/plans/P1-federated-book.md`). Each absence is a scheduled decision,
+not an oversight; see CLAUDE.md "Known simplifications" and the plan index
+`docs/plans/README.md`.
+
+## 11. Economic security (planned; specified 2026-08-07)
+
+One structural fact shapes everything here: **legitimate loops are
+self-financing cycles** — the exact graph shape every wash-trading detector
+keys on. Shape detection would flag the product itself, so the defenses are
+by construction, not by policing:
+
+- **The wash-loop inequality (planned invariant U13).** For any loop a
+  single principal could run through sybils, the sum of all subsidies and
+  rewards it can reach must be strictly less than the fees it pays — a
+  budget-balance condition checkable at design time. Corollaries: fees are
+  charged per leg in an external asset (never personal tokens, never
+  rebated in anything volume-linked), and surplus rebates redistribute only
+  the loop's *own* surplus.
+- **Statistics count settled, fee-paid loops only (planned U12).** A sybil
+  cannot appear in a settled loop without a real counterparty on every leg,
+  so that ledger is the one thing sybils cannot cheaply populate; every
+  reward, reputation, centrality and premium statistic reads from it and
+  nothing else.
+- **Sybil defense is a cost curve, not detection.** Per-offer postage plus
+  per-commit fees set a floor; no per-offer benefit may exceed it.
+- **Scoring is numeraire-free (planned U14).** No external price of any
+  personal token is ever assumed in scoring, fairness, or rewards.
+
+The threat register — nine attacks ordered by expected damage to a *young*
+system, each with its economics, by-construction defense, residual risk and
+tripwire metric — is `docs/plans/THREATS.md` (mirrored in factbond). The
+full set of planned invariants U8–U14 is specified across the plan docs
+that motivate each (index: `docs/plans/README.md`; U8/U10 in §2's update
+note above, U11 in §5's, U9 in §7's, U12–U14 here); they enter CLAUDE.md
+as binding invariants only when the enforcing code and tests land.
+
+## 12. What this architecture does not promise
+
+The honesty discipline every design document in this programme carries,
+stated once at architecture altitude. Settlement certifies *re-verification
+against pinned roots*, not delivery — the physical world can still renege;
+that gap is priced (P3), never closed. The catalogue certifies asserted
+structure, never world-truth (ontodag L1); "the cello fits the crate" at
+root R is a fact about R. factbond's `Certified` means *nobody found it
+profitable to dispute under a named procedure at named stakes* — and every
+consumer surface must preserve that wording (factbond invariant F7).
+Premiums and odds are prices under capital constraints and attack, not
+probabilities. And a green simulation certifies nothing about model risk:
+Phase-0 gates can kill designs, never prove them.
