@@ -268,23 +268,38 @@ expiry, or acceptance-quota countermeasures from day one.** The working
 precedents are WIR's statute pair and Circles v2's 7%/yr demurrage;
 retrofitting hygiene after fiat gravity appears is what Circles v1's
 post-mortem proves impossible. The fungibility fallback, named now so nobody
-reinvents it: if personal-token illiquidity ever blocks a needed feature,
-Circles v2's group currencies — personal tokens wrapped 1:1 into a
-community-fungible ERC-1155 group token — are the adoption path.
+reinvents it: if personal-scale illiquidity ever blocks a needed feature,
+Circles v2's group currencies are the adoption path — entering as bridge
+assets (§3), since under the 2026-08-21 representation decision there are
+no personal-token objects to wrap 1:1; a community that wants fungibility
+runs a bridge whose scale is anchored to its group token.
 
-**The on-chain representation question (open; discussion-agenda item 7).**
-When P2's settlement contract lands, do personal tokens materialize on-chain
-at all — and if so, as Circles v2 avatars (live on Gnosis since May 2025:
-ERC-1155, 1 CRC/hour issuance, 7%/yr demurrage, binary trust edges with
-expiry, ~10,000 active users as of Nov 2025, and a Pathfinder routing service
-that is the loop solver's architectural sibling) or as minimal native tokens
-minted and burned inside the settlement transaction? The tension: demurrage
-prices *holding*, and strict in-loop cancellation leaves nothing held —
-demurrage is coherent for the bridge-asset role (§3) and group-currency
-balances, arguably meaningless for a token that lives one commit. Adopting
-Circles buys audited contracts, an existing trust graph, interoperability;
-minimal native tokens buy exact fit and no imported governance. Flagged for
-discussion, not decided here.
+**The on-chain representation question (decided 2026-08-21 — agenda item
+7, ratified by owner sign-off: Option C, no token objects).** When P2's
+settlement contract lands, personal scales do **not** materialize
+on-chain. The contract verifies the loop arithmetic over the numbers in
+the pinned offer records and records the fills atomically; the only
+assets it ever moves are bridge assets (real ERC-20 legs). Personal
+scales survive on-chain as numbers in verified records, and in the
+catalogue as unit-family labels (`ontodag-coupling.md`). Three
+consequences. First, the demurrage tension this paragraph used to carry
+dissolves: demurrage prices *holding*, and nothing is held. Second,
+Circles v2 (live on Gnosis since May 2025: ERC-1155, 1 CRC/hour
+issuance, 7%/yr demurrage, ~10,000 active users as of Nov 2025, and the
+Pathfinder routing service that is the loop solver's architectural
+sibling) is repositioned from representation option to **bridge-asset
+integration and adoption channel** — §3's "CRC is an optional bridge
+asset, not a dependency" is the entire relationship, and it reaches the
+Circles economy without reifying anything. Third, minimal native tokens
+(the other rejected option) survive only behind a **composition-need
+gate**: adopted only if P2 contract work demonstrates a concrete need
+that verified records cannot serve — an external contract or wallet
+that must *see* a leg as a token transfer to compose with it — with the
+need named and the minted object's lifecycle provably loop-scoped.
+Rationale: both original options assumed a reification the bookkeeping
+baseline never needed (the owner steer above); tokens that exist for
+one transaction and provably net to zero are an event log wearing an
+ERC costume.
 
 **Owner steer (2026-08-21, recorded ahead of the item-7 discussion).** The
 personal token was conceived as *bookkeeping*: n+m prices through one
@@ -408,12 +423,13 @@ hatch — is already the T14 defense.
 
 ## Open problems
 
-- **On-chain personal-token representation** (work package: P2 settlement
-  backend, this document with `P2-batch-auction.md`; discussion-agenda item
-  7). Circles v2 avatars versus minimal native tokens, including whether
-  demurrage is compatible with strict in-loop cancellation or belongs only
-  to the bridge-asset and group-currency roles. §7 states the tension; the
-  decision needs the settlement contract's shape.
+- **~~On-chain personal-token representation~~ — decided 2026-08-21
+  (agenda item 7, Option C: no token objects; §7 carries the ruling).**
+  The residual is P2's to discharge: confirm every leg type — partial
+  fills of divisible things, the per-leg prices of
+  `P2-settlement-pricing.md`, bridge transfers — is expressible as
+  verified records plus bridge-asset movements; minimal native tokens
+  unlock only through §7's composition-need gate.
 - **Bridge funding under U13** (work package: `P2-batch-auction.md` §9 +
   `THREATS.md` T1; entangled with discussion-agenda item 4 on fees). Who
   capitalizes launch bridges, in what asset, and how a bridge running at a
