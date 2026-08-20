@@ -160,7 +160,15 @@ class Thing:
 
 @dataclass(frozen=True, slots=True)
 class Tokens:
-    """An amount of a maker's personal token (a personal numeraire)."""
+    """An amount on the maker's personal scale (a personal numeraire).
+
+    Pure bookkeeping, not money: "token" survives as the record encoding's
+    name, but nothing is ever held or transferred — the amounts exist to
+    cancel inside the loop that passes through the maker (owner
+    clarification 2026-08-21). One scale per maker turns n×m pairwise
+    rates into n+m prices and makes the maker's quotes transitive by
+    construction.
+    """
 
     issuer: str
     amount: float

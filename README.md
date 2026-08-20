@@ -9,7 +9,8 @@ A universal combinatorial marketplace over the
 
 Every economic intention is one uniform, content-addressed **offer** — a
 thing described as a conjunction of OntoDAG categories, with a service time
-window and region, exchanged against the maker's **personal token**. A
+window and region, priced on the maker's **personal scale** (a personal
+numeraire; the record encoding calls it the maker's personal token). A
 distributed, versioned **offer book** holds them (recordstore keyspace;
 Swarm-backed via `BeeBytesStore` + a signed `SwarmFeedPointer`). Competing
 **solver agents** hunt profitable **loops** — cycles whose exchange-rate

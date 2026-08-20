@@ -52,11 +52,16 @@ convention. This uniformity is what makes the entire marketplace one data
 structure: transport, storage, aggregation, compute and cabbages differ only
 in their category sets.
 
-Personal tokens are bookkeeping: a maker's several offers relate through
-ratios in their own unit, so k asks and m bids cost k+m offers, not k×m
-pairings. Tokens exist only long enough for a loop to pass through the maker
+The **personal scale** is bookkeeping (a personal numeraire — "personal
+token" is this concept's earlier name, kept by the record encoding's
+`Tokens` side and older documents; vocabulary settled 2026-08-21): a maker
+prices everything on one private scale, so k asks and m bids relate
+through k+m numbers, not k×m pairwise rates — and the factoring makes a
+maker's quotes transitive by construction, so nobody can arbitrage a maker
+against their own rate matrix. Nothing is held or transferred: the scale's
+numbers exist only long enough for a loop to pass through the maker
 and cancel; liquidity is supplied by offers whose Thing is itself a currency
-(bridge offers), not by the tokens.
+(bridge offers), never by personal scales.
 
 Offers are immutable values with a canonical encoding (recordstore's
 canonical JSON; concept tuples sorted) and a content address
