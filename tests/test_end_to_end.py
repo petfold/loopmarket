@@ -78,6 +78,24 @@ def test_settlement_reverifies_against_ontology():
     assert not receipt.accepted and "re-verification" in receipt.reason
 
 
+def test_settlement_refuses_pin_mismatch_and_absence():
+    # U10's settlement rehearsal: the proposal's catalogue pin must equal
+    # the settlement's own — a claimed root the verifier cannot confirm is
+    # refused, and so is silence toward a pinned verifier
+    registry = _book()
+    agent = SolverAgent(registry, ONT, MockSettlement(registry, ONT, clock=lambda: NOW))
+    _, loops = agent.find_loops(now=NOW)
+    from loopmarket import LoopProposal
+    settlement = MockSettlement(registry, ONT, clock=lambda: NOW)
+    claimed = settlement.submit(
+        LoopProposal(loops[0], registry.store.root, "some-root", "s", NOW)
+    )
+    assert not claimed.accepted and "pin" in claimed.reason
+    assert settlement.submit(
+        LoopProposal(loops[0], registry.store.root, "", "s", NOW)
+    ).accepted
+
+
 def test_snapshot_isolation():
     registry = _book()
     root, frozen = registry.snapshot()

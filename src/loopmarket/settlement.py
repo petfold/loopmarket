@@ -87,11 +87,13 @@ class MockSettlement:
             return Receipt(False, lid, reason)
 
         # 0. pins — the rehearsal of U10's settlement half (full enforcement,
-        #    with proofs and refusal on absence, lands with P2): a proposal
-        #    solved under a different catalogue than the one this settlement
-        #    verifies under is refused before any leg work.
-        if proposal.ontology_root and self.ontology.root and \
-                proposal.ontology_root != self.ontology.root:
+        #    with proofs, lands with P2): the proposal's catalogue pin must
+        #    *equal* this settlement's own, refused before any leg work.
+        #    Plain equality covers mismatch and absence in both directions:
+        #    a pinned settlement refuses unpinned proposals, an unpinned
+        #    (development) one refuses proposals claiming ground it cannot
+        #    confirm; '' == '' keeps the in-memory flow working.
+        if proposal.ontology_root != self.ontology.root:
             return reject("ontology pin mismatch")
 
         # 1. every offer must exist in the *current* book and be unfilled
