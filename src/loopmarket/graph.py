@@ -87,7 +87,20 @@ class Loop:
 
     @property
     def loop_id(self) -> str:
-        return hashlib.sha256("|".join(sorted(self.offer_ids)).encode()).hexdigest()
+        """Content address of the settlement decision: the cycle of legs.
+
+        Hashes the leg sequence (ask>bid pairs, cycle order) under its
+        lexicographically minimal rotation — invariant to where the search
+        entered the cycle, sensitive to how the offers are paired. Hashing
+        the sorted offer *set* (the pre-2026-08-20 encoding) would collide
+        two different pairings of the same offers onto one `loop/` key,
+        silently conflating distinct settlements (ARCHITECTURE.md §2).
+        """
+        legs = [f"{m.ask.offer_id}>{m.bid.offer_id}" for m in self.matches]
+        start = min(range(len(legs)), key=lambda i: legs[i:] + legs[:i])
+        return hashlib.sha256(
+            "|".join(legs[start:] + legs[:start]).encode()
+        ).hexdigest()
 
 
 @dataclass

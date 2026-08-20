@@ -81,9 +81,11 @@ survives the merge. The same v2 bump carries: pins widened to
 so the ontology root alone under-specifies the pinned semantics; the
 current fail-open empty-pin gate in `check_match` closes), `from_record`
 version dispatch that *raises* on unknown versions (U2 enforced rather
-than assumed), and a decision on `loop_id` encoding leg pairing (open —
-distinct pairings over the same offer set must not collide on one `loop/`
-key). One scope rule enters schema validation now: flat roles are sound
+than assumed), and a decision on `loop_id` encoding leg pairing (decided
+and landed 2026-08-20: the id hashes the leg cycle under its
+lexicographically minimal rotation — rotation-invariant,
+pairing-sensitive — so distinct pairings over the same offer set cannot
+collide on one `loop/` key). One scope rule enters schema validation now: flat roles are sound
 only for one filler per role per offer (ontodag `BINDING` §1) — composite
 offers are separate legs joined by the solver, never bundles.
 

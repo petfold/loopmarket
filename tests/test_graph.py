@@ -52,6 +52,24 @@ def test_determinism():
     assert l1.loop_id == l2.loop_id
 
 
+def test_loop_id_is_rotation_invariant_but_pairing_sensitive():
+    from loopmarket import Loop
+    from loopmarket.matching import Match
+
+    # one fungible good: either way of chaining the same six offers is real
+    a_ask, a_bid = ask("a", Thing(("g1",)), 10, **W), bid("a", Thing(("g1",)), 11, **W)
+    b_ask, b_bid = ask("b", Thing(("g1",)), 10, **W), bid("b", Thing(("g1",)), 11, **W)
+    c_ask, c_bid = ask("c", Thing(("g1",)), 10, **W), bid("c", Thing(("g1",)), 11, **W)
+    # pairing 1: a -> c -> b -> a
+    p1 = (Match(a_ask, c_bid), Match(c_ask, b_bid), Match(b_ask, a_bid))
+    # same cycle, entered at a different node: the same settlement decision
+    assert Loop(p1).loop_id == Loop((p1[1], p1[2], p1[0])).loop_id
+    # pairing 2: the same six offers chained the other way round
+    p2 = (Match(a_ask, b_bid), Match(b_ask, c_bid), Match(c_ask, a_bid))
+    assert Loop(p1).loop_id != Loop(p2).loop_id
+    assert sorted(Loop(p1).offer_ids) == sorted(Loop(p2).offer_ids)
+
+
 def test_two_cycle():
     offers = [
         ask("a", Thing(("g1",)), 10, **W), bid("a", Thing(("g2",)), 11, **W),
