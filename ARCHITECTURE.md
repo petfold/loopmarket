@@ -215,7 +215,7 @@ One book = one recordstore keyspace = one root reference per version:
 
 ```
 offer/<offer_id>                the immutable offer record
-fill/<offer_id>                 {"loop": <loop_id>, "at": t}
+fill/<offer_id>                 {"loop": <loop_id>}
 loop/<loop_id>                  the settled loop record
 idx/c/<concept>/<offer_id>      per thing concept
 idx/t/<bucket>/<offer_id>       per touched day + its month/year chain
@@ -267,9 +267,12 @@ as the one solver-speed read path (feed lookups cost seconds — polling
 per-maker feeds does not scale); withdrawal as signed tombstones under
 grow-only merge; and two merge-discipline fixes found by code review
 (planned invariant U11): fill records lose their wall-clock timestamp —
-equal settlements must produce equal roots — and fill-conflict resolution
-moves from per-key to loop granularity, checked by a post-merge invariant
-that every `loop/` record has all its `fill/` keys. The ops posture is
+equal settlements must produce equal roots (landed 2026-08-20, with a
+replica-determinism test) — and fill-conflict resolution moves from
+per-key to loop granularity, checked by a post-merge invariant that every
+`loop/` record has all its `fill/` keys (the loudly-failing checker
+landed 2026-08-20; the deterministic loop-granularity *resolver* remains
+the registered open problem). The ops posture is
 equally explicit: the network is thin (~4,000 reachable full nodes,
 provider-concentrated), so the book always keeps one self-hosted pinning
 node; blobs get erasure coding, feed heads cannot (single-chunk — they rely

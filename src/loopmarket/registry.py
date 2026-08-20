@@ -3,7 +3,7 @@
 Layout (one book = one RecordStore, one root reference per version):
 
     offer/<offer_id>                 -> the offer record (immutable value)
-    fill/<offer_id>                  -> {"loop": <loop_id>, "at": t}
+    fill/<offer_id>                  -> {"loop": <loop_id>}
     loop/<loop_id>                   -> the settled loop record
     idx/c/<concept>/<offer_id>       -> 1     (per thing concept)
     idx/t/<day>/<offer_id>           -> 1     (per touched service day)
@@ -30,7 +30,6 @@ Deployment shapes (see ARCHITECTURE.md §5):
 
 from __future__ import annotations
 
-import time as _time
 from typing import Iterable, Iterator
 
 from .schema import Offer
@@ -83,9 +82,17 @@ class OfferRegistry:
 
     def mark_filled(self, offer_ids: Iterable[str], loop_id: str,
                     loop_record: dict) -> None:
-        now = int(_time.time())
+        """Claim every offer for the loop; a pure function of the decision.
+
+        No wall clock: the same logical settlement must produce
+        byte-identical records on every replica ("equal content ⇒ equal
+        root"). Timestamps that matter are attributed provenance, and
+        trustworthy time is *anchored* time — a feed index or an on-chain
+        anchor — which is factbond's to build, never a field smuggled into
+        the fill (docs/plans/P1-federated-book.md §3).
+        """
         for oid in offer_ids:
-            self.store.put(FILL + oid, {"loop": loop_id, "at": now})
+            self.store.put(FILL + oid, {"loop": loop_id})
         self.store.put(LOOP + loop_id, loop_record)
 
     def commit(self, *, reconcile: bool = True) -> str:
