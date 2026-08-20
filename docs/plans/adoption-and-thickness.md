@@ -286,6 +286,20 @@ Circles buys audited contracts, an existing trust graph, interoperability;
 minimal native tokens buy exact fit and no imported governance. Flagged for
 discussion, not decided here.
 
+**Owner steer (2026-08-21, recorded ahead of the item-7 discussion).** The
+personal token was conceived as *bookkeeping*: n+m prices through one
+personal scale instead of n×m pairwise rates — "not liquid, not accepted
+anywhere" is the intent, not a limitation. Item 7 must therefore evaluate a
+third option as a first-class candidate alongside the two named:
+**no on-chain token objects at all** — the settlement contract verifies
+the loop arithmetic over the numbers in the pinned offer records and
+records fills; nothing is minted or transferred; personal units survive
+only as unit-family labels in the catalogue (`ontodag-coupling.md`).
+Reification, if any, must be justified against the bookkeeping baseline,
+not assumed. Deferred reciprocity ("saving in your own token") is
+explicitly *not* a reason to reify: that is credit, and it is the
+chains-and-bonds design (P3), not a liquidity feature of personal units.
+
 ## 8. Positioning and the competitive read
 
 The pitch to a cash-strapped SME is liquidity-saving, not ideology, and the
