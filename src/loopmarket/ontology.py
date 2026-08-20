@@ -99,10 +99,15 @@ class Ontology:
 
     @property
     def root(self) -> str:
-        """Canonical root of the last committed catalogue state ('' if none)."""
-        return getattr(self.dag, "record_store", None) and getattr(
-            self.dag.record_store, "root", ""
-        ) or ""
+        """Canonical root of the last committed catalogue state ('' if none).
+
+        The store rides on the DAG as `.store` (EagerOntoDAG); `.record_store`
+        is kept as a fallback for older spellings. Not `dag.root` — that is
+        the DAG's top *Item*, not a version reference.
+        """
+        store = getattr(self.dag, "store", None) \
+            or getattr(self.dag, "record_store", None)
+        return getattr(store, "root", "") or ""
 
     @classmethod
     def persistent(cls, record_store) -> "Ontology":
