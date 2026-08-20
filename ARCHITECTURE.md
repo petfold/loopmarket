@@ -345,8 +345,10 @@ legs and bounded cycle length it is maximum-weight vertex-disjoint cycle
 packing, NP-hard (Abraham–Blum–Sandholm), solved exactly at realistic beat
 sizes by ILP. Greedy negative-cycle extraction provably blocks better
 packings, so at P2 it is demoted from settlement-facing selector to the
-protocol's *reserve bid* (§8) — a promotion to normative status that is
-**preconditioned** on fixing or documenting a recorded defect: the
+protocol's *reserve bid* (§8) — a promotion to normative status (ratified
+by owner sign-off 2026-08-21, agenda item 3) that is
+**preconditioned** on *fixing* a recorded defect — the document-only
+fallback was withdrawn at ratification: the
 best-rate-per-pair edge reduction can lose feasible loops (a lower-rate
 parallel edge may satisfy the per-node condition where the best-rate edge
 fails), and the post-hoc `min_surplus` check can mask qualifying cycles

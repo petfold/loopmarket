@@ -12,10 +12,13 @@ permissionless solver entry bonded through the factbond pool; per-leg
 external-asset fees under the wash-loop inequality (U13). Open here: beat
 length, fairness-filter gaming materiality, null-reference edge cases,
 consistency-pool sybils, fee incidence. Everything below implies unbuilt
-code (decided 2026-08, lands with P2); three moves await discussion-agenda
-sign-off: `per_node_ok` superseded as policy (touches U3's checklist), the
-baseline's promotion to reserve bid (changes U6's meaning), and introducing
-fees at all.
+code (decided 2026-08, lands with P2). Of the three moves that awaited
+discussion-agenda sign-off, two were **ratified 2026-08-21 (agenda item
+3)**: `per_node_ok` superseded as policy (touches U3's checklist) and the
+baseline's promotion to reserve bid (changes U6's meaning) — the owner
+additionally requiring the recall-gap **fix**, not the document-only
+fallback, as the promotion's precondition. Introducing fees at all
+(agenda item 4) still awaits sign-off.
 
 This document specifies the **beat**: the per-interval sealed-proposal
 auction replacing `MockSettlement`'s first-valid-wins — who may propose,
@@ -165,8 +168,10 @@ cannot cancel is infeasible; U3's re-verification refuses it forever), but
 as the *fairness* story it is subsumed — per-node adequacy is the
 degenerate case of "no offer does worse than its reference," since a maker
 left net-negative does worse than not trading. This touches U3's checklist
-(step 3 of `MockSettlement.submit`) and is discussion-agenda item 3; until
-sign-off, settlement enforces both. Second, ex-post best-execution policing
+(step 3 of `MockSettlement.submit`); ratified by owner sign-off 2026-08-21
+(agenda item 3). Settlement enforces both until the fairness filter lands
+with P2 — the arithmetic gate stays forever, only the policy role
+transfers. Second, ex-post best-execution policing
 is not built at all: CoW needed a whole EBBO apparatus (reference routes
 for 2–3k orders in under a second, penalties for slippage solvers don't
 control, a 72-hour reimburse window) because fairness lived outside winner
@@ -247,8 +252,13 @@ where the best-rate edge fails. A reserve bid with silent recall gaps
 weakens the collusion defense exactly where it matters — a ring profits in
 the regions the reserve cannot see. The baseline's promotion from "species
 to beat" (ARCHITECTURE.md §7) to normative reserve is therefore **gated on
-the recall-gap fix-or-document in `P2-loop-selection.md`**, and it changes
-U6's meaning (replay determinism → normative floor): discussion item 3.
+the recall-gap fix in `P2-loop-selection.md`**, and it changes
+U6's meaning (replay determinism → normative floor). Ratified by owner
+sign-off 2026-08-21 (agenda item 3), with the gate strengthened at
+ratification: the fix is required — the document-only fallback does not
+unlock the promotion, because a reserve that is also a
+censorship-resistance floor (it guarantees the obvious solution settles
+even if every solver ignores an offer) must not have charted blind spots.
 
 **Solver entry** is permissionless-with-bond. Rejected: the 1inch Fusion
 shape — a resolver whitelist capped at 10 with stake ≥5% of total Unicorn

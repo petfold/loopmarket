@@ -210,7 +210,11 @@ feasibility classes and search per class; iterate past sub-threshold
 cycles by removing certified-cycle edges instead of returning `None`. The
 document-only fallback — exact characterization of the book shapes where
 the baseline is recall-complete, enforced by a property test — still
-leaves the reserve weaker, so fixing is the default.
+leaves the reserve weaker, so fixing is the default. **Owner ruling at
+the item-3 sign-off (2026-08-21): the fix is the requirement — the
+document-only fallback is withdrawn as a path to the promotion.
+Recall-characterization property tests remain valuable as evidence the
+fix worked; they do not substitute for it.**
 
 ## 7. Pre-commit compression: netting the accepted set
 
