@@ -26,14 +26,15 @@ classifiers = [
 ]
 dependencies = [
     "ontodag>=0.13.0",        # catalogue: subsumption, dimensions, is_below
-    "recordstore>=0.13.1",   # the book: canonical versioned KV, merge, snapshots
+    "recordstore>=0.16.0",   # the book: canonical versioned KV, merge, snapshots,
+                             # diff/merge_delta (O(divergence) folds), prove/verify_proof
 ]
 
 [project.optional-dependencies]
 # The Swarm deployment path: BeeBytesStore blobs + signed SwarmFeedPointer
 # head, both reached through recordstore so versions stay in step with it
 # (mirrors ontodag's own [swarm] extra).
-swarm = ["recordstore[bee,feeds]>=0.13.1"]
+swarm = ["recordstore[bee,feeds]>=0.16.0"]
 test = ["pytest"]
 
 [tool.setuptools.packages.find]
