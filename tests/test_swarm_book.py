@@ -47,7 +47,9 @@ class TestTriangleOnLiveSwarmBook(unittest.TestCase):
         topic = f"loopbook-{int(time.time())}"
         swarm = dict(api_url=BEE_API, stamp=BEE_BATCH, signer=BEE_SIGNER)
 
-        # The shared catalogue lives on Swarm too; offers pin its root.
+        # The shared catalogue lives on Swarm too; offers pin its root —
+        # and with it the registry/contract versions (U10: a pinned
+        # catalogue refuses unpinned offers, so all three travel together).
         catalogue = Ontology.persistent(
             swarm_store(f"{topic}-catalogue", **swarm))
         catalogue.load(CATALOGUE)
@@ -58,7 +60,7 @@ class TestTriangleOnLiveSwarmBook(unittest.TestCase):
         now = int(time.time())
         town = dict(service=TimeWindow(now, now + 120 * 86_400),
                     valid=TimeWindow(now - 3_600, now + 30 * 86_400),
-                    ontology_root=ontology_root)
+                    **catalogue.pins)
         offers = [
             ask("amara", Thing(("piano-lesson",), unit="course"), 100,
                 where=GeoDisc(46.05, 14.50, 5_000), **town),

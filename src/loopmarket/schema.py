@@ -200,6 +200,14 @@ class Offer:
     oracle: str = "countersign"   # witness type the leg will settle against
     arbitrator: str = ""          # named in advance, like a jurisdiction clause
     nonce: int = field(default_factory=lambda: int(_time.time() * 1000))
+    # v2 widens the pins (planned U10): the dimension registry participates
+    # in canonical reduction, so an ontology root without its REGISTRY_VERSION
+    # is an incomplete pointer, and CONTRACT_VERSION names the guarantee set
+    # the writer assumed (docs/plans/proof-fabric.md §3). Splat
+    # `**ontology.pins` into ask/bid to fill all three at once.
+    registry_version: str = ""    # ontodag dimension-registry version
+    contract_version: str = ""    # ontodag contract version (G1-G6 guarantees)
+    v: int = 2                    # record version; identity includes it
 
     def __post_init__(self) -> None:
         thing_sides = [s for s in (self.gives, self.wants) if isinstance(s, Thing)]
@@ -214,6 +222,10 @@ class Offer:
             )
         if self.bond < 0:
             raise ValueError("bond must be non-negative")
+        if self.v not in (1, 2):
+            raise ValueError(f"unknown offer record version: {self.v!r}")
+        if self.v < 2 and (self.registry_version or self.contract_version):
+            raise ValueError("registry/contract pins are v2 fields")
 
     # -- derived ------------------------------------------------------------
 
@@ -241,13 +253,20 @@ class Offer:
     # -- encoding -----------------------------------------------------------
 
     def to_record(self) -> dict[str, Any]:
+        """The record in its *native* version: a v1 offer re-encodes as v1.
+
+        Version is identity — the record's bytes are what `offer_id` hashes,
+        so an offer read back from an old book must reproduce its original
+        id exactly (invariant U2), never silently re-encode as the current
+        version.
+        """
         def side(s: Thing | Tokens) -> dict[str, Any]:
             rec = s.to_record()
             rec["type"] = "thing" if isinstance(s, Thing) else "tokens"
             return rec
 
-        return {
-            "v": 1,
+        rec = {
+            "v": self.v,
             "maker": self.maker,
             "gives": side(self.gives),
             "wants": side(self.wants),
@@ -260,9 +279,24 @@ class Offer:
             "arbitrator": self.arbitrator,
             "nonce": self.nonce,
         }
+        if self.v >= 2:
+            rec["registry_version"] = self.registry_version
+            rec["contract_version"] = self.contract_version
+        return rec
 
     @classmethod
     def from_record(cls, rec: dict[str, Any]) -> "Offer":
+        """Read any known record version; *raise* on unknown ones (U2).
+
+        Fail closed, never best-effort: a future version may carry fields
+        this code cannot interpret, and matching an offer while ignoring
+        part of its meaning is exactly the silent drift U7 forbids for
+        vocabulary.
+        """
+        v = rec.get("v")
+        if v not in (1, 2):
+            raise ValueError(f"unknown offer record version: {v!r}")
+
         def side(r: dict[str, Any]) -> Thing | Tokens:
             if r["type"] == "thing":
                 return Thing(
@@ -282,6 +316,9 @@ class Offer:
             oracle=rec.get("oracle", "countersign"),
             arbitrator=rec.get("arbitrator", ""),
             nonce=rec["nonce"],
+            registry_version=rec.get("registry_version", ""),
+            contract_version=rec.get("contract_version", ""),
+            v=v,
         )
 
     def canonical_bytes(self) -> bytes:

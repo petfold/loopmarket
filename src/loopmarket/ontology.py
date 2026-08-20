@@ -109,6 +109,26 @@ class Ontology:
             or getattr(self.dag, "record_store", None)
         return getattr(store, "root", "") or ""
 
+    @property
+    def pins(self) -> dict[str, str]:
+        """Constructor kwargs pinning this catalogue as an offer's ground.
+
+        `ask(..., **ontology.pins)` fills {ontology_root, registry_version,
+        contract_version} in one move (planned invariant U10). The root
+        alone under-specifies the pinned semantics — ontodag's dimension
+        registry participates in canonical reduction, and the contract
+        version names the guarantee set the writer assumed — so all three
+        travel together (docs/plans/proof-fabric.md §3).
+        """
+        from ontodag import CONTRACT_VERSION
+        from ontodag.dimensions import REGISTRY_VERSION
+
+        return {
+            "ontology_root": self.root,
+            "registry_version": REGISTRY_VERSION,
+            "contract_version": CONTRACT_VERSION,
+        }
+
     @classmethod
     def persistent(cls, record_store) -> "Ontology":
         """An Ontology whose DAG persists through a RecordStore.

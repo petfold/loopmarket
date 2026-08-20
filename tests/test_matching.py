@@ -57,3 +57,32 @@ def test_ontology_pin_must_agree():
     a = ask("x", Thing(("vegetable-box",)), 50, ontology_root="r1", **W)
     b = bid("y", Thing(("produce",)), 60, ontology_root="r2", **W)
     assert check_match(a, b, ONT, now=NOW) is None
+
+
+def test_registry_and_contract_pins_refuse_major_skew():
+    # major skew = the registry's canonical reduction changed order: refuse;
+    # minor skew = vocabulary-additive: interoperates (ontodag D10)
+    pins = dict(ontology_root="r", contract_version="0.1")
+    a = ask("x", Thing(("vegetable-box",)), 50, registry_version="4.1", **pins, **W)
+    skewed = bid("y", Thing(("produce",)), 60, registry_version="5.0", **pins, **W)
+    minor = bid("y", Thing(("produce",)), 60, registry_version="4.2", **pins, **W)
+    assert check_match(a, skewed, ONT, now=NOW) is None
+    assert check_match(a, minor, ONT, now=NOW) is not None
+
+
+def test_pinned_catalogue_refuses_unpinned_offers():
+    # the fail-open '' wildcard dies once there is a persistent root to
+    # demand (planned U10): absence refuses, full pins match
+    from recordstore import MemoryBytesStore, RecordStore
+    cat = Ontology.persistent(RecordStore(MemoryBytesStore()))
+    cat.load({
+        "produce": [], "local": [], "weekly": [],
+        "vegetable-box": ["produce", "local", "weekly"],
+    })
+    assert cat.commit()
+    unpinned_a = ask("x", Thing(("vegetable-box",)), 50, **W)
+    unpinned_b = bid("y", Thing(("produce",)), 60, **W)
+    assert check_match(unpinned_a, unpinned_b, cat, now=NOW) is None
+    pinned_a = ask("x", Thing(("vegetable-box",)), 50, **cat.pins, **W)
+    pinned_b = bid("y", Thing(("produce",)), 60, **cat.pins, **W)
+    assert check_match(pinned_a, pinned_b, cat, now=NOW) is not None

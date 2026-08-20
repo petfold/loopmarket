@@ -15,8 +15,13 @@ Conditions, in cheap-to-expensive order:
 5. quantity:   bid quantity within ask quantity (equal, unless divisible)
 6. meaning:    the ask's concepts satisfy the bid's wanted categories,
                under the pinned ontology
-7. version:    if both offers pin an ontology root, the pins must agree —
-               semantic ground must not move between the two sides
+7. version:    pinned semantic ground must not move between the two sides:
+               ontology roots must agree, registry/contract versions must
+               not diverge on their major component (ontodag D10: minor
+               skew is vocabulary-additive and interoperates) — and once
+               the verifier's own catalogue is pinned, absence refuses too
+               (planned U10: the fail-open '' wildcard dies when there is
+               a persistent root to demand; docs/plans/proof-fabric.md §3)
 
 The match's `rate` is the exchange this handoff implies between the two
 personal tokens: unit price the receiver bids, over unit price the giver
@@ -56,6 +61,11 @@ class Match:
         return self.bid.thing.qty
 
 
+def _major_skew(a: str, b: str) -> bool:
+    """Both sides pin a version and the majors differ (refuse, per D10)."""
+    return bool(a) and bool(b) and a.split(".")[0] != b.split(".")[0]
+
+
 def check_match(ask: Offer, bid: Offer, ontology: Ontology, *,
                 now: int) -> Match | None:
     """The exact pairwise check; returns a Match or None."""
@@ -72,8 +82,16 @@ def check_match(ask: Offer, bid: Offer, ontology: Ontology, *,
         return None
     if a.unit != b.unit:
         return None
+    if ontology.root:  # a pinned catalogue refuses unpinned offers (U10)
+        for o in (ask, bid):
+            if not (o.ontology_root and o.registry_version
+                    and o.contract_version):
+                return None
     if ask.ontology_root and bid.ontology_root and \
             ask.ontology_root != bid.ontology_root:
+        return None
+    if _major_skew(ask.registry_version, bid.registry_version) or \
+            _major_skew(ask.contract_version, bid.contract_version):
         return None
     if not ontology.satisfies(a.concepts, b.concepts):
         return None

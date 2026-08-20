@@ -86,6 +86,14 @@ class MockSettlement:
         def reject(reason: str) -> Receipt:
             return Receipt(False, lid, reason)
 
+        # 0. pins — the rehearsal of U10's settlement half (full enforcement,
+        #    with proofs and refusal on absence, lands with P2): a proposal
+        #    solved under a different catalogue than the one this settlement
+        #    verifies under is refused before any leg work.
+        if proposal.ontology_root and self.ontology.root and \
+                proposal.ontology_root != self.ontology.root:
+            return reject("ontology pin mismatch")
+
         # 1. every offer must exist in the *current* book and be unfilled
         seen: set[str] = set()
         for oid in loop.offer_ids:

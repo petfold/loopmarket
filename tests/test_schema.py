@@ -40,9 +40,34 @@ def test_content_address_is_canonical_and_sensitive():
 
 def test_record_roundtrip():
     o = bid("m", Thing(("p", "q"), qty=3, unit="kg", divisible=True), 42,
-            bond=5.0, oracle="photo", arbitrator="arb-1", nonce=99, **W)
+            bond=5.0, oracle="photo", arbitrator="arb-1", nonce=99,
+            registry_version="4.1", contract_version="0.1", **W)
     assert Offer.from_record(o.to_record()) == o
     assert Offer.from_record(o.to_record()).offer_id == o.offer_id
+
+
+def test_version_dispatch_fails_closed():
+    o = ask("a", Thing(("x",)), 10, nonce=7, **W)
+    rec = o.to_record()
+    assert rec["v"] == 2
+    with pytest.raises(ValueError):
+        Offer.from_record(dict(rec, v=3))        # unknown future version
+    with pytest.raises(ValueError):
+        Offer.from_record({k: v for k, v in rec.items() if k != "v"})
+    with pytest.raises(ValueError):
+        ask("a", Thing(("x",)), 10, v=1, registry_version="4.1", **W)
+
+
+def test_v1_records_re_encode_as_v1():
+    # an offer read from an old book must reproduce its original id (U2):
+    # version is identity, never silently upgraded on the way through
+    v1 = ask("a", Thing(("x",)), 10, nonce=7, v=1, **W)
+    rec = v1.to_record()
+    assert rec["v"] == 1 and "registry_version" not in rec
+    back = Offer.from_record(rec)
+    assert back == v1 and back.offer_id == v1.offer_id
+    v2 = ask("a", Thing(("x",)), 10, nonce=7, **W)
+    assert v2.offer_id != v1.offer_id            # the bump is part of identity
 
 
 def test_time_and_geo_fits_within():
