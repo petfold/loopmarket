@@ -70,6 +70,16 @@ def test_registry_and_contract_pins_refuse_major_skew():
     assert check_match(a, minor, ONT, now=NOW) is not None
 
 
+def test_mixed_pinning_refuses_even_under_an_unpinned_catalogue():
+    # one side declares its semantic ground, the other is silent: agreement
+    # cannot be confirmed, so the pair is refused (proof-fabric gate G2) —
+    # even when the verifier's own catalogue is a dev-mode in-memory one
+    pinned = ask("x", Thing(("vegetable-box",)), 50, ontology_root="r",
+                 registry_version="4.1", contract_version="0.1", **W)
+    unpinned = bid("y", Thing(("produce",)), 60, **W)
+    assert check_match(pinned, unpinned, ONT, now=NOW) is None
+
+
 def test_pinned_catalogue_refuses_unpinned_offers():
     # the fail-open '' wildcard dies once there is a persistent root to
     # demand (planned U10): absence refuses, full pins match

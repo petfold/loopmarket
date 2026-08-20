@@ -87,6 +87,15 @@ def check_match(ask: Offer, bid: Offer, ontology: Ontology, *,
             if not (o.ontology_root and o.registry_version
                     and o.contract_version):
                 return None
+    for a_pin, b_pin in ((ask.ontology_root, bid.ontology_root),
+                         (ask.registry_version, bid.registry_version),
+                         (ask.contract_version, bid.contract_version)):
+        if bool(a_pin) != bool(b_pin):
+            # mixed pinning: one side declares its ground, the other is
+            # silent — agreement cannot be confirmed, so it is refused
+            # (proof-fabric gate G2). Both-silent survives only under an
+            # unpinned (development) catalogue, per the check above.
+            return None
     if ask.ontology_root and bid.ontology_root and \
             ask.ontology_root != bid.ontology_root:
         return None
