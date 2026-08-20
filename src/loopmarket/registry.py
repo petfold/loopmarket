@@ -3,6 +3,7 @@
 Layout (one book = one RecordStore, one root reference per version):
 
     offer/<offer_id>                 -> the offer record (immutable value)
+    sig/<offer_id>                   -> detached maker signature (U8, off-feed)
     fill/<offer_id>                  -> {"loop": <loop_id>}
     loop/<loop_id>                   -> the settled loop record
     idx/c/<concept>/<offer_id>       -> 1     (per thing concept)
@@ -36,6 +37,7 @@ from .schema import Offer
 from .spacetime import bucket_chain, cell_chain, cell_for, day_buckets
 
 OFFER = "offer/"
+SIG = "sig/"
 FILL = "fill/"
 LOOP = "loop/"
 
@@ -97,6 +99,27 @@ class OfferRegistry:
 
     def publish_many(self, offers: Iterable[Offer]) -> list[str]:
         return [self.publish(o) for o in offers]
+
+    def attach_signature(self, offer_id: str, sig_hex: str) -> None:
+        """Store a detached maker signature beside its offer (planned U8).
+
+        The secondary authenticity layer, for offers circulating outside
+        their home feed; feed ownership stays primary. Fail closed: a
+        signature that does not recover to the offer's maker is refused,
+        so the book never holds a sidecar that lies about who is speaking.
+        Needs the `sig` extra (eth-keys).
+        """
+        from .sigs import recover_maker
+
+        offer = self.get(offer_id)
+        if recover_maker(offer_id, sig_hex) != offer.maker:
+            raise ValueError("signature does not recover to the offer's maker")
+        self.store.put(SIG + offer_id, sig_hex)
+
+    def signature(self, offer_id: str) -> str | None:
+        """The offer's detached signature, if one has been attached."""
+        key = SIG + offer_id
+        return self.store.get(key) if self.store.contains(key) else None
 
     def mark_filled(self, offer_ids: Iterable[str], loop_id: str,
                     loop_record: dict) -> None:
