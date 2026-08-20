@@ -425,6 +425,151 @@ version bump, never an in-place edit.
 **Work package.** `factbond/docs/plans/evidence-policy.md`; here:
 `P3-guarantee-coupling.md` §4.
 
+## T10 — Assertion-mining & assertion spam — primary: `factbond/docs/plans/THREATS.md`
+
+*(Imported 2026-08-21 per the content-sync rule; condensed, substance
+complete.)*
+
+**Attack & economics.** Farm any reward proportional to assertion volume
+by asserting garbage at scale; failing that, spam assertions to
+manufacture a calibration track record from certified-by-timeout claims
+nobody watched, or to bury the claims that matter. Terminal precedents:
+FCoin's trans-fee mining reached (with copycats) ~40% of global reported
+exchange volume before insolvency inside 20 months; LooksRare's
+volume-linked emissions returned a measured 1.34%/day on wash capital.
+Assertion-mining would be the FCoin of facts, and the farm's statistics
+would poison the very dataset the system exists to produce.
+
+**Defense (by construction).** F9 — no volume-linked emissions anywhere:
+an asserter's income paths are exactly yield on pool stake, a share of
+assertion fees as an LP, slash winnings, and the underwriting business
+(factbond `mechanism-design.md` §3; fees land with Phase 1). Assertions
+cost a fee accruing to the pool — the spam price. The calibration ledger
+counts only resolutions that carried consumption or survived a real
+dispute (the U12 shape applied to reputation), so a manufactured record
+buys nothing.
+
+**Residual.** Off-protocol subsidies re-fund the farm from outside —
+T1's residual wearing factbond's mask; a future token would add the
+reflexive surface factbond `DESIGN.md` §9 refuses, revisitable only
+after modelling the FCoin scenario.
+
+**Tripwire & work package.** Assertions per principal never touching
+consumption or dispute; certified-by-timeout share per asserter funding
+cluster; the G-M6 audit finding any volume-proportional path pages
+immediately, no threshold. factbond `mechanism-design.md` §3 (Phase 1) +
+`phase0-simulation.md` §5 (the F9 check, kept forever).
+
+## T11 — Self-dispute laundering — primary: `factbond/docs/plans/THREATS.md`
+
+*(Imported 2026-08-21; condensed, substance complete.)*
+
+**Attack & economics.** Dispute your own assertion from a second
+identity and wash stake through the winner's share — manufacturing
+dispute history, farming the calibration ledger's dispute-survival gate,
+or laundering through a dispute-triggered market. Without a burn, one
+principal on both sides recycles its capital at ~zero cost while
+printing fake track record and fake loss experience — corrupting T7's
+feed and T8's ledger at once.
+
+**Defense (by construction).** The slash-split's burned slice (factbond
+`DESIGN.md` §8; decided 2026-08, lands with Phase 1) makes the launder
+loop strictly negative — loopmarket's wash-loop inequality applied to
+disputes. **The burn is load-bearing**: any future split change must
+re-verify the inequality. Dispute-market size caps bound the channel's
+throughput; the ledger's consumption gate keeps even a paid-for history
+thin.
+
+**Residual.** The general asserter–challenger collusion form is open
+(factbond `mechanism-design.md` §8 q4); the burn size is a parameter,
+not a law — UMA burns half the loser's bond; the right slice is a
+Phase-0 output.
+
+**Tripwire & work package.** Asserter/challenger funding-cluster
+intersection on resolved disputes (analytics only, never enforcement);
+dispute-win share within common-funder clusters; the scripted Phase-0
+laundering playbook stays strictly negative across the grid. factbond
+`mechanism-design.md` §3/§8 + `phase0-simulation.md` §7.
+
+## T12 — Correlated adjudicator failure as reserve shock — primary: `factbond/docs/plans/THREATS.md`
+
+*(Imported 2026-08-21; condensed, substance complete.)*
+
+**Attack & economics.** Not an actor but the tail T4 leaves: every claim
+whose escalation path ends at the same final rung fails together if that
+rung is captured or conformist — a failure that respects no DAG
+structure, so the min-cut cluster term cannot see it. The reserve's
+Lundberg arm (u = max(worst correlated claim cluster, ln(1/ε)/R)) dies
+under correlation, and heavy tails void the bound unless per-fact
+notional caps force a finite MGF. Nexus Mutual's collapsed model is the
+production shape: MCR = active cover / 4.8 at Solvency II's 99.5%
+one-year survival, ~20% concentration cap per listing.
+
+**Defense (by construction).** The shock enters the reserve as an
+explicit cluster — all open exposure sharing a final rung — with its own
+loading (factbond `netting-and-reserves.md` §7; reserve v0 lands with
+Phase 2). Per-fact notional caps enforce the model's assumptions; they
+are F4's per-claim arm — at the cap the pool stops selling, never
+re-prices and carries on. F4's final-rung condition caps what any single
+rung is asked to defend; reopenability plus retroactive refunds make a
+reversed capture recoverable. The go/no-go demands ≥99.5% solvency under
+scripted cluster shocks.
+
+**Residual.** The loading's size is the registered open problem: if it
+dominates at realistic ladder concentration, adjudicator *diversity*
+becomes a capital requirement, not a governance nicety. A captured rung
+also poisons the loss tables — no reserve line item restores a corrupted
+dataset.
+
+**Tripwire & work package.** Share of open exposure terminating at any
+single final rung; ruin runs re-run at every reserve or ladder change;
+a loss-table divergence review forced after any final-rung reversal.
+factbond `netting-and-reserves.md` §7 (Phase 2) + `mechanism-design.md`
++ `phase0-simulation.md` §7.
+
+## T13 — Evidence-class rot — primary: `factbond/docs/plans/THREATS.md`
+
+*(Imported 2026-08-21; condensed, substance complete.)*
+
+**Attack & economics.** The fabrication cost of an admissible evidence
+class decays — continuously under generative media, discontinuously on a
+per-model exploit that is expensive to find and ~zero to reuse until
+revoked. Design precedent: September 2025, an AI-generated image
+injected via multiple-exposure mode into a validly signed Nikon Z6III
+NEF; Nikon revoked all Z6III certificates and suspended its Authenticity
+Service — one exploit, a fleet's evidentiary standing gone, and until
+demotion lands every open claim admitting the class is simultaneously
+attackable: a correlated evidence shock, T5's cheapest input. A $100
+payout is a $100 bounty on fabricating one admissible artifact; bare
+C2PA fabrication is near zero and falling. **Revocation latency is the
+binding parameter.**
+
+**Defense (by construction).** Admissibility is data, not code (factbond
+`evidence-policy.md` §1; classes land with Phase 1): a demotion is a
+signed catalogue edit binding every ruling not yet issued the moment it
+publishes — demote fast, promote slow, fail closed. Policies pin rules
+naming live inputs ("valid and unrevoked at ruling time"), so a claim
+pinned to policy v1 stops admitting the rotted class without its hash
+changing. Closed rulings never rebind (F1), but a fleet revocation is
+evidence that did not exist at ruling time, so the reopening path
+applies. The reserve treats a demotion as a correlated shock — the
+affected cluster caps immediately (F4 at fleet scale). The
+fabrication-bound gate (Phase 2) keeps every sole-evidence class's
+sourced, dated fabrication-cost estimate above its payout cap or drops
+it to corroboration-only.
+
+**Residual.** Revocation latency itself; the demotion authority is a
+T6-adjacent capture vector; the fabrication-cost curve E(t) has no
+defensible empirical anchor — the sim sweeps it and treats fragility as
+a gate, but the arms race is carried, not closed.
+
+**Tripwire & work package.** Revocation-to-demotion propagation time
+across open adjudications; per-class realized loss vs the class's dated
+fabrication-cost estimate (paying out above it pages); red-team bounty
+claim rate per class; the Phase-0 mass-revocation drill must show the
+ladder degrading, never certifying garbage. factbond `evidence-policy.md`
+§4/§5 + `phase0-simulation.md` §7; reopening: `mechanism-design.md` §4.
+
 ## T14 — Aggregator omission & centralization (added 2026-08-21)
 
 **Attack.** An aggregator silently omits — or systematically delays —
