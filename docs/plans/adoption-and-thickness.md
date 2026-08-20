@@ -316,6 +316,55 @@ invoice netting with institutional counterparties — loopmarket should not
 fight; where typed goods, services and spacetime enter the cycle, Cycles'
 form cannot follow.
 
+## 9. Aggregator economics (added 2026-08-21)
+
+`P1-federated-book.md` names this document as the home of "who runs
+aggregators and why"; the section was missing until the agenda-#5
+sign-off surfaced it. The question is load-bearing because the
+aggregator is where the federated design is most centralizable in
+practice: the fold is permissionless and auditable by construction
+(byte-identical `book_root`s, provable omission — threat T14), but a
+full pinning Bee node is a real operational footprint, so the market
+concentrates by default unless someone's economics say otherwise.
+
+**Owner directive (2026-08-21).** Distributed, permissionless and
+censorship-proof is loopmarket's main value. Several independent
+aggregators are the deployment floor; a single-aggregator steady state
+is a failure condition, not an acceptable optimum; and stronger
+decentralization of the read path is a mandated investigation before P1
+completes.
+
+**Candidate operators, and what pays them:**
+
+- **Solvers, vertically integrated.** The natural first operators: an
+  aggregator is order flow, and a solver that folds its own book reads
+  at memory speed. Risk: the T14 motive lives exactly here (suppress
+  rival flow), which is why manifests must stay mutually auditable and
+  why at least one *non-solver* aggregator matters.
+- **Makers' cooperatives.** The Sardex precedent (§6): the broker desk's
+  operator has every reason to keep its members' offers visible.
+  Cooperatives are also the natural payers of permissionless batch
+  top-ups (`P1-federated-book.md` §6).
+- **A commons funded from settlement fees.** `P2-batch-auction.md`'s fee
+  stream can endow a neutral aggregator the way protocol fees endow
+  infrastructure elsewhere; this is the only shape with an explicit
+  neutrality mandate, and it only exists once fees do (agenda item 4).
+
+**The investigation (registered, pre-P1-completion):** how far can the
+read path be decentralized past "several manifests"? Candidate
+directions, none yet designed: solvers folding maker feeds themselves by
+default, demoting manifests to disposable caches (the fold is
+deterministic, so a cache is verifiable against a self-fold at
+O(divergence) cost); cross-aggregator attestation, where each manifest
+cites the others' roots it has verified against its own inputs;
+announcement-neighbourhood sharding so no single mined GSOC id sees the
+whole announcement stream; and rotation or lottery over which manifest a
+solver reads first, so attention does not ossify onto one operator.
+Whether any of these earns its complexity is exactly what the
+investigation must decide; the fallback position — several independent,
+mutually-auditing aggregators plus direct feed reads as the escape
+hatch — is already the T14 defense.
+
 ## Gates
 
 - **G1 — metrics pinned before any launch.** Four thickness metrics defined,

@@ -262,7 +262,8 @@ immutable batch). Two mechanisms fall out of the stamp design:
   can race. Consequence: **atomicity never rests on it**. Atomicity lives
   in recordstore commits (one root); convergence lives in CRDT merge; a
   raced pointer is repaired by the next fold, not prevented.
-- **Flagged decision (discussion agenda #5): the shared Swarm book
+- **Discussion agenda #5, ratified by owner sign-off 2026-08-21: the
+  shared Swarm book
   (ARCHITECTURE §5 shape 2) is demoted to a development/demo tool.** Its
   cross-process reconcile leans on exactly that best-effort CAS. This
   reframes the just-shipped P1 milestone: what the 2026-08-01 run proved
@@ -327,8 +328,9 @@ always green in CI (boundary B1) and a gated live variant under
 
 Unblockers: ~~the v2 record bump (U8 signature sidecar, fill `at` removal,
 `from_record` version dispatch, pin fields)~~ and ~~recordstore floor
->=0.16.0~~ — both landed 2026-08-20; owner sign-off on flagged decision #5
-(shared-book demotion) remains open.
+>=0.16.0~~ — both landed 2026-08-20; ~~owner sign-off on flagged decision
+#5 (shared-book demotion)~~ — landed 2026-08-21. All unblockers are
+cleared.
 
 - **Convergence.** 3 makers, 2 aggregators folding in different orders,
   1 solver: byte-identical `book_root` on both aggregators; one loop
@@ -375,6 +377,14 @@ Unblockers: ~~the v2 record bump (U8 signature sidecar, fill `at` removal,
   (`docs/plans/P2-batch-auction.md`), makers' cooperatives — decides
   whether neutrality-by-auditability holds when only one aggregator is
   worth reading. See `docs/plans/adoption-and-thickness.md`.
+  **Owner directive (2026-08-21, given with the #5 sign-off):
+  distributed, permissionless and censorship-proof is loopmarket's main
+  value; several independent aggregators are the deployment floor — a
+  single-aggregator steady state is a failure condition, not an
+  acceptable optimum — and stronger decentralization of the read path
+  (e.g., solvers folding maker feeds themselves by default, with
+  manifests as disposable caches) is a mandated investigation before P1
+  completes.** Registered as threat T14 (`docs/plans/THREATS.md`).
 - **GSOC reliability** (this work package). No delivery guarantees, an
   experimental library, per-aggregator mined ids that grow announcement
   fan-out with aggregator count. The burn-in measures loss, not

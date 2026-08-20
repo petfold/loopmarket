@@ -1,6 +1,8 @@
-# loopmarket — threat register (T1–T9)
+# loopmarket — threat register (T1–T14)
 
-Status: design, 2026-08-07. Decided here: the fixed IDs T1–T9 and their
+Status: design, 2026-08-07; dated edit 2026-08-21 (T10–T13 imported from
+the factbond mirror per the content-sync rule; T14 added at owner
+direction with the agenda-#5 sign-off). Decided at 2026-08-07: the fixed IDs T1–T9 and their
 primary owners; young-system ordering; the maintenance and content-sync
 rules; the ten by-construction fee/bond rules; the wash-loop inequality as
 U13's design-time check; initial tripwire thresholds, pre-registered,
@@ -47,11 +49,12 @@ live, an instrumented tripwire.** P2 blocks specifically on T1/T3
 (the phase↔document map on the repo front page, `../../README.md`).
 
 **Content-sync rule.** Mirrored entries name a primary owner: T1–T3, T7,
-T8 here; T4–T6, T9 in `factbond/docs/plans/THREATS.md`. Secondary copies
+T8 and T14 here; T4–T6, T9 and T10–T13 in
+`factbond/docs/plans/THREATS.md`. Secondary copies
 carry every column's *substance* (wording may condense, content may not)
-plus a cross-reference; edits land primary-first. factbond's register
-additionally carries factbond-native entries T10–T13 (primary there),
-which enter this register on its next dated edit.
+plus a cross-reference; edits land primary-first. The factbond-native
+entries T10–T13 were imported below on 2026-08-21, per this rule's
+next-dated-edit clause.
 
 ## T1 — Rebate/reward-farmed wash loops
 
@@ -421,6 +424,65 @@ version bump, never an in-place edit.
 
 **Work package.** `factbond/docs/plans/evidence-policy.md`; here:
 `P3-guarantee-coupling.md` §4.
+
+## T14 — Aggregator omission & centralization (added 2026-08-21)
+
+**Attack.** An aggregator silently omits — or systematically delays —
+makers or offers from its fold. Its manifest is the book most solvers
+read, so omission is market exclusion; motives: a vertically-integrated
+solver-aggregator suppressing rival order flow, pay-to-be-indexed
+extortion, or external pressure. The enabling condition is
+centralization, not code: admission-by-reference (T2's spam defense) *is*
+censorship capability — the same discretionary power, mirrored — and with
+only one aggregator worth reading it becomes unilateral market shaping.
+Escalation: at P1 the settlement instance's own fold (a single trusted
+writer) decides what can settle through it — a chokepoint no aggregator
+competition reaches.
+
+**Economics.** Omission is free at the margin (fold nothing, pay nothing)
+and produces a perfectly valid `book_root`; its value scales with the
+censor's share of solver attention. The counter-force is capital-light in
+protocol but heavy in operations: a competing aggregator needs a full
+pinning Bee node, so the market concentrates by default even with no
+attacker — centralization is the *equilibrium* to defend against, not
+just the attack.
+
+**Defense (by construction).** The fold is pure and commutative
+(`P1-federated-book.md` §2): aggregators that saw the same inputs produce
+byte-identical `book_root`s in any fold order, so divergence between
+manifests is evidence, not opinion. Omission is provable, never merely
+suspected: announcements have a censorship-resistant ground truth (the
+*permanent* Gnosis registry-event fallback), maker books are public
+feeds, and recordstore absence proofs demonstrate "offer X is absent
+from root R" mechanically while X sits on its maker's feed. Fold
+decisions and rejections are attributed speech acts in the aggregator's
+own `provenance_root`. Entry is permissionless, and reading never
+requires an aggregator: any solver can fold maker feeds directly — a
+censored offer is uncaptured surplus a competitor collects.
+
+**Residual.** Neutrality-by-auditability is only as real as the number of
+independent aggregators actually running — the aggregator-economics open
+problem (`P1-federated-book.md`; `adoption-and-thickness.md`). **Owner
+directive (2026-08-21): distributed, permissionless and censorship-proof
+is loopmarket's main value; several independent aggregators are the
+deployment floor, a single-aggregator steady state is a failure
+condition, and stronger decentralization of the read path is a mandated
+investigation before P1 completes.** The P1 settlement-instance
+chokepoint stands until P2's verifiable settlement; no aggregator remedy
+touches it.
+
+**Tripwire.** The count of independently-operated manifests: pages when
+it falls below two. Manifest `book_root` divergence not explained by
+input-set differences (the cross-audit). A planted-offer probe:
+publication-plus-announcement to manifest inclusion, measured across
+every watched aggregator — any manifest that never includes the probe
+pages.
+
+**Work package.** `P1-federated-book.md` §2/§8 (fold, provenance,
+admission-by-reference); `adoption-and-thickness.md` (aggregator
+economics, section added 2026-08-21); the settlement half:
+`P2-batch-auction.md`; the read-path decentralization investigation:
+registered, pre-P1-completion.
 
 ## The ten fee/bond rules (by construction)
 

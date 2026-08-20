@@ -257,7 +257,7 @@ Deployment shapes, same key layout throughout:
    feed ownership; nothing about the layout changes.
 
 **Update 2026-08-07 — shape 3 is the production shape; shape 2 is demoted
-to a development and demo tool.** The demotion is forced by an honest look
+to a development and demo tool (ratified by owner sign-off 2026-08-21).** The demotion is forced by an honest look
 at the substrate, not a change of heart: `SwarmFeedPointer.compare_and_set`
 is best-effort (Swarm has no feed index-claim primitive), so two writers on
 one feed can race — the one-signer-per-feed rule of shape 3 *is* the safety
