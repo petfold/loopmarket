@@ -377,7 +377,8 @@ boundary. The P2 on-chain backend keeps its shape: a Gnosis Chain contract
 receives the loop plus **inclusion proofs** that each offer is present under
 the pinned book root.
 
-**Update 2026-08-07 — the proof route is reversed (flagged decision).**
+**Update 2026-08-07 — the proof route is reversed (ratified by owner
+sign-off 2026-08-21).**
 An earlier revision of this section committed to the Proximity Order Trie
 (`ForkPathProof` + `POTProofVerifier`). That commitment is withdrawn:
 recordstore's canonical-trie **inclusion and absence proofs shipped**

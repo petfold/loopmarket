@@ -2,10 +2,10 @@
 
 Status: design, 2026-08-07. Decided here: recordstore's canonical-trie
 inclusion/absence proofs are the primary proof route in every phase, POT
-`ForkPathProof` demoted to a conditional on-chain mirror (**flagged revision**
-— ARCHITECTURE.md §8 and CLAUDE.md's P2 roadmap line previously committed to
-POT and were revised in place 2026-08-07; owner sign-off on the reversal
-still pending, discussion agenda item); ontodag's certificate envelope adopted wholesale for
+`ForkPathProof` demoted to a conditional on-chain mirror (ARCHITECTURE.md §8
+and CLAUDE.md's P2 roadmap line previously committed to POT and were revised
+in place 2026-08-07; the reversal was **ratified by owner sign-off
+2026-08-21**, discussion agenda item 2); ontodag's certificate envelope adopted wholesale for
 loop proposals and receipts; the pin tuple {book_root, ontology_root,
 REGISTRY_VERSION, CONTRACT_VERSION} made load-bearing (U10), closing the
 fail-open `''`-pin gate; `is_below` certificates wired into settlement as a
@@ -65,6 +65,15 @@ dependency is a pinned, vetted commit with our own conformance tests**
 — a canonical field-ordered, 32-byte-segment-aligned record encoding whose
 BMT proofs reveal one field without the whole record; if offer records
 adopt it, disputes could disclose a single field on-chain.
+
+**Upstream watch (noted at ratification, 2026-08-21).** There are plans for
+recordstore and POT to converge; POT is also not finished yet. If that
+convergence lands — or POT independently gains what decided this reversal
+(inclusion *and* absence proofs over the canonical roots the book already
+pins, no mirror) — G4's premise changes and the route question reopens on
+favorable terms: rationale 2 (proofs about a copy) would dissolve, leaving
+only the gas benchmark and dependency-vetting conditions. Check POT's
+property set again at P2 contract-design time, not before.
 
 ## 2. The envelope policy, adopted wholesale
 
@@ -272,6 +281,9 @@ two consumers, shared conformance tests.
   fidelity is itself proven, (b) self-benchmarked `assertForkPathProof` gas
   on Gnosis, (c) a pinned vetted commit + conformance tests. Absent any of
   the three, POT stays out. Owner: P2 contract work (`P2-batch-auction.md`).
+  Re-evaluation trigger (2026-08-21): the planned recordstore↔POT
+  convergence (§1's upstream watch) — if it ships, condition (a)'s
+  mirroring premise no longer applies and this gate is re-scoped.
 - **G5 — tripwire filing.** At P2 start, the cone-commitment ask is filed
   upstream before any on-chain subsumption design begins here. Go criterion
   is procedural: the ask exists in ontodag's tripwire log and
