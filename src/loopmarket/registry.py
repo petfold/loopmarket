@@ -40,13 +40,31 @@ FILL = "fill/"
 LOOP = "loop/"
 
 
+class PartialLoopError(RuntimeError):
+    """A book holds a loop missing some of its fills (planned invariant U11).
+
+    Settlement is atomic per writer, so this can only arise from a merge in
+    which two loops claimed one offer. There is no safe repair — evicting a
+    settled loop is a finality rollback — so the checker raises instead of
+    resolving, by design (docs/plans/P1-federated-book.md §3).
+    """
+
+
 def or_set_resolver(key: str, base, ours, theirs):
     """Merge policy for concurrent book writers.
 
     Offers and indexes are add-only values of identical content — either
-    side's copy is the value. Fills are first-writer-wins: a doubly-claimed
-    offer keeps the lexicographically smaller loop id, deterministically on
-    every replica (commutative, so 3+ writers stay order-independent).
+    side's copy is the value. A doubly-claimed offer keeps the
+    lexicographically smaller loop id, deterministically on every replica
+    (commutative, so 3+ writers stay order-independent).
+
+    The per-key fill rule is convergence mechanics, not settlement policy:
+    when two loops claim one offer, resolving fill-by-fill can strand the
+    losing loop with its `loop/` record and its *other* fills — a settled
+    loop missing a leg, which nothing repairs. Until the deterministic
+    loop-granularity resolver exists (registered open problem,
+    docs/plans/P1-federated-book.md §3), `verify_loop_atomicity` checks the
+    merged book and fails loudly (planned invariant U11).
     """
     if ours == theirs:
         return ours
@@ -96,11 +114,46 @@ class OfferRegistry:
         self.store.put(LOOP + loop_id, loop_record)
 
     def commit(self, *, reconcile: bool = True) -> str:
-        """Land staged changes; with reconcile, converge with other writers."""
+        """Land staged changes; with reconcile, converge with other writers.
+
+        Every reconciled commit re-checks loop atomicity (U11): a scan of
+        `loop/` and `fill/`, the stopgap price of per-key fill resolution.
+        """
         try:
-            return self.store.commit(reconcile=reconcile, resolver=or_set_resolver)
+            root = self.store.commit(reconcile=reconcile, resolver=or_set_resolver)
         except TypeError:  # store without multi-writer support (plain mock)
             return self.store.commit()
+        if reconcile:
+            self.verify_loop_atomicity()
+        return root
+
+    def verify_loop_atomicity(self) -> None:
+        """Raise PartialLoopError unless every loop in the book is whole.
+
+        The U11 invariant, checked rather than resolved: every present
+        `loop/` record holds the fill of every leg it names, and every
+        `fill/` points at a present loop. Run after every fold (reconciled
+        commits do it automatically; aggregators folding with
+        `RecordStore.merge` must call it themselves).
+        """
+        for key, rec in self.store.items(LOOP):
+            lid = key[len(LOOP):]
+            for leg in rec.get("legs", []):
+                for oid in (leg["ask"], leg["bid"]):
+                    claim = (self.store.get(FILL + oid)
+                             if self.store.contains(FILL + oid) else None)
+                    winner = claim.get("loop") if isinstance(claim, dict) else None
+                    if winner != lid:
+                        raise PartialLoopError(
+                            f"loop {lid[:12]} lost offer {oid[:12]} to "
+                            f"{winner[:12] if winner else 'nothing'}"
+                        )
+        for key, rec in self.store.items(FILL):
+            lid = rec.get("loop", "") if isinstance(rec, dict) else ""
+            if not self.store.contains(LOOP + lid):
+                raise PartialLoopError(
+                    f"fill on {key[len(FILL):][:12]} points at absent loop"
+                )
 
     # -- reading ---------------------------------------------------------------
 

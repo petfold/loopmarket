@@ -19,7 +19,7 @@ from .schema import (
     ASK, BID, GeoDisc, Offer, Thing, TimeWindow, Tokens, ask, bid,
 )
 from .ontology import Ontology
-from .registry import OfferRegistry, swarm_offer_book
+from .registry import OfferRegistry, PartialLoopError, swarm_offer_book
 from .matching import Match, candidate_matches, check_match
 from .dimensions import DimensionIndex, candidate_matches_indexed
 from .graph import ExchangeGraph, Loop
@@ -30,7 +30,8 @@ __version__ = "0.1.0"
 
 __all__ = [
     "ASK", "BID", "GeoDisc", "Offer", "Thing", "TimeWindow", "Tokens",
-    "ask", "bid", "Ontology", "OfferRegistry", "swarm_offer_book",
+    "ask", "bid", "Ontology", "OfferRegistry", "PartialLoopError",
+    "swarm_offer_book",
     "Match", "candidate_matches", "check_match",
     "DimensionIndex", "candidate_matches_indexed", "ExchangeGraph", "Loop",
     "LoopProposal", "MockSettlement", "Receipt", "Settlement", "SolverAgent",
