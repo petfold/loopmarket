@@ -11,11 +11,12 @@ expensive and competitive; verification is cheap and neutral.
 recordstore commit (all fills + the loop record land under a single new
 root, or none do). The on-chain path it stands in for (roadmap P2) keeps
 the same interface: a contract receives the loop plus *inclusion proofs*
-that each offer is present under the pinned book root — which is exactly
-what the Proximity Order Trie's ForkPathProof + on-chain POTProofVerifier
-provide once the book's index lives in a POT. Batch auctions across
-competing proposals (rank by participant surplus, rebate it) are P2 as
-well; the mock is first-valid-wins.
+that each offer is present under the pinned book root — recordstore's
+canonical-trie `prove`/`verify_proof` (>= 0.16.0) is the primary route;
+POT ForkPathProof is the conditional fallback only if the on-chain
+verifier demands BMT-native proofs (docs/plans/proof-fabric.md). Batch
+auctions across competing sealed proposals are P2 as well
+(docs/plans/P2-batch-auction.md); the mock is first-valid-wins.
 """
 
 from __future__ import annotations
@@ -69,14 +70,23 @@ class Settlement(Protocol):
 class MockSettlement:
     """In-process settlement over the shared registry."""
 
+    #: Oracle types this settlement knows how to verify — the P3 refusal
+    #: gate (docs/plans/P3-guarantee-coupling.md, enforcement rule 1): a leg
+    #: naming a witness type outside this set never settles here, in U7's
+    #: shape — unknown fails closed rather than silently settling with a
+    #: guarantee nobody can check. The mock declares exactly the P0
+    #: countersign semantics.
+    VERIFIABLE_ORACLES = frozenset({"countersign"})
+
     def __init__(self, registry: OfferRegistry, ontology: Ontology, *,
                  min_surplus: float = 0.0, require_per_node: bool = True,
-                 clock=_time.time):
+                 clock=_time.time, verifiable_oracles=VERIFIABLE_ORACLES):
         self.registry = registry
         self.ontology = ontology
         self.min_surplus = min_surplus
         self.require_per_node = require_per_node
         self.clock = clock  # injectable for tests / deterministic replay
+        self.verifiable_oracles = frozenset(verifiable_oracles)
 
     def submit(self, proposal: LoopProposal) -> Receipt:
         loop = proposal.loop
@@ -96,18 +106,21 @@ class MockSettlement:
         if proposal.ontology_root != self.ontology.root:
             return reject("ontology pin mismatch")
 
-        # 1. every offer must exist in the *current* book and be unfilled
+        # 1. every offer must exist in the *current* book, be unfilled, and
+        #    name a witness type this settlement can actually verify
         seen: set[str] = set()
         for oid in loop.offer_ids:
             if oid in seen:
                 return reject(f"offer used twice: {oid[:12]}")
             seen.add(oid)
             try:
-                self.registry.get(oid)
+                offer = self.registry.get(oid)
             except KeyError:
                 return reject(f"unknown offer: {oid[:12]}")
             if self.registry.is_filled(oid):
                 return reject(f"already filled: {oid[:12]}")
+            if offer.oracle not in self.verifiable_oracles:
+                return reject(f"unverifiable oracle type: {offer.oracle}")
 
         # 2. re-derive every leg — never trust the solver's matches
         for m in loop.matches:

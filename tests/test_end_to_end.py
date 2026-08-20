@@ -21,7 +21,7 @@ ONT = Ontology().load({
 })
 
 
-def _book():
+def _book(chen_oracle="countersign"):
     registry = OfferRegistry(RecordStore(MemoryBytesStore()))
     a_flat = GeoDisc(46.05, 14.50, 5_000)
     b_farm = GeoDisc(46.10, 14.55, 15_000)
@@ -32,7 +32,8 @@ def _book():
             where=a_flat, **W),
         ask("bruno", Thing(("vegetable-box",), unit="course"), 50, where=b_farm, **W),
         bid("bruno", Thing(("bicycle-repair",), unit="course"), 52, where=b_farm, **W),
-        ask("chen", Thing(("bicycle-repair",), unit="course"), 80, where=c_shop, **W),
+        ask("chen", Thing(("bicycle-repair",), unit="course"), 80, where=c_shop,
+            oracle=chen_oracle, **W),
         bid("chen", Thing(("music-lesson",), unit="course"), 83, where=c_shop, **W),
     ])
     registry.commit()
@@ -94,6 +95,23 @@ def test_settlement_refuses_pin_mismatch_and_absence():
     assert settlement.submit(
         LoopProposal(loops[0], registry.store.root, "", "s", NOW)
     ).accepted
+
+
+def test_settlement_refuses_unverifiable_oracle_types():
+    # the P3 refusal gate, fabric-free: a leg naming a witness type this
+    # settlement cannot verify fails closed, like U7 for vocabulary
+    registry = _book(chen_oracle="photo")
+    agent = SolverAgent(registry, ONT, MockSettlement(registry, ONT, clock=lambda: NOW))
+    _, loops = agent.find_loops(now=NOW)
+    assert len(loops) == 1   # matching is oracle-blind; settlement is not
+    from loopmarket import LoopProposal
+    proposal = LoopProposal(loops[0], registry.store.root, "", "s", NOW)
+    strict = MockSettlement(registry, ONT, clock=lambda: NOW)
+    receipt = strict.submit(proposal)
+    assert not receipt.accepted and "oracle" in receipt.reason
+    lax = MockSettlement(registry, ONT, clock=lambda: NOW,
+                         verifiable_oracles={"countersign", "photo"})
+    assert lax.submit(proposal).accepted
 
 
 def test_snapshot_isolation():

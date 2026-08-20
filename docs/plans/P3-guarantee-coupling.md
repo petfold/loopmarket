@@ -155,11 +155,12 @@ slot keeps offer ids stable when one matures.
 Two enforcement rules bind settlement, both the U7 shape — unknown fails
 closed, drift breaks loudly:
 
-1. **Refusal gate** (decided 2026-08, lands with the v2 bump — the first
+1. **Refusal gate** (decided 2026-08, landed 2026-08-20 — the first
    enforcement step, needing no fabric at all): every settlement backend
    declares the oracle types it can verify and refuses any loop whose legs
    name a type outside that set. MockSettlement declares exactly the P0
-   countersign semantics; nothing else settles through it.
+   countersign semantics (`verifiable_oracles`); nothing else settles
+   through it.
 2. **Hash-pinned policies** (decided 2026-08, lands with the v2 bump): an
    offer's `oracle` field stops being a bare string and references a
    hash-pinned adjudication policy document. Policy ambiguity is the
