@@ -65,21 +65,26 @@ assigns is a storage detail; the logical id is the application-layer key.
 `bond`, `oracle`, `arbitrator` ride in the encoding from day one (identity
 stability for P3) but are not yet enforced.
 
-**Update 2026-08-07 — authenticity and the v2 record (decided 2026-08,
-lands with the v2 bump).** The multi-writer book needs makers to be
-unforgeable, and the code today does not enforce that. The decided design
-(planned invariant U8) is two-layer: in per-maker books, *feed ownership*
-is the primary authenticity — an offer is the maker's because it arrived on
-the maker's signed feed — and a *detached* signature over `canonical_bytes`
+**Update 2026-08-07 — authenticity and the v2 record (decided 2026-08;
+the record bump landed 2026-08-20).** The multi-writer book needs makers
+to be unforgeable. The decided design (planned invariant U8) is two-layer:
+in per-maker books, *feed ownership* is the primary authenticity — an
+offer is the maker's because it arrived on the maker's signed feed — and a
+*detached* signature over the offer's id (the hash of its canonical bytes)
 covers offers circulating outside their home feed. The signature never
 enters the canonical bytes (root purity and `offer_id` stability are the
 treaty with ontodag; nothing that varies between honest replicas may enter
 identity), and aggregators record `origin/<offer_id>` so provenance
-survives the merge. The same v2 bump carries: pins widened to
+survives the merge. Landed 2026-08-20: the sign/recover primitives
+(`sigs.py`, the `sig` extra) and the registry's fail-closed `sig/`
+sidecar; the fold rule that makes them an *invariant* lands with the P1
+aggregator. The same v2 bump carries: pins widened to
 {`book_root`, `ontology_root`, `REGISTRY_VERSION`, `CONTRACT_VERSION`}
 (planned U10 — the dimension registry participates in canonical reduction,
 so the ontology root alone under-specifies the pinned semantics; the
-current fail-open empty-pin gate in `check_match` closes), `from_record`
+fail-open empty-pin gate in `check_match` closed 2026-08-20 — a pinned
+catalogue refuses unpinned offers, mixed pinning always refuses, and
+settlement demands pin equality), `from_record`
 version dispatch that *raises* on unknown versions (U2 enforced rather
 than assumed), and a decision on `loop_id` encoding leg pairing (decided
 and landed 2026-08-20: the id hashes the leg cycle under its

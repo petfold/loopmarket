@@ -51,10 +51,12 @@ circulation; nothing signed enters canonical bytes)"):
   `offer_id`, recoverable to `maker` — for offers circulating outside
   their home feed (gossip, solver forwarding, registry events, P2
   calldata). It lives beside the offer (`sig/<offer_id>`), never inside
-  `canonical_bytes()`: offer ids stay stable, roots stay pure. (Lands with
-  the v2 bump — `from_record` finally gains the version dispatch U2
-  promised.) Fold rule, fail-closed in U7's spirit: an offer from a
-  foreign feed without a valid signature never enters the fold.
+  `canonical_bytes()`: offer ids stay stable, roots stay pure. (The v2
+  bump landed 2026-08-20: `from_record` gained the version dispatch U2
+  promised, and the sign/recover primitives plus the registry's
+  fail-closed `sig/` sidecar shipped with it.) Fold rule, fail-closed in
+  U7's spirit: an offer from a foreign feed without a valid signature
+  never enters the fold — the aggregator's to enforce when it lands.
 
 Who writes what: maker books carry `offer/` and `withdraw/` (§5) only.
 Settlement is its own writer — `fill/` and `loop/` publish under the
@@ -122,7 +124,8 @@ key, so two concurrently-settled loops sharing one offer merge into a
 book where the losing loop keeps its `loop/` record and its *other*
 fills — a "settled" loop missing a leg, which nothing repairs. Fixes:
 
-- **Fill determinism** (lands with the v2 bump): the `fill/` record drops
+- **Fill determinism** (landed 2026-08-20, with a replica-determinism
+  test): the `fill/` record drops
   `at` — content is `{"loop": <loop_id>}`, a pure function of the
   settlement decision. Timestamps that matter are attributed provenance;
   when trustworthy time is needed (§5, dispute windows) it is **anchored
@@ -135,8 +138,10 @@ fills — a "settled" loop missing a leg, which nothing repairs. Fixes:
   `loop/<loop_id>` has a `fill/` for every leg pointing at it, and every
   fill points at a present loop. When two loops claim one offer across a
   merge, the resolver keeps one loop *whole* and removes the other
-  *whole*. The per-key `min(loop_id)` rule is retired; a post-merge
-  invariant checker ships first, as a stopgap that fails loudly.
+  *whole*. The per-key `min(loop_id)` rule is retired as policy; the
+  post-merge invariant checker shipped first (2026-08-20:
+  `verify_loop_atomicity`, run on every reconciled commit), as a stopgap
+  that fails loudly.
 - **The resolver algorithm is a registered open problem** (below): it
   must be deterministic, commutative, and stable as late information
   arrives; conflict chains make greedy-by-sorted-`loop_id`
@@ -320,9 +325,10 @@ always green in CI (boundary B1) and a gated live variant under
 
 ## Gates
 
-Unblockers: the v2 record bump (U8 signature sidecar, fill `at` removal,
-`from_record` version dispatch, pin fields); recordstore floor >=0.16.0;
-owner sign-off on flagged decision #5 (shared-book demotion).
+Unblockers: ~~the v2 record bump (U8 signature sidecar, fill `at` removal,
+`from_record` version dispatch, pin fields)~~ and ~~recordstore floor
+>=0.16.0~~ — both landed 2026-08-20; owner sign-off on flagged decision #5
+(shared-book demotion) remains open.
 
 - **Convergence.** 3 makers, 2 aggregators folding in different orders,
   1 solver: byte-identical `book_root` on both aggregators; one loop

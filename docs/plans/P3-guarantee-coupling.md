@@ -161,7 +161,12 @@ closed, drift breaks loudly:
    name a type outside that set. MockSettlement declares exactly the P0
    countersign semantics (`verifiable_oracles`); nothing else settles
    through it.
-2. **Hash-pinned policies** (decided 2026-08, lands with the v2 bump): an
+2. **Hash-pinned policies** (decided 2026-08; deferred at the 2026-08-20
+   bump — the adjudication policy documents the hash would pin are
+   factbond `evidence-policy` deliverables that do not exist yet, and a
+   hash with nothing behind it is worse than a bare string; lands with the
+   first policy documents, as an `oracle`-value convention that touches no
+   record structure): an
    offer's `oracle` field stops being a bare string and references a
    hash-pinned adjudication policy document. Policy ambiguity is the
    cheapest attack in every deployed dispute system — Augur's chronic

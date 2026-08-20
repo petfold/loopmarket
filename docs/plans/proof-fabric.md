@@ -93,12 +93,13 @@ so `offer_id` and `loop_id` never depend on the evidence riding along.
 U10, quoted from the plan: "load-bearing pins {book_root, ontology_root,
 REGISTRY_VERSION, CONTRACT_VERSION}, verifiers refuse on mismatch or
 absence." Two defects in the working system make this necessary rather than
-decorative: `check_match` step 7 passes whenever either ontology pin is `''`
-(the demo and every in-memory test run entirely unpinned — fail-open), and
-`LoopProposal.book_root`/`ontology_root` are decoration settlement never
-verifies. Both close (decided 2026-08: offer-side pins land with the v2
-record bump; proposal/settlement enforcement lands with P2, rehearsed in
-`MockSettlement` before that).
+decorative: `check_match` step 7 passed whenever either ontology pin was
+`''` (the demo and every in-memory test ran entirely unpinned — fail-open),
+and `LoopProposal.book_root`/`ontology_root` were decoration settlement
+never verified. Both closed with the v2 record bump (landed 2026-08-20):
+offer-side pins, mixed-pinning refusal, absence refusal under a pinned
+catalogue, and `MockSettlement`'s pin-equality rehearsal; full
+proposal/settlement enforcement — proofs included — lands with P2.
 
 Why four elements and not two: the registry's dimension arithmetic
 participates in canonical reduction, so **an ontology root without its
@@ -248,13 +249,17 @@ two consumers, shared conformance tests.
 - **G1 — floor raise (unblocks everything).** recordstore floor ≥ 0.16.0
   (`prove`/`verify_proof`); ontodag floor at a release carrying
   `ontodag.certificates`. Go: `tests/test_boundaries.py` still green (B1 —
-  proofs are core, not Swarm). Owner: the v2-bump commit.
+  proofs are core, not Swarm). Owner: the v2-bump commit. **Done
+  2026-08-20** (recordstore floor raised; boundaries green).
 - **G2 — pin closure.** Closed when: an unpinned offer fails `check_match`
   against any pinned offer in tests; `MockSettlement` refuses a proposal
   whose pins mismatch its roots or are absent; offer record v2 carries
   REGISTRY_VERSION + CONTRACT_VERSION with `from_record` still reading v1;
   the U2 id-stability suite passes across the bump. U10 enters CLAUDE.md
   only when these tests land (marking convention). Owner: the v2 bump.
+  **Closed 2026-08-20** — every listed test landed; U10's settlement half
+  is still the rehearsal (equality, no proofs), so U10 stays out of
+  CLAUDE.md until P2's enforcement completes it.
 - **G3 — certificate double-check.** `MockSettlement` verifies attached
   `satisfies` certificates alongside re-derivation; go: N settled loops
   (triangle + randomized books) with zero verdict divergence; any divergence

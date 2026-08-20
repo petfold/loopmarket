@@ -277,9 +277,15 @@ total). The migration (decided 2026-08, lands with P2):
   whose float search proposes a loop that exact arithmetic rejects simply
   loses the proposal; U3 already assumes solvers are wrong.
 - **Records.** `Match.rate` becomes a reduced rational, and fill records
-  grow settled quantities (today `fill/` holds only `{"loop", "at"}`) —
-  landing with the offer/record v2 bump so ids never churn twice (decided
-  2026-08, lands with the v2 bump). Settled *prices* follow
+  grow settled quantities (today `fill/` holds only `{"loop"}` — the
+  `at` field was dropped 2026-08-20 for fill determinism) — originally
+  slated for the offer/record v2 bump so ids never churn twice (decided
+  2026-08). **Update 2026-08-20: the v2 bump landed without these** —
+  the quantities recorded are the *settled* ones, which presuppose the
+  pricing rule this document proposes (discussion agenda #9), and the
+  rational representation waits on the unit-family design (see
+  `ontodag-coupling.md`'s dated note). They ride the v3 bump with U9,
+  before P2. Settled *prices* follow
   `P4-privacy.md` §5's format-freeze ruling: the per-leg price vector goes
   into private per-participant receipt envelopes, never public fill
   records; the public beat record carries per-directed-pair aggregates —

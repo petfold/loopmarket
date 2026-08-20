@@ -117,7 +117,9 @@ the sybil floor; per-commit fees stack; no per-offer benefit may exceed
 the per-offer cost floor. U8 — "two-layer offer authenticity (feed
 ownership primary; detached signature for off-feed circulation; nothing
 signed enters canonical bytes)" — makes maker forgery non-free (decided
-2026-08, lands with the v2 bump). Damage is bounded by the Circles
+2026-08; the sidecar primitives and fail-closed `sig/` storage landed
+2026-08-20, the fold rule that completes U8 lands with the P1
+aggregator). Damage is bounded by the Circles
 property: a sybil cannot appear in a *settled* loop without a real
 counterparty on every leg — the settled fee-paid ledger is the one thing
 sybils cannot cheaply populate, so U12 routes every consequential

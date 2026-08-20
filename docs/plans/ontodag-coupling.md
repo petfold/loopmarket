@@ -141,7 +141,17 @@ owns the catalogue side:
 - **Quantities and token amounts become unit-family rationals.**
   `Thing.qty` and `Tokens.amount` adopt D9 representation (decided
   2026-08, lands with the v2 bump; the epsilon-free settlement path with
-  P2). Indivisible quantities take the `count` dimension — whole-number
+  P2). **Update 2026-08-20: the v2 bump landed *without* this.**
+  Adopting D9 faithfully needs this document's unit-family design first —
+  `canonicalize` accepts a unit only if the graph declares it, and
+  personal tokens are supposed to *be* graph-declared unit families — so
+  a stopgap `[num, den]` encoding would churn offer ids a third time when
+  the real design lands. Revised landing: qty/amount rationals ride the
+  **v3 bump together with U9's other record changes**
+  (`P2-settlement-pricing.md` §8), before P2. The original "ids never
+  churn twice" goal is traded consciously: churn stays cheap before
+  federation ships real books, and `from_record`'s version dispatch
+  (landed with v2) makes v3 mechanical. Indivisible quantities take the `count` dimension — whole-number
   floor of 1, `count(0)` refused as an absence claim in an open-world
   store — the same fail-closed philosophy as U5 and U7: absence is never
   encoded as a magnitude. `count(1..)` ≡ absent coordinate, so
