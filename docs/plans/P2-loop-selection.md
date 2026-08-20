@@ -347,6 +347,28 @@ rule is decided, the residual gap unquantified. Work package:
 `P2-settlement-pricing.md`; named here because compression is this
 document's mechanism.
 
+- **Price schedules in offers** (far roadmap — owner-added 2026-08-21;
+  lands, if ever, with a post-P4 record bump). Today an offer quotes one
+  price; the generalization is a *static, immutable schedule*: over
+  quantity ("1 box at 50, up to 5 at 45 each" — a supply curve, most of
+  what auction theory wants from a bidder), and/or over validity time
+  (price as a function of beat index — a pre-committed Dutch or English
+  auction inside one offer, which cannot double-fill the way a ladder of
+  short-validity offers can). Both stay U2-compatible values solved
+  against pinned roots; for divisible legs the flow LP extends to
+  piecewise-linear convex edge costs and stays polynomial; indivisible
+  legs plus curves is genuine combinatorial-auction territory, gated on
+  thin verticals demonstrating that point-quotes leave surplus
+  undiscovered. The doctrine that frames all of this, decided in the
+  2026-08-21 discussion: **dynamic pricing quantizes to the beat** —
+  repricing across beats (tombstone + repost, or a maker agent running
+  any adaptive strategy) is free today; *continuous* in-protocol price
+  dynamics stay rejected, because static edge weights are what
+  Bellman–Ford and settlement re-verification stand on, and discrete
+  batches exist precisely to convert speed races into price competition
+  (Budish–Cramton–Shim; the sealed-proposal design would also leak to
+  probing if quotes reacted live).
+
 ## What this document does not promise
 
 - **Selection optimizes a model, not the world.** The failure-aware score
