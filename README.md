@@ -36,7 +36,7 @@ agent.step()                          # snapshot → match → hunt loops → se
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 55 tests (one needs a live Bee node)
+python3 -m pytest tests/ -v           # 56 tests (two need a live Bee node)
 PYTHONPATH=src python3 examples/demo_triangle.py
 ```
 
@@ -61,9 +61,12 @@ same code runs with the book on Swarm.
 in memory, and since 2026-08-01 also end-to-end on a real Gnosis-mainnet
 Bee node — catalogue and book on Swarm, book head in a signed feed, fills
 atomic (the gated `tests/test_swarm_book.py`). Since 2026-08-21 the
-federation layer runs in memory: per-maker books, an `Aggregator` folding
-them under the U8 admission rules into a four-root manifest, withdrawal
-tombstones, and gate tests for convergence, followers and withdrawal.
+federation layer runs too — in memory *and* live (the gated
+`tests/test_swarm_federation.py`, 96.5s on a Bee 2.8.1 node): per-maker
+books under their own feeds and signers, an `Aggregator` folding them
+under the U8 admission rules into a four-root manifest published on its
+own feed, withdrawal tombstones, and a scorched-earth follower
+reconstructing the settled world from (address, topic) alone.
 Alpha; interfaces will move.
 
 **Designed (2026-08-07):** most of what loopmarket *is* now lives as a

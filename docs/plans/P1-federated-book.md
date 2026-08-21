@@ -354,13 +354,22 @@ cleared.
   1 solver: byte-identical `book_root` on both aggregators; one loop
   settled. Memory-backed in CI; gated live on Bee. **Memory-backed
   variant green 2026-08-21** (`tests/test_federation.py` — all four
-  manifest roots byte-identical, not just the book); live variant
-  pending.
+  manifest roots byte-identical, not just the book). **Live
+  single-aggregator run green the same day**
+  (`tests/test_swarm_federation.py`, 96.5s on a local Bee 2.8.1 full
+  node: three per-maker feeds with maker = feed-owner address, fold over
+  the network, triangle settled against the fold, re-fold with the
+  settlement book); the two-live-aggregators byte-identity variant is
+  the remaining live half.
 - **Follower.** A scorched-earth follower reconstructs the settled loop
   and every fill from feed addresses alone; a second solver pass over the
   followed book settles nothing. **Memory-backed template green
-  2026-08-21** (roots + blob space only, no shared state); the live
-  variant reads feed addresses.
+  2026-08-21; live variant green the same day**: a follower armed with
+  nothing but (aggregator address, topic) and a Bee node resolves the
+  manifest feed, reads the settled loop and all six fills from
+  `book_root`, verifies U11, checks per-offer provenance attribution,
+  follows one maker's book independently by (owner, topic), and settles
+  nothing on a second pass.
 - **Withdrawal.** A tombstone propagates to a deliberately stale peer;
   post-fold the offer is unmatchable everywhere; the U11 checker passes
   on every fold of the run. **Memory-backed variant green 2026-08-21**
