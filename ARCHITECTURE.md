@@ -272,7 +272,9 @@ real network; it is the write-authority shape that does not survive
 multi-writer production. With federation come the decided mechanics
 (`docs/plans/P1-federated-book.md`): maker→aggregator announcement over
 GSOC with a Gnosis registry-event fallback; the aggregator (a full Bee
-node) publishing a manifest tuple {book_root, provenance_root, index_root}
+node) publishing a manifest tuple {book_root, provenance_root, index_root,
+announcement_root} (fourth element 2026-08-21: the folded input-set
+commitment that makes aggregator completeness provable — T14)
 as the one solver-speed read path (feed lookups cost seconds — polling
 per-maker feeds does not scale); withdrawal as signed tombstones under
 grow-only merge; and two merge-discipline fixes found by code review
@@ -447,6 +449,18 @@ One structural fact shapes everything here: **legitimate loops are
 self-financing cycles** — the exact graph shape every wash-trading detector
 keys on. Shape detection would flag the product itself, so the defenses are
 by construction, not by policing:
+
+**Update 2026-08-21 — agenda item 4 ratified: no protocol fees.** The
+bullets below were specified assuming a per-leg fee; the ruling deletes
+the assumption and strengthens the position. There are **no protocol
+emissions at all** — no fees, rewards, rebates, or treasury — so U13
+hardens to factbond F9's shape and the inequality below becomes the gate
+any *future* emission proposal must pass. U12's ledger is settled
+**cost-borne** loops (floor: postage + settlement gas). Solver
+compensation is an endogenous spread bounded by the reserve bid;
+aggregators sell service, never inclusion (T14); revisit triggers
+(monoculture, aggregator scarcity, measured statistics pollution) are the
+only path back to any emission, through the U13 gate.
 
 - **The wash-loop inequality (planned invariant U13).** For any loop a
   single principal could run through sybils, the sum of all subsidies and

@@ -6,7 +6,8 @@ authenticity (U8) with detached signatures and fold-time `origin/` records;
 fill determinism and loop-granularity merge (U11); GSOC announcements with
 a Gnosis registry-event fallback and defined switchover thresholds; the
 aggregator as a full Bee node publishing the manifest tuple
-`{book_root, provenance_root, index_root}`; stamp TTL as the hard
+`{book_root, provenance_root, index_root, announcement_root}` (the
+fourth element added 2026-08-21); stamp TTL as the hard
 offer-lifetime bound, permissionless top-up as a solver-ecology mechanism;
 withdrawal as monotone tombstones; the shared-Swarm-book deployment demoted
 to a development tool (flagged); dead `idx/{c,t,g}` writes dropped from
@@ -86,7 +87,8 @@ loopmarket's recordstore floor from >=0.13.1 to >=0.16.0 (diff landed in
 index per maker (sequence feeds resume from a known index — cold
 multi-second probes become single-chunk reads); and publishes, under its
 own feed, a signed **manifest tuple** `{book_root, provenance_root,
-index_root}` — the pattern ontodag's cone summaries pinned:
+index_root, announcement_root}` — the pattern ontodag's cone summaries
+pinned:
 
 - `book_root` — the pure fold of the input books. Byte-identical across
   aggregators that saw the same inputs, in any fold order (merge is
@@ -100,6 +102,15 @@ index_root}` — the pattern ontodag's cone summaries pinned:
   analogue, the `DimensionIndex`'s published sibling. Regenerable from
   `book_root`, short-TTL stamped (§6), ignored when stale, never merged —
   the derived-values-never-merge rule ontodag learned from counts.
+- `announcement_root` (added 2026-08-21, with the item-4
+  aggregator-revenue ruling) — a commitment to the announced input set
+  this fold consumed. Completeness becomes first-class: two manifests are
+  diffable at the input side, and (announced set) − (makers under
+  `book_root`), backed by absence proofs against the registry-log ground
+  truth, turns omission — including pay-to-be-indexed — into a proof,
+  never a suspicion (T14). Aggregators charge for *serving* (latency,
+  indexes, queries); an aggregator charging for *inclusion* is a
+  censoring aggregator and is caught as one.
 
 Solvers read manifests, never poll maker feeds. A thin solver need not
 hydrate anything: `LazyOntoDAG` plus published summaries make broad-term

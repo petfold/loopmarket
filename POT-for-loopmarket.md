@@ -87,6 +87,38 @@ vectors from our side. Our adoption gate re-opens automatically when the
 convergence ships: requirement 1 dissolves by construction, and what
 remains is exactly items 4 and 5.
 
+## A second ask: an enumerable announcement set ("super-GSOC")
+
+Separate from proofs, one more primitive would remove our last
+non-Swarm dependency. Our federated book needs makers to announce "my
+book is (owner, topic)". GSOC today is *messaging*: delivery to one
+listening full node, per-aggregator mined id, no delivery guarantees —
+so for an *objective* announcement set (needed to make aggregator
+completeness checkable and paid-listing censorship provable) we
+currently fall back to Gnosis registry events. What the marketplace
+actually wants is Swarm-native:
+
+- **A set, not a stream**: announcements as *stamped, stored* chunks
+  under a derivable address family (topic, epoch, shard), pull-readable
+  forever — no listener liveness, and postage is the spam floor, priced
+  by the network itself.
+- **Enumerable**: any full node in the address family's neighbourhood(s)
+  can serve "all announcements for (topic, epoch)" — which makes any
+  aggregator's input set publicly auditable, and "charging for
+  inclusion" a provable, reputation-fatal act rather than a norm
+  violation.
+- **Sharded** by epoch/region so no single neighbourhood becomes the
+  global hot spot or DoS target.
+
+If GSOC's evolution (or a pub/sub successor) grows these properties, we
+drop the on-chain registry to true-fallback status and publication
+becomes a protocol property of Swarm. We can offer burn-in loss
+measurements against the registry-event ground truth as consumer
+evidence, per the thresholds in our
+`docs/plans/P1-federated-book.md` §4.
+
 *References: loopmarket `docs/plans/proof-fabric.md` (decision rule, gate
 G4, upstream watch), `ARCHITECTURE.md` §8; recordstore ≥0.16.0
-`prove`/`verify_proof`; ontodag `docs/CONTRACT.md` §7 (envelope policy).*
+`prove`/`verify_proof`; ontodag `docs/CONTRACT.md` §7 (envelope policy);
+`docs/plans/P1-federated-book.md` §4 (announcements), threat register
+T14 (aggregator omission).*

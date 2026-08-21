@@ -58,6 +58,14 @@ next-dated-edit clause.
 
 ## T1 — Rebate/reward-farmed wash loops
 
+*(Update 2026-08-21 — agenda item 4 ratified no protocol fees and **no
+protocol emissions at all**: nothing exists to farm, so this attack's
+surface is deleted at the root — a stronger defense than the inequality.
+The entry is retained as the gate: any future emission proposal must
+re-open it and prove the inequality first. U12's ledger is now settled
+cost-borne loops — postage + settlement gas — so the statistics-pollution
+half of the motive shifts to T8's tripwires.)*
+
 **Attack.** A sybil ring posts matched ask/bid pairs; a ring-run solver
 "finds" the loop; the ring farms any volume-linked subsidy, reward,
 rebate, or airdrop score. The loop settles and consumed nothing.
@@ -599,7 +607,13 @@ manifests is evidence, not opinion. Omission is provable, never merely
 suspected: announcements have a censorship-resistant ground truth (the
 *permanent* Gnosis registry-event fallback), maker books are public
 feeds, and recordstore absence proofs demonstrate "offer X is absent
-from root R" mechanically while X sits on its maker's feed. Fold
+from root R" mechanically while X sits on its maker's feed. Since
+2026-08-21 the manifest carries `announcement_root` — a commitment to
+the folded input set — so completeness is first-class and computable by
+anyone: (announced set) − (makers under `book_root`) is a proof of
+omission, which also makes **pay-to-be-indexed legible as censorship**
+(the item-4 revenue ruling: aggregators charge for serving, never
+inclusion). Fold
 decisions and rejections are attributed speech acts in the aggregator's
 own `provenance_root`. Entry is permissionless, and reading never
 requires an aggregator: any solver can fold maker feeds directly — a
@@ -630,6 +644,11 @@ economics, section added 2026-08-21); the settlement half:
 registered, pre-P1-completion.
 
 ## The ten fee/bond rules (by construction)
+
+*(Standing note, 2026-08-21: with agenda item 4 ratified there is no live
+fee schedule — these rules bind today's real cost floors (postage,
+settlement gas, bonds) and any future emission proposal, which must pass
+them before existing.)*
 
 The compressed design law under T1/T2/T5/T8; each rule is load-bearing
 somewhere above.

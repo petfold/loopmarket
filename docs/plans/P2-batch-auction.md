@@ -17,8 +17,9 @@ discussion-agenda sign-off, two were **ratified 2026-08-21 (agenda item
 3)**: `per_node_ok` superseded as policy (touches U3's checklist) and the
 baseline's promotion to reserve bid (changes U6's meaning) — the owner
 additionally requiring the recall-gap **fix**, not the document-only
-fallback, as the promotion's precondition. Introducing fees at all
-(agenda item 4) still awaits sign-off.
+fallback, as the promotion's precondition. Agenda item 4 was decided
+2026-08-21: **no protocol fees** — §9 carries the ruling, §7's
+fee-funded reward machinery is struck accordingly.
 
 This document specifies the **beat**: the per-interval sealed-proposal
 auction replacing `MockSettlement`'s first-valid-wins — who may propose,
@@ -200,6 +201,19 @@ audits need byte-identical replay, not a committee.
 
 ## 7. Solver rewards
 
+**Ruling (2026-08-21, agenda item 4): struck.** The owner decided no
+protocol fees, so the fee-funded machinery below — performance rewards,
+the β caps, the consistency pool — does not ship. Solver compensation is
+**endogenous**: a spread leg priced into the proposal, bounded above by
+the solver's marginal discovery over the reserve bid (a proposal must
+still beat every reference outcome after the solver's own cut), and
+competed down by the beat. What survives of this section: the
+successRate standing (win-without-settle is punished through the
+solver's settlement bond rather than negative rewards) and the CIP-72
+rule for any future quoting tier. The design below is retained as the
+evaluated alternative — and as the template, should a §9 revisit trigger
+ever fire.
+
 Adopted from CoW's CIP-38/CIP-67 lineage (decided 2026-08, lands with P2):
 
 - **Performance reward** = cap(totalScore − referenceScore_i −
@@ -277,10 +291,31 @@ else.
 
 ## 9. Fees and the wash-loop inequality
 
-Whether loopmarket charges fees at all — who pays, in what asset, against
-the "makers never need gas" ambition — is discussion-agenda item 4, not
-decided here. What is decided is the shape any fee system must have: §7's
-rewards are insolvent without one and lethal with the wrong one.
+**Ruling (2026-08-21, agenda item 4, owner sign-off): loopmarket charges
+no protocol fees.** Every actor bears its own real costs. Makers pay
+postage — mandatory by construction (nothing unstamped is stored) and
+the per-offer spam floor; "makers never need gas" holds mechanically
+(announcements post via GSOC or gasless relaying — the payload carries
+the maker's detached signature, so relays are trustless). The winning
+solver pays settlement gas and earns an endogenous spread (§7's ruling).
+Aggregators sell *service*, never *inclusion*: the manifest's
+`announcement_root` (P1 plan §2) plus registry-log ground truth and
+absence proofs make paid listing provable censorship (T14), and
+completeness scores steer solver demand to complete folds. U13 hardens
+to factbond F9's shape: **no protocol emissions at all — no fees, no
+rewards, no rebates, no treasury; any future emission proposal must
+first prove the wash-loop inequality below.** U12 is reworded: statistics
+count settled **cost-borne** loops (floor: postage + settlement gas —
+lower than a fee floor, so statistics-pollution weight shifts to T8's
+tripwires). Revisit triggers, any of which reopens a *minimal, targeted*
+mechanism through the U13 gate: solver monoculture (win Herfindahl),
+aggregator scarcity (T14 paging below two), measured statistics
+pollution (T8).
+
+The shape rules below were specified when a fee was assumed; they now
+bind any *future* emission proposal rather than a live schedule — §7's
+rewards were insolvent without a fee and lethal with the wrong one,
+which is half of why neither ships.
 
 - **Per-leg settlement fees in an external asset** (xDAI or BZZ), burned or
   to treasury — never personal tokens, never rebated in an asset whose
@@ -320,7 +355,7 @@ standing metrics.
 | Overbid standalone to disqualify rival loops (arXiv:2408.12225) | baseline in reference set; missingScore | standalone bids settling below quote |
 | Underbid packings expecting weak rivals | reserve bid floors the score | winning−reserve gap trending to 0 |
 | Surplus shifting across a maker's offers (CoW "local token conservation") | fairness floor + uniform clearing | per-offer surplus dispersion in winners |
-| Ring rotation among top solvers | reserve caps extraction; consistency pool | win Herfindahl; rotation autocorrelation |
+| Ring rotation among top solvers | reserve caps extraction; open entry (no pool since the item-4 ruling) | win Herfindahl; rotation autocorrelation |
 | Copying revealed losers next beat | sealed proposals | winners isomorphic to prior beat's losers |
 | Win-without-settle (free option) | negative rewards; successRate decay | successRate distribution tail |
 | Wash-loop reward farming (T1) | U13 inequality; U12 statistics | common-funder clustering (hildobby filter 4), analytics only |
@@ -362,13 +397,16 @@ standing metrics.
   pass — is that right for offers only ever reachable inside long loops?
   And should a reference computed only from the baseline's loops bind
   competing solvers while the baseline itself is gated by G2?
-- **Consistency-pool sybil surface** (P2 + THREATS.md T8). A solver split
-  into many identities farms the proportional payout; successRate weighting
-  and per-identity bond carry are the cost floor, but the equilibrium
-  identity count needs simulating before β is set.
-- **Fee incidence** (successor to discussion item 4). Who ultimately pays
-  the per-leg fee — winners' surplus, makers at settlement, solvers out of
-  rewards — and how that coexists with "makers never need gas."
+- **~~Consistency-pool sybil surface~~ — mooted by the item-4 ruling
+  (2026-08-21): no pool exists.** Retained as a known risk of the
+  template, to be re-simulated before any revisit trigger reintroduces
+  it.
+- **~~Fee incidence~~ — mooted by the item-4 ruling: there is no
+  protocol fee to incident.** The successor question is monitoring:
+  whether the §9 revisit triggers stay quiet as books thicken, and
+  whether solver spreads (the endogenous compensation) stay competitive
+  rather than becoming a de facto fee — the win-Herfindahl and
+  winning−reserve-gap tripwires carry both.
 - **Off-chain side payments** (permanent residual, THREATS.md T3). Solvers
   can settle collusion out of band, invisibly; the impossibility results
   say this cannot be designed away. Monitor the tripwires, keep entry

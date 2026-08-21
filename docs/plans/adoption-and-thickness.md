@@ -374,10 +374,14 @@ completes.
   operator has every reason to keep its members' offers visible.
   Cooperatives are also the natural payers of permissionless batch
   top-ups (`P1-federated-book.md` §6).
-- **A commons funded from settlement fees.** `P2-batch-auction.md`'s fee
-  stream can endow a neutral aggregator the way protocol fees endow
-  infrastructure elsewhere; this is the only shape with an explicit
-  neutrality mandate, and it only exists once fees do (agenda item 4).
+- **~~A commons funded from settlement fees~~ — removed by the item-4
+  ruling (2026-08-21: no protocol fees, so no fee stream exists to endow
+  it).** Aggregators are market services instead: they charge for
+  *serving* — low-latency manifest push, the derived indexes, query
+  APIs, co-op dues — and never for *inclusion*, which the
+  `announcement_root` completeness machinery makes legible as censorship
+  (T14). Neutrality rests on plurality, mutual auditability, and
+  completeness scores steering solver demand, not on an endowment.
 
 **The investigation (registered, pre-P1-completion):** how far can the
 read path be decentralized past "several manifests"? Candidate
