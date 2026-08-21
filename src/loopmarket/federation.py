@@ -165,9 +165,17 @@ class Aggregator:
         records = dict(source.items())
         for key in sorted(records):
             rec = records[key]
+            if role == SETTLEMENT and not (key.startswith(FILL)
+                                           or key.startswith(LOOP)):
+                # a settlement book legitimately *contains* the fold it
+                # settled on (it re-based via absorb); only its fills and
+                # loops are its own speech — the rest is silently not
+                # re-asserted, never "rejected": provenance records are
+                # accusations, and carrying your base is not an offense
+                continue
             if key.startswith(OFFER):
                 if role != MAKER:
-                    continue    # settlement books carry folded offers; not theirs to assert
+                    continue
                 oid = key[len(OFFER):]
                 try:
                     offer = Offer.from_record(rec)

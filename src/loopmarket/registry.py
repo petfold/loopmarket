@@ -101,6 +101,20 @@ class OfferRegistry:
     def publish_many(self, offers: Iterable[Offer]) -> list[str]:
         return [self.publish(o) for o in offers]
 
+    def absorb(self, other: "OfferRegistry") -> None:
+        """Re-assert another book's entire content as this writer's base.
+
+        The settlement pattern (P1 §1): a settlement instance bases its
+        *own feed* on an aggregator's fold by re-asserting the folded
+        records and committing. Canonical encoding makes the re-commit
+        reproduce the source root byte-for-byte — equal content, equal
+        root — so anyone can verify the claimed base is exactly the fold
+        (ontodag's clone-verification pattern). O(book); incremental
+        re-basing via `diff` is the production upgrade.
+        """
+        for key, rec in other.store.items(""):
+            self.store.put(key, rec)
+
     def withdraw(self, offer_id: str) -> None:
         """Close an offer forever: a monotone tombstone (lands with P1, §5).
 

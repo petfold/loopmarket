@@ -12,10 +12,11 @@ nothing but (aggregator address, topic) reads the whole settled world back.
 Conventions follow test_swarm_book.py: skipped unless BEE_API, BEE_BATCH
 and BEE_SIGNER are set; a real purchased batch id so nothing auto-buys;
 timestamped topics so reruns inherit nothing; throwaway per-maker signers
-generated per run (feeds need no funds). Staging, provenance, index and
-settlement stores ride Bee blobs with local pointers — no feed updates, so
-the run is gentle on batch slots; settlement under its *own feed* is a
-later refinement (the blobs and root are already network-borne).
+generated per run (feeds need no funds). Staging, provenance and index
+stores ride Bee blobs with local pointers — no feed updates there;
+settlement publishes under its own feed like every other writer, basing
+it on the fold via `absorb` (the feed's first head reproduces
+`book_root` byte-for-byte — canonical addressing as clone verification).
 """
 
 import os
@@ -115,24 +116,32 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
             (m1b.book_root, m1b.provenance_root, m1b.index_root,
              m1b.announcement_root))
 
-        # settlement is its own writer over the fold (blobs on Swarm; the
-        # root travels by hand until the settlement feed lands)
+        # settlement is its own writer under its OWN feed (P1 §1): it
+        # bases that feed on the fold by re-asserting it, and canonical
+        # addressing proves the base — the first head of the settlement
+        # feed reproduces book_root byte-for-byte
+        settle_key = secrets.token_hex(32)
+        settle_addr = maker_address(settle_key)
         settle = OfferRegistry(
-            RecordStore(BeeBytesStore(BEE_API, BEE_BATCH), root=m1.book_root))
+            swarm_store(f"{topic}-settlement", signer=settle_key, **swarm))
+        settle.absorb(folded)
+        self.assertEqual(settle.commit(), m1.book_root)
+
         agent = SolverAgent(settle, catalogue,
                             MockSettlement(settle, catalogue),
                             solver_id="fed-live-solver")
         settled = [r for r in agent.step() if r.accepted]
         self.assertEqual(len(settled), 1, settled)
 
-        # re-fold with the settlement book; publish the manifest on the
-        # aggregator's own feed
-        agg.announce("settlement-0", settle.store, role=SETTLEMENT)
+        # both aggregators follow the settlement feed by (owner, topic) —
+        # settlement folds like any other book now — and stay identical
+        for a in (agg, agg_b):
+            a.announce(settle_addr,
+                       swarm_store(f"{topic}-settlement", owner=settle_addr,
+                                   **swarm),
+                       role=SETTLEMENT)
         m2 = agg.fold()
         self.assertNotEqual(m2.book_root, m1.book_root)
-
-        # both aggregators fold the settlement book in and stay identical
-        agg_b.announce("settlement-0", settle.store, role=SETTLEMENT)
         m2b = agg_b.fold()
         self.assertEqual(
             (m2.book_root, m2.provenance_root, m2.index_root,

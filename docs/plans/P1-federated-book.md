@@ -67,6 +67,12 @@ Who writes what: maker books carry `offer/` and `withdraw/` (§5) only.
 Settlement is its own writer — `fill/` and `loop/` publish under the
 settlement instance's feed and fold like any other book, so every keyspace
 is single-writer at the source and conflicts exist only at the fold (§3).
+**Landed 2026-08-21, live:** the settlement instance bases its own feed on
+the aggregator fold with `OfferRegistry.absorb`, and canonical addressing
+verifies the base for free — the settlement feed's first head reproduces
+`book_root` byte-for-byte (ontodag's clone-verification pattern); both
+aggregators then follow the settlement feed by (owner, topic) like any
+maker's.
 The `idx/{c,t,g}` keys are written today and read by nothing (the solver
 full-scans; `DimensionIndex` duplicates their job in memory); on Swarm each
 publish would pay ~10+ chunk writes of waste. Decided 2026-08, lands with
@@ -356,7 +362,9 @@ cleared.
   variant green 2026-08-21** (`tests/test_federation.py` — all four
   manifest roots byte-identical, not just the book). **Live variant green the same
   day, gate closed** (`tests/test_swarm_federation.py`, 104.6s on a
-  local Bee 2.8.1 full node): three per-maker feeds with maker =
+  local Bee 2.8.1 **light** node — everything here provably needs no
+  full node; GSOC reception and pinning are what will): three per-maker
+  feeds with maker =
   feed-owner address; two independent aggregators — the second sharing
   no Python state with the publishers, following the maker feeds by
   (owner, topic) over the network, announcing in reverse order — produce

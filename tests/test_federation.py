@@ -90,8 +90,12 @@ def test_convergence_gate():
     assert list(idx.ids_by_index("idx/c/piano-lesson/"))
     assert not list(books["amara"].store.keys("idx/"))
 
-    # settlement is its own writer over the folded book
-    settlement_reg = OfferRegistry(RecordStore(blobs, root=m_a.book_root))
+    # settlement is its own writer: it bases its own book on the fold by
+    # re-asserting it — and canonical addressing proves the base is
+    # exactly the fold (the re-commit reproduces book_root byte-for-byte)
+    settlement_reg = OfferRegistry(RecordStore(blobs))
+    settlement_reg.absorb(OfferRegistry(RecordStore(blobs, root=m_a.book_root)))
+    assert settlement_reg.commit() == m_a.book_root
     agent = SolverAgent(
         settlement_reg, ONT,
         MockSettlement(settlement_reg, ONT, clock=lambda: NOW),
