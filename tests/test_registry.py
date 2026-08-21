@@ -11,7 +11,7 @@ from recordstore import MemoryBytesStore, MemoryPointer, RecordStore
 
 from loopmarket import (
     GeoDisc, MockSettlement, OfferRegistry, Ontology, PartialLoopError,
-    SolverAgent, Thing, TimeWindow, ask, bid,
+    SolverAgent, Thing, TimeWindow, give, want,
 )
 from loopmarket.registry import or_set_resolver
 
@@ -26,12 +26,12 @@ ONT = Ontology().load({"g1": [], "g2": [], "g3": []})
 # One shared offer list: replicas of a book hold the *same* offers
 # (identical canonical bytes), so any root divergence is the fill path's.
 OFFERS = [
-    ask("a", Thing(("g1",)), 100, nonce=1, **W),
-    bid("a", Thing(("g3",)), 104, nonce=2, **W),
-    ask("b", Thing(("g2",)), 50, nonce=3, **W),
-    bid("b", Thing(("g1",)), 52, nonce=4, **W),
-    ask("c", Thing(("g3",)), 80, nonce=5, **W),
-    bid("c", Thing(("g2",)), 83, nonce=6, **W),
+    give("a", Thing(("g1",)), 100, nonce=1, **W),
+    want("a", Thing(("g3",)), 104, nonce=2, **W),
+    give("b", Thing(("g2",)), 50, nonce=3, **W),
+    want("b", Thing(("g1",)), 52, nonce=4, **W),
+    give("c", Thing(("g3",)), 80, nonce=5, **W),
+    want("c", Thing(("g2",)), 83, nonce=6, **W),
 ]
 
 
@@ -75,7 +75,7 @@ def test_withdrawal_gate():
 
     # the stale peer publishes concurrently, then folds: the tombstone
     # survives the grow-only merge and closes the offer there too
-    stale.publish(ask("d", Thing(("g1",)), 7, nonce=9, **W))
+    stale.publish(give("d", Thing(("g1",)), 7, nonce=9, **W))
     merged = RecordStore.merge(
         blobs, None, stale.store.commit(), maker.store.root,
         resolver=or_set_resolver,
@@ -109,7 +109,7 @@ def test_settlement_refuses_withdrawn_legs():
 # --------------------------------------------------------- U11 loop atomicity
 
 def _loop_rec(legs):
-    return {"legs": [{"ask": a, "bid": b} for a, b in legs]}
+    return {"legs": [{"give": a, "want": b} for a, b in legs]}
 
 
 def _writer(blobs, base_root):

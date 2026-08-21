@@ -1,4 +1,4 @@
-"""Pairwise matching: does this ASK satisfy that BID?
+"""Pairwise matching: does this GIVE satisfy that WANT?
 
 A `Match` is one feasible handoff — the atom that loops are made of. The
 check is exact and self-contained so that settlement can re-run it
@@ -8,12 +8,13 @@ problem").
 
 Conditions, in cheap-to-expensive order:
 
-1. kinds:      ask is an ASK, bid is a BID, different makers
+1. kinds:      one GIVE, one WANT, different makers
 2. validity:   both offers open at `now`
 3. time:       the service windows intersect (a delivery instant exists)
 4. space:      the service discs intersect (a handover point exists)
-5. quantity:   bid quantity within ask quantity (equal, unless divisible)
-6. meaning:    the ask's concepts satisfy the bid's wanted categories,
+5. quantity:   wanted quantity within given quantity (equal, unless
+               divisible), identical units
+6. meaning:    the given thing's concepts satisfy the wanted categories,
                under the pinned ontology
 7. version:    pinned semantic ground must not move between the two sides:
                ontology roots must agree, registry/contract versions must
@@ -24,8 +25,8 @@ Conditions, in cheap-to-expensive order:
                a persistent root to demand; docs/plans/proof-fabric.md §3)
 
 The match's `rate` is the exchange this handoff implies between the two
-personal tokens: unit price the receiver bids, over unit price the giver
-asks — the number whose product around a cycle decides profitability.
+personal scales: the receiver's quoted price over the giver's quoted
+price — the number whose product around a cycle decides profitability.
 """
 
 from __future__ import annotations
@@ -35,30 +36,39 @@ from itertools import product
 from typing import Iterable, Iterator
 
 from .ontology import Ontology
-from .schema import ASK, BID, Offer
+from .schema import GIVE, WANT, Offer
 
 
 @dataclass(frozen=True, slots=True)
 class Match:
-    ask: Offer   # giver of the thing
-    bid: Offer   # receiver of the thing
+    give: Offer   # the offer giving the thing
+    want: Offer   # the offer receiving it
 
     @property
     def rate(self) -> float:
-        """(bid unit price in receiver-tokens) / (ask unit price in giver-tokens)."""
-        return self.bid.unit_price / self.ask.unit_price
+        """(the wanter's quoted price) / (the giver's quoted price)."""
+        return self.want.unit_price / self.give.unit_price
 
     @property
     def giver(self) -> str:
-        return self.ask.maker
+        return self.give.maker
 
     @property
     def receiver(self) -> str:
-        return self.bid.maker
+        return self.want.maker
 
     @property
     def qty(self) -> float:
-        return self.bid.thing.qty
+        return self.want.thing.qty
+
+    # order-book synonyms
+    @property
+    def ask(self) -> Offer:
+        return self.give
+
+    @property
+    def bid(self) -> Offer:
+        return self.want
 
 
 def _major_skew(a: str, b: str) -> bool:
@@ -66,61 +76,61 @@ def _major_skew(a: str, b: str) -> bool:
     return bool(a) and bool(b) and a.split(".")[0] != b.split(".")[0]
 
 
-def check_match(ask: Offer, bid: Offer, ontology: Ontology, *,
+def check_match(give: Offer, want: Offer, ontology: Ontology, *,
                 now: int) -> Match | None:
     """The exact pairwise check; returns a Match or None."""
-    if ask.kind != ASK or bid.kind != BID or ask.maker == bid.maker:
+    if give.kind != GIVE or want.kind != WANT or give.maker == want.maker:
         return None
-    if not (ask.valid.is_open_at(now) and bid.valid.is_open_at(now)):
+    if not (give.valid.is_open_at(now) and want.valid.is_open_at(now)):
         return None
-    if not ask.service.overlaps(bid.service):
+    if not give.service.overlaps(want.service):
         return None
-    if not ask.where.intersects(bid.where):
+    if not give.where.intersects(want.where):
         return None
-    a, b = ask.thing, bid.thing
-    if b.qty > a.qty or (not a.divisible and b.qty != a.qty):
+    g, w = give.thing, want.thing
+    if w.qty > g.qty or (not g.divisible and w.qty != g.qty):
         return None
-    if a.unit != b.unit:
+    if g.unit != w.unit:
         return None
     if ontology.root:  # a pinned catalogue refuses unpinned offers (U10)
-        for o in (ask, bid):
+        for o in (give, want):
             if not (o.ontology_root and o.registry_version
                     and o.contract_version):
                 return None
-    for a_pin, b_pin in ((ask.ontology_root, bid.ontology_root),
-                         (ask.registry_version, bid.registry_version),
-                         (ask.contract_version, bid.contract_version)):
-        if bool(a_pin) != bool(b_pin):
+    for g_pin, w_pin in ((give.ontology_root, want.ontology_root),
+                         (give.registry_version, want.registry_version),
+                         (give.contract_version, want.contract_version)):
+        if bool(g_pin) != bool(w_pin):
             # mixed pinning: one side declares its ground, the other is
             # silent — agreement cannot be confirmed, so it is refused
             # (proof-fabric gate G2). Both-silent survives only under an
             # unpinned (development) catalogue, per the check above.
             return None
-    if ask.ontology_root and bid.ontology_root and \
-            ask.ontology_root != bid.ontology_root:
+    if give.ontology_root and want.ontology_root and \
+            give.ontology_root != want.ontology_root:
         return None
-    if _major_skew(ask.registry_version, bid.registry_version) or \
-            _major_skew(ask.contract_version, bid.contract_version):
+    if _major_skew(give.registry_version, want.registry_version) or \
+            _major_skew(give.contract_version, want.contract_version):
         return None
-    if not ontology.satisfies(a.concepts, b.concepts):
+    if not ontology.satisfies(g.concepts, w.concepts):
         return None
-    return Match(ask=ask, bid=bid)
+    return Match(give=give, want=want)
 
 
 def candidate_matches(offers: Iterable[Offer], ontology: Ontology, *,
                       now: int) -> Iterator[Match]:
     """All feasible handoffs among `offers`.
 
-    Prototype strategy: exact check over the ask x bid product, with the
-    cheap constant-time conditions doing the pruning. This is O(asks*bids)
-    and entirely adequate for books that fit in memory; the scaling path is
-    candidate generation from the registry's idx/{c,t,g} prefixes (or, on
-    the roadmap, one OntoDAG intersection query over concept x cell x
-    bucket), refined by this same exact check.
+    Prototype strategy: exact check over the give x want product, with the
+    cheap constant-time conditions doing the pruning. This is
+    O(gives*wants) and entirely adequate for books that fit in memory; the
+    scaling path is `dimensions.candidate_matches_indexed` (concept cones
+    and exact window overlap through the catalogue), refined by this same
+    exact check.
     """
-    asks = [o for o in offers if o.kind == ASK]
-    bids = [o for o in offers if o.kind == BID]
-    for a, b in product(asks, bids):
-        m = check_match(a, b, ontology, now=now)
+    gives = [o for o in offers if o.kind == GIVE]
+    wants = [o for o in offers if o.kind == WANT]
+    for g, w in product(gives, wants):
+        m = check_match(g, w, ontology, now=now)
         if m is not None:
             yield m

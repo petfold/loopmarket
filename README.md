@@ -21,11 +21,11 @@ whole loop atomically.
 ```python
 from recordstore import MemoryBytesStore, RecordStore
 from loopmarket import (Ontology, OfferRegistry, MockSettlement,
-                        SolverAgent, Thing, ask, bid, ...)
+                        SolverAgent, Thing, give, want, ...)
 
 ontology = Ontology().load({"produce": [], "vegetable-box": ["produce"], ...})
 registry = OfferRegistry(RecordStore(MemoryBytesStore()))
-registry.publish_many([...])          # asks and bids, one uniform form
+registry.publish_many([...])          # gives and wants, one uniform form
 registry.commit()
 
 agent = SolverAgent(registry, ontology, MockSettlement(registry, ontology))
@@ -54,7 +54,7 @@ Bee node when `BEE_API` and `BEE_BATCH` are set. New here? Start with the
 invariants).
 
 Candidate generation can also run through ontodag's **parametric
-dimensions**: `DimensionIndex` files asks under their exact service window
+dimensions**: `DimensionIndex` files gives under their exact service window
 and centre cell, and `candidate_matches_indexed` prunes by concept cones
 and window overlap — provably the same matches as the exhaustive baseline
 (the recall test enforces set-equality), with far fewer exact checks. The

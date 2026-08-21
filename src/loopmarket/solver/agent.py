@@ -14,7 +14,7 @@ against a pinned book root and pinned ontology root (so its search is
 reproducible and auditable), and nothing it computes is believed by
 settlement — proposals are re-derived there from the current book.
 
-This is a *baseline*: exact, deterministic, O(asks*bids) matching and
+This is a *baseline*: exact, deterministic, O(gives*wants) matching and
 O(V*E) cycle search. Competing agents are expected to beat it with motif
 libraries, planners over the idx/{c,t,g} prefixes, learned candidate
 generators — anything, as long as the loops they emit survive

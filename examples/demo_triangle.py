@@ -18,7 +18,7 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
     GeoDisc, MockSettlement, OfferRegistry, Ontology, SolverAgent, Thing,
-    TimeWindow, ask, bid,
+    TimeWindow, give, want,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")
@@ -54,19 +54,19 @@ chen_shop = GeoDisc(46.06, 14.51, 4_000)
 
 offers = [
     # Amara: piano for amara-tokens; amara-tokens for a vegetable box
-    ask("amara", Thing(("piano-lesson",), unit="course"), 100,
+    give("amara", Thing(("piano-lesson",), unit="course"), 100,
         where=amara_flat, **town),
-    bid("amara", Thing(("produce", "local", "weekly"), unit="course"), 104,
+    want("amara", Thing(("produce", "local", "weekly"), unit="course"), 104,
         where=amara_flat, **town),
     # Bruno: vegetable boxes for bruno-tokens; bruno-tokens for bike repair
-    ask("bruno", Thing(("vegetable-box",), unit="course"), 50,
+    give("bruno", Thing(("vegetable-box",), unit="course"), 50,
         where=bruno_farm, **town),
-    bid("bruno", Thing(("bicycle-repair",), unit="course"), 52,
+    want("bruno", Thing(("bicycle-repair",), unit="course"), 52,
         where=bruno_farm, **town),
     # Chen: bicycle repair for chen-tokens; chen-tokens for piano lessons
-    ask("chen", Thing(("bicycle-repair",), unit="course"), 80,
+    give("chen", Thing(("bicycle-repair",), unit="course"), 80,
         where=chen_shop, **town),
-    bid("chen", Thing(("music-lesson",), unit="course"), 83,
+    want("chen", Thing(("music-lesson",), unit="course"), 83,
         where=chen_shop, **town),
 ]
 
@@ -93,8 +93,8 @@ for r in receipts:
         loop_rec = registry.store.get(f"loop/{r.loop_id}")
         print(f"  surplus: {100 * loop_rec['surplus']:.2f}%")
         for leg in loop_rec["legs"]:
-            a = registry.get(leg["ask"])
-            b = registry.get(leg["bid"])
+            a = registry.get(leg["give"])
+            b = registry.get(leg["want"])
             print(
                 f"  {a.maker:>6} gives {', '.join(a.thing.concepts):<28}"
                 f" to {b.maker:<6} (rate {leg['rate']:.3f})"

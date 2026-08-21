@@ -16,7 +16,8 @@ Ontology.persistent over a swarm_store), never a requirement of the model.
 """
 
 from .schema import (
-    ASK, BID, GeoDisc, Offer, Thing, TimeWindow, Tokens, ask, bid,
+    ASK, BID, GIVE, WANT, GeoDisc, Offer, Thing, TimeWindow, Tokens,
+    ask, bid, give, want,
 )
 from .federation import Aggregator, Manifest
 from .ontology import Ontology
@@ -31,8 +32,9 @@ from .solver.agent import SolverAgent
 __version__ = "0.1.0"
 
 __all__ = [
-    "ASK", "BID", "GeoDisc", "Offer", "Thing", "TimeWindow", "Tokens",
-    "ask", "bid", "Aggregator", "Manifest", "Ontology", "OfferRegistry",
+    "GIVE", "WANT", "ASK", "BID", "GeoDisc", "Offer", "Thing", "TimeWindow",
+    "Tokens", "give", "want", "ask", "bid",
+    "Aggregator", "Manifest", "Ontology", "OfferRegistry",
     "PartialLoopError", "swarm_offer_book",
     "Match", "candidate_matches", "check_match",
     "maker_address", "recover_maker", "sign_offer", "verify_offer_sig",

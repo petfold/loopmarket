@@ -19,7 +19,7 @@ import unittest
 
 from loopmarket import (
     GeoDisc, MockSettlement, Ontology, SolverAgent, Thing, TimeWindow,
-    ask, bid,
+    give, want,
 )
 from loopmarket.registry import swarm_offer_book
 
@@ -62,18 +62,18 @@ class TestTriangleOnLiveSwarmBook(unittest.TestCase):
                     valid=TimeWindow(now - 3_600, now + 30 * 86_400),
                     **catalogue.pins)
         offers = [
-            ask("amara", Thing(("piano-lesson",), unit="course"), 100,
+            give("amara", Thing(("piano-lesson",), unit="course"), 100,
                 where=GeoDisc(46.05, 14.50, 5_000), **town),
-            bid("amara", Thing(("produce", "local", "weekly"),
+            want("amara", Thing(("produce", "local", "weekly"),
                                unit="course"), 104,
                 where=GeoDisc(46.05, 14.50, 5_000), **town),
-            ask("bruno", Thing(("vegetable-box",), unit="course"), 50,
+            give("bruno", Thing(("vegetable-box",), unit="course"), 50,
                 where=GeoDisc(46.10, 14.55, 15_000), **town),
-            bid("bruno", Thing(("bicycle-repair",), unit="course"), 52,
+            want("bruno", Thing(("bicycle-repair",), unit="course"), 52,
                 where=GeoDisc(46.10, 14.55, 15_000), **town),
-            ask("chen", Thing(("bicycle-repair",), unit="course"), 80,
+            give("chen", Thing(("bicycle-repair",), unit="course"), 80,
                 where=GeoDisc(46.06, 14.51, 4_000), **town),
-            bid("chen", Thing(("music-lesson",), unit="course"), 83,
+            want("chen", Thing(("music-lesson",), unit="course"), 83,
                 where=GeoDisc(46.06, 14.51, 4_000), **town),
         ]
         registry.publish_many(offers)

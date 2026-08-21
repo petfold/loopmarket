@@ -55,7 +55,7 @@ in their category sets.
 The **personal scale** is bookkeeping (a personal numeraire — "personal
 token" is this concept's earlier name, kept by the record encoding's
 `Tokens` side and older documents; vocabulary settled 2026-08-21): a maker
-prices everything on one private scale, so k asks and m bids relate
+prices everything on one private scale, so k gives and m wants relate
 through k+m numbers, not k×m pairwise rates — and the factoring makes a
 maker's quotes transitive by construction, so nobody can arbitrage a maker
 against their own rate matrix. Nothing is held or transferred: the scale's
@@ -130,11 +130,11 @@ parametric-items design is agreed (`ontodag/docs/DIMENSIONS.md`) and
 **shipped the same day as ontodag 0.4.0 on PyPI** — including
 `get_overlapping`, the possibly-satisfies query op the time/geo gates
 want, and `LazyOntoDAG` support. **Adopted here 2026-07-30 as
-`dimensions.py`**: a `DimensionIndex` files asks under their exact service
+`dimensions.py`**: a `DimensionIndex` files gives under their exact service
 window (one linear-interval value) and centre cell (one prefix value) in a
 *derived deepcopy* of the catalogue — never the shared catalogue itself, so
 offer-pinned roots stay stable — and `candidate_matches_indexed` generates a
-bid's candidates from `get(wanted)` ∩ `get_overlapping(window)`, recall-exact
+want's candidates from `get(wanted)` ∩ `get_overlapping(window)`, recall-exact
 against the baseline product (tests/test_dimensions.py proves equality over
 randomized books). Geo deliberately stays with the exact check. The original
 plan below is kept for context; the bucket/cell chains it describes are
@@ -307,7 +307,7 @@ live in `docs/plans/P1-federated-book.md`.
 
 ## 6. Matching (matching.py)
 
-`check_match(ask, bid, ontology, now)` is the exact, self-contained pairwise
+`check_match(give, want, ontology, now)` is the exact, self-contained pairwise
 truth: kinds and distinct makers; both validity windows open; service windows
 overlap (a delivery instant exists); service discs intersect (a handover
 point exists); quantity within capacity (equality unless divisible); same
@@ -315,22 +315,22 @@ unit; agreeing ontology pins; and `satisfies` under the catalogue. Its
 self-containedness is a design requirement, not tidiness: settlement re-runs
 it, so no index, cache or heuristic may be load-bearing for correctness.
 
-The baseline candidate generator is the full ask×bid product with the
+The baseline candidate generator is the full give×want product with the
 constant-time gates doing the pruning — right for in-memory books, and the
 benchmark smarter generators must not fall behind on recall.
 
 ## 7. The arithmetic of loops (graph.py)
 
 Nodes are personal tokens; a `Match` is an edge giver→receiver with rate
-`r = bid.unit_price / ask.unit_price`. Around a cycle the product telescopes
-into Π(node's bid price / node's ask price): **product > 1** means positive
+`r = want.unit_price / give.unit_price`. Around a cycle the product telescopes
+into Π(node's want price / node's give price): **product > 1** means positive
 surplus. With divisible quantities this is exact — quantities can scale so
 each node's token inflow and outflow cancel, and the slack is genuinely
 distributable surplus. With indivisible unit legs, exact cancellation needs
-the conservative **per-node condition** (each node's bid ≥ its own ask),
+the conservative **per-node condition** (each node's want price ≥ its own give price),
 which `Loop.per_node_ok` reports and settlement enforces for non-divisible
 loops. Real settlement pricing — choosing actual prices inside each
-[ask, bid] interval and distributing the surplus — is P2.
+[give, want] interval and distributing the surplus — is P2.
 
 **No negative prices, ever (invariant U5).** −log of a rate requires the
 rate positive; a minus sign anywhere breaks the cycle arithmetic. Disposal
@@ -439,7 +439,7 @@ experience), batch auctions and settlement pricing (P2 — now specified in
 privacy — staged disclosure, committed offers, ZK fits-within proofs (P4 —
 now staged in `docs/plans/P4-privacy.md`, whose Tier 1 needs no new
 cryptography and whose format-freeze list *constrains P2*),
-bridges to legacy inventory (thin adapters that publish ASK/BID pairs plus a
+bridges to legacy inventory (thin adapters that publish GIVE/WANT pairs plus a
 currency leg; they are ordinary makers and need no new mechanism, so they
 live outside this repo — their economics as the cheapest thickness
 multiplier are in `docs/plans/adoption-and-thickness.md`), and

@@ -195,7 +195,7 @@ class OfferRegistry:
         for key, rec in self.store.items(LOOP):
             lid = key[len(LOOP):]
             for leg in rec.get("legs", []):
-                for oid in (leg["ask"], leg["bid"]):
+                for oid in (leg["give"], leg["want"]):
                     claim = (self.store.get(FILL + oid)
                              if self.store.contains(FILL + oid) else None)
                     winner = claim.get("loop") if isinstance(claim, dict) else None

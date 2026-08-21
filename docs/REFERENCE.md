@@ -63,8 +63,8 @@ Frozen. A conjunction of catalogue category names plus quantity.
 `concepts` is normalized to a sorted, deduplicated tuple (order never
 matters to identity). Raises `ValueError` on empty concepts or
 non-positive qty. `divisible` marks partial-fillability; matching
-requires `bid.qty == ask.qty` unless *both* sides are divisible, and
-always `bid.qty <= ask.qty` and equal `unit` strings.
+requires `want.qty == give.qty` unless *both* sides are divisible, and
+always `want.qty <= give.qty` and equal `unit` strings.
 
 ### `Tokens(issuer: str, amount: float)`
 Frozen. An amount on the maker's personal scale. Raises `ValueError`
@@ -84,7 +84,7 @@ and one a `Tokens` whose `issuer == maker` (invariant U1); `bond >= 0`;
 
 | member | meaning |
 |---|---|
-| `.kind` | `"ask"` (gives a Thing) or `"bid"` (wants one); constants `ASK`, `BID` |
+| `.kind` | `"give"` (gives a Thing) or `"want"` (wants one); constants `GIVE`, `WANT` |
 | `.thing` / `.tokens` | the respective side |
 | `.unit_price` | scale units per thing-unit |
 | `.to_record()` | dict, **in the offer's native version** (a v1 offer re-encodes as v1 — version is identity, U2) |
@@ -95,10 +95,14 @@ and one a `Tokens` whose `issuer == maker` (invariant U1); `bond >= 0`;
 `bond`, `oracle`, `arbitrator` are carried in identity from day one but
 only `oracle` is enforced today (settlement's refusal gate).
 
-### `ask(maker, thing, amount, *, service, where, valid, **kw) -> Offer`
-### `bid(maker, thing, amount, *, service, where, valid, **kw) -> Offer`
+### `give(maker, thing, amount, *, service, where, valid, **kw) -> Offer`
+### `want(maker, thing, amount, *, service, where, valid, **kw) -> Offer`
 Convenience constructors; `**kw` passes through (`nonce=`, pins, etc.).
 Splat `**Ontology.pins` to pin the catalogue.
+
+Order-book synonyms, kept indefinitely: `ask = give`, `bid = want`
+(functions), `ASK = GIVE`, `BID = WANT` (constants), and `Match.ask` /
+`Match.bid` (properties aliasing `Match.give` / `Match.want`).
 
 ---
 
@@ -128,7 +132,7 @@ Index-name helpers; hints only, never a correctness dependency.
 | `.covers(wanted, offered)` | `offered` fits within `wanted` (equal or descendant); **False for unknown names** (U7) |
 | `.satisfies(offered, wanted)` | every wanted category covered by some offered concept |
 | `.root` | canonical root of the last committed state, `''` if in-memory/uncommitted |
-| `.pins` | `{"ontology_root", "registry_version", "contract_version"}` — splat into `ask`/`bid` (U10) |
+| `.pins` | `{"ontology_root", "registry_version", "contract_version"}` — splat into `give`/`want` (U10) |
 | `Ontology.persistent(record_store)` | classmethod; an `EagerOntoDAG`-backed catalogue with committable roots |
 | `.commit()` | commit, return the root; `TypeError` on in-memory catalogues |
 
@@ -188,31 +192,31 @@ follow. Needs `[swarm]`, a Bee node, and a purchased postage batch.
 
 ## 5. `loopmarket.matching` — the exact pairwise check
 
-### `Match(ask: Offer, bid: Offer)` — frozen
+### `Match(give: Offer, want: Offer)` — frozen
 
 | member | meaning |
 |---|---|
-| `.rate` | `bid.unit_price / ask.unit_price` — always positive (U5) |
-| `.giver` / `.receiver` | ask.maker / bid.maker |
-| `.qty` | the bid's quantity |
+| `.rate` | `want.unit_price / give.unit_price` — always positive (U5) |
+| `.giver` / `.receiver` | give.maker / want.maker |
+| `.qty` | the want's quantity |
 
-### `check_match(ask, bid, ontology, *, now) -> Match | None`
+### `check_match(give, want, ontology, *, now) -> Match | None`
 Exact, self-contained, re-runnable by settlement. Gates, in order:
 
-1. kinds: ask is `ASK`, bid is `BID`, distinct makers
+1. kinds: give is `GIVE`, want is `WANT`, distinct makers
 2. validity: both offers open at `now`
 3. time: service windows intersect
 4. space: service discs intersect
-5. quantity: `bid.qty <= ask.qty`; equal unless both divisible; equal units
+5. quantity: `want.qty <= give.qty`; equal unless both divisible; equal units
 6. **pins**: if the verifying catalogue is pinned (`ontology.root`), both
    offers must carry all three pins; mixed pinning (one side declares,
    the other silent) always refuses; equal `ontology_root` when both
    pin; registry/contract versions refuse on **major** skew (minor is
    vocabulary-additive and interoperates)
-7. meaning: `ontology.satisfies(ask concepts, bid concepts)`
+7. meaning: `ontology.satisfies(give concepts, want concepts)`
 
 ### `candidate_matches(offers, ontology, *, now) -> Iterator[Match]`
-The exact check over the full ask × bid product. The recall baseline.
+The exact check over the full give × want product. The recall baseline.
 
 ---
 
@@ -225,9 +229,9 @@ baseline (enforced by test).
 |---|---|
 | `time_term(window)` | the window as one inclusive `service-time(a..b)` value |
 | `cell_term(offer)` | the centre cell as one `service-cell(...)` prefix value |
-| `DimensionIndex(ontology)` | files asks into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) |
-| `.file(offer) -> bool` | index an ask; `False` for non-asks and unknown vocabulary (U7's outcome) |
-| `.candidates(bid) -> set[str]` | ask ids inside every wanted cone with overlapping windows |
+| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) |
+| `.file(offer) -> bool` | index a give; `False` for non-gives and unknown vocabulary (U7's outcome) |
+| `.candidates(want) -> set[str]` | give ids inside every wanted cone with overlapping windows |
 | `candidate_matches_indexed(offers, ontology, *, now, index=None)` | drop-in for `candidate_matches` |
 
 Geo deliberately stays with the exact check: sibling cells share no
@@ -246,7 +250,7 @@ Raises `ValueError` unless ≥ 2 legs chaining into a cycle
 | `.nodes` | givers, in cycle order |
 | `.product` | Π rate — > 1 means surplus |
 | `.surplus` | `product - 1` |
-| `.per_node_ok` | every node's incoming bid price ≥ its outgoing ask price (exact cancellation feasible with unit legs) |
+| `.per_node_ok` | every node's incoming want price ≥ its outgoing give price (exact cancellation feasible with unit legs) |
 | `.all_divisible` | every leg divisible on both sides |
 | `.offer_ids` | all 2k offer ids, leg order |
 | `.loop_id` | SHA-256 of the **leg cycle** under its minimal rotation — rotation-invariant, pairing-sensitive (two pairings of the same offers get distinct ids) |
@@ -404,7 +408,7 @@ announcement stores.
 {"loop_id": "…", "solver": "demo-solver", "found_at": 1700000000,
  "book_root": "…", "ontology_root": "…", "surplus": 0.1222,
  "nodes": ["amara", "chen", "bruno"],
- "legs": [{"ask": "<offer_id>", "bid": "<offer_id>", "rate": 0.83}, …]}
+ "legs": [{"give": "<offer_id>", "want": "<offer_id>", "rate": 0.83}, …]}
 ```
 
 **Fill**: `{"loop": "<loop_id>"}` — deliberately nothing else (no wall

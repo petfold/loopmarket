@@ -14,7 +14,7 @@ session (or adapt freely). For the API in full detail, see the
 Every economic intention — I teach piano, I want a vegetable box — is one
 uniform, content-addressed **offer**. Offers are priced on the maker's
 **personal scale**: a private measuring unit that is bookkeeping, not
-money — n asks and m bids need n+m prices instead of n×m exchange rates,
+money — n gives and m wants need n+m prices instead of n×m exchange rates,
 nobody ever holds anything, and the numbers cancel inside a loop. A shared
 **catalogue** orders meanings by *fits-within*, so "piano-lesson"
 satisfies someone who wants "music-lesson". **Solvers** hunt loops —
@@ -48,21 +48,26 @@ An offer exchanges a **Thing** (what, when, where) against an amount on
 the maker's personal scale. There are exactly two flavours:
 
 ```python
-from loopmarket import Thing, TimeWindow, GeoDisc, ask, bid
+from loopmarket import Thing, TimeWindow, GeoDisc, give, want
 
 NOW = 1_700_000_000                       # fix time; determinism is a feature
 season   = TimeWindow(NOW, NOW + 90 * 86_400)     # when the service happens
 standing = TimeWindow(NOW - 1, NOW + 30 * 86_400) # while the offer stands
 here     = GeoDisc(46.05, 14.50, 5_000)           # 5 km around a point
 
-# ASK: "I give a thing, I want 100 on my own scale"
-teach = ask("amara", Thing(("piano-lesson",), unit="course"), 100,
+# GIVE: "I give a thing, I want 100 on my own scale"
+teach = give("amara", Thing(("piano-lesson",), unit="course"), 100,
             service=season, where=here, valid=standing)
 
-# BID: "I give 104 on my own scale, I want a thing"
-eat = bid("amara", Thing(("produce", "local", "weekly"), unit="course"), 104,
+# WANT: "I give 104 on my own scale, I want a thing"
+eat = want("amara", Thing(("produce", "local", "weekly"), unit="course"), 104,
           service=season, where=here, valid=standing)
 ```
+
+(Order-book readers: a *give* is the ask and a *want* is the bid —
+`ask`/`bid` remain available as exact synonyms. The plain words won
+because in everyday English "ask" reads as requesting, the opposite of
+its trading sense.)
 
 Things to notice:
 
@@ -73,13 +78,13 @@ Things to notice:
   other (nobody can arbitrage Amara against her own rate matrix).
 - **A `Thing` is a conjunction of catalogue categories** plus quantity,
   unit, and divisibility. `("produce", "local", "weekly")` means all
-  three at once. Units must match exactly between an ask and a bid;
+  three at once. Units must match exactly between a give and a want;
   quantities must be equal unless both sides are `divisible=True`.
 - **Offers are immutable values with a content address**:
 
 ```python
 teach.offer_id          # 64-hex SHA-256 of the canonical encoding
-teach.kind              # "ask"
+teach.kind              # "give"
 teach.unit_price        # 100.0 — scale units per thing-unit
 ```
 
@@ -131,7 +136,7 @@ catalogue.pins
 # {'ontology_root': '…64 hex…', 'registry_version': '4.1', 'contract_version': '0.1'}
 ```
 
-Splat `**catalogue.pins` into `ask`/`bid` and the offer names the exact
+Splat `**catalogue.pins` into `give`/`want` and the offer names the exact
 semantic ground it was written against. **A pinned catalogue refuses
 unpinned offers** during matching, and offers with mismatched pins never
 pair — the ground cannot move under a committed loop. (In-memory
@@ -172,16 +177,16 @@ Three operations you'll want:
 
 ## 5. Matching
 
-A `Match` is one feasible handoff: this ask satisfies that bid.
+A `Match` is one feasible handoff: this give satisfies that want.
 
 ```python
 from loopmarket import check_match, candidate_matches
 
-grow = ask("bruno", Thing(("vegetable-box",), unit="course"), 50,
+grow = give("bruno", Thing(("vegetable-box",), unit="course"), 50,
            service=season, where=GeoDisc(46.10, 14.55, 15_000), valid=standing)
 
 m = check_match(grow, eat, catalogue, now=NOW)
-m.rate            # 104/50 = 2.08 — bid unit price over ask unit price
+m.rate            # 104/50 = 2.08 — want unit price over give unit price
 m.giver, m.receiver   # 'bruno', 'amara'
 ```
 
@@ -192,7 +197,7 @@ windows intersect → service discs intersect (a handover point exists) →
 quantity/divisibility/unit → **version pins** (mixed pinning refuses;
 pinned catalogues refuse unpinned offers; major registry/contract skew
 refuses) → catalogue subsumption. `candidate_matches(offers, catalogue,
-now=...)` runs it over the full ask × bid product — fine in memory, and
+now=...)` runs it over the full give × want product — fine in memory, and
 §10 shows the indexed generator for bigger books.
 
 ## 6. Loops
@@ -203,11 +208,11 @@ real, distributable surplus:
 ```python
 from loopmarket import ExchangeGraph
 
-fix   = ask("chen", Thing(("bicycle-repair",), unit="course"), 80,
+fix   = give("chen", Thing(("bicycle-repair",), unit="course"), 80,
             service=season, where=GeoDisc(46.06, 14.51, 4_000), valid=standing)
-learn = bid("chen", Thing(("music-lesson",), unit="course"), 83,
+learn = want("chen", Thing(("music-lesson",), unit="course"), 83,
             service=season, where=GeoDisc(46.06, 14.51, 4_000), valid=standing)
-wheels = bid("bruno", Thing(("bicycle-repair",), unit="course"), 52,
+wheels = want("bruno", Thing(("bicycle-repair",), unit="course"), 52,
              service=season, where=GeoDisc(46.10, 14.55, 15_000), valid=standing)
 
 everyone = [teach, eat, grow, wheels, fix, learn]
@@ -322,7 +327,7 @@ the forgery yourself:
 
 ```python
 mallory = OfferRegistry(RecordStore(blobs))
-mallory.publish(ask("amara", Thing(("piano-lesson",), unit="course"), 1,
+mallory.publish(give("amara", Thing(("piano-lesson",), unit="course"), 1,
                     service=season, where=here, valid=standing))  # "amara", says mallory
 mallory.commit()
 agg.announce("mallory", mallory.store)
@@ -343,7 +348,7 @@ from loopmarket import maker_address, sign_offer
 
 key = "11" * 32                          # throwaway private key
 me = maker_address(key)                  # use this as your maker identity
-offer = ask(me, Thing(("food",)), 5, service=season, where=here, valid=standing)
+offer = give(me, Thing(("food",)), 5, service=season, where=here, valid=standing)
 relay = OfferRegistry(RecordStore(blobs))
 relay.publish(offer)
 relay.attach_signature(offer.offer_id, sign_offer(offer, key))
@@ -391,7 +396,7 @@ hour — the service window *is* the slot, and no two overlap:
 
 ```python
 hour = 3_600
-slots = [ask("amara", Thing(("piano-lesson",), unit="lesson"), 100,
+slots = [give("amara", Thing(("piano-lesson",), unit="lesson"), 100,
              service=TimeWindow(NOW + h * hour, NOW + (h + 1) * hour),
              where=here, valid=standing)
          for h in (9, 10, 11)]          # Monday 9–10, 10–11, 11–12
@@ -410,7 +415,7 @@ A gym class holds three. Post three seat-offers with the same window —
 (without the nonces, these three would collapse into *one* offer):
 
 ```python
-seats = [ask("gym", Thing(("spin-class",), unit="seat"), 10, nonce=i,
+seats = [give("gym", Thing(("spin-class",), unit="seat"), 10, nonce=i,
              service=tuesday_class, where=gym, valid=standing)
          for i in range(3)]
 ```
@@ -431,10 +436,10 @@ agent publishes it as **spacetime tubes**: several (window, disc) pairs
 along the planned route, priced accordingly —
 
 ```python
-pickup_a = ask(courier, parcel_run, 5,             # near the station, cheap
+pickup_a = give(courier, parcel_run, 5,             # near the station, cheap
                service=TimeWindow(NOW, NOW + hour),
                where=GeoDisc(46.05, 14.50, 2_000), valid=standing)
-pickup_b = ask(courier, parcel_run, 8,             # across town, later, dearer
+pickup_b = give(courier, parcel_run, 8,             # across town, later, dearer
                service=TimeWindow(NOW + 2 * hour, NOW + 3 * hour),
                where=GeoDisc(46.02, 14.55, 2_000), valid=standing)
 ```
@@ -450,7 +455,7 @@ mechanisms and the means to express intentions — offers, atomic fills,
 tombstones, pinned snapshots — and leaves the hard optimization to the
 **solvers**. The solver in this repository is a deliberately simple
 baseline, mainly for demonstration (and, later, the auction's reserve
-bid); professional solvers are expected to grow quickly *outside* the
+want); professional solvers are expected to grow quickly *outside* the
 loopmarket software — routing planners, statistical models, traditional
 AI, LLMs, whatever wins. Their internals are not loopmarket's concern,
 and they may well be kept secret for competitive edge: that is by
@@ -465,10 +470,10 @@ settlement instances is what P2's verifiable settlement brings.
 
 ## 10. Bigger books: indexed candidate generation
 
-The exhaustive ask × bid product is fine in memory. When it isn't,
-`candidate_matches_indexed` prunes through the catalogue itself — asks are
+The exhaustive give × want product is fine in memory. When it isn't,
+`candidate_matches_indexed` prunes through the catalogue itself — gives are
 filed under their concepts, exact service window and centre cell as
-parametric dimension terms, and a bid's candidates come from native
+parametric dimension terms, and a want's candidates come from native
 catalogue queries. It is **recall-exact**: provably the same matches as
 the baseline (a test enforces set-equality), just fewer exact checks.
 

@@ -26,7 +26,7 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
     Aggregator, GeoDisc, MockSettlement, OfferRegistry, Ontology,
-    SolverAgent, Thing, TimeWindow, ask, bid,
+    SolverAgent, Thing, TimeWindow, give, want,
 )
 from loopmarket.federation import SETTLEMENT
 
@@ -101,28 +101,28 @@ for name in ("amara", "bruno", "chen"):
 owners = {v: k for k, v in name_of.items()}
 a, b, c = owners["amara"], owners["bruno"], owners["chen"]
 books[a].publish_many([
-    ask(a, Thing(("piano-lesson",), unit="course"), 100,
+    give(a, Thing(("piano-lesson",), unit="course"), 100,
         where=places["amara"], **town),
-    bid(a, Thing(("produce", "local", "weekly"), unit="course"), 104,
+    want(a, Thing(("produce", "local", "weekly"), unit="course"), 104,
         where=places["amara"], **town),
 ])
 books[b].publish_many([
-    ask(b, Thing(("vegetable-box",), unit="course"), 50,
+    give(b, Thing(("vegetable-box",), unit="course"), 50,
         where=places["bruno"], **town),
-    bid(b, Thing(("bicycle-repair",), unit="course"), 52,
+    want(b, Thing(("bicycle-repair",), unit="course"), 52,
         where=places["bruno"], **town),
 ])
 books[c].publish_many([
-    ask(c, Thing(("bicycle-repair",), unit="course"), 80,
+    give(c, Thing(("bicycle-repair",), unit="course"), 80,
         where=places["chen"], **town),
-    bid(c, Thing(("music-lesson",), unit="course"), 83,
+    want(c, Thing(("music-lesson",), unit="course"), 83,
         where=places["chen"], **town),
 ])
 
 # Bruno posts a second box at a worse price, thinks better of it, and
 # withdraws: the exit is a monotone tombstone, an *add* that survives merges.
 regret = books[b].publish(
-    ask(b, Thing(("vegetable-box",), unit="course"), 90,
+    give(b, Thing(("vegetable-box",), unit="course"), 90,
         where=places["bruno"], **town))
 books[b].withdraw(regret)
 
@@ -145,9 +145,9 @@ if LIVE:
 else:
     mallory_owner = "mallory"
     mallory = OfferRegistry(fresh_store())
-forged = ask(a, Thing(("piano-lesson",), unit="course"), 1,
+forged = give(a, Thing(("piano-lesson",), unit="course"), 1,
              where=places["amara"], **town)     # "amara sells cheap" — Mallory
-honest = ask(mallory_owner, Thing(("food",), unit="course"), 60,
+honest = give(mallory_owner, Thing(("food",), unit="course"), 60,
              where=places["bruno"], **town)
 mallory.publish_many([forged, honest])
 mallory.commit()
@@ -201,8 +201,8 @@ receipts = [r for r in agent.step(now=now) if r.accepted]
 loop_rec = settle.store.get(f"loop/{receipts[0].loop_id}")
 print(f"the solver settled 1 loop, surplus {100 * loop_rec['surplus']:.2f}%:")
 for leg in loop_rec["legs"]:
-    giver = name_of.get(settle.get(leg["ask"]).maker, "?")
-    taker = name_of.get(settle.get(leg["bid"]).maker, "?")
+    giver = name_of.get(settle.get(leg["give"]).maker, "?")
+    taker = name_of.get(settle.get(leg["want"]).maker, "?")
     print(f"   {giver:>7} → {taker:<7} rate {leg['rate']:.3f}")
 
 # --- both aggregators fold settlement back in; a follower reads it all --------

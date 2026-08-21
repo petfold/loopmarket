@@ -46,7 +46,7 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
 
         from loopmarket import (
             Aggregator, GeoDisc, MockSettlement, OfferRegistry, Ontology,
-            SolverAgent, Thing, TimeWindow, ask, bid, maker_address,
+            SolverAgent, Thing, TimeWindow, give, want, maker_address,
         )
         from loopmarket.federation import SETTLEMENT
 
@@ -80,11 +80,11 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
             reg = OfferRegistry(
                 swarm_store(f"{topic}-book-{i}", signer=key, **swarm))
             gives, wants = gives_wants[i]
-            p_ask, p_bid = prices[i]
+            p_give, p_want = prices[i]
             reg.publish_many([
-                ask(addr, Thing((gives,), unit="course"), p_ask,
+                give(addr, Thing((gives,), unit="course"), p_give,
                     where=places[i], **town),
-                bid(addr, Thing(wants, unit="course"), p_bid,
+                want(addr, Thing(wants, unit="course"), p_want,
                     where=places[i], **town),
             ])
             self.assertTrue(reg.commit())

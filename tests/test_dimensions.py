@@ -1,14 +1,14 @@
 """The dimension-backed candidate generator (loopmarket.dimensions).
 
 The load-bearing assertion is RECALL: over randomized books, the indexed
-generator must yield exactly the matches of the exact ask x bid baseline —
+generator must yield exactly the matches of the exact give x want baseline —
 this is the benchmark ARCHITECTURE.md §6 demands of smarter generators.
 The second assertion is that it actually prunes (fewer exact checks than
 the full product), so it cannot silently degenerate into the baseline."""
 
 import random
 
-from loopmarket import GeoDisc, Ontology, Thing, TimeWindow, ask, bid
+from loopmarket import GeoDisc, Ontology, Thing, TimeWindow, give, want
 from loopmarket.dimensions import (
     DimensionIndex, candidate_matches_indexed, time_term,
 )
@@ -45,11 +45,11 @@ class TestTimeTerm:
 class TestCandidates:
     def test_courier_style_pruning(self):
         ontology = fresh_ontology()
-        a1 = ask("bruno", Thing(("vegetable-box",)), 50, **wide())
-        a2 = ask("chiara", Thing(("piano-lesson",)), 30, **wide())
+        a1 = give("bruno", Thing(("vegetable-box",)), 50, **wide())
+        a2 = give("chiara", Thing(("piano-lesson",)), 30, **wide())
         late = wide(service=TimeWindow(200_000, 300_000))
-        a3 = ask("dora", Thing(("vegetable-box",)), 40, **late)
-        b = bid("amara", Thing(("produce", "weekly")), 104, **wide())
+        a3 = give("dora", Thing(("vegetable-box",)), 40, **late)
+        b = want("amara", Thing(("produce", "weekly")), 104, **wide())
 
         index = DimensionIndex(ontology)
         for a in (a1, a2, a3):
@@ -61,7 +61,7 @@ class TestCandidates:
 
     def test_unknown_vocabulary_not_filed(self):
         index = DimensionIndex(fresh_ontology())
-        stranger = ask("x", Thing(("mystery-goods",)), 1, **wide())
+        stranger = give("x", Thing(("mystery-goods",)), 1, **wide())
         assert not index.file(stranger)
         assert stranger.offer_id not in index._filed
 
@@ -70,7 +70,7 @@ class TestCandidates:
         before = {(p.name, c.name) for p in ontology.dag.nodes.values()
                   for c in p.neighbors}
         index = DimensionIndex(ontology)
-        index.file(ask("bruno", Thing(("vegetable-box",)), 50, **wide()))
+        index.file(give("bruno", Thing(("vegetable-box",)), 50, **wide()))
         after = {(p.name, c.name) for p in ontology.dag.nodes.values()
                  for c in p.neighbors}
         assert before == after   # derived index: pins stay stable
@@ -94,7 +94,7 @@ class TestRecallAgainstBaseline:
                               rng.choice([2_000, 20_000, 80_000])),
                 valid=TimeWindow(0, 1_000_000),
             )
-            side = ask if rng.random() < 0.5 else bid
+            side = give if rng.random() < 0.5 else want
             offers.append(side(maker, thing, 10 + rng.randrange(90),
                                **window))
         return offers
@@ -103,9 +103,9 @@ class TestRecallAgainstBaseline:
         ontology = fresh_ontology()
         for seed in range(5):
             offers = self._random_book(seed)
-            expected = {(m.ask.offer_id, m.bid.offer_id)
+            expected = {(m.give.offer_id, m.want.offer_id)
                         for m in candidate_matches(offers, ontology, now=NOW)}
-            got = {(m.ask.offer_id, m.bid.offer_id)
+            got = {(m.give.offer_id, m.want.offer_id)
                    for m in candidate_matches_indexed(
                        offers, ontology, now=NOW)}
             assert got == expected, f"recall/precision drift at seed {seed}"
@@ -113,10 +113,10 @@ class TestRecallAgainstBaseline:
     def test_it_actually_prunes(self):
         ontology = fresh_ontology()
         offers = self._random_book(1)
-        asks = [o for o in offers if o.kind == "ask"]
-        bids = [o for o in offers if o.kind == "bid"]
+        gives = [o for o in offers if o.kind == "give"]
+        wants = [o for o in offers if o.kind == "want"]
         index = DimensionIndex(ontology)
-        filed = [a for a in asks if index.file(a)]
-        checked = sum(len(index.candidates(b)) for b in bids)
-        assert checked < len(filed) * len(bids) * 0.8, \
+        filed = [a for a in gives if index.file(a)]
+        checked = sum(len(index.candidates(b)) for b in wants)
+        assert checked < len(filed) * len(wants) * 0.8, \
             "the index is not pruning against the full product"

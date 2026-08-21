@@ -113,7 +113,7 @@ class Ontology:
     def pins(self) -> dict[str, str]:
         """Constructor kwargs pinning this catalogue as an offer's ground.
 
-        `ask(..., **ontology.pins)` fills {ontology_root, registry_version,
+        `give(..., **ontology.pins)` fills {ontology_root, registry_version,
         contract_version} in one move (planned invariant U10). The root
         alone under-specifies the pinned semantics — ontodag's dimension
         registry participates in canonical reduction, and the contract

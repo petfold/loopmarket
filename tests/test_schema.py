@@ -2,7 +2,7 @@
 
 import pytest
 
-from loopmarket.schema import GeoDisc, Offer, Thing, TimeWindow, Tokens, ask, bid
+from loopmarket.schema import GeoDisc, Offer, Thing, TimeWindow, Tokens, give, want
 
 W = dict(
     service=TimeWindow(1_000, 2_000),
@@ -24,22 +24,22 @@ def test_uniform_form_enforced():
 
 
 def test_kind_and_unit_price():
-    a = ask("a", Thing(("x",), qty=4, divisible=True), 100, **W)
-    b = bid("b", Thing(("x",), qty=2, divisible=True), 60, **W)
-    assert a.kind == "ask" and b.kind == "bid"
+    a = give("a", Thing(("x",), qty=4, divisible=True), 100, **W)
+    b = want("b", Thing(("x",), qty=2, divisible=True), 60, **W)
+    assert a.kind == "give" and b.kind == "want"
     assert a.unit_price == 25 and b.unit_price == 30
 
 
 def test_content_address_is_canonical_and_sensitive():
-    a1 = ask("a", Thing(("y", "x")), 10, nonce=7, **W)   # concept order...
-    a2 = ask("a", Thing(("x", "y")), 10, nonce=7, **W)   # ...never matters
+    a1 = give("a", Thing(("y", "x")), 10, nonce=7, **W)   # concept order...
+    a2 = give("a", Thing(("x", "y")), 10, nonce=7, **W)   # ...never matters
     assert a1.offer_id == a2.offer_id
-    a3 = ask("a", Thing(("x", "y")), 11, nonce=7, **W)   # content always does
+    a3 = give("a", Thing(("x", "y")), 11, nonce=7, **W)   # content always does
     assert a3.offer_id != a1.offer_id
 
 
 def test_record_roundtrip():
-    o = bid("m", Thing(("p", "q"), qty=3, unit="kg", divisible=True), 42,
+    o = want("m", Thing(("p", "q"), qty=3, unit="kg", divisible=True), 42,
             bond=5.0, oracle="photo", arbitrator="arb-1", nonce=99,
             registry_version="4.1", contract_version="0.1", **W)
     assert Offer.from_record(o.to_record()) == o
@@ -47,7 +47,7 @@ def test_record_roundtrip():
 
 
 def test_version_dispatch_fails_closed():
-    o = ask("a", Thing(("x",)), 10, nonce=7, **W)
+    o = give("a", Thing(("x",)), 10, nonce=7, **W)
     rec = o.to_record()
     assert rec["v"] == 2
     with pytest.raises(ValueError):
@@ -55,18 +55,18 @@ def test_version_dispatch_fails_closed():
     with pytest.raises(ValueError):
         Offer.from_record({k: v for k, v in rec.items() if k != "v"})
     with pytest.raises(ValueError):
-        ask("a", Thing(("x",)), 10, v=1, registry_version="4.1", **W)
+        give("a", Thing(("x",)), 10, v=1, registry_version="4.1", **W)
 
 
 def test_v1_records_re_encode_as_v1():
     # an offer read from an old book must reproduce its original id (U2):
     # version is identity, never silently upgraded on the way through
-    v1 = ask("a", Thing(("x",)), 10, nonce=7, v=1, **W)
+    v1 = give("a", Thing(("x",)), 10, nonce=7, v=1, **W)
     rec = v1.to_record()
     assert rec["v"] == 1 and "registry_version" not in rec
     back = Offer.from_record(rec)
     assert back == v1 and back.offer_id == v1.offer_id
-    v2 = ask("a", Thing(("x",)), 10, nonce=7, **W)
+    v2 = give("a", Thing(("x",)), 10, nonce=7, **W)
     assert v2.offer_id != v1.offer_id            # the bump is part of identity
 
 

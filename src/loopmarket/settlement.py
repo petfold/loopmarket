@@ -49,7 +49,7 @@ class LoopProposal:
             "surplus": self.loop.surplus,
             "nodes": list(self.loop.nodes),
             "legs": [
-                {"ask": m.ask.offer_id, "bid": m.bid.offer_id, "rate": m.rate}
+                {"give": m.give.offer_id, "want": m.want.offer_id, "rate": m.rate}
                 for m in self.loop.matches
             ],
         }
@@ -126,12 +126,12 @@ class MockSettlement:
 
         # 2. re-derive every leg — never trust the solver's matches
         for m in loop.matches:
-            fresh_ask = self.registry.get(m.ask.offer_id)
-            fresh_bid = self.registry.get(m.bid.offer_id)
-            if check_match(fresh_ask, fresh_bid, self.ontology, now=now) is None:
+            fresh_give = self.registry.get(m.give.offer_id)
+            fresh_want = self.registry.get(m.want.offer_id)
+            if check_match(fresh_give, fresh_want, self.ontology, now=now) is None:
                 return reject(
-                    f"leg fails re-verification: {m.ask.offer_id[:8]}"
-                    f" -> {m.bid.offer_id[:8]}"
+                    f"leg fails re-verification: {m.give.offer_id[:8]}"
+                    f" -> {m.want.offer_id[:8]}"
                 )
 
         # 3. the arithmetic

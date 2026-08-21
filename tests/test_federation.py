@@ -11,7 +11,7 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
     Aggregator, GeoDisc, MockSettlement, OfferRegistry, Ontology,
-    SolverAgent, Thing, TimeWindow, ask, bid,
+    SolverAgent, Thing, TimeWindow, give, want,
 )
 from loopmarket.federation import SETTLEMENT
 
@@ -37,21 +37,21 @@ def _maker_books(blobs):
     books = {}
     offers = {
         "amara": [
-            ask("amara", Thing(("piano-lesson",), unit="course"), 100,
+            give("amara", Thing(("piano-lesson",), unit="course"), 100,
                 nonce=1, where=FLAT, **W),
-            bid("amara", Thing(("produce", "local", "weekly"),
+            want("amara", Thing(("produce", "local", "weekly"),
                                unit="course"), 104, nonce=2, where=FLAT, **W),
         ],
         "bruno": [
-            ask("bruno", Thing(("vegetable-box",), unit="course"), 50,
+            give("bruno", Thing(("vegetable-box",), unit="course"), 50,
                 nonce=3, where=FARM, **W),
-            bid("bruno", Thing(("bicycle-repair",), unit="course"), 52,
+            want("bruno", Thing(("bicycle-repair",), unit="course"), 52,
                 nonce=4, where=FARM, **W),
         ],
         "chen": [
-            ask("chen", Thing(("bicycle-repair",), unit="course"), 80,
+            give("chen", Thing(("bicycle-repair",), unit="course"), 80,
                 nonce=5, where=SHOP, **W),
-            bid("chen", Thing(("music-lesson",), unit="course"), 83,
+            want("chen", Thing(("music-lesson",), unit="course"), 83,
                 nonce=6, where=SHOP, **W),
         ],
     }
@@ -141,7 +141,7 @@ def test_follower_reconstructs_from_roots_alone():
     loop_rec = follower.store.get(f"loop/{receipts[0].loop_id}")
     assert len(loop_rec["legs"]) == 3
     for leg in loop_rec["legs"]:
-        for oid in (leg["ask"], leg["bid"]):
+        for oid in (leg["give"], leg["want"]):
             assert follower.is_filled(oid)
     assert len(list(follower.offers(include_filled=True))) == 6
     follower.verify_loop_atomicity()
@@ -153,9 +153,9 @@ def test_forged_maker_dies_at_the_fold():
     # and the rejection is an attributed provenance record
     blobs = MemoryBytesStore()
     mallory = OfferRegistry(RecordStore(blobs))
-    forged = ask("amara", Thing(("piano-lesson",), unit="course"), 1,
+    forged = give("amara", Thing(("piano-lesson",), unit="course"), 1,
                  nonce=666, where=FLAT, **W)   # "amara" sells cheap, says mallory
-    honest = ask("mallory", Thing(("vegetable-box",), unit="course"), 50,
+    honest = give("mallory", Thing(("vegetable-box",), unit="course"), 50,
                  nonce=7, where=FARM, **W)
     mallory.publish_many([forged, honest])
     mallory.commit()
@@ -180,7 +180,7 @@ def test_foreign_offer_with_valid_signature_enters():
     blobs = MemoryBytesStore()
     key = "01" * 32
     maker = maker_address(key)
-    offer = ask(maker, Thing(("vegetable-box",), unit="course"), 50,
+    offer = give(maker, Thing(("vegetable-box",), unit="course"), 50,
                 nonce=8, where=FARM, **W)
     relay = OfferRegistry(RecordStore(blobs))    # someone else's book
     relay.publish(offer)
@@ -198,12 +198,12 @@ def test_foreign_offer_with_valid_signature_enters():
 def test_maker_book_speaking_settlement_is_refused():
     blobs = MemoryBytesStore()
     sneaky = OfferRegistry(RecordStore(blobs))
-    offer = ask("sneaky", Thing(("vegetable-box",)), 50, nonce=9,
+    offer = give("sneaky", Thing(("vegetable-box",)), 50, nonce=9,
                 where=FARM, **W)
     sneaky.publish(offer)
     sneaky.mark_filled((offer.offer_id,), "L-fake",
-                       {"legs": [{"ask": offer.offer_id,
-                                  "bid": offer.offer_id}]})
+                       {"legs": [{"give": offer.offer_id,
+                                  "want": offer.offer_id}]})
     sneaky.commit()
 
     agg = Aggregator(lambda: RecordStore(blobs))

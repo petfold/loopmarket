@@ -6,8 +6,12 @@ window and a service region) against an amount of the maker's *personal
 token*. Exactly one side of every offer is the maker's own token — this is
 enforced, not conventional. Two flavours follow:
 
-- ASK  — gives a thing, wants maker-tokens ("I sell/perform X for N p-tokens")
-- BID  — gives maker-tokens, wants a thing ("I pay N p-tokens for X")
+- GIVE — gives a thing, wants scale-units ("I perform X, priced N on my scale")
+- WANT — gives scale-units, wants a thing ("I want X, priced N on my scale")
+
+(Order-book readers: a give is the ask, a want is the bid; `ask`/`bid`
+remain as synonyms. The plain words won — in everyday English "ask" reads
+as requesting, the exact opposite of its trading sense.)
 
 Offers are immutable values. `canonical_bytes()` is deterministic (sorted
 keys, minimal separators — recordstore's canonical JSON), and `offer_id` is
@@ -181,8 +185,10 @@ class Tokens:
         return {"issuer": self.issuer, "amount": self.amount}
 
 
-ASK = "ask"
-BID = "bid"
+GIVE = "give"
+WANT = "want"
+ASK = GIVE     # order-book synonyms, kept for familiarity
+BID = WANT
 
 
 # -------------------------------------------------------------------------- offer
@@ -212,7 +218,7 @@ class Offer:
     # in canonical reduction, so an ontology root without its REGISTRY_VERSION
     # is an incomplete pointer, and CONTRACT_VERSION names the guarantee set
     # the writer assumed (docs/plans/proof-fabric.md §3). Splat
-    # `**ontology.pins` into ask/bid to fill all three at once.
+    # `**ontology.pins` into give/want to fill all three at once.
     registry_version: str = ""    # ontodag dimension-registry version
     contract_version: str = ""    # ontodag contract version (G1-G6 guarantees)
     v: int = 2                    # record version; identity includes it
@@ -239,7 +245,7 @@ class Offer:
 
     @property
     def kind(self) -> str:
-        return ASK if isinstance(self.gives, Thing) else BID
+        return GIVE if isinstance(self.gives, Thing) else WANT
 
     @property
     def thing(self) -> Thing:
@@ -340,15 +346,19 @@ class Offer:
 
 # ---------------------------------------------------------------- convenience
 
-def ask(maker: str, thing: Thing, amount: float, *, service: TimeWindow,
-        where: GeoDisc, valid: TimeWindow, **kw: Any) -> Offer:
-    """I give `thing`, I want `amount` of my own tokens."""
+def give(maker: str, thing: Thing, amount: float, *, service: TimeWindow,
+         where: GeoDisc, valid: TimeWindow, **kw: Any) -> Offer:
+    """I give `thing`, priced `amount` on my own scale."""
     return Offer(maker=maker, gives=thing, wants=Tokens(maker, amount),
                  service=service, where=where, valid=valid, **kw)
 
 
-def bid(maker: str, thing: Thing, amount: float, *, service: TimeWindow,
-        where: GeoDisc, valid: TimeWindow, **kw: Any) -> Offer:
-    """I want `thing`, I give `amount` of my own tokens."""
+def want(maker: str, thing: Thing, amount: float, *, service: TimeWindow,
+         where: GeoDisc, valid: TimeWindow, **kw: Any) -> Offer:
+    """I want `thing`, priced `amount` on my own scale."""
     return Offer(maker=maker, gives=Tokens(maker, amount), wants=thing,
                  service=service, where=where, valid=valid, **kw)
+
+
+ask = give     # order-book synonyms, kept for familiarity
+bid = want

@@ -2,7 +2,7 @@
 
 Nodes are personal tokens (equivalently: makers). Every `Match` is a
 directed edge giver -> receiver carrying an exchange rate r = B/A (the
-receiver's bid unit price over the giver's ask unit price). A loop
+wanting side's quoted price over the giving side's quoted price). A loop
 p1 -> p2 -> ... -> pk -> p1 is *profitable* iff the product of rates around
 it exceeds 1: with divisible quantities the slack is real surplus that
 settlement prices can distribute (see ARCHITECTURE.md, "The arithmetic of
@@ -17,8 +17,8 @@ the search.
 
 Indivisible legs: the product condition assumes quantities can scale so
 per-node token balances cancel exactly. When any leg is indivisible, a
-conservative extra check is offered — per-node surplus (each node's bid
-unit price >= its ask unit price), under which exact cancellation with
+conservative extra check is offered — per-node surplus (each node's want
+unit price >= its give unit price), under which exact cancellation with
 qty=1 legs is feasible. `Loop.per_node_ok` reports it; the solver decides
 policy.
 """
@@ -65,38 +65,38 @@ class Loop:
 
     @property
     def per_node_ok(self) -> bool:
-        """Each node's incoming bid unit price >= its outgoing ask unit price."""
+        """Each node's incoming want unit price >= its outgoing give unit price."""
         k = len(self.matches)
         for i, incoming in enumerate(self.matches):
             outgoing = self.matches[(i + 1) % k]
-            if incoming.bid.unit_price < outgoing.ask.unit_price - 1e-12:
+            if incoming.want.unit_price < outgoing.give.unit_price - 1e-12:
                 return False
         return True
 
     @property
     def all_divisible(self) -> bool:
-        return all(m.ask.thing.divisible and m.bid.thing.divisible
+        return all(m.give.thing.divisible and m.want.thing.divisible
                    for m in self.matches)
 
     @property
     def offer_ids(self) -> tuple[str, ...]:
         ids: list[str] = []
         for m in self.matches:
-            ids.extend((m.ask.offer_id, m.bid.offer_id))
+            ids.extend((m.give.offer_id, m.want.offer_id))
         return tuple(ids)
 
     @property
     def loop_id(self) -> str:
         """Content address of the settlement decision: the cycle of legs.
 
-        Hashes the leg sequence (ask>bid pairs, cycle order) under its
+        Hashes the leg sequence (give>want pairs, cycle order) under its
         lexicographically minimal rotation — invariant to where the search
         entered the cycle, sensitive to how the offers are paired. Hashing
         the sorted offer *set* (the pre-2026-08-20 encoding) would collide
         two different pairings of the same offers onto one `loop/` key,
         silently conflating distinct settlements (ARCHITECTURE.md §2).
         """
-        legs = [f"{m.ask.offer_id}>{m.bid.offer_id}" for m in self.matches]
+        legs = [f"{m.give.offer_id}>{m.want.offer_id}" for m in self.matches]
         start = min(range(len(legs)), key=lambda i: legs[i:] + legs[:i])
         return hashlib.sha256(
             "|".join(legs[start:] + legs[:start]).encode()
@@ -193,6 +193,6 @@ class ExchangeGraph:
             used.update(loop.offer_ids)
             g = ExchangeGraph({
                 k: m for k, m in g.edges.items()
-                if m.ask.offer_id not in used and m.bid.offer_id not in used
+                if m.give.offer_id not in used and m.want.offer_id not in used
             })
         return loops

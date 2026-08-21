@@ -4,7 +4,7 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
     GeoDisc, MockSettlement, OfferRegistry, Ontology, SolverAgent, Thing,
-    TimeWindow, ask, bid,
+    TimeWindow, give, want,
 )
 
 NOW = 1_700_000_000
@@ -27,14 +27,14 @@ def _book(chen_oracle="countersign"):
     b_farm = GeoDisc(46.10, 14.55, 15_000)
     c_shop = GeoDisc(46.06, 14.51, 4_000)
     registry.publish_many([
-        ask("amara", Thing(("piano-lesson",), unit="course"), 100, where=a_flat, **W),
-        bid("amara", Thing(("produce", "local", "weekly"), unit="course"), 104,
+        give("amara", Thing(("piano-lesson",), unit="course"), 100, where=a_flat, **W),
+        want("amara", Thing(("produce", "local", "weekly"), unit="course"), 104,
             where=a_flat, **W),
-        ask("bruno", Thing(("vegetable-box",), unit="course"), 50, where=b_farm, **W),
-        bid("bruno", Thing(("bicycle-repair",), unit="course"), 52, where=b_farm, **W),
-        ask("chen", Thing(("bicycle-repair",), unit="course"), 80, where=c_shop,
+        give("bruno", Thing(("vegetable-box",), unit="course"), 50, where=b_farm, **W),
+        want("bruno", Thing(("bicycle-repair",), unit="course"), 52, where=b_farm, **W),
+        give("chen", Thing(("bicycle-repair",), unit="course"), 80, where=c_shop,
             oracle=chen_oracle, **W),
-        bid("chen", Thing(("music-lesson",), unit="course"), 83, where=c_shop, **W),
+        want("chen", Thing(("music-lesson",), unit="course"), 83, where=c_shop, **W),
     ])
     registry.commit()
     return registry
@@ -119,7 +119,7 @@ def test_snapshot_isolation():
     root, frozen = registry.snapshot()
     # new offers after the snapshot are invisible to the frozen view
     registry.publish(
-        ask("dora", Thing(("vegetable-box",), unit="course"), 1,
+        give("dora", Thing(("vegetable-box",), unit="course"), 1,
             where=GeoDisc(46.0, 14.0, 1_000), **W)
     )
     registry.commit()

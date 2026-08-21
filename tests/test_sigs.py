@@ -7,7 +7,7 @@ pytest.importorskip("eth_keys")
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    GeoDisc, OfferRegistry, Thing, TimeWindow, ask,
+    GeoDisc, OfferRegistry, Thing, TimeWindow, give,
     maker_address, recover_maker, sign_offer, verify_offer_sig,
 )
 
@@ -22,7 +22,7 @@ OTHER_KEY = "02" * 32
 
 def test_sign_and_recover_roundtrip():
     maker = maker_address(KEY)
-    offer = ask(maker, Thing(("x",)), 10, nonce=7, **W)
+    offer = give(maker, Thing(("x",)), 10, nonce=7, **W)
     sig = sign_offer(offer, KEY)
     assert recover_maker(offer.offer_id, sig) == maker
     assert verify_offer_sig(offer, sig)
@@ -32,7 +32,7 @@ def test_sign_and_recover_roundtrip():
 
 def test_registry_stores_only_signatures_that_recover_to_the_maker():
     maker = maker_address(KEY)
-    offer = ask(maker, Thing(("x",)), 10, nonce=7, **W)
+    offer = give(maker, Thing(("x",)), 10, nonce=7, **W)
     registry = OfferRegistry(RecordStore(MemoryBytesStore()))
     oid = registry.publish(offer)
     assert registry.signature(oid) is None
@@ -47,7 +47,7 @@ def test_signature_never_enters_identity():
     # detached means detached: attaching the sidecar moves neither the
     # offer's id nor its stored record — only the sig/ key appears
     maker = maker_address(KEY)
-    offer = ask(maker, Thing(("x",)), 10, nonce=7, **W)
+    offer = give(maker, Thing(("x",)), 10, nonce=7, **W)
     registry = OfferRegistry(RecordStore(MemoryBytesStore()))
     oid = registry.publish(offer)
     record_before = registry.store.get(f"offer/{oid}")
