@@ -354,13 +354,14 @@ cleared.
   1 solver: byte-identical `book_root` on both aggregators; one loop
   settled. Memory-backed in CI; gated live on Bee. **Memory-backed
   variant green 2026-08-21** (`tests/test_federation.py` — all four
-  manifest roots byte-identical, not just the book). **Live
-  single-aggregator run green the same day**
-  (`tests/test_swarm_federation.py`, 96.5s on a local Bee 2.8.1 full
-  node: three per-maker feeds with maker = feed-owner address, fold over
-  the network, triangle settled against the fold, re-fold with the
-  settlement book); the two-live-aggregators byte-identity variant is
-  the remaining live half.
+  manifest roots byte-identical, not just the book). **Live variant green the same
+  day, gate closed** (`tests/test_swarm_federation.py`, 104.6s on a
+  local Bee 2.8.1 full node): three per-maker feeds with maker =
+  feed-owner address; two independent aggregators — the second sharing
+  no Python state with the publishers, following the maker feeds by
+  (owner, topic) over the network, announcing in reverse order — produce
+  **all four manifest roots byte-identical**, both before and after the
+  settlement book folds in; triangle settled against the fold.
 - **Follower.** A scorched-earth follower reconstructs the settled loop
   and every fill from feed addresses alone; a second solver pass over the
   followed book settles nothing. **Memory-backed template green
