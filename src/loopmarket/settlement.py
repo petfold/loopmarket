@@ -119,6 +119,8 @@ class MockSettlement:
                 return reject(f"unknown offer: {oid[:12]}")
             if self.registry.is_filled(oid):
                 return reject(f"already filled: {oid[:12]}")
+            if self.registry.is_withdrawn(oid):
+                return reject(f"withdrawn: {oid[:12]}")
             if offer.oracle not in self.verifiable_oracles:
                 return reject(f"unverifiable oracle type: {offer.oracle}")
 

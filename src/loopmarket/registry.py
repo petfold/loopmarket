@@ -4,6 +4,7 @@ Layout (one book = one RecordStore, one root reference per version):
 
     offer/<offer_id>                 -> the offer record (immutable value)
     sig/<offer_id>                   -> detached maker signature (U8, off-feed)
+    withdraw/<offer_id>              -> 1  (monotone tombstone: offer closed)
     fill/<offer_id>                  -> {"loop": <loop_id>}
     loop/<loop_id>                   -> the settled loop record
     idx/c/<concept>/<offer_id>       -> 1     (per thing concept)
@@ -38,6 +39,7 @@ from .spacetime import bucket_chain, cell_chain, cell_for, day_buckets
 
 OFFER = "offer/"
 SIG = "sig/"
+WITHDRAW = "withdraw/"
 FILL = "fill/"
 LOOP = "loop/"
 
@@ -99,6 +101,24 @@ class OfferRegistry:
 
     def publish_many(self, offers: Iterable[Offer]) -> list[str]:
         return [self.publish(o) for o in offers]
+
+    def withdraw(self, offer_id: str) -> None:
+        """Close an offer forever: a monotone tombstone (lands with P1, §5).
+
+        An *add*, never a delete — a removal is lossy and does not commute
+        with a concurrent addition, so it cannot survive a grow-only merge;
+        the tombstone merges as ordinary OR-set presence and fails closed
+        the moment it is visible at fold time. Re-publishing the identical
+        offer does not un-withdraw it (same content, same id, same
+        tombstone): a fresh intention is a fresh offer, fresh nonce,
+        fresh id.
+        """
+        if not self.store.contains(OFFER + offer_id):
+            raise KeyError(offer_id)
+        self.store.put(WITHDRAW + offer_id, 1)
+
+    def is_withdrawn(self, offer_id: str) -> bool:
+        return self.store.contains(WITHDRAW + offer_id)
 
     def attach_signature(self, offer_id: str, sig_hex: str) -> None:
         """Store a detached maker signature beside its offer (planned U8).
@@ -194,10 +214,15 @@ class OfferRegistry:
 
     def offers(self, *, now: int | None = None,
                include_filled: bool = False) -> Iterator[Offer]:
-        """All offers, filtering fills and (given `now`) expired validity."""
+        """Active offers: fills, tombstones and (given `now`) expiry filtered.
+
+        `include_filled=True` disables all liveness filtering — the
+        full-book scan a follower or auditor wants.
+        """
         for key, rec in self.store.items(OFFER):
             oid = key[len(OFFER):]
-            if not include_filled and self.is_filled(oid):
+            if not include_filled and (self.is_filled(oid)
+                                       or self.is_withdrawn(oid)):
                 continue
             offer = Offer.from_record(rec)
             if now is not None and not offer.valid.is_open_at(now):

@@ -53,6 +53,59 @@ def test_fill_determinism_across_replicas():
     assert _settled_root() == _settled_root()
 
 
+# ------------------------------------------------------------- withdrawal (P1)
+
+def test_withdrawal_gate():
+    # the P1 withdrawal gate, memory-backed: a tombstone propagates to a
+    # deliberately stale peer; post-fold the offer is unmatchable
+    # everywhere; the U11 checker passes on every fold of the run
+    blobs = MemoryBytesStore()
+    head = MemoryPointer()
+    maker = OfferRegistry(RecordStore(blobs, pointer=head))
+    oid = maker.publish(OFFERS[0])
+    maker.publish_many(OFFERS[1:])
+    maker.commit()
+
+    stale = OfferRegistry(RecordStore(blobs, root=maker.store.root))
+    assert any(o.offer_id == oid for o in stale.offers(now=NOW))
+
+    maker.withdraw(oid)
+    maker.commit()
+    assert not any(o.offer_id == oid for o in maker.offers(now=NOW))
+
+    # the stale peer publishes concurrently, then folds: the tombstone
+    # survives the grow-only merge and closes the offer there too
+    stale.publish(ask("d", Thing(("g1",)), 7, nonce=9, **W))
+    merged = RecordStore.merge(
+        blobs, None, stale.store.commit(), maker.store.root,
+        resolver=or_set_resolver,
+    )
+    folded = OfferRegistry(RecordStore(blobs, root=merged))
+    folded.verify_loop_atomicity()
+    assert folded.is_withdrawn(oid)
+    assert not any(o.offer_id == oid for o in folded.offers(now=NOW))
+    # re-publishing the identical offer does not resurrect it: same
+    # content, same id, same tombstone
+    assert folded.publish(OFFERS[0]) == oid
+    assert folded.is_withdrawn(oid)
+
+
+def test_settlement_refuses_withdrawn_legs():
+    registry = OfferRegistry(RecordStore(MemoryBytesStore()))
+    registry.publish_many(OFFERS)
+    registry.commit()
+    agent = SolverAgent(
+        registry, ONT, MockSettlement(registry, ONT, clock=lambda: NOW))
+    _, loops = agent.find_loops(now=NOW)
+    assert len(loops) == 1
+    # withdraw one leg after the solver snapshotted; settlement must refuse
+    registry.withdraw(loops[0].offer_ids[0])
+    from loopmarket import LoopProposal
+    receipt = MockSettlement(registry, ONT, clock=lambda: NOW).submit(
+        LoopProposal(loops[0], registry.store.root, "", "s", NOW))
+    assert not receipt.accepted and "withdrawn" in receipt.reason
+
+
 # --------------------------------------------------------- U11 loop atomicity
 
 def _loop_rec(legs):
