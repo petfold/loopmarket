@@ -11,6 +11,12 @@ Layout (one book = one RecordStore, one root reference per version):
     idx/t/<day>/<offer_id>           -> 1     (per touched service day)
     idx/g/<cell-prefix>/<offer_id>   -> 1     (per geohash prefix of the cell)
 
+The `idx/` keys are *derived* state and live only in an aggregator's
+derived-index store (P1, 2026-08-21) — maker books never write them: they
+were read by nothing at the source, each publish would pay ~10+ chunk
+writes of postage waste on Swarm, and derived values never merge (they
+are re-derived after every fold instead — `index_offers`).
+
 Everything the marketplace knows at a moment is one root reference:
 `snapshot()` returns `(root, frozen_reader)`, and solvers work against that
 frozen state — recordstore's snapshot isolation is what makes "solve against
@@ -90,13 +96,6 @@ class OfferRegistry:
     def publish(self, offer: Offer) -> str:
         oid = offer.offer_id
         self.store.put(OFFER + oid, offer.to_record())
-        for concept in offer.thing.concepts:
-            self.store.put(f"idx/c/{concept}/{oid}", 1)
-        for day in day_buckets(offer.service):
-            for bucket in bucket_chain(day):
-                self.store.put(f"idx/t/{bucket}/{oid}", 1)
-        for prefix in cell_chain(cell_for(offer.where)):
-            self.store.put(f"idx/g/{prefix}/{oid}", 1)
         return oid
 
     def publish_many(self, offers: Iterable[Offer]) -> list[str]:
@@ -230,9 +229,32 @@ class OfferRegistry:
             yield offer
 
     def ids_by_index(self, prefix: str) -> Iterator[str]:
-        """Offer ids under an index prefix, e.g. 'idx/c/produce/'."""
+        """Offer ids under an index prefix, e.g. 'idx/c/produce/'.
+
+        Meaningful only on a store carrying a derived index (an
+        aggregator's, built by `index_offers`) — maker books hold none.
+        """
         for key in self.store.keys(prefix):
             yield key.rsplit("/", 1)[-1]
+
+
+def index_offers(store, offers: Iterable[Offer]) -> None:
+    """File offers under the idx/{c,t,g} prefixes of a *derived* store.
+
+    Hints, never truth (cells index disc centres only; exact geometry is
+    `check_match`'s): regenerable from any book root, so an aggregator
+    rebuilds this store after every fold and nothing ever merges it —
+    the derived-values-never-merge rule ontodag learned from counts.
+    """
+    for offer in offers:
+        oid = offer.offer_id
+        for concept in offer.thing.concepts:
+            store.put(f"idx/c/{concept}/{oid}", 1)
+        for day in day_buckets(offer.service):
+            for bucket in bucket_chain(day):
+                store.put(f"idx/t/{bucket}/{oid}", 1)
+        for prefix in cell_chain(cell_for(offer.where)):
+            store.put(f"idx/g/{prefix}/{oid}", 1)
 
 
 # ------------------------------------------------------------------ Swarm wiring
