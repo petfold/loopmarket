@@ -290,7 +290,12 @@ provider-concentrated), so the book always keeps one self-hosted pinning
 node; blobs get erasure coding, feed heads cannot (single-chunk — they rely
 on neighbourhood replication); feed batches are mutable, and postage expiry
 is silent data loss, so stamp TTL is treated as a *hard offer-lifetime
-bound* with a TTL monitor.
+bound* with a TTL monitor. **In-memory landing, 2026-08-21:** withdrawal
+tombstones, the aggregator fold with the U8 admission rules and a U11
+check inside every fold, and the four-root manifest are code
+(`federation.py`), with memory-backed convergence, follower and
+withdrawal gate tests green; the feed, announcement and durability
+halves remain the live-Bee work.
 
 Postage-stamp economics went from "deliberately not modelled" to a decided
 frame (2026-08-07): the stamp is the offer's rent — validity windows must

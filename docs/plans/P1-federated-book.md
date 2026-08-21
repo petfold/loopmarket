@@ -57,7 +57,11 @@ circulation; nothing signed enters canonical bytes)"):
   promised, and the sign/recover primitives plus the registry's
   fail-closed `sig/` sidecar shipped with it.) Fold rule, fail-closed in
   U7's spirit: an offer from a foreign feed without a valid signature
-  never enters the fold — the aggregator's to enforce when it lands.
+  never enters the fold — **enforced by the in-memory aggregator since
+  2026-08-21** (`federation.py`: content address re-derived,
+  maker-equals-owner or valid detached signature, rejections as
+  attributed provenance); the feed-ownership half becomes real with the
+  live-Bee deployment.
 
 Who writes what: maker books carry `offer/` and `withdraw/` (§5) only.
 Settlement is its own writer — `fill/` and `loop/` publish under the
@@ -68,7 +72,8 @@ full-scans; `DimensionIndex` duplicates their job in memory); on Swarm each
 publish would pay ~10+ chunk writes of waste. Decided 2026-08, lands with
 P1: **dropped from maker books**, reborn as the aggregator's *derived*
 index under `index_root` (§2) — the "wired" half of wired-or-dropped, at
-the layer that actually queries.
+the layer that actually queries. **Landed 2026-08-21** (`index_offers`;
+maker books write `offer/`, `sig/`, `withdraw/` only).
 
 ## 2. The aggregator and the manifest tuple
 
@@ -207,7 +212,9 @@ ontodag's 0.16.0 `--additions` rationale: "a removal is lossy … and
 does not commute with a concurrent addition … a file whose effect depends
 on when it is applied cannot be a fold." So withdrawal is an **add**: a
 maker-signed monotone tombstone `withdraw/<offer_id>` in the maker's own
-book (lands with P1). Tombstones merge as ordinary OR-set presence;
+book (landed 2026-08-21: `OfferRegistry.withdraw`, refused by matching
+and settlement, admitted at the fold only from the book that can close
+the offer). Tombstones merge as ordinary OR-set presence;
 matching and settlement treat a tombstoned offer as closed, fail-closed
 the moment the tombstone is visible at fold time. Re-adding the offer
 does not un-withdraw it — a fresh intention is a fresh offer, fresh
@@ -345,13 +352,19 @@ cleared.
 
 - **Convergence.** 3 makers, 2 aggregators folding in different orders,
   1 solver: byte-identical `book_root` on both aggregators; one loop
-  settled. Memory-backed in CI; gated live on Bee.
+  settled. Memory-backed in CI; gated live on Bee. **Memory-backed
+  variant green 2026-08-21** (`tests/test_federation.py` — all four
+  manifest roots byte-identical, not just the book); live variant
+  pending.
 - **Follower.** A scorched-earth follower reconstructs the settled loop
   and every fill from feed addresses alone; a second solver pass over the
-  followed book settles nothing.
+  followed book settles nothing. **Memory-backed template green
+  2026-08-21** (roots + blob space only, no shared state); the live
+  variant reads feed addresses.
 - **Withdrawal.** A tombstone propagates to a deliberately stale peer;
   post-fold the offer is unmatchable everywhere; the U11 checker passes
-  on every fold of the run.
+  on every fold of the run. **Memory-backed variant green 2026-08-21**
+  (`tests/test_registry.py`).
 - **Fill determinism.** Two replicas settling the same loop produce
   byte-identical `fill/` and `loop/` records, hence equal roots.
 - **Read latency.** From cold, a solver reads an aggregator manifest and
