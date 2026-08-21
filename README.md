@@ -37,12 +37,21 @@ agent.step()                          # snapshot → match → hunt loops → se
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
 python3 -m pytest tests/ -v           # 56 tests (two need a live Bee node)
-PYTHONPATH=src python3 examples/demo_triangle.py
+PYTHONPATH=src python3 examples/demo_triangle.py     # P0 in one file
+PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
 ```
 
-The demo publishes the smallest nontrivial book — a piano teacher, a market
-gardener and a bicycle mechanic, no pair of whom can trade — and watches the
-solver find, verify and settle the triangle at a 12% surplus.
+The first demo publishes the smallest nontrivial book — a piano teacher, a
+market gardener and a bicycle mechanic, no pair of whom can trade — and
+watches the solver find, verify and settle the triangle at a 12% surplus.
+The second runs the federation: per-maker books, two aggregators folding
+to byte-identical manifests, a forged offer dying at the fold, a
+tombstoned offer staying closed, settlement provably based on the fold,
+and a follower reading it all back — in memory by default, live against a
+Bee node when `BEE_API` and `BEE_BATCH` are set. New here? Start with the
+**[User Guide](docs/USER-GUIDE.md)** (tutorial) and the
+**[Reference Manual](docs/REFERENCE.md)** (API, record formats,
+invariants).
 
 Candidate generation can also run through ontodag's **parametric
 dimensions**: `DimensionIndex` files asks under their exact service window
@@ -122,6 +131,12 @@ the corpus is built so that they can.
 
 ## Documentation
 
+- **[docs/USER-GUIDE.md](docs/USER-GUIDE.md)** — the tutorial: from your
+  first offer to a federated book on a live Swarm network, every snippet
+  runnable.
+- **[docs/REFERENCE.md](docs/REFERENCE.md)** — the reference manual:
+  every public class and function, the keyspace, record formats,
+  invariants, environment.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — the design and its rationale:
   the uniform offer form, time/place as fits-within dimensions, the book's
   keyspace and multi-writer story, the loop arithmetic (and why prices are
