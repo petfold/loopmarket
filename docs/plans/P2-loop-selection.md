@@ -347,14 +347,24 @@ rule is decided, the residual gap unquantified. Work package:
 `P2-settlement-pricing.md`; named here because compression is this
 document's mechanism.
 
-- **Price schedules in offers** (far roadmap — owner-added 2026-08-21;
+- **Price and capacity schedules in offers** (far roadmap — owner-added
+  2026-08-21;
   lands, if ever, with a post-P4 record bump). Today an offer quotes one
   price; the generalization is a *static, immutable schedule*: over
   quantity ("1 box at 50, up to 5 at 45 each" — a supply curve, most of
   what auction theory wants from a bidder), and/or over validity time
   (price as a function of beat index — a pre-committed Dutch or English
   auction inside one offer, which cannot double-fill the way a ladder of
-  short-validity offers can). Both stay U2-compatible values solved
+  short-validity offers can). The same record family covers **capacity
+  and slot schedules** (15 gym seats; one lesson per non-overlapping
+  hour of a 9-to-5 window): fills become slot/quantity-parameterized —
+  the settled-quantities v3 work extended to a settled *sub-window*.
+  Until any of this lands, the strict working forms are
+  one-offer-per-slot/seat (atomic fill = booking, today) and this
+  document's flow LP, whose qty-as-capacity handles divisible pools at
+  P2. Cross-offer conditional pricing ("both parcels cheaper together")
+  stays excluded — bundles are the combinatorial door that stays shut;
+  routing synergy is the solvers' to discover and be paid for. Both stay U2-compatible values solved
   against pinned roots; for divisible legs the flow LP extends to
   piecewise-linear convex edge costs and stays polynomial; indivisible
   legs plus curves is genuine combinatorial-auction territory, gated on

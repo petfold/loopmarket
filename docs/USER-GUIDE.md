@@ -35,7 +35,7 @@ Extras, when you need them:
 
 | extra | gives you | needed for |
 |---|---|---|
-| `.[swarm]` | `recordstore[bee,feeds]` | running against a live Bee node (§10) |
+| `.[swarm]` | `recordstore[bee,feeds]` | running against a live Bee node (§11) |
 | `.[sig]` | `eth-keys` | detached offer signatures (§8.4) |
 
 The core has two dependencies — `ontodag` (the catalogue) and
@@ -193,7 +193,7 @@ quantity/divisibility/unit → **version pins** (mixed pinning refuses;
 pinned catalogues refuse unpinned offers; major registry/contract skew
 refuses) → catalogue subsumption. `candidate_matches(offers, catalogue,
 now=...)` runs it over the full ask × bid product — fine in memory, and
-§9 shows the indexed generator for bigger books.
+§10 shows the indexed generator for bigger books.
 
 ## 6. Loops
 
@@ -377,7 +377,93 @@ the settled world — the settled loop, every fill, and a book on which a
 second solver pass finds nothing. `examples/demo_federation.py` runs this
 entire section as one narrated script; read it next.
 
-## 9. Bigger books: indexed candidate generation
+## 9. Patterns: booking, capacity, routes
+
+The offer form is deliberately small. Real-world shapes — appointment
+books, limited seats, moving couriers — are *patterns over it*, usually
+run by a **maker agent**: a bit of software at the maker's edge that
+turns their calendar, stock or route into offers and tombstones.
+
+### Booking: one offer per slot
+
+Amara teaches one lesson at a time. She posts one offer per bookable
+hour — the service window *is* the slot, and no two overlap:
+
+```python
+hour = 3_600
+slots = [ask("amara", Thing(("piano-lesson",), unit="lesson"), 100,
+             service=TimeWindow(NOW + h * hour, NOW + (h + 1) * hour),
+             where=here, valid=standing)
+         for h in (9, 10, 11)]          # Monday 9–10, 10–11, 11–12
+```
+
+A settled loop marks the slot's offer filled **atomically** — that fill
+*is* the booking, and any second loop wanting the same hour is rejected
+with "already filled". There is no separate reservation step to race.
+Taking Wednesday off is `withdraw()` on Wednesday's slots: the tombstone
+survives federation folds, so the closure reaches everyone.
+
+### Capacity: one offer per seat
+
+A gym class holds three. Post three seat-offers with the same window —
+**giving each its own `nonce`**, because equal content means equal id
+(without the nonces, these three would collapse into *one* offer):
+
+```python
+seats = [ask("gym", Thing(("spin-class",), unit="seat"), 10, nonce=i,
+             service=tuesday_class, where=gym, valid=standing)
+         for i in range(3)]
+```
+
+Three different bidders can each win a seat in one beat; the fourth finds
+the class full. The same pattern is 30 box-offers for a van. The schema
+can already *say* this more compactly — `Thing(("spin-class",), qty=15,
+unit="seat", divisible=True)` — but settlement today fills an offer
+whole; **partial fills are P2**: the clearing LP treats quantities as
+flow capacities natively, and fill records grow settled quantities at the
+next record bump. Until then, unit offers are the strict, working form.
+
+### Routes: state as offers
+
+A bicycle courier's feasibility depends on where he *is* — crossing town
+takes time and costs him. The protocol never models his position; his
+agent publishes it as **spacetime tubes**: several (window, disc) pairs
+along the planned route, priced accordingly —
+
+```python
+pickup_a = ask(courier, parcel_run, 5,             # near the station, cheap
+               service=TimeWindow(NOW, NOW + hour),
+               where=GeoDisc(46.05, 14.50, 2_000), valid=standing)
+pickup_b = ask(courier, parcel_run, 8,             # across town, later, dearer
+               service=TimeWindow(NOW + 2 * hour, NOW + 3 * hour),
+               where=GeoDisc(46.02, 14.55, 2_000), valid=standing)
+```
+
+— and as legs settle and his plan changes, the agent withdraws and
+reposts between beats. Dynamic state quantizes to the beat; the book a
+solver sees is always static and pinned.
+
+### Where the sophistication lives (a design boundary)
+
+Notice what these patterns have in common: loopmarket provides the basic
+mechanisms and the means to express intentions — offers, atomic fills,
+tombstones, pinned snapshots — and leaves the hard optimization to the
+**solvers**. The solver in this repository is a deliberately simple
+baseline, mainly for demonstration (and, later, the auction's reserve
+bid); professional solvers are expected to grow quickly *outside* the
+loopmarket software — routing planners, statistical models, traditional
+AI, LLMs, whatever wins. Their internals are not loopmarket's concern,
+and they may well be kept secret for competitive edge: that is by
+design, and healthy. The protocol's only demand is the one settlement
+enforces — whatever a solver proposes gets re-verified from scratch, so
+cleverness can be trusted *because* it is never trusted.
+
+One honesty note for all three patterns: "blocked immediately" is as
+strong as settlement's atomicity — airtight within one settlement
+instance (P1's model). Global serialization across independent
+settlement instances is what P2's verifiable settlement brings.
+
+## 10. Bigger books: indexed candidate generation
 
 The exhaustive ask × bid product is fine in memory. When it isn't,
 `candidate_matches_indexed` prunes through the catalogue itself — asks are
@@ -394,7 +480,7 @@ matches = list(candidate_matches_indexed(everyone, catalogue, now=NOW))
 The index is a derived, per-solver deepcopy of the catalogue — filing
 offers never touches the shared catalogue or its pinned roots.
 
-## 10. Going live on Swarm
+## 11. Going live on Swarm
 
 Everything above runs unchanged against a real network; only the store
 construction changes. You need a Bee node (a **light node suffices** for
@@ -446,7 +532,7 @@ validity windows outstripping the batch, and you should watch
 bet, not a custody arrangement; and one feed has one signer — sharing a
 feed key is sharing your identity.
 
-## 11. Where to go next
+## 12. Where to go next
 
 - **[REFERENCE.md](REFERENCE.md)** — every public class, function, record
   format and invariant, precisely.

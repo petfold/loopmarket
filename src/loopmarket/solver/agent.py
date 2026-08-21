@@ -19,6 +19,15 @@ O(V*E) cycle search. Competing agents are expected to beat it with motif
 libraries, planners over the idx/{c,t,g} prefixes, learned candidate
 generators — anything, as long as the loops they emit survive
 re-verification. The interface to beat is `step()`.
+
+The boundary is deliberate (owner doctrine, 2026-08-21): loopmarket
+provides the basic mechanisms and the means to express intentions;
+the hard combinatorial optimization belongs to professional solvers
+*outside* this software — statistical methods, planners, LLMs, whatever
+wins — whose internals are not loopmarket's concern and may stay secret
+for competitive edge. That is healthy: U3 means cleverness can be
+trusted because it is never trusted. This baseline exists to demo the
+pipeline and (P2) to floor the auction as its reserve bid.
 """
 
 from __future__ import annotations
