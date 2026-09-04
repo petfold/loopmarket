@@ -215,3 +215,99 @@ def test_maker_book_speaking_settlement_is_refused():
     prov = RecordStore(blobs, root=manifest.provenance_root)
     assert "settlement keys" in prov.get(
         f"reject/sneaky/fill/{offer.offer_id}")["reason"]
+
+
+class _CensoringAggregator(Aggregator):
+    """An aggregator that announces a maker and silently folds nothing of
+    theirs — the T14 attack shape. Lives in the tests: the library has no
+    honest use for it."""
+
+    def __init__(self, *args, drop: str, **kw):
+        super().__init__(*args, **kw)
+        self._drop = drop
+
+    def _sanitize(self, owner, role, root, source, provenance):
+        if owner == self._drop:
+            return self._new_store()   # announced, never folded, never rejected
+        return super()._sanitize(owner, role, root, source, provenance)
+
+
+def test_omission_is_a_proof_not_a_suspicion():
+    # T14: an aggregator's announcement_root is its own claim about the
+    # inputs it folded; whatever an announced maker book holds that neither
+    # entered book_root nor earned a reject/ record was dropped silently.
+    # The audit finds it from the manifest alone and hands back absence
+    # proofs a stranger verifies with no store access.
+    from recordstore import ABSENT, verify_proof
+
+    from loopmarket import audit_manifest
+
+    blobs = MemoryBytesStore()
+    books = _maker_books(blobs)
+    honest = _aggregator(blobs, "honest", books, ["amara", "bruno", "chen"])
+    censor = _CensoringAggregator(lambda: RecordStore(blobs),
+                                  aggregator_id="censor", drop="chen")
+    for owner in ("amara", "bruno", "chen"):
+        censor.announce(owner, books[owner].store)
+    m_honest, m_censor = honest.fold(), censor.fold()
+
+    # same input set, different fold: divergence with identical
+    # announcement_roots is evidence by construction (the fold is pure)
+    assert m_honest.announcement_root == m_censor.announcement_root
+    assert m_honest.book_root != m_censor.book_root
+
+    assert audit_manifest(m_honest, blobs) == []
+    found = audit_manifest(m_censor, blobs)
+    assert {o.owner for o in found} == {"chen"}
+    assert sorted(o.key for o in found) == sorted(
+        f"offer/{oid}" for oid in books["chen"].store.keys("offer/")
+        for oid in [oid[len("offer/"):]])
+    for o in found:
+        assert o.announced_root == books["chen"].store.root
+        assert verify_proof(o.proof, m_censor.book_root) is ABSENT
+
+    # the censored offers are simply missing from the censor's book, so a
+    # solver reading it finds no loop; one folding the announced maker
+    # books itself — the censor's own announcement names them — recovers
+    # the honest fold byte for byte
+    censored = OfferRegistry(RecordStore(blobs, root=m_censor.book_root))
+    assert len(list(censored.offers(now=NOW))) == 4
+    announced = RecordStore.at(m_censor.announcement_root, blobs)
+    own = Aggregator(lambda: RecordStore(blobs), aggregator_id="solver-self")
+    for key in announced.keys("announce/"):
+        rec = announced.get(key)
+        own.announce(key[len("announce/"):],
+                     RecordStore(blobs, root=rec["root"]))
+    assert own.fold().book_root == m_honest.book_root
+
+
+def test_dropped_tombstone_is_an_omission_too():
+    # the nastier censorship: folding the offer but not its withdrawal
+    # resurrects it. The audit covers withdraw/ for exactly this reason.
+    from loopmarket import audit_manifest
+
+    class _TombstoneEater(Aggregator):
+        def _sanitize(self, owner, role, root, source, provenance):
+            staged = super()._sanitize(owner, role, root, source, provenance)
+            if owner == "bruno":
+                clean = self._new_store()
+                for key, rec in staged.items():
+                    if not key.startswith("withdraw/"):
+                        clean.put(key, rec)
+                return clean
+            return staged
+
+    blobs = MemoryBytesStore()
+    books = _maker_books(blobs)
+    regret = books["bruno"].publish(
+        give("bruno", Thing(("vegetable-box",), unit="course"), 90,
+            nonce=7, where=FARM, **W))
+    books["bruno"].withdraw(regret)
+    books["bruno"].commit()
+    eater = _TombstoneEater(lambda: RecordStore(blobs), aggregator_id="eater")
+    for owner in ("amara", "bruno", "chen"):
+        eater.announce(owner, books[owner].store)
+    m = eater.fold()
+    found = audit_manifest(m, blobs)
+    assert [(o.owner, o.key) for o in found] == [("bruno", f"withdraw/{regret}")]
+    assert not OfferRegistry(RecordStore(blobs, root=m.book_root)).is_withdrawn(regret)

@@ -19,7 +19,7 @@ from .schema import (
     ASK, BID, GIVE, WANT, GeoDisc, Offer, Thing, TimeWindow, Tokens,
     ask, bid, give, want,
 )
-from .federation import Aggregator, Manifest
+from .federation import Aggregator, Manifest, Omission, audit_manifest
 from .ontology import Ontology
 from .registry import OfferRegistry, PartialLoopError, swarm_offer_book
 from .matching import Match, candidate_matches, check_match
@@ -34,7 +34,7 @@ __version__ = "0.1.0"
 __all__ = [
     "GIVE", "WANT", "ASK", "BID", "GeoDisc", "Offer", "Thing", "TimeWindow",
     "Tokens", "give", "want", "ask", "bid",
-    "Aggregator", "Manifest", "Ontology", "OfferRegistry",
+    "Aggregator", "Manifest", "Omission", "audit_manifest", "Ontology", "OfferRegistry",
     "PartialLoopError", "swarm_offer_book",
     "Match", "candidate_matches", "check_match",
     "maker_address", "recover_maker", "sign_offer", "verify_offer_sig",

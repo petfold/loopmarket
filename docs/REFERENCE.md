@@ -360,6 +360,20 @@ attributed `reject/` record):
 | `fill/`, `loop/` | **rejected** ("settlement keys in a maker book") | staged |
 | anything else | rejected ("unknown keyspace") | silently skipped |
 
+### `Omission(owner, key, announced_root, proof)` — frozen
+One record an announced maker book holds at `announced_root` that is
+absent from `book_root` and has no `reject/` in `provenance_root`.
+`proof` is recordstore's absence proof for `key` against `book_root`
+(`verify_proof(proof, book_root) is ABSENT`, no store access); `None`
+when `book_root` is empty.
+
+### `audit_manifest(manifest, blobs, *, store_type=RecordStore) -> list[Omission]`
+The T14 cross-audit from the manifest alone: (announced set) − (speech
+under `book_root`) over `offer/` and `withdraw/` keys of every
+`MAKER`-role announcement, sorted by owner then key. Empty for an honest
+fold. Not audited: `sig/` (dropped-without-rejection by design) and
+settlement books (U11 covers them).
+
 ---
 
 ## 12. The keyspace
@@ -442,6 +456,7 @@ matching half are already running (§11, §5).
 | `BEE_API` | live tests, `demo_federation.py` | Bee node API, e.g. `http://localhost:1633` (a light node suffices) |
 | `BEE_BATCH` | " | a purchased postage batch id (never auto-buys; prefer mutable for feed-heavy work) |
 | `BEE_SIGNER` | gated tests | throwaway 32-byte hex key for the shared-catalogue/book feeds |
+| `LOOP_CORE` | `demo_federation.py` | `0` skips adopting ontodag's `core` pack (needs ontodag>=0.19) and uses the eleven-category toy catalogue |
 
 Live test suites: `tests/test_swarm_book.py` (the P0 triangle on a live
 book), `tests/test_swarm_federation.py` (per-maker feeds, two

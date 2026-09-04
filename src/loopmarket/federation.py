@@ -30,6 +30,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from recordstore import RecordStore
+
 from .registry import (
     FILL, LOOP, OFFER, SIG, WITHDRAW, OfferRegistry, index_offers,
     or_set_resolver,
@@ -235,3 +237,78 @@ class Aggregator:
             return recover_maker(offer_id, sig) == maker
         except Exception:
             return False
+
+
+# -- the cross-audit (T14) -----------------------------------------------------
+
+@dataclass(frozen=True, slots=True)
+class Omission:
+    """One record a manifest claims to have consumed and did not carry.
+
+    `key` sits in `owner`'s book at `announced_root` (the root the
+    aggregator's own announcement record names), is absent from
+    `book_root`, and has no `reject/` record in `provenance_root`. `proof`
+    is recordstore's absence proof for `key` against `book_root`: anyone
+    can `verify_proof(proof, book_root)` with no store access, so the
+    accusation travels as bytes, not as trust in the auditor.
+    """
+
+    owner: str
+    key: str
+    announced_root: str
+    proof: dict | None
+
+
+def audit_manifest(manifest: Manifest, blobs, *,
+                   store_type=RecordStore) -> list[Omission]:
+    """(announced set) − (speech under `book_root`), as P1 §2 defines it.
+
+    An honest fold is total on the speech it admits: every `offer/` and
+    `withdraw/` record in an announced maker book either enters
+    `book_root` or earns an attributed `reject/`. Whatever does neither
+    was dropped silently — and an aggregator's `announcement_root` is
+    its own signed claim about which inputs, at which roots, it folded,
+    so the audit needs nothing but the manifest and the blob space.
+    Omission (including pay-to-be-indexed, and the nastier form: a
+    dropped tombstone resurrecting a withdrawn offer) becomes a proof,
+    never a suspicion — the T14 defence, computable by any reader.
+
+    Not audited: `sig/` (an own-maker signature that fails to verify is
+    dropped without a rejection by design — feed ownership already
+    authenticates the offer) and settlement books (their fills and loops
+    are checked by U11 at every fold instead).
+    """
+    announced = store_type.at(manifest.announcement_root, blobs) \
+        if manifest.announcement_root else None
+    if announced is None:
+        return []
+    provenance = store_type.at(manifest.provenance_root, blobs) \
+        if manifest.provenance_root else None
+    book = store_type.at(manifest.book_root, blobs) \
+        if manifest.book_root else None
+
+    def in_store(store, key: str) -> bool:
+        if store is None:
+            return False
+        try:
+            store.get(key)
+        except KeyError:
+            return False
+        return True
+
+    omissions: list[Omission] = []
+    for ann_key in sorted(announced.keys("announce/")):
+        rec = announced.get(ann_key)
+        owner = ann_key[len("announce/"):]
+        if rec.get("role") != MAKER or not rec.get("root"):
+            continue
+        source = store_type.at(rec["root"], blobs)
+        for prefix in (OFFER, WITHDRAW):
+            for key in sorted(source.keys(prefix)):
+                if in_store(book, key):
+                    continue
+                if in_store(provenance, f"reject/{owner}/{key}"):
+                    continue
+                proof = book.prove(key) if book is not None else None
+                omissions.append(Omission(owner, key, rec["root"], proof))
+    return omissions
