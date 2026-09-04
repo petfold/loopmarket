@@ -69,6 +69,27 @@ def short(root):
     return f"{root[:16]}…" if root else "(none)"
 
 
+def committed(writer, attempts=8, pause=20):
+    """`writer.commit()`, retrying transient Bee 5xx when live.
+
+    A light node's feed probe asks the network for a chunk that does not
+    exist yet; when peers time out Bee answers 500 ("read chunk failed")
+    rather than 404, and recordstore re-raises 5xx on purpose — the retry
+    belongs to the caller, who knows how long a demo may wait.
+    """
+    for attempt in range(attempts):
+        try:
+            return writer.commit()
+        except Exception as e:                      # noqa: BLE001
+            status = getattr(e, "status", None)
+            if not LIVE or status is None or status < 500 \
+                    or attempt == attempts - 1:
+                raise
+            print(f"        (node answered {status}; retrying the commit in "
+                  f"{pause}s, attempt {attempt + 2}/{attempts})")
+            time.sleep(pause)
+
+
 print(f"\n=== the federated book — "
       f"{'LIVE on ' + BEE_API if LIVE else 'in memory'} ===\n")
 
@@ -106,7 +127,7 @@ else:
         "vegetable-box": ["produce", "local", "weekly"],
     })
 t0 = time.time()
-catalogue.commit()
+committed(catalogue)
 pins = catalogue.pins
 print(f"catalogue committed in {time.time() - t0:.1f}s: "
       f"root={short(catalogue.root)}")
@@ -174,7 +195,7 @@ regret = books[b].publish(
 books[b].withdraw(regret)
 
 for owner, book in books.items():
-    book.commit()
+    committed(book)
     print(f"{name_of[owner]:>7} published "
           f"{len(list(book.offers(include_filled=True)))} offers "
           f"under their own book ({owner[:14]}…)"
@@ -197,7 +218,7 @@ forged = give(a, Thing(("piano-lesson",), unit="course"), 1,
 honest = give(mallory_owner, Thing(("food",), unit="course"), 60,
              where=places["bruno"], **town)
 mallory.publish_many([forged, honest])
-mallory.commit()
+committed(mallory)
 name_of[mallory_owner] = "mallory"
 print("mallory published a forged offer in amara's name\n")
 
@@ -289,7 +310,7 @@ settle = OfferRegistry(
     feed_store("settlement", signer=secrets.token_hex(32)) if LIVE
     else fresh_store())
 settle.absorb(folded)
-base = settle.commit()
+base = committed(settle)
 print(f"settlement based its own book on the fold — re-commit "
       f"reproduces the root: {base == m_a.book_root}")
 

@@ -1,0 +1,51 @@
+Script started on 2026-09-04 23:41:32+04:00 [COMMAND="bash -c 'time python3 examples/demo_federation.py'" <not executed on terminal>]
+
+=== the federated book — LIVE on http://localhost:1633 ===
+
+adopted ontodag's core pack: 4157 categories in 1.1s
+catalogue committed in 32.2s: root=1811c83d1ec69cab…
+an offer names its kind; matching is fits-within along the catalogue:
+   piano-lesson ⊑ music-lesson ⊑ lesson ⊑ teaching ⊑ profession ⊑ occupation ⊑ activity ⊑ act ⊑ event
+   vegetable-box ⊑ produce ⊑ substance
+offers will pin it: registry v4.1, contract v0.1
+
+  amara published 2 offers under their own book (0x54a752Fc64f3…)
+Traceback (most recent call last):
+  File "/home/test/projects/loopmarket/examples/demo_federation.py", line 177, in <module>
+    book.commit()
+  File "/home/test/projects/loopmarket/src/loopmarket/registry.py", line 179, in commit
+    root = self.store.commit(reconcile=reconcile, resolver=or_set_resolver)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/test/.local/lib/python3.12/site-packages/recordstore/recordstore.py", line 2065, in commit
+    new = self._reconcile(base, new, resolver, retries)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/test/.local/lib/python3.12/site-packages/recordstore/recordstore.py", line 2204, in _reconcile
+    if cas(expected, new):
+       ^^^^^^^^^^^^^^^^^^
+  File "/home/test/.local/lib/python3.12/site-packages/recordstore/recordstore.py", line 1612, in compare_and_set
+    self.set(new)
+  File "/home/test/.local/lib/python3.12/site-packages/recordstore/recordstore.py", line 1541, in set
+    probed = self._probe_latest_index()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/test/.local/lib/python3.12/site-packages/recordstore/recordstore.py", line 1647, in _probe_latest_index
+    if not self._soc_exists(0):
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/test/.local/lib/python3.12/site-packages/recordstore/recordstore.py", line 1663, in _soc_exists
+    self._bee.file.download_soc(self._owner, identifier)
+  File "/home/test/.local/lib/python3.12/site-packages/bee/file/__init__.py", line 496, in download_soc
+    body = self.download_chunk(address)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/test/.local/lib/python3.12/site-packages/bee/file/__init__.py", line 462, in download_chunk
+    response = self._inner.send("GET", f"chunks/{reference.to_hex()}", headers=headers)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/test/.local/lib/python3.12/site-packages/bee/_inner.py", line 282, in send
+    _raise_response_error(response)
+  File "/home/test/.local/lib/python3.12/site-packages/bee/_inner.py", line 109, in _raise_response_error
+    raise BeeResponseError(
+bee.swarm.errors.BeeResponseError: GET http://localhost:1633/chunks/4280c2f101d64a865a669fe9045f1e659d25aceaad29c4a2b2064ca0e7d96107: 500 500 Internal Server Error
+
+real	3m47.075s
+user	0m18.623s
+sys	0m3.185s
+
+Script done on 2026-09-04 23:45:19+04:00 [COMMAND_EXIT_CODE="1"]

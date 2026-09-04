@@ -1,0 +1,59 @@
+Script started on 2026-09-04 23:53:15+04:00 [COMMAND="bash -c 'time python3 examples/demo_federation.py'" <not executed on terminal>]
+
+=== the federated book — LIVE on http://localhost:1633 ===
+
+adopted ontodag's core pack: 4157 categories in 1.1s
+catalogue committed in 41.2s: root=1811c83d1ec69cab…
+an offer names its kind; matching is fits-within along the catalogue:
+   piano-lesson ⊑ music-lesson ⊑ lesson ⊑ teaching ⊑ profession ⊑ occupation ⊑ activity ⊑ act ⊑ event
+   vegetable-box ⊑ produce ⊑ substance
+offers will pin it: registry v4.1, contract v0.1
+
+  amara published 2 offers under their own book (0x382c8D300772…)
+        (node answered 500; retrying the commit in 20s, attempt 2/8)
+        (node answered 500; retrying the commit in 20s, attempt 3/8)
+        (node answered 500; retrying the commit in 20s, attempt 4/8)
+        (node answered 500; retrying the commit in 20s, attempt 5/8)
+        (node answered 500; retrying the commit in 20s, attempt 6/8)
+        (node answered 500; retrying the commit in 20s, attempt 7/8)
+        (node answered 500; retrying the commit in 20s, attempt 8/8)
+  bruno published 3 offers under their own book (0xD1E4976be53f…)
+   chen published 2 offers under their own book (0xb89316BbE1d2…)
+        bruno withdrew one offer again (tombstone eab0469de333…)
+mallory published a forged offer in amara's name
+
+aggregator A folded: book=0a3418cbb2337368…
+aggregator B folded (reverse order): book=0a3418cbb2337368…
+all four manifest roots byte-identical: True
+
+aggregator Cain folded, quietly dropping chen: book=5e008e808e4af1c9…
+same announcement_root as A (True), different book_root (True): the fold is pure, so this alone is evidence
+the audit reads Cain's manifest and finds 2 omissions, all by ['chen']:
+   offer/433aed11916b9ae4… absent from Cain's book — proof verifies with no store access: True
+   offer/4d43769a28affdca… absent from Cain's book — proof verifies with no store access: True
+honest aggregator A audits clean: True
+a solver trusting Cain's manifest finds 0 loops (the triangle needs chen)
+a solver folding the announced maker books itself lands on A's book_root: True — manifests are caches, never authority
+
+active offers in the fold: 7 (6 triangle + mallory's honest one)
+the forgery was refused: "foreign maker without valid signature"
+bruno's tombstone closed his regretted offer: True
+
+settlement based its own book on the fold — re-commit reproduces the root: True
+the solver settled 1 loop, surplus 12.22%:
+     amara → chen    rate 0.830
+      chen → bruno   rate 0.650
+     bruno → amara   rate 2.080
+
+re-fold with the settlement book: identical again: True
+a follower, given only the manifest, reads the loop and 6 atomic fills
+second solver pass over the settled fold finds: 0 loops
+
+=== done ===
+
+
+real	20m51.807s
+user	0m35.586s
+sys	0m5.630s
+
+Script done on 2026-09-05 00:14:07+04:00 [COMMAND_EXIT_CODE="0"]
