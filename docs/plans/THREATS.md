@@ -617,7 +617,14 @@ inclusion). Fold
 decisions and rejections are attributed speech acts in the aggregator's
 own `provenance_root`. Entry is permissionless, and reading never
 requires an aggregator: any solver can fold maker feeds directly — a
-censored offer is uncaptured surplus a competitor collects.
+censored offer is uncaptured surplus a competitor collects. *(Landed
+2026-09-04, in memory: `federation.audit_manifest` computes the
+omission set — `offer/` and `withdraw/` records an announced maker book
+holds that neither entered `book_root` nor earned a `reject/` — and
+returns recordstore absence proofs per record; `tests/test_federation.py`
+covers the silent drop and the eaten tombstone, and
+`examples/demo_federation.py` runs the solver-self-fold recovery. The
+live variant and the tripwire-as-a-running-probe are still open.)*
 
 **Residual.** Neutrality-by-auditability is only as real as the number of
 independent aggregators actually running — the aggregator-economics open

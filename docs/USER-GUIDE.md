@@ -316,6 +316,28 @@ run two, compare, and omission (including "pay me to be listed") is a
 provable act, not a suspicion. Anyone can be an aggregator; aggregators
 sell *serving* (speed, indexes), never *inclusion*.
 
+You don't even need the second aggregator to convict the first. Its
+`announcement_root` is its own claim about which books, at which roots,
+it folded; whatever one of those books holds that neither entered
+`book_root` nor earned a `reject/` record was dropped silently:
+
+```python
+from loopmarket import audit_manifest
+from recordstore import ABSENT, verify_proof
+
+for o in audit_manifest(manifest, blobs):       # [] for an honest fold
+    print(o.owner, o.key)                        # whose speech went missing
+    assert verify_proof(o.proof, manifest.book_root) is ABSENT   # no store needed
+```
+
+Each omission carries a recordstore absence proof, so the accusation
+travels as bytes. Tombstones are audited too — an aggregator that folds
+an offer but eats its withdrawal has resurrected it. And a solver that
+trusts no manifest can fold the announced books itself (the
+announcement names them) and lands on the honest `book_root`; manifests
+are caches, never authority. `examples/demo_federation.py` runs the whole
+scene with a censoring aggregator called Cain.
+
 ### 8.3 The fold rules
 
 Announced books are sanitized per record before entering the fold,

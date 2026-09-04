@@ -1,12 +1,21 @@
 """The federated book, end to end: publish → fold → solve → settle → follow.
 
-Three makers publish per-maker books; a fourth (Mallory) tries to forge an
-offer in Amara's name; one offer is withdrawn by tombstone. Two independent
-aggregators fold everything in different orders and produce byte-identical
-manifests; a solver settles the triangle against the fold; settlement bases
-its *own* book on the fold (provably — the re-commit reproduces the fold's
-root); both aggregators fold the settlement back in; a follower reads the
+The catalogue is ontodag's shipped `core` pack (4,000+ consensus categories)
+plus a small local services layer, committed to a pinned root every offer
+names. Three makers publish per-maker books; a fourth (Mallory) tries to
+forge an offer in Amara's name; one offer is withdrawn by tombstone. Two
+independent aggregators fold everything in different orders and produce
+byte-identical manifests. A third aggregator (Cain) censors Chen: it
+announces her book and folds nothing of it — the audit turns that into
+absence proofs from Cain's own manifest, and a solver that folds the
+announced maker books itself recovers the honest fold byte for byte (T14).
+A solver settles the triangle against the fold; settlement bases its *own*
+book on the fold (provably — the re-commit reproduces the fold's root);
+both honest aggregators fold the settlement back in; a follower reads the
 settled world from the manifest alone.
+
+`LOOP_CORE=0` skips the core pack (an eleven-category toy catalogue instead;
+faster on a slow node).
 
 Run in memory (no network, no dependencies beyond the core):
 
@@ -26,13 +35,14 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
     Aggregator, GeoDisc, MockSettlement, OfferRegistry, Ontology,
-    SolverAgent, Thing, TimeWindow, give, want,
+    SolverAgent, Thing, TimeWindow, audit_manifest, give, want,
 )
 from loopmarket.federation import SETTLEMENT
 
 BEE_API = os.environ.get("BEE_API")
 BEE_BATCH = os.environ.get("BEE_BATCH")
 LIVE = bool(BEE_API and BEE_BATCH)
+CORE = os.environ.get("LOOP_CORE", "1") != "0"
 TOPIC = f"loopfed-demo-{int(time.time())}"
 
 if LIVE:
@@ -67,15 +77,52 @@ print(f"\n=== the federated book — "
 catalogue = Ontology.persistent(
     feed_store("catalogue", signer=secrets.token_hex(32)) if LIVE
     else fresh_store())
-catalogue.load({
-    "service": [], "lesson": ["service"], "music-lesson": ["lesson"],
-    "piano-lesson": ["music-lesson"], "repair": ["service"],
-    "bicycle-repair": ["repair"], "food": [], "produce": ["food"],
-    "local": [], "weekly": [], "vegetable-box": ["produce", "local", "weekly"],
-})
+if CORE:
+    # ontodag's upper ontology, built by consensus over WordNet, SUMO,
+    # OpenCyc and Wikidata; its v6 goods layer exists because loopmarket
+    # asked whether traded things could be named precisely. Adoption is a
+    # merge, so every adopter lands on the same root — the pack is a
+    # fingerprint, not a download. Services are still thin in core (its
+    # `service` is the financial sense), so a local layer hangs the
+    # town's trades from core's hinges: `lesson ⊑ teaching`, `work`,
+    # `produce`.
+    from ontodag import packs
+    t0 = time.time()
+    packs.apply(catalogue.dag, "core")
+    print(f"adopted ontodag's core pack: {len(catalogue.dag.nodes)} "
+          f"categories in {time.time() - t0:.1f}s")
+    catalogue.load({
+        "repair": ["work"], "bicycle-repair": ["repair"],
+        "music-lesson": ["lesson"], "piano-lesson": ["music-lesson"],
+        "local": [], "weekly": [],
+        "vegetable-box": ["produce", "local", "weekly"],
+    })
+else:
+    catalogue.load({
+        "service": [], "lesson": ["service"], "music-lesson": ["lesson"],
+        "piano-lesson": ["music-lesson"], "repair": ["service"],
+        "bicycle-repair": ["repair"], "food": [], "produce": ["food"],
+        "local": [], "weekly": [],
+        "vegetable-box": ["produce", "local", "weekly"],
+    })
+t0 = time.time()
 catalogue.commit()
 pins = catalogue.pins
-print(f"catalogue committed: root={short(catalogue.root)}")
+print(f"catalogue committed in {time.time() - t0:.1f}s: "
+      f"root={short(catalogue.root)}")
+
+
+def lineage(name):
+    """The longest path from a category up to a top-level node."""
+    parents = sorted(p.name for p in catalogue.dag.nodes[name].parents
+                     if p.name != "*")
+    chains = [lineage(p) for p in parents]
+    return [name] + (max(chains, key=len) if chains else [])
+
+
+print("an offer names its kind; matching is fits-within along the catalogue:")
+print("   " + " ⊑ ".join(lineage("piano-lesson")))
+print("   " + " ⊑ ".join(lineage("vegetable-box")))
 print(f"offers will pin it: registry v{pins['registry_version']}, "
       f"contract v{pins['contract_version']}\n")
 
@@ -174,6 +221,57 @@ print(f"aggregator B folded (reverse order): book={short(m_b.book_root)}")
 print(f"all four manifest roots byte-identical: {identical}")
 
 BLOB_SPACE = books[a].store.blobs
+
+# --- Cain censors Chen; the manifest convicts him -------------------------------
+
+
+class CensoringAggregator(Aggregator):
+    """Announces a maker and silently folds nothing of theirs (T14). It
+    lives in the demo: the library has no honest use for it."""
+
+    def _sanitize(self, owner, role, root, source, provenance):
+        if owner == c:
+            return self._new_store()   # announced, never folded, never rejected
+        return super()._sanitize(owner, role, root, source, provenance)
+
+
+cain = CensoringAggregator(fresh_store, aggregator_id="agg-cain")
+for owner in announce_a:
+    cain.announce(owner, (books.get(owner) or mallory).store)
+m_c = cain.fold()
+print(f"\naggregator Cain folded, quietly dropping chen: "
+      f"book={short(m_c.book_root)}")
+print(f"same announcement_root as A ({m_c.announcement_root == m_a.announcement_root}), "
+      f"different book_root ({m_c.book_root != m_a.book_root}): "
+      f"the fold is pure, so this alone is evidence")
+omitted = audit_manifest(m_c, BLOB_SPACE)
+print(f"the audit reads Cain's manifest and finds {len(omitted)} omissions, "
+      f"all by {sorted({name_of[o.owner] for o in omitted})}:")
+from recordstore import ABSENT, verify_proof  # noqa: E402 — the stranger's check
+for o in omitted:
+    verdict = verify_proof(o.proof, m_c.book_root) is ABSENT
+    print(f"   {o.key[:22]}… absent from Cain's book — proof verifies "
+          f"with no store access: {verdict}")
+print(f"honest aggregator A audits clean: {audit_manifest(m_a, BLOB_SPACE) == []}")
+
+censored_view = OfferRegistry(RecordStore.at(m_c.book_root, BLOB_SPACE))
+lost = SolverAgent(censored_view, catalogue,
+                   MockSettlement(censored_view, catalogue), solver_id="trusting")
+print(f"a solver trusting Cain's manifest finds "
+      f"{len(lost.find_loops(now=now)[1])} loops (the triangle needs chen)")
+
+# A solver that trusts no manifest folds the maker books itself. Cain's
+# own announcement names them — announcements, not manifests, are the
+# ground truth (on Swarm: registry events, maker feeds by (owner, topic)).
+announced = RecordStore.at(m_c.announcement_root, BLOB_SPACE)
+own = Aggregator(fresh_store, aggregator_id="solver-self")
+for key in announced.keys("announce/"):
+    rec = announced.get(key)
+    own.announce(key[len("announce/"):], RecordStore.at(rec["root"], BLOB_SPACE))
+m_own = own.fold()
+print(f"a solver folding the announced maker books itself lands on A's "
+      f"book_root: {m_own.book_root == m_a.book_root} — "
+      f"manifests are caches, never authority\n")
 
 folded = OfferRegistry(RecordStore.at(m_a.book_root, BLOB_SPACE))
 active = list(folded.offers(now=now))

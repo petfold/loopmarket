@@ -75,7 +75,11 @@ federation layer runs too — in memory *and* live (the gated
 books under their own feeds and signers, an `Aggregator` folding them
 under the U8 admission rules into a four-root manifest published on its
 own feed, withdrawal tombstones, and a scorched-earth follower
-reconstructing the settled world from (address, topic) alone.
+reconstructing the settled world from (address, topic) alone. Since
+2026-09-04 the federation demo adopts ontodag's `core` pack as the
+catalogue and includes a censoring aggregator: `audit_manifest` convicts
+it from its own manifest with absence proofs, and a solver folding the
+announced maker books itself recovers the honest fold (T14).
 Alpha; interfaces will move.
 
 **Designed (2026-08-07):** most of what loopmarket *is* now lives as a

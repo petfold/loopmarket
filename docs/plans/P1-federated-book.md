@@ -121,7 +121,11 @@ pinned:
   truth, turns omission — including pay-to-be-indexed — into a proof,
   never a suspicion (T14). Aggregators charge for *serving* (latency,
   indexes, queries); an aggregator charging for *inclusion* is a
-  censoring aggregator and is caught as one.
+  censoring aggregator and is caught as one. **Landed 2026-09-04**
+  (memory-backed): `audit_manifest(manifest, blobs)` returns the
+  omission set with an absence proof per record, `withdraw/` included
+  (a dropped tombstone is a resurrection); the honest manifest audits
+  empty, the censor's names exactly the dropped maker's speech.
 
 Solvers read manifests, never poll maker feeds. A thin solver need not
 hydrate anything: `LazyOntoDAG` plus published summaries make broad-term
