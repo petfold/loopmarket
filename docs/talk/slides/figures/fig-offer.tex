@@ -1,0 +1,18 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}[k/.style={anchor=west, font=\footnotesize, text=soft, inner sep=0pt}, v/.style={anchor=west, font=\footnotesize, inner sep=0pt}]
+  \node[box, minimum width=76mm, minimum height=56mm, anchor=north west] (card) at (0,0) {};
+  \node[anchor=north west, font=\small\bfseries, text=accent] at (3mm,-3mm) {offer};
+  \node[anchor=north east, font=\footnotesize, text=soft] at (73mm,-3mm) {id = sha256(canonical bytes)};
+  \node[k] at (4mm,-11mm) {maker};   \node[v] at (20mm,-11mm) {amara \quad {\color{soft}(= feed owner)}};
+  \node[k] at (4mm,-16mm) {side};    \node[v] at (20mm,-16mm) {give};
+  \node[k] at (4mm,-21mm) {thing};   \node[v] at (20mm,-21mm) {\{piano-lesson\} \quad unit: course};
+  \node[k] at (4mm,-26mm) {price};   \node[v] at (20mm,-26mm) {100 \quad {\color{soft}on Amara's own scale}};
+  \node[k] at (4mm,-31mm) {service}; \node[v] at (20mm,-31mm) {2026-09-01 .. 2027-01-01};
+  \node[k] at (4mm,-36mm) {region};  \node[v] at (20mm,-36mm) {disc (46.05, 14.50), r = 5\,km};
+  \node[k] at (4mm,-41mm) {valid};   \node[v] at (20mm,-41mm) {2026-09-01 .. 2026-10-01};
+  \node[k] at (4mm,-46mm) {pins};    \node[v] at (20mm,-46mm) {catalogue root 05ca09\ldots \quad registry 4.1};
+  \node[k] at (4mm,-51mm) {carried}; \node[v] at (20mm,-51mm) {bond, oracle, arbitrator \quad {\color{soft}(enforced in P3)}};
+  \node[note, text width=74mm, anchor=north west] at (0,-60mm) {Every intention has this one form. Exactly one side is a thing, the other is the maker's own scale; a want is the same record with the side flipped.};
+\end{tikzpicture}
+\end{document}

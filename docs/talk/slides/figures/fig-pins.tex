@@ -1,0 +1,11 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}[node distance=8mm and 14mm]
+  \node[root] (cat) {catalogue root};
+  \node[root, below=of cat] (book) {book root};
+  \node[box, right=of $(cat)!0.5!(book)$] (sol) {solver};
+  \node[box, right=of sol, align=left, font=\footnotesize] (prop) {proposal\\ loop, book root, catalogue root,\\ registry version, contract version};
+  \draw[flow] (cat) -- (sol); \draw[flow] (book) -- (sol); \draw[flow] (sol) -- (prop);
+  \node[note, text width=100mm, below=6mm of book.south west, anchor=north west] {frozen snapshots in, pins out. The same book yields the same loop on every replica, and a verifier a year later can replay the decision. Reproducibility beats freshness.};
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,23 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}
+  \begin{scope}
+    \node[maker] (pub) {publisher};
+    \node[box, below=9mm of pub, fill=faint] (srv) {x402 endpoint};
+    \node[maker, below=9mm of srv] (buy) {buyer};
+    \draw[flow] (pub) -- node[lbl, right] {ACT-encrypted item} (srv);
+    \draw[flow] (buy) to[bend left=35] node[lbl, left] {stablecoin} (srv);
+    \draw[flow] (srv) to[bend left=35] node[lbl, right] {ACT grant} (buy);
+    \node[note] at (0,-40mm) {storefront: one seller, one buyer,\\ one item, one currency, one server};
+  \end{scope}
+  \begin{scope}[xshift=72mm, yshift=-16mm]
+    \node[maker] (A) at (90:18mm) {A};
+    \node[maker] (B) at (-30:18mm) {B};
+    \node[maker] (C) at (210:18mm) {C};
+    \draw[flow] (A) to[bend left=22] (B); \draw[flow] (B) to[bend left=22] (C); \draw[flow] (C) to[bend left=22] (A);
+    \node[root, right=32mm of A] (R) {one root};
+    \draw[sub] (A) -- (R); \draw[sub] (B) -- (R); \draw[sub] (C) -- (R);
+    \node[note] at (8mm,-24mm) {clearing house: $k$ parties, no common currency,\\ no maker server, one atomic commit};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

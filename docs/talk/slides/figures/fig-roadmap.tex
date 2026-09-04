@@ -1,0 +1,16 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}[ph/.style={box, minimum width=22mm, minimum height=8mm, font=\small}]
+  \node[ph, fill=accentlight, draw=accent] (p0) {P0};
+  \node[ph, fill=accentlight, draw=accent, right=4mm of p0] (p1) {P1};
+  \node[ph, right=4mm of p1] (p2) {P2};
+  \node[ph, right=4mm of p2] (p3) {P3};
+  \node[ph, right=4mm of p3] (p4) {P4};
+  \node[note, below=2mm of p0, text width=24mm] {in-memory prototype\\ done};
+  \node[note, below=2mm of p1, text width=24mm] {Swarm book, federation\\ live; read path open};
+  \node[note, below=2mm of p2, text width=24mm] {verifiable settlement on Gnosis; auctions; pricing};
+  \node[note, below=2mm of p3, text width=24mm] {guarantee fabric\\ bonds, oracles (factbond)};
+  \node[note, below=2mm of p4, text width=24mm] {privacy\\ commitments, ZK fits-within};
+  \draw[soft] (p0.north west) ++(0,3mm) -- ($(p4.north east)+(0,3mm)$);
+\end{tikzpicture}
+\end{document}

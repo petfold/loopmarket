@@ -1,0 +1,13 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}[stp/.style={box, minimum width=34mm, align=center, font=\footnotesize}]
+  \node[stp] (p) {proposal from a solver\\ loop + pins \{book root, catalogue root\}};
+  \node[stp, below=5mm of p] (s0) {pins equal ours?};
+  \node[stp, below=5mm of s0] (s1) {re-derive every leg\\ against the \emph{current} book};
+  \node[stp, below=5mm of s1] (s2) {chaining, product $>1$,\\ nothing already filled};
+  \node[stp, root, below=5mm of s2] (s3) {commit all fills + loop\\ under one root};
+  \draw[flow] (p) -- (s0); \draw[flow] (s0) -- (s1); \draw[flow] (s1) -- (s2); \draw[flow] (s2) -- (s3);
+  \foreach \n in {s0,s1,s2} { \draw[wrong] (\n.east) -- ++(10mm,0) node[lbl, right, text=warn] {refuse}; }
+  \node[note, text width=60mm, right=26mm of s1] {the solver is a hint, never an authority. Atomicity is one recordstore commit: either every leg fills or none does.};
+\end{tikzpicture}
+\end{document}

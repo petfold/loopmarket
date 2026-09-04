@@ -1,0 +1,10 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}
+  \node[maker] (A) {Amara};
+  \node[maker, right=42mm of A] (B) {Bruno};
+  \draw[flow] (A) to[bend left=28] node[lbl, above=1pt] {piano lesson} node[rate, below=2pt] {rate $0.60$} (B);
+  \draw[flow] (B) to[bend left=28] node[lbl, below=1pt] {vegetable box} node[rate, above=2pt] {rate $2.40$} (A);
+  \node[note, below=16mm of $(A)!0.5!(B)$] {$0.60 \times 2.40 = 1.44 > 1$ \quad the loop is profitable};
+\end{tikzpicture}
+\end{document}

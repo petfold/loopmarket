@@ -1,0 +1,29 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}[node distance=7mm and 6mm]
+  % services side
+  \node[cat] (teaching) {teaching};
+  \node[cat, below=of teaching] (lesson) {lesson};
+  \node[cat, below=of lesson] (music) {music-lesson};
+  \node[cat, below=of music, fill=accentlight, draw=accent] (piano) {piano-lesson};
+  \draw[sub] (lesson) -- (teaching);
+  \draw[sub] (music) -- (lesson);
+  \draw[sub] (piano) -- (music);
+  % goods side
+  \node[cat, right=38mm of teaching] (food) {food};
+  \node[cat, below left=7mm and 2mm of food] (produce) {produce};
+  \node[cat, below right=7mm and 2mm of food] (veg) {vegetable};
+  \node[cat, right=8mm of veg] (local) {local};
+  \node[cat, right=6mm of local] (weekly) {weekly};
+  \node[cat, below=14mm of veg, fill=accentlight, draw=accent] (box) {vegetable-box};
+  \node[cat, below=of produce] (tomato) {tomato};
+  \draw[sub] (produce) -- (food);
+  \draw[sub] (veg) -- (food);
+  \draw[sub] (veg) -- (produce);
+  \draw[sub] (tomato) -- (veg);
+  \draw[sub] (box) -- (produce);
+  \draw[sub] (box) -- (local);
+  \draw[sub] (box) -- (weekly);
+  \node[note, text width=100mm] at ($(piano)!0.5!(box) + (0,-14mm)$) {one relation, $\sqsubseteq$ (fits within). A want for \emph{music-lesson} is met by a give of \emph{piano-lesson}; a want for \{produce, local, weekly\} is met by \emph{vegetable-box}. Multiple parents are normal: a DAG, not a tree.};
+\end{tikzpicture}
+\end{document}

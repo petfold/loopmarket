@@ -1,0 +1,12 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}
+  \node[maker] (A) at (90:26mm) {Amara};
+  \node[maker] (C) at (-30:26mm) {Chen};
+  \node[maker] (B) at (210:26mm) {Bruno};
+  \draw[flow] (A) to[bend left=18] node[rate, sloped, above, pos=0.55] {$-\log 0.830 = +0.186$} (C);
+  \draw[flow] (C) to[bend left=18] node[rate, below] {$-\log 0.650 = +0.431$} (B);
+  \draw[flow] (B) to[bend left=18] node[rate, sloped, above, pos=0.45] {$-\log 2.080 = -0.732$} (A);
+  \node[note, text width=70mm] at (0,-36mm) {weights $w = -\log(\text{rate})$; \quad $\prod \text{rate} > 1 \iff \sum w < 0$\\ a profitable loop is a negative cycle; Bellman--Ford finds it in sorted order, deterministically};
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,21 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}[node distance=6mm and 14mm]
+  \node[maker] (a) {Amara's feed};
+  \node[maker, below=of a] (b) {Bruno's feed};
+  \node[maker, below=of b] (c) {Chen's feed};
+  \node[box, right=of b, yshift=6mm] (A) {aggregator A};
+  \node[box, right=of b, yshift=-6mm] (B) {aggregator B};
+  \node[root, right=16mm of $(A)!0.5!(B)$] (m) {book root\\{\footnotesize byte-identical}};
+  \node[box, right=of m] (s) {solver};
+  \node[box, below=10mm of s] (set) {settlement feed};
+  \node[box, below=10mm of m, xshift=-18mm] (f) {follower};
+  \foreach \x in {a,b,c} { \draw[sub] (\x) -- (A); \draw[sub] (\x) -- (B); }
+  \draw[flow] (A) -- (m); \draw[flow] (B) -- (m);
+  \draw[flow] (m) -- node[lbl, above] {snapshot} (s);
+  \draw[flow] (s) -- node[lbl, right] {atomic fills} (set);
+  \draw[sub] (set.west) to[out=180, in=-90] node[lbl, pos=0.55, below] {folds back in} (m.south);
+  \draw[flow] (m.south west) -- (f.north);
+  \node[note, text width=110mm] at (52mm,-42mm) {the fold is a pure function of the announced feeds: two aggregators, any order, one root. A reader may use a manifest as a cache or fold the feeds itself.};
+\end{tikzpicture}
+\end{document}

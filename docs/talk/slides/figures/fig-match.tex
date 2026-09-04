@@ -1,0 +1,9 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}
+  \node[box, align=left] (g) {\textbf{give} \quad Amara\\{\footnotesize \{piano-lesson\}, 100 on Amara's scale}};
+  \node[box, align=left, right=26mm of g] (w) {\textbf{want} \quad Chen\\{\footnotesize \{music-lesson\}, 83 on Chen's scale}};
+  \draw[strong] (g) -- node[lbl, above=2pt] {check\_match} node[rate, below=2pt] {rate $= 83/100$} (w);
+  \node[note, text width=96mm, below=9mm of $(g)!0.5!(w)$] {exact pairwise check: thing fits within (catalogue), windows overlap, discs intersect, both valid now, same pins $\Rightarrow$ one edge Amara $\to$ Chen in the exchange graph};
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,22 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}[shop/.style={circle, draw=ink, fill=white, minimum size=4mm, inner sep=0pt}]
+  % platform
+  \begin{scope}
+    \node[box, fill=faint] (P) {platform};
+    \foreach \a in {0,45,...,315} { \node[shop] (s\a) at (\a:14mm) {}; \draw[soft] (P) -- (s\a); }
+    \node[note] at (0,-20mm) {the platform is the market\\ rent, gate, ranking};
+  \end{scope}
+  % islands
+  \begin{scope}[xshift=50mm]
+    \foreach \a/\r in {20/11,80/13,150/9,200/13,260/10,330/12} { \node[shop] at (\a:\r mm) {}; }
+    \node[note] at (0,-20mm) {every shop an island\\ no discovery, no liquidity};
+  \end{scope}
+  % shared root
+  \begin{scope}[xshift=100mm]
+    \node[root, circle, minimum size=9mm, inner sep=0pt, font=\footnotesize] (R) {root};
+    \foreach \a in {0,45,...,315} { \node[shop] (t\a) at (\a:14mm) {}; \draw[sub] (t\a) -- (R); }
+    \node[note] at (0,-20mm) {the market is a root\\ anyone recomputes it};
+  \end{scope}
+\end{tikzpicture}
+\end{document}

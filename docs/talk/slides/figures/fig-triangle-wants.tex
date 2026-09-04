@@ -1,0 +1,13 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}
+  \node[maker, align=center] (A) at (90:26mm) {Amara\\{\footnotesize teaches piano}\\{\footnotesize wants vegetables}};
+  \node[maker, align=center] (C) at (-30:26mm) {Chen\\{\footnotesize fixes bicycles}\\{\footnotesize daughter wants piano}};
+  \node[maker, align=center] (B) at (210:26mm) {Bruno\\{\footnotesize grows vegetables}\\{\footnotesize wants bikes fixed}};
+  \draw[strong] (A) to[bend left=15] (C);
+  \draw[strong] (C) to[bend left=15] (B);
+  \draw[strong] (B) to[bend left=15] (A);
+  \draw[wrong, dashed] (A) to[bend left=22] (B);
+  \node[note, text=warn, anchor=west] at (-9mm, 4mm) {no bilateral trade};
+\end{tikzpicture}
+\end{document}

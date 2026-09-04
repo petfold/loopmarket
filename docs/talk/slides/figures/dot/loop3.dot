@@ -1,0 +1,6 @@
+digraph loop3 {
+  layout=circo; node [style="maker"]; edge [style="flow"];
+  Amara -> Chen  [label="piano lesson 0.830", style="flow"];
+  Chen  -> Bruno [label="bicycle repair 0.650", style="flow"];
+  Bruno -> Amara [label="vegetable box 2.080", style="flow"];
+}

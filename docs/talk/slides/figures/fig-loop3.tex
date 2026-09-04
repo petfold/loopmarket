@@ -1,0 +1,12 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}
+  \node[maker] (A) at (90:24mm) {Amara};
+  \node[maker] (C) at (-30:24mm) {Chen};
+  \node[maker] (B) at (210:24mm) {Bruno};
+  \draw[flow] (A) to[bend left=18] node[lbl, sloped, above] {piano lesson} node[rate, sloped, below] {$0.830$} (C);
+  \draw[flow] (C) to[bend left=18] node[lbl, below] {bicycle repair} node[rate, above] {$0.650$} (B);
+  \draw[flow] (B) to[bend left=18] node[lbl, sloped, above] {vegetable box} node[rate, sloped, below] {$2.080$} (A);
+  \node[note] at (0,-32mm) {no pair can trade \quad $0.830 \times 0.650 \times 2.080 = 1.122$ \quad surplus $12.2\%$};
+\end{tikzpicture}
+\end{document}

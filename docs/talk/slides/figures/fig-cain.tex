@@ -1,0 +1,20 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}[node distance=5mm and 12mm]
+  \node[maker] (a) {Amara};
+  \node[maker, below=of a] (b) {Bruno};
+  \node[maker, below=of b] (c) {Chen};
+  \node[box, right=of a, xshift=6mm] (A) {aggregator A};
+  \node[box, right=of b, xshift=6mm] (B) {aggregator B};
+  \node[bad, right=of c, xshift=6mm, minimum width=22mm] (C) {Cain};
+  \foreach \x in {a,b,c} { \draw[sub] (\x) -- (A); \draw[sub] (\x) -- (B); }
+  \draw[sub] (a) -- (C); \draw[sub] (b) -- (C);
+  \draw[sub, dashed, color=warn] (c) -- (C);
+  \node[lbl, text=warn, below=1mm of $(c.south east)!0.5!(C.south west)$] {announced, not folded};
+  \node[right=of A, align=left, font=\footnotesize] (mA) {announcement $\alpha$ \quad book $\beta$};
+  \node[right=of B, align=left, font=\footnotesize] (mB) {announcement $\alpha$ \quad book $\beta$};
+  \node[right=of C, align=left, font=\footnotesize] (mC) {announcement $\alpha$ \quad book {\color{warn}$\beta'$}};
+  \draw[flow] (A) -- (mA); \draw[flow] (B) -- (mB); \draw[wrong] (C) -- (mC);
+  \node[note, text width=104mm, align=left, anchor=north west] at (0,-38mm) {same inputs claimed, different fold: evidence by construction.\\ \textbf{audit}(Cain's manifest) $=$ Chen's two offers, each with an absence proof against $\beta'$ that anyone verifies with no store.\\ a solver folding the announced feeds itself lands on $\beta$.};
+\end{tikzpicture}
+\end{document}

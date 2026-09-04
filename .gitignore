@@ -4,3 +4,17 @@ __pycache__/
 dist/
 build/
 .venv/
+
+# talk build products (docs/talk/slides)
+docs/talk/slides/build/
+docs/talk/slides/figures/png/
+docs/talk/slides/figures/dot/*-body.tex
+docs/talk/slides/figures/dot/*.aux
+docs/talk/slides/figures/dot/*.log
+docs/talk/slides/figures/dot/*.err
+docs/talk/slides/*.aux
+docs/talk/slides/*.log
+docs/talk/slides/*.nav
+docs/talk/slides/*.out
+docs/talk/slides/*.snm
+docs/talk/slides/*.toc

@@ -1,0 +1,9 @@
+digraph ontodag {
+  rankdir=BT; nodesep=0.35; ranksep=0.45;
+  node [style="cat"]; edge [style="sub"];
+  "piano-lesson" [style="cat, fill=accentlight, draw=accent"];
+  "vegetable-box" [style="cat, fill=accentlight, draw=accent"];
+  "piano-lesson" -> "music-lesson" -> "lesson" -> "teaching";
+  "vegetable-box" -> "produce"; "vegetable-box" -> "local"; "vegetable-box" -> "weekly";
+  "produce" -> "food"; "vegetable" -> "food"; "vegetable" -> "produce"; "tomato" -> "vegetable";
+}

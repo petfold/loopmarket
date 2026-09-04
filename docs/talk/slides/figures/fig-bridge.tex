@@ -1,0 +1,14 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}
+  \node[maker] (A) at (90:22mm) {Amara};
+  \node[maker] (C) at (0:24mm) {Chen};
+  \node[maker] (D) at (-90:22mm) {Dora};
+  \node[maker, dashed, draw=accent, text=accent] (M) at (180:24mm) {bridge};
+  \draw[flow] (A) to[bend left=15] node[lbl, sloped, above] {piano lesson} (C);
+  \draw[flow] (C) to[bend left=15] node[lbl, sloped, below] {bicycle repair} (D);
+  \draw[flow] (D) to[bend left=15] node[lbl, sloped, below] {stablecoin} (M);
+  \draw[strong] (M) to[bend left=15] node[lbl, sloped, above] {vegetable box} (A);
+  \node[note, text width=84mm] at (0,-34mm) {Dora can only pay in money; Amara wants vegetables. A \emph{bridge} is an ordinary maker whose thing is a currency: it buys the vertical's staples for stablecoin and sells them at a spread. Almost-loops failing on a money leg become loops.};
+\end{tikzpicture}
+\end{document}

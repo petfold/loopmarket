@@ -1,0 +1,12 @@
+digraph federation {
+  rankdir=LR; nodesep=0.3; ranksep=0.6;
+  node [style="box"]; edge [style="sub"];
+  Amara [style="maker"]; Bruno [style="maker"]; Chen [style="maker"];
+  A [label="aggregator A"]; B [label="aggregator B"];
+  root [label="book root", style="root"];
+  solver; settlement [label="settlement feed"]; follower;
+  {Amara Bruno Chen} -> {A B};
+  A -> root [style="flow"]; B -> root [style="flow"];
+  root -> solver [style="flow"]; solver -> settlement [style="flow"]; settlement -> root [style="sub"];
+  root -> follower [style="flow"];
+}

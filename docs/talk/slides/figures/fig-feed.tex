@@ -1,0 +1,14 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}
+  \node[box, minimum width=26mm] (feed) {feed (owner, topic)};
+  \node[root, below=10mm of feed] (r2) {root $r_2$};
+  \node[box, left=10mm of r2, draw=soft, text=soft] (r1) {root $r_1$};
+  \node[box, left=10mm of r1, draw=soft, text=soft] (r0) {root $r_0$};
+  \draw[flow] (feed) -- node[lbl, right] {head} (r2);
+  \draw[sub] (r1) -- (r2); \draw[sub] (r0) -- (r1);
+  \node[box, below=8mm of r2, align=left, font=\footnotesize] (book) {offer/\ldots\\ sig/\ldots\\ withdraw/\ldots};
+  \draw[flow] (r2) -- (book);
+  \node[note, text width=76mm, below=6mm of book] {one maker, one feed, one signer. Identity is the feed owner address. Every version is a content-addressed root; a withdrawal is an added tombstone, never a delete; the postage stamp's TTL is the offer's real lifetime.};
+\end{tikzpicture}
+\end{document}

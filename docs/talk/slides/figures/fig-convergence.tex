@@ -1,0 +1,16 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}[node distance=6mm and 16mm]
+  \node[box, align=left, font=\footnotesize] (card) {\textbf{ERC-8004 Agent Card}\\ services:\\ \quad swarm-ai-catalog $\to$ feed owner\\ \quad loopmarket-book $\to$ feed owner};
+  \node[box, right=of card, yshift=9mm] (cat) {catalog feed\\{\footnotesize Mantaray root, items}};
+  \node[box, right=of card, yshift=-9mm] (book) {book feed\\{\footnotesize recordstore root, offers}};
+  \draw[flow] (card.east) -- (cat.west); \draw[flow] (card.east) -- (book.west);
+  \draw[strong] (cat) -- node[lbl, right, align=left] {bridge adapter:\\ item $\to$ give offer} (book);
+  \node[box, right=30mm of book, fill=faint] (x) {x402 endpoint};
+  \node[root, right=30mm of cat] (set) {settlement};
+  \draw[flow] (book) -- (x);
+  \draw[flow] (x) -- node[lbl, right, align=left] {ACT grant =\\ proof of delivery} (set);
+  \draw[sub] (set) -- (cat);
+  \node[note, text width=120mm, anchor=north west] at (0,-24mm) {one identity, two services; the exchange's catalog becomes book liquidity unchanged; x402 carries the money leg and its ACT grant is the cheapest fulfilment oracle. Kept out of the shared data model: a single currency, a discovery indexer that can omit.};
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,37 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}
+  % categories
+  \begin{scope}
+    \node[cat] (l) {lesson};
+    \node[cat, below=6mm of l] (m) {music-lesson};
+    \node[cat, below=6mm of m] (p) {piano-lesson};
+    \draw[sub] (m) -- (l); \draw[sub] (p) -- (m);
+    \node[note, below=4mm of p] {meanings};
+  \end{scope}
+  % time
+  \begin{scope}[xshift=52mm, yshift=-4mm]
+    \draw[soft] (0,0) -- (30mm,0);
+    \draw[draw=ink] (0,1mm) -- (0,-1mm) (30mm,1mm) -- (30mm,-1mm);
+    \node[note, above=1mm] at (15mm,0) {September};
+    \draw[draw=ink, line width=1.2pt] (6mm,-7mm) -- (18mm,-7mm);
+    \node[note, right, text=ink] at (19mm,-7mm) {week 37};
+    \draw[draw=accent, line width=2pt] (10mm,-14mm) -- (12mm,-14mm);
+    \node[note, right, text=accent] at (13mm,-14mm) {Tue 10--11};
+    \draw[sub] (11mm,-12.5mm) -- (11mm,-8.5mm);
+    \draw[sub] (12mm,-5.5mm) -- (12mm,-1.5mm);
+    \node[note] at (15mm,-25mm) {minutes};
+  \end{scope}
+  % space
+  \begin{scope}[xshift=100mm, yshift=-22mm]
+    \draw[soft] (0,0) rectangle (24mm,24mm);
+    \node[note, anchor=south west] at (0.5mm,24.5mm) {u2};
+    \draw[ink] (4mm,4mm) rectangle (16mm,16mm);
+    \node[note, anchor=south west, text=ink] at (4.5mm,16.5mm) {u2e};
+    \draw[accent, fill=accentlight] (7mm,7mm) rectangle (11mm,11mm);
+    \node[note, text=accent, anchor=west] at (11.5mm,9mm) {u2ed};
+    \node[note] at (12mm,-4mm) {map cells};
+  \end{scope}
+  \node[note, text width=120mm] at (62mm,-40mm) {the same relation everywhere: a piano lesson is a lesson, Tuesday 10--11 is in week 37, cell u2ed is in u2e. The catalogue orders all three by fits-within; exact time and geo checks remain the truth at match time.};
+\end{tikzpicture}
+\end{document}
