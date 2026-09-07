@@ -6,7 +6,7 @@ ILP); exact winner determination for small beats with the deterministic
 greedy as fallback; a failure-aware expected-settled-surplus objective;
 chains admitted receive-before-give only until the bond fabric exists;
 pre-commit netting under maker-declared tolerances, one netting domain per
-beat; lexicographic tie-breaking extending U6. Open here: chain atomicity
+beat; lexicographic tie-breaking extending U6; composition on the want side only — one want, many unconditional gives, the buyer pays once and clearing splits (§10, 2026-09-07). Open here: chain atomicity
 across beats; failure-prior cold start and its wash-loop interaction; the
 mixed divisible/indivisible decomposition; tolerance semantics under U9.
 
@@ -286,6 +286,99 @@ REGISTRY_VERSION, CONTRACT_VERSION}, verifiers refuse on mismatch or
 absence"). The proof machinery is `proof-fabric.md`'s — the same
 canonical-trie inclusion/absence proofs as the on-chain settlement path;
 selection merely guarantees the artifact exists per participant.
+
+## 10. Composition: one want, many gives (decided 2026-09-07)
+
+Two examples set the problem. A traveller at midnight wants a toothbrush
+at the hotel reception within thirty minutes; a petrol station 300 m away
+sells one; a courier can carry it. Six people are needed to lift a heavy
+object; the buyer wants the object lifted, not six separate labour
+contracts. In both, **the want is one thing and it takes several gives to
+satisfy it**, and the buyer should pay once, not once per give.
+
+**Rejected: the transformer as a give plus a want.** The natural first
+drawing makes the courier a maker who *wants* the brush on the forecourt
+(bid 3) and *gives* the brush at the reception (ask 12), the 9 being the
+carriage. Value-balances at every node, and it is how the talk first drew
+it. It fails on the offer model: offers are unconditional standing
+commitments, so the courier's want can be matched and cleared on its own,
+in some other loop, leaving them holding a toothbrush at midnight. Making
+the two offers clear together or not at all is a give-side bundle — the
+combinatorial door this document keeps shut (open problems, "price and
+capacity schedules": cross-offer conditional pricing excluded). Rejected
+alongside it: the buyer posting n separate wants and paying n times — n
+independent loops with no atomicity, so five lifters can clear and the
+sixth not.
+
+**Adopted: composition on the want side.** Gives stay what they are —
+unconditional, one thing each, a plain service where the thing is work:
+the station gives *brush at the forecourt* (3); the courier gives
+*transport of a small item, forecourt cell → reception cell, 00:15 → 00:35*
+(9); each lifter gives *one person-hour of lifting at place P, time T*.
+The conjunction lives in the single want, which is one offer and
+therefore one fill decision, so all-or-nothing is free: it is U1's "one
+offer, one fill" doing its ordinary job. Two composition rules make a set
+of gives satisfy a want:
+
+- **By operator, along a dimension.** Transport shifts the place
+  coordinate, storage shifts the time coordinate, exchange shifts the
+  denomination. `brush@forecourt ⊗ transport(forecourt→reception,
+  00:15→00:35) ⊑ brush@reception@00:35`. The operator's give names its
+  input and output coordinates; matching checks that the input fits the
+  other give and the output fits the want. This needs spacetime as
+  dimension terms in the shared catalogue (P1's open item;
+  `ontodag-coupling.md` §5) — the same terms one-query candidate
+  generation needs, so it is one investment, not two.
+- **By aggregation, along quantity.** Σ gives ⊑ want when the gives are
+  the same category and quantities add: six person-hours of lifting. The
+  want carries a minimum quantity (fill-or-kill at ≥ 6); each give is
+  unconditional and indivisible at one. This is the flow LP of §2 with a
+  lower bound on one want, nothing more.
+
+**Paying once.** The buyer's give is money, and money is divisible, so
+one give of "up to 12" (or "up to 60") is split across the fills at the
+per-leg clearing prices `P2-clearing-pricing.md` already defines — 3 and 9
+here; whatever the six asks and the equal log-surplus split produce there.
+No new record on the buyer's side: partial fills of a divisible give are
+the qty-as-flow-capacity mechanism of §2, and the settled-quantities v3
+record (`P2-clearing-pricing.md` §8) already has to grow per-fill
+quantities for it.
+
+**Shape.** The result is not a cycle and does not decompose into cycles:
+the buyer has one inflow (the composed thing) and k outflows (the split
+payment), or k inflows and one outflow if you count the gives. It is a
+balanced flow with a hub node. The principle the essay states as "the
+numbers cancel in-loop" is exactly "the numbers cancel at every node, on
+that node's own scale"; a simple cycle is the case where every maker has
+one in and one out. §2's flow formulation already carries this; §1's
+packing gains hyper-legs (one want variable bound to several give
+variables), which is a constraint shape the ILP handles natively and the
+P0 Bellman–Ford solver cannot see at all — a solver that composes is a
+different species, and per U3 clearing re-verifies the composition
+(operator input/output fit, quantity sum, per-node balance) exactly as it
+re-verifies a leg.
+
+**What changes where.** Matching: `check_match` stays the pairwise truth
+for simple legs; a `check_composition(want, gives)` sits beside it,
+re-run by clearing. Records: a `fill/` of a composed want must name every
+give it consumed (today it names only the loop); a give's fill gains a
+quantity. Catalogue: dimension operators as terms. Pricing: the surplus
+split runs over k+1 nodes with the hub counted once. Settlement risk on
+composed legs: with the service model nobody is merchant of record — the
+station is paid for a brush on the forecourt, the courier for carriage —
+so the buyer bears the courier's non-delivery, priced by P3's bonds like
+any other leg; the reseller routing (courier buys, then sells delivered)
+is the *maker's* choice to offer, and then the courier bears it. Both are
+expressible; the protocol prefers neither.
+
+**Open under this heading.** Operator algebra beyond one hop (container
+then van: two place operators compose; the intermediate coordinate is a
+free variable the solver binds); whether a want may name *alternative*
+compositions (any saw, or a jigsaw plus a blade) — an OR on the want side
+that the cone intersection already gives for categories but not for
+operators; and the recall of composition search — candidate generation
+over sets is the combinatorial part this document otherwise avoids, and
+it is the solvers' problem to be good at, not clearing's.
 
 ## Gates
 

@@ -1,16 +1,18 @@
 \input{preamble}
 \begin{document}
 \begin{tikzpicture}
-  % A loop with a delivery leg: the courier's offer moves the same thing
-  % in place and time. Four legs, three makers; every maker nets to zero
-  % on its own scale. A simple cycle is only the smallest case.
-  \node[maker, align=center] (T) at (90:24mm) {traveller\\{\footnotesize wants toothbrush @ reception, by 00:35}};
-  \node[maker, align=center] (S) at (210:30mm) {petrol station\\{\footnotesize gives toothbrush @ forecourt}};
-  \node[maker, align=center] (C) at (-30:30mm) {courier\\{\footnotesize gives toothbrush @ reception, 00:35}\\{\footnotesize wants toothbrush @ forecourt, 00:15}};
-  \draw[flow] (T) to[bend right=14] node[lbl, sloped, above] {stablecoin} (S);
-  \draw[flow] (T) to[bend right=10] node[lbl, sloped, above, pos=0.4] {stablecoin} (C);
-  \draw[flow] (S) to[bend right=14] node[lbl, below] {toothbrush, forecourt, 00:15} (C);
-  \draw[strong] (C.east) to[bend right=38] node[lbl, sloped, above, pos=0.5] {toothbrush, reception, 00:35} (T.east);
-  \node[note, text width=110mm] at (0,-40mm) {The courier's give and want name the \emph{same} thing at two places and times: delivery is an offer that moves a thing through space and time. Four legs; each maker's legs cancel on its own scale; clearing commits all four or none. A two- or three-leg cycle is only the smallest case.};
+  % Composition on the want side: every give is unconditional and names one
+  % plain thing (the courier sells carriage, not toothbrushes); the
+  % conjunction lives in the traveller's single want; the money give is
+  % divisible and clearing splits it. Not a cycle: a balanced flow with a hub.
+  \node[maker, align=center] (T) at (0,0) {traveller\\{\footnotesize wants toothbrush @ reception by 00:35}\\{\footnotesize gives up to 12 stablecoin (divisible)}};
+  \node[maker, align=center] (S) at (-58mm,-34mm) {petrol station\\{\footnotesize gives toothbrush @ forecourt \hfill 3}};
+  \node[maker, align=center] (C) at (58mm,-34mm) {courier\\{\footnotesize gives transport, forecourt $\to$ reception,}\\{\footnotesize 00:15 $\to$ 00:35 \hfill 9}};
+  \draw[flow] (T.west) to[bend right=35] node[lbl, sloped, above] {stablecoin 3} (S.north);
+  \draw[flow] (T.east) to[bend left=35] node[lbl, sloped, above] {stablecoin 9} (C.north);
+  \draw[strong] (S.north east) -- node[lbl, sloped, below, pos=0.5] {toothbrush @ forecourt} (T.south west);
+  \draw[strong] (C.north west) -- node[lbl, sloped, below, pos=0.5] {transport} (T.south east);
+  \node[note, text=accent, font=\footnotesize] at (0,-42mm) {brush @ forecourt $\otimes$ transport $\;\sqsubseteq\;$ brush @ reception};
+  \node[note, text width=118mm] at (0,-56mm) {Every give is unconditional and names one plain thing; the courier sells carriage, not toothbrushes. The conjunction lives in the traveller's \emph{one} want, so all-or-nothing is free. The traveller pays once: the money give is divisible and clearing splits it at the per-leg prices. Not a cycle: a balanced flow with a hub. Every node nets to zero on its own scale.};
 \end{tikzpicture}
 \end{document}

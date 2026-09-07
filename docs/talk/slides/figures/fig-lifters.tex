@@ -1,0 +1,16 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}
+  % Composition by aggregation: six unconditional gives of one person-hour
+  % each satisfy one want with a minimum quantity of six. The buyer pays once.
+  \node[maker, align=center, minimum width=40mm] (B) at (0,0) {buyer\\{\footnotesize wants 6 person-hours of lifting @ P, T}\\{\footnotesize all six or none}\\{\footnotesize gives up to 60 stablecoin (divisible)}};
+  \foreach \i/\a in {1/90,2/30,3/-30,4/-90,5/-150,6/150} {
+    \node[maker, font=\footnotesize, minimum width=20mm, align=center] (W\i) at (\a:36mm) {lifter \i\\{\scriptsize 1 person-hour @ P, T}};
+    \draw[strong] (W\i) to[bend left=12] (B);
+    \draw[flow] (B) to[bend left=12] (W\i);
+  }
+  \node[lbl, text=accent] at ($(W2)!0.5!(B) + (2mm,4mm)$) {labour};
+  \node[lbl] at ($(W2)!0.5!(B) + (7mm,-4mm)$) {pay};
+  \node[note, text width=116mm] at (0,-50mm) {Six unconditional gives of one person-hour each; one want with a minimum quantity of six, so five lifters clear nothing. One divisible money give, split six ways at the clearing prices. Six two-leg trades joined at the hub; a loop is the smallest case of a balanced flow.};
+\end{tikzpicture}
+\end{document}
