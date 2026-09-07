@@ -155,6 +155,24 @@ the computed order participates in canonical reduction. None of this
 moves the truth: `check_match` stays exact and self-contained; cells and
 cones remain recall-safe hints.
 
+**Update 2026-09-07 — one query, not three.** Keeping description, time
+and place as separate *dimensions* is right (each has its own kind, its
+own arithmetic and its own match relation: containment for meaning,
+overlap for spacetime). Keeping them as separate *searches* is not:
+`DimensionIndex.candidates` runs `get(concepts)` and
+`get_overlapping(window)` to completion and intersects in Python, and
+ontodag's planner — smallest cone first, walk-vs-probe from the exact
+running result, stop on empty — only ever sees one call at a time. So a
+category offered in few windows or regions cannot cut the search short,
+and place, decided by the disc after the fact, cannot prune at all. The
+fix is upstream and query-side only: overlap-mode terms inside `get`
+(ontodag #14; the overlap result is already a computed cone, the planner
+just never received it). Then `candidates` is one call, and the cell or
+region term joins it when spacetime terms enter the shared catalogue. A
+cost change, never a truth change: recall-exactness against the baseline
+and `check_match` stay the guards. Plan home: `docs/plans/ontodag-coupling.md`
+§5 and the §7 tripwire row.
+
 ## 4. The catalogue (ontology.py)
 
 `Ontology` wraps an `OntoDAG` with the one primitive matching needs:

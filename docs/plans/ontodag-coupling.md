@@ -280,6 +280,17 @@ system will ever have:
   deliberately stays with the exact check (sibling geohash cells share no
   prefix — a cell filter loses recall) until region-node coverage queries
   change that arithmetic.
+  **One query, not three** (Peter, 2026-09-07): the generator's current
+  shape — `get(concepts)`, then `get_overlapping(window)`, then a Python
+  `&` — forfeits ontodag's planner, which orders cones smallest-first,
+  chooses walk-vs-probe from the exact running result and stops on empty,
+  but only *within one call*. A category offered in few windows or regions
+  should let the search stop after its small cone; today the overlap side
+  enumerates every overlapping anchor's cone regardless. Asked upstream as
+  overlap-mode terms inside `get` (§7 row, ontodag #14); `candidates`
+  then becomes one call, and place joins it when §2's cell/region terms
+  are in the shared catalogue — three-way pruning in one plan. Cost only:
+  recall-exactness and `check_match` are untouched.
 - **Feed the parked machinery, don't pre-build it.** Semantic codes /
   bitmap cone indexes are parked upstream behind explicit gates (hot
   query workload, RAM-exceeding graphs, thin clients), the admission
@@ -358,6 +369,7 @@ implementation with its own bugs and no treaty.
 | Disjointness / negation       | concept-level "conflict" reporting demand | Within-dimension only (decidable, enforced); factbond bonded sibling partitions (§6). |
 | ZK proofs over private stores | "loopmarket-shaped counterparty" — P4 by name | Nothing built; `P4-privacy.md` owns the firing. Noted: exact rationals + one primitive = circuit-friendly. |
 | Semantic codes / bitmaps      | logged hot solver query-sets          | **Logging on from day one** (§5); cone summaries + `DimensionIndex` meanwhile. |
+| Overlap terms in the query planner | **fired 2026-09-07** (Peter): `DimensionIndex.candidates` runs `get(concepts)` and `get_overlapping(window)` to completion and intersects in Python, so the planner's smallest-first / early-stop logic never crosses dimensions — a category offered only in a few windows or regions can't cut the search short | **Asked upstream** — [ontodag #14](https://github.com/petfold/ontodag/issues/14): `get(terms, overlapping=[...])`, the overlap cone planned with the containment cones (never pre-intersected as a meet). Meanwhile: two queries + `&`, recall-exact, a cost loss only. Lands with §5's indexed-generator wiring (P1); place joins the same call once cell/region terms are shared (§2). |
 | Chunk layout / leaf-packing   | hydration cost breaching P1 latency gate | Hydrate-once + `get_many` batching; published summaries. |
 
 ## Gates
