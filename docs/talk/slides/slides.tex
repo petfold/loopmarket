@@ -212,6 +212,16 @@
   \fig[0.9]{fig-settlement}
 \end{frame}
 
+\begin{frame}{Who commits? Not the solver}
+  \fig[0.98]{fig-commit}
+  \vspace{2mm}
+  \small
+  \begin{itemize}
+    \item An offer is consumed by a \texttt{fill/} record pointing at its loop; the offer itself is never edited or deleted. A stale solver proposes over a filled offer and is simply refused.
+    \item U11: after every fold, each loop has a fill for every leg and each fill points at a present loop.
+  \end{itemize}
+\end{frame}
+
 \begin{frame}{Where verification cannot reach: factbond}
   \begin{center}
     \includegraphics[width=0.95\linewidth, height=0.56\textheight, keepaspectratio]{fig-factbond}

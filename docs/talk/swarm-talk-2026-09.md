@@ -9,15 +9,15 @@ Arc (four parts, ~30 minutes):
 | # | Part | Minutes | Slides |
 |---|------|--------:|-------:|
 | 1 | What is wrong with internet commerce | 6 | 1–4 |
-| 2 | A general solution: the loop economy | 10 | 5–20 |
-| 3 | What is built, one demo, what is planned | 8 | 21–26 |
-| 4 | The Swarm AI Data Exchange and loopmarket: differences, convergence | 8 | 27–31 |
-| — | Close and asks to the room | 1 | 32 |
+| 2 | A general solution: the loop economy | 10 | 5–21 |
+| 3 | What is built, one demo, what is planned | 8 | 22–27 |
+| 4 | The Swarm AI Data Exchange and loopmarket: differences, convergence | 8 | 28–32 |
+| — | Close and asks to the room | 1 | 33 |
 
 Draft 2 runs long for 30 minutes: part 2 grew from 4 slides to 16 at
 the owner's request (barter first, private scales, OntoDAG on its own,
 longer loops, solvers, factbond). Cut candidates if time is short:
-slides 12 (fits-within, three ways), 16 (multi-hop chain), 20 (bridge:
+slides 12 (fits-within, three ways), 16 (multi-hop chain), 21 (bridge:
 already covered by the exchange leg on 16).
 
 Conventions in this draft: **bold** lines are what goes on the slide;
@@ -238,7 +238,26 @@ baseline in the repo is deterministic and is the reserve bid.**
 re-checks the product, and commits all legs atomically — one root.**
 **A follower with nothing but an address reads the settled world back.**
 
-### Slide 19 — Where verification cannot reach: factbond
+### Slide 19 — Who commits? Not the solver
+
+**The maker signs the offer once and may go offline: a signed offer is a
+standing commitment. The solver only proposes. Settlement is the one
+writer of `fill/` and `loop/`: one commit, one root. Everyone else folds
+the settlement feed like any maker's.**
+**Today settlement is one process with its own signed feed — the one
+point of trust. In P2 it is a contract on Gnosis: the winning solver
+submits the transaction, the contract verifies inclusion and absence
+under the pinned root and records the fills.**
+**Races: today first valid wins; P2 packs offer-disjoint winners per
+beat. A consumed offer is a fill record, never a delete; a stale solver
+is simply refused (U11 keeps loops and fills consistent after folds).**
+
+    This answers the question the room will ask after the settlement
+    slide: "so who actually commits?" Close with: the commit records
+    obligations; the goods still have to move, and that is what P3's
+    bonds, oracles and factbond certificates secure.
+
+### Slide 20 — Where verification cannot reach: factbond
 
 **A bonded assertion: one party posts a claim backed by a bond sized to
 the cost of adjudication; the world is the latent counterparty during a
@@ -254,7 +273,7 @@ attestations ("delivered at reception, 00:21"), on identity facts.**
     needs this introduction. Prediction markets cannot scale down to
     millions of near-certain mundane facts; bonded assertions can.
 
-### Slide 20 — Money is just another offer
+### Slide 21 — Money is just another offer
 
 **Money enters as a *bridge offer*: a maker whose thing is a currency.
 Bridges turn almost-loops failing only on a money leg into loops.**
@@ -267,7 +286,7 @@ Bridges turn almost-loops failing only on a money leg into loops.**
 
 ## Part 3 — What is built, one demo, what is planned (8 min)
 
-### Slide 21 — The stack, and why it is Swarm-shaped
+### Slide 22 — The stack, and why it is Swarm-shaped
 
 **loopmarket → ontodag → recordstore → Swarm.**
 **Book = a versioned key-value keyspace with canonical roots (equal
@@ -285,7 +304,7 @@ never a delete — the book cleans itself.**
     and GSOC reception; the book head lives in a feed so a reader needs
     (owner, topic) and nothing else.
 
-### Slide 22 — Invariants the code enforces
+### Slide 23 — Invariants the code enforces
 
 **U1 uniform offer · U2 immutable, content-addressed · U3 settlement
 trusts no solver · U4 solve against pinned roots · U5 positive rates
@@ -297,7 +316,7 @@ U11 no partially-filled loop survives a merge.**
     break", and that the same discipline runs across ontodag and
     recordstore.
 
-### Slide 23 — `[demo]` The federated book, live on Bee (≈ 3 min)
+### Slide 24 — `[demo]` The federated book, live on Bee (≈ 3 min)
 
 **Three makers, three feeds. Two honest aggregators fold in different
 orders — byte-identical manifests. Mallory forges an offer in Amara's
@@ -320,7 +339,7 @@ follower reads six atomic fills from the manifest alone.**
     Line to say: "an aggregator is whoever happened to compute the
     root; the root is the market."
 
-### Slide 24 — Are aggregators necessary? (an honest open question)
+### Slide 25 — Are aggregators necessary? (an honest open question)
 
 **Not for correctness, trust or permission — the fold is pure; any
 reader can recompute it.**
@@ -339,7 +358,7 @@ as the floor, GSOC as the fast path), never via a party who can omit.**
     problem (every chunk carries its uploader's stamp; readers need
     none); delivery guarantees and light-node reception are.
 
-### Slide 25 — Who pays for what
+### Slide 26 — Who pays for what
 
 **Makers pay postage for their own book (the stamp's TTL is the offer's
 lifetime) and never gas. Solvers pay settlement gas and earn the spread.
@@ -351,7 +370,7 @@ nothing: no fees, no token, no rewards, no treasury.**
     the system it games. Revisit triggers: solver monoculture, aggregator
     scarcity, measured statistics pollution.
 
-### Slide 26 — Roadmap
+### Slide 27 — Roadmap
 
 **P0 in-memory prototype — done. P1 Swarm book — federation live; open:
 read-path decentralization, GSOC announcements, latency/durability
@@ -371,7 +390,7 @@ catalogue edges.**
 
 ## Part 4 — The Swarm AI Data Exchange and loopmarket (9 min)
 
-### Slide 27 — Same substrate, same idioms
+### Slide 28 — Same substrate, same idioms
 
 **Both: content-addressed catalogues on Swarm; an atomic root in a
 feed; feed owner as identity; a light node suffices to read.**
@@ -388,7 +407,7 @@ aggregator manifests; settlement feed.**
     architectural choices at the storage layer. The differences are one
     level up."
 
-### Slide 28 — The differences
+### Slide 29 — The differences
 
 | | Swarm AI Data Exchange | loopmarket |
 |---|---|---|
@@ -406,7 +425,7 @@ aggregator manifests; settlement feed.**
     "a storefront and a clearing house — and the clearing house is the
     bigger problem, because it creates trades that a storefront cannot."
 
-### Slide 29 — Why not reputation-based
+### Slide 30 — Why not reputation-based
 
 **eBay: 0.3% of transactions rated negative, yet P(negative | partner
 rated negative) > 37% — retaliation suppressed truthful feedback until
@@ -422,7 +441,7 @@ Reputation is a *statistic you derive*, not an institution you believe.**
     unnecessary where it can (settlement recomputes everything) and
     expensive to game where it cannot (bonds).
 
-### Slide 30 — x402 and ERC-8004 fit loopmarket — as legs, identities and proofs
+### Slide 31 — x402 and ERC-8004 fit loopmarket — as legs, identities and proofs
 
 **x402 is a bilateral rail; it cannot settle a k-leg loop. It fits
 three places the plan already has: the stablecoin leg of a bridge offer
@@ -441,7 +460,7 @@ validation events with proofs, not opinions.**
     Keep the tone "and", not "instead". The line: "x402 for the money
     leg, loopmarket for the parts x402 cannot see."
 
-### Slide 31 — How we could converge
+### Slide 32 — How we could converge
 
 **1. Shared identity: one ERC-8004 Agent Card carrying both a
 `swarm-ai-catalog` and a `loopmarket-book` service.**
@@ -471,7 +490,7 @@ a number on *some* scale; let the scale be a field.**
 
 ## Close (2 min)
 
-### Slide 32 — Asks to the room
+### Slide 33 — Asks to the room
 
 **GSOC reception from light nodes; pub/sub timing.**
 **A services layer for ontodag's core pack (the goods are in; repair,
@@ -480,7 +499,7 @@ tutoring, cleaning are not).**
 wedge.**
 **Repos: loopmarket, ontodag, recordstore, factbond (github.com/petfold).**
 
-    End on the sentence from slide 23: the root is the market; Swarm
+    End on the sentence from slide 24: the root is the market; Swarm
     holds the books; the chain is the floor for discovery; the one
     remaining point of trust is settlement, and it is next.
 
@@ -507,5 +526,5 @@ wedge.**
 - [x] take-rate figures on slide 2: app stores 15–30%, Amazon referral 8–15% + fulfilment/ads, ~50% all-in (Marketplace Pulse); the `[verify]` tag is gone from the slide.
 - [ ] Record the in-memory federation demo (~5 s) and the live run (minutes) as terminal recordings; decide which to show.
 - [ ] Decide whether to show the triangle as a live 30-second run or as static output on slide 13.
-- [ ] Read `swarm-ai-data-exchange/documents/...design-v1...md` §10–11 once more for the exact purchase-flow wording on slide 27.
-- [ ] Check with Solar Punk whether the Marketplace Event Collector is planned as a required discovery component (slide 31, item 5) before saying so on stage.
+- [ ] Read `swarm-ai-data-exchange/documents/...design-v1...md` §10–11 once more for the exact purchase-flow wording on slide 28.
+- [ ] Check with Solar Punk whether the Marketplace Event Collector is planned as a required discovery component (slide 32, item 5) before saying so on stage.
