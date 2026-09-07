@@ -291,6 +291,22 @@ system will ever have:
   then becomes one call, and place joins it when §2's cell/region terms
   are in the shared catalogue — three-way pruning in one plan. Cost only:
   recall-exactness and `check_match` are untouched.
+- **One intersection engine** (Peter, 2026-09-07). ontodag is the master
+  of every set-valued intersection, optimisations included; loopmarket
+  does **no set arithmetic on the answer** — it issues one query per want,
+  then runs the exact pairwise `check_match` on each candidate (point-
+  valued truth, U3's requirement, not an intersection). Two consequences.
+  (i) `candidates`' remaining `& self._filed` filter exists only because
+  `get` returns category and parametric nodes alongside the offers below
+  them; asked upstream as an items-only flag (ontodag #14, second ask),
+  after which `candidates` is exactly one `get`. (ii) The registry's
+  `idx/{c,t,g}` prefixes — day buckets and geohash chains over the same
+  three dimensions, aggregator-derived since 2026-08-21, read by nothing —
+  are a second intersection machine and must never grow a query path.
+  **Decision: retire them** when §2's spacetime terms enter the shared
+  catalogue; the manifest's `index_root` then carries `DimensionIndex`-
+  shaped derived state (published cone summaries), not a parallel index
+  of the same facts (`P1-federated-book.md` §1, §2).
 - **Feed the parked machinery, don't pre-build it.** Semantic codes /
   bitmap cone indexes are parked upstream behind explicit gates (hot
   query workload, RAM-exceeding graphs, thin clients), the admission

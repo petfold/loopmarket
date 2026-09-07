@@ -80,6 +80,13 @@ P1: **dropped from maker books**, reborn as the aggregator's *derived*
 index under `index_root` (§2) — the "wired" half of wired-or-dropped, at
 the layer that actually queries. **Landed 2026-08-21** (`index_offers`;
 maker books write `offer/`, `sig/`, `withdraw/` only).
+**Retirement decided 2026-09-07** (`ontodag-coupling.md` §5, "one
+intersection engine"): `idx/{c,t,g}` is a second index of the three
+dimensions the `DimensionIndex` already hands to ontodag's planner, and
+still read by nothing. It gets no query path; it is dropped from the
+aggregator too once spacetime terms enter the shared catalogue (ontodag
+#14 lands the one-query generator), and `index_root` carries the
+`DimensionIndex`'s published sibling instead.
 
 ## 2. The aggregator and the manifest tuple
 
@@ -112,7 +119,10 @@ pinned:
 - `index_root` — derived query structures: the book-side cone-summary
   analogue, the `DimensionIndex`'s published sibling. Regenerable from
   `book_root`, short-TTL stamped (§6), ignored when stale, never merged —
-  the derived-values-never-merge rule ontodag learned from counts.
+  the derived-values-never-merge rule ontodag learned from counts. Not
+  `idx/{c,t,g}` in the long run: that prefix index retires (§1,
+  2026-09-07) — one intersection engine, no parallel index of the same
+  facts.
 - `announcement_root` (added 2026-08-21, with the item-4
   aggregator-revenue ruling) — a commitment to the announced input set
   this fold consumed. Completeness becomes first-class: two manifests are
