@@ -1,4 +1,4 @@
-"""P1's headline, as a reproducible test: the triangle demo settling on a
+"""P1's headline, as a reproducible test: the triangle demo clearing on a
 LIVE Swarm book — blobs on a Bee node, the book's head in a signed feed,
 the catalogue equally on Swarm with offers pinning its root end-to-end.
 
@@ -18,7 +18,7 @@ import time
 import unittest
 
 from loopmarket import (
-    GeoDisc, MockSettlement, Ontology, SolverAgent, Thing, TimeWindow,
+    GeoDisc, MockClearing, Ontology, SolverAgent, Thing, TimeWindow,
     give, want,
 )
 from loopmarket.registry import swarm_offer_book
@@ -41,7 +41,7 @@ CATALOGUE = {
     "set BEE_API, BEE_BATCH and BEE_SIGNER to run the live Swarm book test",
 )
 class TestTriangleOnLiveSwarmBook(unittest.TestCase):
-    def test_publish_solve_settle_and_follow(self):
+    def test_publish_solve_clear_and_follow(self):
         from recordstore import swarm_store
 
         topic = f"loopbook-{int(time.time())}"
@@ -81,26 +81,26 @@ class TestTriangleOnLiveSwarmBook(unittest.TestCase):
         self.assertTrue(book_root)
 
         agent = SolverAgent(registry=registry, ontology=catalogue,
-                            settlement=MockSettlement(registry, catalogue),
+                            clearing=MockClearing(registry, catalogue),
                             solver_id="live-solver")
         receipts = agent.step()
-        settled = [r for r in receipts if r.accepted]
-        self.assertEqual(len(settled), 1, receipts)
-        loop_record = registry.store.get(f"loop/{settled[0].loop_id}")
+        cleared = [r for r in receipts if r.accepted]
+        self.assertEqual(len(cleared), 1, receipts)
+        loop_record = registry.store.get(f"loop/{cleared[0].loop_id}")
         self.assertEqual(len(loop_record["legs"]), 3)
         self.assertGreater(loop_record["surplus"], 0)
 
         # Scorched-earth follow: a brand-new registry over the same feed —
         # no shared Python state, the head comes back from the network.
         again = swarm_offer_book(topic, **swarm)
-        again_loop = again.store.get(f"loop/{settled[0].loop_id}")
+        again_loop = again.store.get(f"loop/{cleared[0].loop_id}")
         self.assertEqual(again_loop["legs"], loop_record["legs"])
         fills = list(again.store.keys("fill/"))
         self.assertEqual(len(fills), 6)   # all six offers claimed atomically
 
-        # And the settled book yields nothing on a second pass.
+        # And the cleared book yields nothing on a second pass.
         second = SolverAgent(registry=again, ontology=catalogue,
-                             settlement=MockSettlement(again, catalogue),
+                             clearing=MockClearing(again, catalogue),
                              solver_id="second-solver")
         self.assertEqual([r for r in second.step() if r.accepted], [])
 

@@ -7,6 +7,6 @@
   \node[maker, align=left, text width=30mm, right=40mm of A] (B) {\textbf{Bruno}\\[1pt]{\footnotesize gives 6 oranges}\\{\footnotesize wants 4 apples}};
   \draw[flow] (A.15) to[bend left=22] node[lbl, above=1pt] {apples} (B.165);
   \draw[flow] (B.195) to[bend left=22] node[lbl, below=1pt] {oranges} (A.-15);
-  \node[note, anchor=north, text width=100mm] at ($(A.south)!0.5!(B.south) + (0,-7mm)$) {Walk one apple round the loop: Bruno turns it into $6/4 = 1.5$ oranges, Amara turns those back into $1.5 \times 5/4 = 1.875$ apples.\\[2pt] More comes back than went out $\Rightarrow$ the loop closes, with room to spare.\\[2pt] One settlement that satisfies both offers: \textbf{4 apples for 5 oranges}.};
+  \node[note, anchor=north, text width=100mm] at ($(A.south)!0.5!(B.south) + (0,-7mm)$) {Walk one apple round the loop: Bruno turns it into $6/4 = 1.5$ oranges, Amara turns those back into $1.5 \times 5/4 = 1.875$ apples.\\[2pt] More comes back than went out $\Rightarrow$ the loop closes, with room to spare.\\[2pt] One exchange that satisfies both offers: \textbf{4 apples for 5 oranges}.};
 \end{tikzpicture}
 \end{document}

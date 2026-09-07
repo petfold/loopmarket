@@ -1,4 +1,4 @@
-"""The federated book, end to end: publish → fold → solve → settle → follow.
+"""The federated book, end to end: publish → fold → solve → clear → follow.
 
 The catalogue is ontodag's shipped `core` pack (4,000+ consensus categories)
 plus a small local services layer, committed to a pinned root every offer
@@ -9,10 +9,10 @@ byte-identical manifests. A third aggregator (Cain) censors Chen: it
 announces her book and folds nothing of it — the audit turns that into
 absence proofs from Cain's own manifest, and a solver that folds the
 announced maker books itself recovers the honest fold byte for byte (T14).
-A solver settles the triangle against the fold; settlement bases its *own*
+A solver clears the triangle against the fold; clearing bases its *own*
 book on the fold (provably — the re-commit reproduces the fold's root);
-both honest aggregators fold the settlement back in; a follower reads the
-settled world from the manifest alone.
+both honest aggregators fold the clearing back in; a follower reads the
+cleared world from the manifest alone.
 
 `LOOP_CORE=0` skips the core pack (an eleven-category toy catalogue instead;
 faster on a slow node).
@@ -34,10 +34,10 @@ import time
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Aggregator, GeoDisc, MockSettlement, OfferRegistry, Ontology,
+    Aggregator, GeoDisc, MockClearing, OfferRegistry, Ontology,
     SolverAgent, Thing, TimeWindow, audit_manifest, give, want,
 )
-from loopmarket.federation import SETTLEMENT
+from loopmarket.federation import CLEARING
 
 BEE_API = os.environ.get("BEE_API")
 BEE_BATCH = os.environ.get("BEE_BATCH")
@@ -277,7 +277,7 @@ print(f"honest aggregator A audits clean: {audit_manifest(m_a, BLOB_SPACE) == []
 
 censored_view = OfferRegistry(RecordStore.at(m_c.book_root, BLOB_SPACE))
 lost = SolverAgent(censored_view, catalogue,
-                   MockSettlement(censored_view, catalogue), solver_id="trusting")
+                   MockClearing(censored_view, catalogue), solver_id="trusting")
 print(f"a solver trusting Cain's manifest finds "
       f"{len(lost.find_loops(now=now)[1])} loops (the triangle needs chen)")
 
@@ -304,32 +304,32 @@ print(f"the forgery was refused: \"{reason}\"")
 print(f"bruno's tombstone closed his regretted offer: "
       f"{folded.is_withdrawn(regret)}\n")
 
-# --- settlement is its own writer, provably based on the fold -----------------
+# --- clearing is its own writer, provably based on the fold -----------------
 
-settle = OfferRegistry(
-    feed_store("settlement", signer=secrets.token_hex(32)) if LIVE
+clearing = OfferRegistry(
+    feed_store("clearing", signer=secrets.token_hex(32)) if LIVE
     else fresh_store())
-settle.absorb(folded)
-base = committed(settle)
-print(f"settlement based its own book on the fold — re-commit "
+clearing.absorb(folded)
+base = committed(clearing)
+print(f"clearing based its own book on the fold — re-commit "
       f"reproduces the root: {base == m_a.book_root}")
 
-agent = SolverAgent(settle, catalogue, MockSettlement(settle, catalogue),
+agent = SolverAgent(clearing, catalogue, MockClearing(clearing, catalogue),
                     solver_id="demo-solver")
 receipts = [r for r in agent.step(now=now) if r.accepted]
-loop_rec = settle.store.get(f"loop/{receipts[0].loop_id}")
-print(f"the solver settled 1 loop, surplus {100 * loop_rec['surplus']:.2f}%:")
+loop_rec = clearing.store.get(f"loop/{receipts[0].loop_id}")
+print(f"the solver cleared 1 loop, surplus {100 * loop_rec['surplus']:.2f}%:")
 for leg in loop_rec["legs"]:
-    giver = name_of.get(settle.get(leg["give"]).maker, "?")
-    taker = name_of.get(settle.get(leg["want"]).maker, "?")
+    giver = name_of.get(clearing.get(leg["give"]).maker, "?")
+    taker = name_of.get(clearing.get(leg["want"]).maker, "?")
     print(f"   {giver:>7} → {taker:<7} rate {leg['rate']:.3f}")
 
-# --- both aggregators fold settlement back in; a follower reads it all --------
+# --- both aggregators fold clearing back in; a follower reads it all --------
 
 for agg in (agg_a, agg_b):
-    agg.announce("settlement-0", settle.store, role=SETTLEMENT)
+    agg.announce("clearing-0", clearing.store, role=CLEARING)
 m_a2, m_b2 = agg_a.fold(), agg_b.fold()
-print(f"\nre-fold with the settlement book: identical again: "
+print(f"\nre-fold with the clearing book: identical again: "
       f"{m_a2.book_root == m_b2.book_root}")
 
 follower = OfferRegistry(RecordStore.at(m_a2.book_root, BLOB_SPACE))
@@ -337,7 +337,7 @@ fills = list(follower.store.keys("fill/"))
 print(f"a follower, given only the manifest, reads the loop and "
       f"{len(fills)} atomic fills")
 second = SolverAgent(follower, catalogue,
-                     MockSettlement(follower, catalogue), solver_id="second")
-print(f"second solver pass over the settled fold finds: "
+                     MockClearing(follower, catalogue), solver_id="second")
+print(f"second solver pass over the cleared fold finds: "
       f"{len([r for r in second.step(now=now) if r.accepted])} loops\n")
 print("=== done ===\n")

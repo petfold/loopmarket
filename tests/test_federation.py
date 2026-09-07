@@ -2,7 +2,7 @@
 
 Memory-backed variants of the P1 gates (docs/plans/P1-federated-book.md):
 byte-identical manifests across aggregators folding in different orders,
-one loop solved and settled over the fold, a scorched-earth follower
+one loop solved and cleared over the fold, a scorched-earth follower
 reading it all back from roots alone, and forged makers dying at the fold.
 """
 
@@ -10,10 +10,10 @@ import pytest
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Aggregator, GeoDisc, MockSettlement, OfferRegistry, Ontology,
+    Aggregator, GeoDisc, MockClearing, OfferRegistry, Ontology,
     SolverAgent, Thing, TimeWindow, give, want,
 )
-from loopmarket.federation import SETTLEMENT
+from loopmarket.federation import CLEARING
 
 NOW = 1_700_000_000
 W = dict(
@@ -73,7 +73,7 @@ def _aggregator(blobs, aggregator_id, books, order):
 def test_convergence_gate():
     # the P1 convergence gate, memory-backed: 3 makers, 2 aggregators
     # folding in different orders, 1 solver — byte-identical manifests on
-    # both aggregators, one loop settled, second pass empty
+    # both aggregators, one loop cleared, second pass empty
     blobs = MemoryBytesStore()
     books = _maker_books(blobs)
     agg_a = _aggregator(blobs, "agg-a", books, ["amara", "bruno", "chen"])
@@ -90,25 +90,25 @@ def test_convergence_gate():
     assert list(idx.ids_by_index("idx/c/piano-lesson/"))
     assert not list(books["amara"].store.keys("idx/"))
 
-    # settlement is its own writer: it bases its own book on the fold by
+    # clearing is its own writer: it bases its own book on the fold by
     # re-asserting it — and canonical addressing proves the base is
     # exactly the fold (the re-commit reproduces book_root byte-for-byte)
-    settlement_reg = OfferRegistry(RecordStore(blobs))
-    settlement_reg.absorb(OfferRegistry(RecordStore(blobs, root=m_a.book_root)))
-    assert settlement_reg.commit() == m_a.book_root
+    clearing_reg = OfferRegistry(RecordStore(blobs))
+    clearing_reg.absorb(OfferRegistry(RecordStore(blobs, root=m_a.book_root)))
+    assert clearing_reg.commit() == m_a.book_root
     agent = SolverAgent(
-        settlement_reg, ONT,
-        MockSettlement(settlement_reg, ONT, clock=lambda: NOW),
+        clearing_reg, ONT,
+        MockClearing(clearing_reg, ONT, clock=lambda: NOW),
         solver_id="fed-solver",
     )
     receipts = agent.step(now=NOW)
     assert len(receipts) == 1 and receipts[0].accepted
 
-    # both aggregators fold the settlement book in, again in different
+    # both aggregators fold the clearing book in, again in different
     # orders, and stay byte-identical; the loop arrived whole (U11 runs
     # inside every fold)
     for agg in (agg_a, agg_b):
-        agg.announce("settlement-0", settlement_reg.store, role=SETTLEMENT)
+        agg.announce("clearing-0", clearing_reg.store, role=CLEARING)
     m_a2, m_b2 = agg_a.fold(), agg_b.fold()
     assert m_a2.book_root == m_b2.book_root != m_a.book_root
 
@@ -116,25 +116,25 @@ def test_convergence_gate():
     assert folded.store.contains(f"loop/{receipts[0].loop_id}")
     assert list(folded.offers(now=NOW)) == []   # everything filled
 
-    # a second solver pass over the new fold settles nothing
+    # a second solver pass over the new fold clears nothing
     reg2 = OfferRegistry(RecordStore(blobs, root=m_a2.book_root))
-    agent2 = SolverAgent(reg2, ONT, MockSettlement(reg2, ONT, clock=lambda: NOW))
+    agent2 = SolverAgent(reg2, ONT, MockClearing(reg2, ONT, clock=lambda: NOW))
     assert agent2.step(now=NOW) == []
 
 
 def test_follower_reconstructs_from_roots_alone():
     # the P1 follower gate, memory-backed template: nothing but the blob
-    # space and a manifest — no shared Python state — reads the settled
+    # space and a manifest — no shared Python state — reads the cleared
     # loop and every fill back
     blobs = MemoryBytesStore()
     books = _maker_books(blobs)
     agg = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"])
     m1 = agg.fold()
-    settlement_reg = OfferRegistry(RecordStore(blobs, root=m1.book_root))
-    agent = SolverAgent(settlement_reg, ONT,
-                        MockSettlement(settlement_reg, ONT, clock=lambda: NOW))
+    clearing_reg = OfferRegistry(RecordStore(blobs, root=m1.book_root))
+    agent = SolverAgent(clearing_reg, ONT,
+                        MockClearing(clearing_reg, ONT, clock=lambda: NOW))
     receipts = agent.step(now=NOW)
-    agg.announce("settlement-0", settlement_reg.store, role=SETTLEMENT)
+    agg.announce("clearing-0", clearing_reg.store, role=CLEARING)
     manifest = agg.fold()
 
     follower = OfferRegistry(RecordStore(blobs, root=manifest.book_root))
@@ -195,7 +195,7 @@ def test_foreign_offer_with_valid_signature_enters():
     assert folded.signature(offer.offer_id)     # the sidecar rode along
 
 
-def test_maker_book_speaking_settlement_is_refused():
+def test_maker_book_speaking_clearing_is_refused():
     blobs = MemoryBytesStore()
     sneaky = OfferRegistry(RecordStore(blobs))
     offer = give("sneaky", Thing(("vegetable-box",)), 50, nonce=9,
@@ -213,7 +213,7 @@ def test_maker_book_speaking_settlement_is_refused():
     assert not folded.is_filled(offer.offer_id)  # the fake fill died
     assert not folded.store.contains("loop/L-fake")
     prov = RecordStore(blobs, root=manifest.provenance_root)
-    assert "settlement keys" in prov.get(
+    assert "clearing keys" in prov.get(
         f"reject/sneaky/fill/{offer.offer_id}")["reason"]
 
 

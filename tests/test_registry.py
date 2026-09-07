@@ -1,7 +1,7 @@
 """The book under replication and merge: determinism, loop atomicity.
 
 Memory-backed variants of the P1 federation gates
-(docs/plans/P1-federated-book.md): equal settlements must produce equal
+(docs/plans/P1-federated-book.md): equal clearings must produce equal
 roots on every replica, and no partially-filled loop may survive a merge
 (planned invariant U11).
 """
@@ -10,7 +10,7 @@ import pytest
 from recordstore import MemoryBytesStore, MemoryPointer, RecordStore
 
 from loopmarket import (
-    GeoDisc, MockSettlement, OfferRegistry, Ontology, PartialLoopError,
+    GeoDisc, MockClearing, OfferRegistry, Ontology, PartialLoopError,
     SolverAgent, Thing, TimeWindow, give, want,
 )
 from loopmarket.registry import or_set_resolver
@@ -35,12 +35,12 @@ OFFERS = [
 ]
 
 
-def _settled_root() -> str:
+def _cleared_root() -> str:
     registry = OfferRegistry(RecordStore(MemoryBytesStore()))
     registry.publish_many(OFFERS)
     registry.commit()
     agent = SolverAgent(
-        registry, ONT, MockSettlement(registry, ONT, clock=lambda: NOW)
+        registry, ONT, MockClearing(registry, ONT, clock=lambda: NOW)
     )
     receipts = agent.step(now=NOW)
     assert len(receipts) == 1 and receipts[0].accepted
@@ -48,9 +48,9 @@ def _settled_root() -> str:
 
 
 def test_fill_determinism_across_replicas():
-    # the P1 gate: two replicas settling the same loop produce
+    # the P1 gate: two replicas clearing the same loop produce
     # byte-identical fill/ and loop/ records, hence equal roots
-    assert _settled_root() == _settled_root()
+    assert _cleared_root() == _cleared_root()
 
 
 # ------------------------------------------------------------- withdrawal (P1)
@@ -90,18 +90,18 @@ def test_withdrawal_gate():
     assert folded.is_withdrawn(oid)
 
 
-def test_settlement_refuses_withdrawn_legs():
+def test_clearing_refuses_withdrawn_legs():
     registry = OfferRegistry(RecordStore(MemoryBytesStore()))
     registry.publish_many(OFFERS)
     registry.commit()
     agent = SolverAgent(
-        registry, ONT, MockSettlement(registry, ONT, clock=lambda: NOW))
+        registry, ONT, MockClearing(registry, ONT, clock=lambda: NOW))
     _, loops = agent.find_loops(now=NOW)
     assert len(loops) == 1
-    # withdraw one leg after the solver snapshotted; settlement must refuse
+    # withdraw one leg after the solver snapshotted; clearing must refuse
     registry.withdraw(loops[0].offer_ids[0])
     from loopmarket import LoopProposal
-    receipt = MockSettlement(registry, ONT, clock=lambda: NOW).submit(
+    receipt = MockClearing(registry, ONT, clock=lambda: NOW).submit(
         LoopProposal(loops[0], registry.store.root, "", "s", NOW))
     assert not receipt.accepted and "withdrawn" in receipt.reason
 
@@ -124,7 +124,7 @@ def _base():
 
 
 def test_conflicting_loops_fail_the_merge_loudly():
-    # two writers settle loops sharing offers o3, o4; per-key resolution
+    # two writers clear loops sharing offers o3, o4; per-key resolution
     # keeps the smaller loop id on the shared fills, stranding the loser
     # with its loop/ record and its other fills — exactly what U11 forbids
     blobs, base_root = _base()

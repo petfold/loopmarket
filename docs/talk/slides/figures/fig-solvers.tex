@@ -2,16 +2,16 @@
 \begin{document}
 \begin{tikzpicture}
   % Solvers live outside the protocol (the CoW Protocol shape): anyone
-  % runs one, they compete, and settlement trusts none of them.
+  % runs one, they compete, and clearing trusts none of them.
   \foreach \i/\y in {1/8,2/0,3/-8} { \node[box, minimum width=22mm, font=\footnotesize] (b\i) at (0,\y mm) {maker book \i}; }
   \node[note, below=2mm of b3] {feeds on Swarm};
   \foreach \i/\y/\n in {1/10/solver A,2/0/solver B,3/-10/solver C} { \node[maker, dashed, draw=accent, text=accent, font=\footnotesize] (s\i) at (44mm,\y mm) {\n}; }
   \node[note, below=2mm of s3, text width=34mm] {anyone, anywhere; outside the protocol};
   \foreach \i in {1,2,3} \foreach \j in {1,2,3} { \draw[sub] (b\i) -- (s\j); }
-  \node[root, minimum width=26mm, align=center] (set) at (92mm,0) {settlement\\{\footnotesize re-verifies every leg}};
+  \node[root, minimum width=26mm, align=center] (set) at (92mm,0) {clearing\\{\footnotesize re-verifies every leg}};
   \foreach \i in {1,2,3} { \draw[flow] (s\i) -- node[lbl, pos=0.45, font=\scriptsize] {proposal} (set); }
   \node[box, minimum width=22mm, font=\footnotesize] (root) at (134mm,0) {one new root};
   \draw[strong] (set) -- node[lbl, above, font=\scriptsize] {all legs or none} (root);
-  \node[note, text width=120mm] at (66mm,-34mm) {A solver reads the pinned books, hunts loops and proposes. It is trusted with nothing: settlement re-derives every leg against its own snapshot of the books and catalogue. The loopmarket repo ships a deterministic baseline solver, the species the others have to beat.};
+  \node[note, text width=120mm] at (66mm,-34mm) {A solver reads the pinned books, hunts loops and proposes. It is trusted with nothing: clearing re-derives every leg against its own snapshot of the books and catalogue. The loopmarket repo ships a deterministic baseline solver, the species the others have to beat.};
 \end{tikzpicture}
 \end{document}

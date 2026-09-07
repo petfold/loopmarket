@@ -216,7 +216,7 @@ sits in between.**
 
     Shipping moves a thing in place, storage in time, an exchange moves
     value across currencies. Each is an ordinary maker. The solver
-    composes the chain; settlement commits every leg or none.
+    composes the chain; clearing commits every leg or none.
 
 ### Slide 17 — Solvers: outside the protocol, competing, trusted with nothing
 
@@ -228,23 +228,23 @@ baseline in the repo is deterministic and is the reserve bid.**
 
     Solvers are external to loopmarket proper, exactly as CoW's solvers
     are external to the protocol. The repo ships one — the species the
-    others have to beat — and nothing in settlement depends on any of
+    others have to beat — and nothing in clearing depends on any of
     them being honest. P2's batch auction: sealed proposals per beat,
     numeraire-free scoring, a fairness floor (P2-batch-auction.md).
 
-### Slide 18 — Settlement trusts no one
+### Slide 18 — Clearing trusts no one
 
-**Settlement re-derives every leg from the pinned book and catalogue,
+**Clearing re-derives every leg from the pinned book and catalogue,
 re-checks the product, and commits all legs atomically — one root.**
-**A follower with nothing but an address reads the settled world back.**
+**A follower with nothing but an address reads the cleared world back.**
 
 ### Slide 19 — Who commits? Not the solver
 
 **The maker signs the offer once and may go offline: a signed offer is a
-standing commitment. The solver only proposes. Settlement is the one
+standing commitment. The solver only proposes. Clearing is the one
 writer of `fill/` and `loop/`: one commit, one root. Everyone else folds
-the settlement feed like any maker's.**
-**Today settlement is one process with its own signed feed — the one
+the clearing feed like any maker's.**
+**Today clearing is one process with its own signed feed — the one
 point of trust. In P2 it is a contract on Gnosis: the winning solver
 submits the transaction, the contract verifies inclusion and absence
 under the pinned root and records the fills.**
@@ -252,7 +252,7 @@ under the pinned root and records the fills.**
 beat. A consumed offer is a fill record, never a delete; a stale solver
 is simply refused (U11 keeps loops and fills consistent after folds).**
 
-    This answers the question the room will ask after the settlement
+    This answers the question the room will ask after the clearing
     slide: "so who actually commits?" Close with: the commit records
     obligations; the goods still have to move, and that is what P3's
     bonds, oracles and factbond certificates secure.
@@ -292,7 +292,7 @@ Bridges turn almost-loops failing only on a money leg into loops.**
 **Book = a versioned key-value keyspace with canonical roots (equal
 content ⇒ equal reference). One book per maker, under the maker's own
 feed and signer. Maker identity *is* the feed owner address.**
-**Settlement writes under its own feed. Aggregators fold public feeds
+**Clearing writes under its own feed. Aggregators fold public feeds
 into one root and publish it under theirs.**
 **Postage TTL is the offer's real lifetime; withdrawal is a tombstone,
 never a delete — the book cleans itself.**
@@ -306,7 +306,7 @@ never a delete — the book cleans itself.**
 
 ### Slide 23 — Invariants the code enforces
 
-**U1 uniform offer · U2 immutable, content-addressed · U3 settlement
+**U1 uniform offer · U2 immutable, content-addressed · U3 clearing
 trusts no solver · U4 solve against pinned roots · U5 positive rates
 only · U6 deterministic baseline solver · U7 vocabulary fails closed ·
 U11 no partially-filled loop survives a merge.**
@@ -327,7 +327,7 @@ convicts him: same announcement root as the honest aggregators,
 different book root; the audit hands back absence proofs anyone
 verifies with no store. A solver that folds the maker feeds itself
 lands on the honest root byte for byte.**
-**Settlement bases its own book on the fold; the loop settles; a
+**Clearing bases its own book on the fold; the loop clears; a
 follower reads six atomic fills from the manifest alone.**
 
     Run `examples/demo_federation.py` against the Bee node if the network
@@ -361,7 +361,7 @@ as the floor, GSOC as the fast path), never via a party who can omit.**
 ### Slide 26 — Who pays for what
 
 **Makers pay postage for their own book (the stamp's TTL is the offer's
-lifetime) and never gas. Solvers pay settlement gas and earn the spread.
+lifetime) and never gas. Solvers pay clearing gas and earn the spread.
 Aggregators sell serving, never inclusion. The protocol takes and gives
 nothing: no fees, no token, no rewards, no treasury.**
 
@@ -375,15 +375,15 @@ nothing: no fees, no token, no rewards, no treasury.**
 **P0 in-memory prototype — done. P1 Swarm book — federation live; open:
 read-path decentralization, GSOC announcements, latency/durability
 gates, spacetime as catalogue dimension terms.**
-**P2 verifiable settlement on Gnosis: inclusion/absence under the pinned
+**P2 verifiable clearing on Gnosis: inclusion/absence under the pinned
 book root via recordstore's canonical-trie proofs; batch auctions;
-settlement pricing; loop selection as flow-LP / packing-ILP.**
+clearing pricing; loop selection as flow-LP / packing-ILP.**
 **P3 guarantee fabric (factbond): bonds, oracles, arbitration, bonded
 catalogue edges.**
 **P4 privacy: staged disclosure, committed offers, ZK fits-within.**
 
     Thirty seconds. The one thing to say out loud: the single point of
-    trust today is settlement, and P2 removes it. Everything else is
+    trust today is clearing, and P2 removes it. Everything else is
     already permissionless.
 
 ---
@@ -397,7 +397,7 @@ feed; feed owner as identity; a light node suffices to read.**
 **Exchange: Agent Card (ERC-8004) → catalog feed → Mantaray root →
 item.jsonld; ACT-encrypted content; x402 purchase endpoint.**
 **loopmarket: per-maker feed → recordstore root → offer records;
-aggregator manifests; settlement feed.**
+aggregator manifests; clearing feed.**
 
     Open the comparison generously — you are an investor and a
     contributor, and the room knows it. Name what the exchange got
@@ -415,10 +415,10 @@ aggregator manifests; settlement feed.**
 | Price | set by the publisher, in a stablecoin | discovered; each maker on their own scale; surplus when Π rates > 1 |
 | Medium | required (stablecoin via x402) | none required; money is a bridge offer |
 | Described | data assets (schema.org + `swarm-cat:`) | anything: catalogue conjunction × time × place |
-| Required server | the publisher's x402 endpoint | none for makers; settlement only (on chain in P2) |
+| Required server | the publisher's x402 endpoint | none for makers; clearing only (on chain in P2) |
 | Trust | ERC-8004 reputation + facilitator | re-verification; bonds where verification fails; reputation derived, never a gate |
 | Privacy | ACT per purchase | none yet (P4) |
-| Maturity | working purchase flow | prototype; live on Swarm; mock settlement |
+| Maturity | working purchase flow | prototype; live on Swarm; mock clearing |
 
     Read the table by rows, not cells. Be explicit that the last row is
     the exchange's advantage today. Then the one-sentence thesis:
@@ -431,14 +431,14 @@ aggregator manifests; settlement feed.**
 rated negative) > 37% — retaliation suppressed truthful feedback until
 one-sided ratings in 2007 (Resnick & Zeckhauser; THREATS.md T8).**
 **Cheap ratings inflate toward uselessness (Filippas–Horton–Golden).**
-**loopmarket's rule U12: standing counts settled, fee-paid loops only;
+**loopmarket's rule U12: standing counts cleared, fee-paid loops only;
 loss experience comes from bonded, adjudicated events (factbond).
 Reputation is a *statistic you derive*, not an institution you believe.**
 
     This is where "loopmarket is not reputation-based" becomes a
     positive claim rather than an omission. Reputation answers "should I
     trust this seller"; loopmarket tries to make the question
-    unnecessary where it can (settlement recomputes everything) and
+    unnecessary where it can (clearing recomputes everything) and
     expensive to game where it cannot (bonds).
 
 ### Slide 31 — x402 and ERC-8004 fit loopmarket — as legs, identities and proofs
@@ -452,9 +452,9 @@ maker's book feed owner is exactly P1's announcement channel, with the
 chain registry as the censorship-resistant floor. The exchange already
 uses this pattern for its catalog feed.**
 **ERC-8004 reputation: publish one-sided, aggregated signals derived
-from settled loops; consume feedback as one input to P3 risk premia;
+from cleared loops; consume feedback as one input to P3 risk premia;
 never gate a trade on it.**
-**ERC-8004 validation: settlement receipts and factbond certificates are
+**ERC-8004 validation: clearing receipts and factbond certificates are
 validation events with proofs, not opinions.**
 
     Keep the tone "and", not "instead". The line: "x402 for the money
@@ -501,7 +501,7 @@ wedge.**
 
     End on the sentence from slide 24: the root is the market; Swarm
     holds the books; the chain is the floor for discovery; the one
-    remaining point of trust is settlement, and it is next.
+    remaining point of trust is clearing, and it is next.
 
 ---
 
@@ -516,7 +516,7 @@ wedge.**
 - **Bridge liquidity curve.** 0% → 9.5%, 10% → ~50%, 20% → ~70% of debt
   cleared (arXiv:2507.22309, Fig. 10); Sardex ~25% of net internal debt
   (Fleischman & Dini 2020).
-- **Live numbers.** 2026-08-01: triangle settled on Gnosis-mainnet light
+- **Live numbers.** 2026-08-01: triangle cleared on Gnosis-mainnet light
   node in ~51 s. 2026-08-21: federation gate 96–105 s. 2026-09-04 (cold
   node, minutes after postage sync): 100 s / 432 s.
 - **Threat register** T1–T14, mirrored with factbond (`docs/plans/THREATS.md`).

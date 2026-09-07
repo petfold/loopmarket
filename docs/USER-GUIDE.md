@@ -1,7 +1,7 @@
 # loopmarket — User Guide
 
 *A tutorial. You will publish offers, build a catalogue, watch a solver
-find a loop nobody could see, settle it atomically, federate books across
+find a loop nobody could see, clear it atomically, federate books across
 makers, catch a forger, and put the whole thing on a live Swarm network.
 Every snippet is runnable as written; run them in order in one Python
 session (or adapt freely). For the API in full detail, see the
@@ -19,7 +19,7 @@ nobody ever holds anything, and the numbers cancel inside a loop. A shared
 **catalogue** orders meanings by *fits-within*, so "piano-lesson"
 satisfies someone who wants "music-lesson". **Solvers** hunt loops —
 cycles of offers whose exchange-rate product exceeds 1, which is genuine
-surplus. **Settlement** trusts no solver: it re-verifies every leg from
+surplus. **Clearing** trusts no solver: it re-verifies every leg from
 scratch and commits the whole loop atomically, or not at all.
 
 ## 1. Installation
@@ -164,14 +164,14 @@ Three operations you'll want:
 
 - **`snapshot()`** returns `(root, frozen_registry)` — a self-consistent
   view a solver can work against for as long as it likes, for free.
-  Everything downstream (proposals, settlement receipts) pins such roots:
+  Everything downstream (proposals, clearing receipts) pins such roots:
   reproducibility and auditability beat freshness (invariant U4).
 - **`withdraw(offer_id)`** closes an offer forever — as a *tombstone*, an
   add rather than a delete, so the exit survives merges with peers who
   haven't heard yet. Re-publishing identical content does not resurrect
   it; a fresh intention is a fresh offer.
 - **`commit(reconcile=True)`** (the default) converges with concurrent
-  writers by three-way merge and then verifies that no settled loop lost
+  writers by three-way merge and then verifies that no cleared loop lost
   a leg in the merge (invariant U11 — it raises `PartialLoopError` rather
   than let that damage propagate).
 
@@ -191,7 +191,7 @@ m.giver, m.receiver   # 'bruno', 'amara'
 ```
 
 `check_match` is exact and self-contained — cheap to re-run, which is what
-lets settlement re-verify without trusting anyone. Its gates, in order:
+lets clearing re-verify without trusting anyone. Its gates, in order:
 kinds and distinct makers → validity windows open at `now` → service
 windows intersect → service discs intersect (a handover point exists) →
 quantity/divisibility/unit → **version pins** (mixed pinning refuses;
@@ -222,7 +222,7 @@ loop = graph.find_profitable_loop()
 loop.nodes      # ('amara', 'chen', 'bruno') — no pair of whom could trade!
 loop.product    # 1.1222…  -> 12.22% surplus
 loop.surplus    # 0.1222…
-loop.loop_id    # content address of the settlement decision (the leg cycle)
+loop.loop_id    # content address of the clearing decision (the leg cycle)
 ```
 
 Amara teaches piano but wants vegetables; Bruno grows vegetables but wants
@@ -233,32 +233,32 @@ sorted order so **the same book yields the same loop on every replica**
 (invariant U6 — determinism is what later makes the baseline solver the
 auction's reserve bid).
 
-## 7. Settlement
+## 7. Clearing
 
-Settlement's one non-negotiable: **trust no solver** (invariant U3). A
-proposal names the roots it was solved against; settlement re-derives
+Clearing's one non-negotiable: **trust no solver** (invariant U3). A
+proposal names the roots it was solved against; clearing re-derives
 every leg against the *current* book with its own catalogue, re-checks
 pins, oracles, fills, tombstones and the arithmetic, and only then
 commits — all fills and the loop record under one new root, atomically.
 
 ```python
-from loopmarket import MockSettlement, LoopProposal
+from loopmarket import MockClearing, LoopProposal
 
-settlement = MockSettlement(registry, catalogue, clock=lambda: NOW)
+clearing = MockClearing(registry, catalogue, clock=lambda: NOW)
 # (registry must hold all six offers; publish grow/wheels/fix/learn + commit)
 
 proposal = LoopProposal(loop, book_root=registry.store.root,
                         ontology_root=catalogue.root, solver="me", found_at=NOW)
-receipt = settlement.submit(proposal)
+receipt = clearing.submit(proposal)
 receipt.accepted        # True
 receipt.book_root       # the new root, with 6 fills + 1 loop record inside
-settlement.submit(proposal).accepted    # False: "already filled" — no double spend
+clearing.submit(proposal).accepted    # False: "already filled" — no double spend
 ```
 
 Rejections come back as `Receipt(accepted=False, reason=...)`: unknown or
 filled or withdrawn offers, legs that fail re-verification, pins that
-don't equal settlement's own, oracle types outside
-`settlement.verifiable_oracles` (the default `MockSettlement` verifies
+don't equal clearing's own, oracle types outside
+`clearing.verifiable_oracles` (the default `MockClearing` verifies
 only `"countersign"`), surplus below threshold, or indivisible legs
 without per-node surplus.
 
@@ -269,7 +269,7 @@ Everything above, as one loop of one method:
 ```python
 from loopmarket import SolverAgent
 
-agent = SolverAgent(registry, catalogue, settlement)
+agent = SolverAgent(registry, catalogue, clearing)
 receipts = agent.step(now=NOW)   # snapshot → match → graph → hunt → propose
 ```
 
@@ -344,7 +344,7 @@ Announced books are sanitized per record before entering the fold,
 fail-closed: an offer's content address is re-derived; an offer whose
 maker isn't the book's owner needs a valid detached signature or dies;
 tombstones are admitted only from the book that owns the offer;
-`fill/`/`loop/` keys are believed only from settlement-role books. Try
+`fill/`/`loop/` keys are believed only from clearing-role books. Try
 the forgery yourself:
 
 ```python
@@ -379,28 +379,28 @@ relay.commit()
 # signature recovers to its maker
 ```
 
-### 8.5 Settlement as its own writer
+### 8.5 Clearing as its own writer
 
-Settlement, too, owns a book (on Swarm: its own feed). It *bases* that
+Clearing, too, owns a book (on Swarm: its own feed). It *bases* that
 book on a fold — and canonical addressing proves the base is honest,
 because re-committing the same content must reproduce the same root:
 
 ```python
 folded = OfferRegistry(RecordStore.at(manifest.book_root, blobs))
-settle = OfferRegistry(RecordStore(blobs))
-settle.absorb(folded)
-assert settle.commit() == manifest.book_root      # clone-verified
+clear = OfferRegistry(RecordStore(blobs))
+clear.absorb(folded)
+assert clear.commit() == manifest.book_root      # clone-verified
 
-agent = SolverAgent(settle, catalogue, MockSettlement(settle, catalogue, clock=lambda: NOW))
-agent.step(now=NOW)                               # settles the triangle
+agent = SolverAgent(clear, catalogue, MockClearing(clear, catalogue, clock=lambda: NOW))
+agent.step(now=NOW)                               # clears the triangle
 
-from loopmarket.federation import SETTLEMENT
-agg.announce("settlement-0", settle.store, role=SETTLEMENT)
+from loopmarket.federation import CLEARING
+agg.announce("clearing-0", clear.store, role=CLEARING)
 final = agg.fold()                                # fills fold back in
 ```
 
 A **follower** needs nothing but the manifest and the blob space to read
-the settled world — the settled loop, every fill, and a book on which a
+the cleared world — the cleared loop, every fill, and a book on which a
 second solver pass finds nothing. `examples/demo_federation.py` runs this
 entire section as one narrated script; read it next.
 
@@ -424,7 +424,7 @@ slots = [give("amara", Thing(("piano-lesson",), unit="lesson"), 100,
          for h in (9, 10, 11)]          # Monday 9–10, 10–11, 11–12
 ```
 
-A settled loop marks the slot's offer filled **atomically** — that fill
+A cleared loop marks the slot's offer filled **atomically** — that fill
 *is* the booking, and any second loop wanting the same hour is rejected
 with "already filled". There is no separate reservation step to race.
 Taking Wednesday off is `withdraw()` on Wednesday's slots: the tombstone
@@ -445,9 +445,9 @@ seats = [give("gym", Thing(("spin-class",), unit="seat"), 10, nonce=i,
 Three different bidders can each win a seat in one beat; the fourth finds
 the class full. The same pattern is 30 box-offers for a van. The schema
 can already *say* this more compactly — `Thing(("spin-class",), qty=15,
-unit="seat", divisible=True)` — but settlement today fills an offer
+unit="seat", divisible=True)` — but clearing today fills an offer
 whole; **partial fills are P2**: the clearing LP treats quantities as
-flow capacities natively, and fill records grow settled quantities at the
+flow capacities natively, and fill records grow cleared quantities at the
 next record bump. Until then, unit offers are the strict, working form.
 
 ### Routes: state as offers
@@ -466,7 +466,7 @@ pickup_b = give(courier, parcel_run, 8,             # across town, later, dearer
                where=GeoDisc(46.02, 14.55, 2_000), valid=standing)
 ```
 
-— and as legs settle and his plan changes, the agent withdraws and
+— and as legs clear and his plan changes, the agent withdraws and
 reposts between beats. Dynamic state quantizes to the beat; the book a
 solver sees is always static and pinned.
 
@@ -481,14 +481,14 @@ want); professional solvers are expected to grow quickly *outside* the
 loopmarket software — routing planners, statistical models, traditional
 AI, LLMs, whatever wins. Their internals are not loopmarket's concern,
 and they may well be kept secret for competitive edge: that is by
-design, and healthy. The protocol's only demand is the one settlement
+design, and healthy. The protocol's only demand is the one clearing
 enforces — whatever a solver proposes gets re-verified from scratch, so
 cleverness can be trusted *because* it is never trusted.
 
 One honesty note for all three patterns: "blocked immediately" is as
-strong as settlement's atomicity — airtight within one settlement
+strong as clearing's atomicity — airtight within one clearing
 instance (P1's model). Global serialization across independent
-settlement instances is what P2's verifiable settlement brings.
+clearing instances is what P2's verifiable clearing brings.
 
 ## 10. Bigger books: indexed candidate generation
 
@@ -539,7 +539,7 @@ agg = Aggregator(lambda: RecordStore(BeeBytesStore(BEE_API, BEE_BATCH)))
 Identity convention on Swarm: a maker's identity is their feed's owner
 address — derive it with `maker_address(private_key_hex)` and use it as
 the `maker` of every offer, so one key authenticates the feed, recovers
-from detached signatures, and (in P2) faces the settlement contract.
+from detached signatures, and (in P2) faces the clearing contract.
 
 Try it:
 
@@ -567,6 +567,6 @@ feed key is sharing your identity.
   way it is, and what the architecture does not promise.
 - **The plan corpus** (`docs/plans/`, indexed in the
   [README](../README.md)) — where the marketplace is going: batch
-  auctions, verifiable settlement, the guarantee fabric, privacy.
+  auctions, verifiable clearing, the guarantee fabric, privacy.
 - **The demos** — `examples/demo_triangle.py` (P0 in one file),
   `examples/demo_federation.py` (P1 in one file, memory or live).

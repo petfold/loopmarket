@@ -2,11 +2,11 @@
 \begin{document}
 \begin{tikzpicture}[role/.style={box, align=center, font=\footnotesize, minimum width=30mm, minimum height=13mm}]
   % Who does what to the book. Makers sign once and may go offline; solvers
-  % only propose; settlement is the one writer of fills; everyone folds.
+  % only propose; clearing is the one writer of fills; everyone folds.
   \node[role] (M) at (0,0) {\textbf{maker}\\ signs the offer once\\ publishes on own feed\\ {\color{soft}may go offline}};
   \node[role, dashed, draw=accent, text=accent] (S) at (40mm,0) {\textbf{solver}\\ reads pinned books\\ proposes a loop\\ {\color{soft}never writes the book}};
-  \node[role, fill=accentlight, draw=accent] (T) at (80mm,0) {\textbf{settlement}\\ re-verifies every leg\\ writes \texttt{fill/} + \texttt{loop/}\\ \textbf{one commit, one root}};
-  \node[role] (R) at (120mm,0) {\textbf{everyone}\\ folds the settlement feed\\ like any maker's\\ {\color{soft}filled = a record, not a delete}};
+  \node[role, fill=accentlight, draw=accent] (T) at (80mm,0) {\textbf{clearing}\\ re-verifies every leg\\ writes \texttt{fill/} + \texttt{loop/}\\ \textbf{one commit, one root}};
+  \node[role] (R) at (120mm,0) {\textbf{everyone}\\ folds the clearing feed\\ like any maker's\\ {\color{soft}filled = a record, not a delete}};
   \draw[flow] (M) -- node[lbl, above, font=\scriptsize] {offer} (S);
   \draw[flow] (S) -- node[lbl, above, font=\scriptsize] {proposal} (T);
   \draw[strong] (T) -- node[lbl, above, font=\scriptsize] {new root} (R);
@@ -14,6 +14,6 @@
   \node[note, text width=34mm, below=3mm of T, xshift=40mm] {\textbf{P2:} a contract on Gnosis. The winning solver submits the transaction; the contract verifies inclusion and absence under the pinned root, then records the fills.};
   \node[note, text width=34mm, below=3mm of S] {Two proposals for one offer: today first valid wins; P2 packs offer-disjoint winners per beat.};
   \node[note, text width=34mm, below=3mm of M] {A signed offer is a standing commitment: a match within its terms needs no further consent.};
-  \node[note, text width=128mm] at (60mm,-42mm) {The commit records obligations; the goods still have to move. Delivery is off-chain and is what P3's bonds, oracles and factbond certificates secure.};
+  \node[note, text width=128mm] at (60mm,-42mm) {Clearing records the obligations; the goods still have to move. That is \emph{settlement}, off-chain, and it is what P3's bonds, oracles and factbond certificates secure.};
 \end{tikzpicture}
 \end{document}

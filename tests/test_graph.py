@@ -62,7 +62,7 @@ def test_loop_id_is_rotation_invariant_but_pairing_sensitive():
     c_give, c_want = give("c", Thing(("g1",)), 10, **W), want("c", Thing(("g1",)), 11, **W)
     # pairing 1: a -> c -> b -> a
     p1 = (Match(a_give, c_want), Match(c_give, b_want), Match(b_give, a_want))
-    # same cycle, entered at a different node: the same settlement decision
+    # same cycle, entered at a different node: the same clearing decision
     assert Loop(p1).loop_id == Loop((p1[1], p1[2], p1[0])).loop_id
     # pairing 2: the same six offers chained the other way round
     p2 = (Match(a_give, b_want), Match(b_give, c_want), Match(c_give, a_want))

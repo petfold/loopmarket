@@ -6,7 +6,7 @@ Layout (one book = one RecordStore, one root reference per version):
     sig/<offer_id>                   -> detached maker signature (U8, off-feed)
     withdraw/<offer_id>              -> 1  (monotone tombstone: offer closed)
     fill/<offer_id>                  -> {"loop": <loop_id>}
-    loop/<loop_id>                   -> the settled loop record
+    loop/<loop_id>                   -> the cleared loop record
     idx/c/<concept>/<offer_id>       -> 1     (per thing concept)
     idx/t/<day>/<offer_id>           -> 1     (per touched service day)
     idx/g/<cell-prefix>/<offer_id>   -> 1     (per geohash prefix of the cell)
@@ -24,7 +24,7 @@ a pinned book" free. Offers are immutable and content-addressed, so
 publication is naturally an OR-set: concurrent publishers writing the same
 offer write byte-identical records (canonical encoding), concurrent distinct
 publications touch distinct keys, and `commit(reconcile=True)` three-way
-merges the rest. The only genuinely racy key class is `fill/` — settlement
+merges the rest. The only genuinely racy key class is `fill/` — clearing
 claims — resolved first-writer-wins by `or_set_resolver`.
 
 Deployment shapes (see ARCHITECTURE.md §5):
@@ -53,9 +53,9 @@ LOOP = "loop/"
 class PartialLoopError(RuntimeError):
     """A book holds a loop missing some of its fills (planned invariant U11).
 
-    Settlement is atomic per writer, so this can only arise from a merge in
+    Clearing is atomic per writer, so this can only arise from a merge in
     which two loops claimed one offer. There is no safe repair — evicting a
-    settled loop is a finality rollback — so the checker raises instead of
+    cleared loop is a finality rollback — so the checker raises instead of
     resolving, by design (docs/plans/P1-federated-book.md §3).
     """
 
@@ -68,9 +68,9 @@ def or_set_resolver(key: str, base, ours, theirs):
     lexicographically smaller loop id, deterministically on every replica
     (commutative, so 3+ writers stay order-independent).
 
-    The per-key fill rule is convergence mechanics, not settlement policy:
+    The per-key fill rule is convergence mechanics, not clearing policy:
     when two loops claim one offer, resolving fill-by-fill can strand the
-    losing loop with its `loop/` record and its *other* fills — a settled
+    losing loop with its `loop/` record and its *other* fills — a cleared
     loop missing a leg, which nothing repairs. Until the deterministic
     loop-granularity resolver exists (registered open problem,
     docs/plans/P1-federated-book.md §3), `verify_loop_atomicity` checks the
@@ -86,7 +86,7 @@ def or_set_resolver(key: str, base, ours, theirs):
 
 
 class OfferRegistry:
-    """Publish, enumerate and settle offers over a duck-typed RecordStore."""
+    """Publish, enumerate and clear offers over a duck-typed RecordStore."""
 
     def __init__(self, store):
         self.store = store
@@ -104,7 +104,7 @@ class OfferRegistry:
     def absorb(self, other: "OfferRegistry") -> None:
         """Re-assert another book's entire content as this writer's base.
 
-        The settlement pattern (P1 §1): a settlement instance bases its
+        The clearing pattern (P1 §1): a clearing instance bases its
         *own feed* on an aggregator's fold by re-asserting the folded
         records and committing. Canonical encoding makes the re-commit
         reproduce the source root byte-for-byte — equal content, equal
@@ -158,7 +158,7 @@ class OfferRegistry:
                     loop_record: dict) -> None:
         """Claim every offer for the loop; a pure function of the decision.
 
-        No wall clock: the same logical settlement must produce
+        No wall clock: the same logical clearing must produce
         byte-identical records on every replica ("equal content ⇒ equal
         root"). Timestamps that matter are attributed provenance, and
         trustworthy time is *anchored* time — a feed index or an on-chain

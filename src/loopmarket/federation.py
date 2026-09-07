@@ -3,7 +3,7 @@
 The production multi-writer shape (ARCHITECTURE §5 shape 3, ratified
 2026-08-21): every book is single-writer at the source — each maker
 publishes `offer/`, `sig/` and `withdraw/` keys under their own feed and
-signer, settlement publishes `fill/` and `loop/` under its own — and
+signer, clearing publishes `fill/` and `loop/` under its own — and
 conflicts exist only at the fold. An **aggregator** folds announced books
 with three-way merge under the loop-aware resolver, applies the U8 fold
 rules per offer, records its decisions as attributed provenance, rebuilds
@@ -39,10 +39,10 @@ from .registry import (
 from .schema import Offer
 
 #: Roles an announced book may carry: makers speak offers, signatures and
-#: tombstones; a settlement instance speaks fills and loops. Every other
+#: tombstones; a clearing instance speaks fills and loops. Every other
 #: key class in a book is outside its writer's authority and is refused.
 MAKER = "maker"
-SETTLEMENT = "settlement"
+CLEARING = "clearing"
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +88,7 @@ class Aggregator:
         for the resolved feed. Re-announcing an owner replaces the entry;
         un-announcing (admission-by-reference's teeth) is `retract`.
         """
-        if role not in (MAKER, SETTLEMENT):
+        if role not in (MAKER, CLEARING):
             raise ValueError(f"unknown book role: {role!r}")
         self._announced[owner] = (role, store)
 
@@ -167,10 +167,10 @@ class Aggregator:
         records = dict(source.items())
         for key in sorted(records):
             rec = records[key]
-            if role == SETTLEMENT and not (key.startswith(FILL)
+            if role == CLEARING and not (key.startswith(FILL)
                                            or key.startswith(LOOP)):
-                # a settlement book legitimately *contains* the fold it
-                # settled on (it re-based via absorb); only its fills and
+                # a clearing book legitimately *contains* the fold it
+                # cleared on (it re-based via absorb); only its fills and
                 # loops are its own speech — the rest is silently not
                 # re-asserted, never "rejected": provenance records are
                 # accusations, and carrying your base is not an offense
@@ -219,8 +219,8 @@ class Aggregator:
                 # (bad, or no crypto library) is dropped, not folded — feed
                 # ownership already authenticates the offer itself.
             elif key.startswith(FILL) or key.startswith(LOOP):
-                if role != SETTLEMENT:
-                    reject(key, "settlement keys in a maker book")
+                if role != CLEARING:
+                    reject(key, "clearing keys in a maker book")
                     continue
                 staged.put(key, rec)
             else:
@@ -275,7 +275,7 @@ def audit_manifest(manifest: Manifest, blobs, *,
 
     Not audited: `sig/` (an own-maker signature that fails to verify is
     dropped without a rejection by design — feed ownership already
-    authenticates the offer) and settlement books (their fills and loops
+    authenticates the offer) and clearing books (their fills and loops
     are checked by U11 at every fold instead).
     """
     announced = store_type.at(manifest.announcement_root, blobs) \

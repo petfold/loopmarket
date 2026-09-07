@@ -93,7 +93,7 @@ and one a `Tokens` whose `issuer == maker` (invariant U1); `bond >= 0`;
 | `.offer_id` | SHA-256 hex of `canonical_bytes()` — the content address |
 
 `bond`, `oracle`, `arbitrator` are carried in identity from day one but
-only `oracle` is enforced today (settlement's refusal gate).
+only `oracle` is enforced today (clearing's refusal gate).
 
 ### `give(maker, thing, amount, *, service, where, valid, **kw) -> Offer`
 ### `want(maker, thing, amount, *, service, where, valid, **kw) -> Offer`
@@ -154,7 +154,7 @@ Writing:
 | `.withdraw(offer_id)` | monotone tombstone; survives merges; `KeyError` if the offer isn't in this book; re-publishing identical content does not un-withdraw |
 | `.absorb(other)` | re-assert another book's entire content as this writer's base; canonical addressing makes the re-commit reproduce the source root (clone verification). O(book) |
 | `.attach_signature(offer_id, sig_hex)` | store a detached signature; `ValueError` unless it recovers to the offer's maker; needs `[sig]` |
-| `.mark_filled(offer_ids, loop_id, loop_record)` | settlement's stroke: fills + loop record; **no wall clock** — a pure function of the decision |
+| `.mark_filled(offer_ids, loop_id, loop_record)` | clearing's stroke: fills + loop record; **no wall clock** — a pure function of the decision |
 | `.commit(*, reconcile=True) -> root` | land staged changes; reconciled commits three-way-merge with concurrent writers under `or_set_resolver`, then run `verify_loop_atomicity` |
 
 Reading:
@@ -172,12 +172,12 @@ Reading:
 ### `or_set_resolver(key, base, ours, theirs)`
 Merge policy for concurrent writers: add-only presence everywhere; a
 doubly-claimed `fill/` keeps the lexicographically smaller loop id
-(deterministic, commutative). Convergence mechanics, not settlement
+(deterministic, commutative). Convergence mechanics, not clearing
 policy — `verify_loop_atomicity` is the guard (see its docstring).
 
 ### `PartialLoopError(RuntimeError)`
 A book holds a loop missing some of its fills. Raised, never repaired —
-evicting a settled loop would be a finality rollback.
+evicting a cleared loop would be a finality rollback.
 
 ### `index_offers(store, offers)`
 File offers under `idx/c/<concept>/`, `idx/t/<bucket>/`,
@@ -201,7 +201,7 @@ follow. Needs `[swarm]`, a Bee node, and a purchased postage batch.
 | `.qty` | the want's quantity |
 
 ### `check_match(give, want, ontology, *, now) -> Match | None`
-Exact, self-contained, re-runnable by settlement. Gates, in order:
+Exact, self-contained, re-runnable by clearing. Gates, in order:
 
 1. kinds: give is `GIVE`, want is `WANT`, distinct makers
 2. validity: both offers open at `now`
@@ -266,29 +266,29 @@ Raises `ValueError` unless ≥ 2 legs chaining into a cycle
 
 ---
 
-## 8. `loopmarket.settlement` — trust nothing, commit atomically
+## 8. `loopmarket.clearing` — trust nothing, commit atomically
 
 ### `LoopProposal(loop, book_root, ontology_root, solver, found_at)` — frozen
 `.to_record()` → the `loop/` record (see §13).
 
 ### `Receipt(accepted, loop_id, reason="", book_root="")` — frozen
-`book_root` is the post-settlement root when accepted.
+`book_root` is the post-clearing root when accepted.
 
-### `Settlement` (Protocol)
+### `Clearing` (Protocol)
 `submit(proposal) -> Receipt`.
 
-### `MockSettlement(registry, ontology, *, min_surplus=0.0, require_per_node=True, clock=time.time, verifiable_oracles=VERIFIABLE_ORACLES)`
+### `MockClearing(registry, ontology, *, min_surplus=0.0, require_per_node=True, clock=time.time, verifiable_oracles=VERIFIABLE_ORACLES)`
 `VERIFIABLE_ORACLES = frozenset({"countersign"})`. The checklist of
 `submit`, in order (U3 — any future backend keeps this shape):
 
-0. **pins**: `proposal.ontology_root` must *equal* the settlement's own
+0. **pins**: `proposal.ontology_root` must *equal* the clearing's own
    `ontology.root` (absence and mismatch both refuse; `'' == ''` keeps
    the in-memory flow working)
 1. every offer exists in the *current* book, is unfilled, is not
    tombstoned, is used once, and names an oracle type in
    `verifiable_oracles`
 2. every leg re-derived with `check_match` against the current book and
-   the settlement's own catalogue
+   the clearing's own catalogue
 3. arithmetic: `surplus >= min_surplus`; indivisible loops additionally
    need `per_node_ok` (while `require_per_node`, the pre-P2 policy)
 4. one atomic commit: all fills + the loop record under one new root
@@ -297,7 +297,7 @@ Raises `ValueError` unless ≥ 2 legs chaining into a cycle
 
 ## 9. `loopmarket.solver.agent` — the baseline species
 
-### `SolverAgent(registry, ontology, settlement, solver_id="solver-0", min_surplus=0.005, max_loops_per_step=10)`
+### `SolverAgent(registry, ontology, clearing, solver_id="solver-0", min_surplus=0.005, max_loops_per_step=10)`
 
 | member | meaning |
 |---|---|
@@ -330,7 +330,7 @@ Signatures live *beside* offers (`sig/` keys), never inside
 
 ## 11. `loopmarket.federation` — the aggregator
 
-Constants: `MAKER = "maker"`, `SETTLEMENT = "settlement"` (book roles).
+Constants: `MAKER = "maker"`, `CLEARING = "clearing"` (book roles).
 
 ### `Manifest(aggregator, book_root, provenance_root, index_root, announcement_root)` — frozen
 What an aggregator publishes. `book_root` is the pure fold;
@@ -352,12 +352,12 @@ handle, threat T14).
 Admission rules per record (fail closed; every rejection is an
 attributed `reject/` record):
 
-| key class | maker book | settlement book |
+| key class | maker book | clearing book |
 |---|---|---|
 | `offer/` | content address re-derived; readable version; `maker == owner` **or** valid detached `sig/` in the same book | silently skipped (contains its base fold; not its speech) |
 | `withdraw/` | only for an offer this book holds with `maker == owner` | silently skipped |
 | `sig/` | staged when it verifies; foreign-offer sigs stage with their offer | silently skipped |
-| `fill/`, `loop/` | **rejected** ("settlement keys in a maker book") | staged |
+| `fill/`, `loop/` | **rejected** ("clearing keys in a maker book") | staged |
 | anything else | rejected ("unknown keyspace") | silently skipped |
 
 ### `Omission(owner, key, announced_root, proof)` — frozen
@@ -372,7 +372,7 @@ The T14 cross-audit from the manifest alone: (announced set) − (speech
 under `book_root`) over `offer/` and `withdraw/` keys of every
 `MAKER`-role announcement, sorted by owner then key. Empty for an honest
 fold. Not audited: `sig/` (dropped-without-rejection by design) and
-settlement books (U11 covers them).
+clearing books (U11 covers them).
 
 ---
 
@@ -385,7 +385,7 @@ offer/<offer_id>        the immutable offer record (v1 or v2)
 sig/<offer_id>          detached maker signature, hex (never in identity)
 withdraw/<offer_id>     1 — monotone tombstone: the offer is closed
 fill/<offer_id>         {"loop": <loop_id>} — pure function of the decision
-loop/<loop_id>          the settled proposal record
+loop/<loop_id>          the cleared proposal record
 idx/c/<concept>/<id>    1 — aggregator-derived only
 idx/t/<bucket>/<id>     1 —      "
 idx/g/<prefix>/<id>     1 —      "
@@ -394,7 +394,7 @@ reject/<owner>/<key>    {"owner", "reason"}      (provenance store)
 announce/<owner>        {"role", "root"}         (announcement store)
 ```
 
-Maker books write `offer/`, `sig/`, `withdraw/` only; settlement books
+Maker books write `offer/`, `sig/`, `withdraw/` only; clearing books
 add `fill/` and `loop/`; `idx/` exists only in derived index stores;
 `origin/`, `reject/`, `announce/` only in an aggregator's provenance and
 announcement stores.
@@ -426,7 +426,7 @@ announcement stores.
 ```
 
 **Fill**: `{"loop": "<loop_id>"}` — deliberately nothing else (no wall
-clock: equal settlements must produce equal roots on every replica).
+clock: equal clearings must produce equal roots on every replica).
 
 ## 14. Invariants (binding; tests enforce them)
 
@@ -436,7 +436,7 @@ clock: equal settlements must produce equal roots on every replica).
 | **B2** | dependencies point one way: loopmarket → ontodag → recordstore → (Swarm, lazily) |
 | **U1** | exactly one side of every offer is a Thing, one is Tokens, and the token issuer is the maker |
 | **U2** | offers are immutable canonical values; `from_record` dispatches on `"v"` and raises on unknown versions; offers re-encode in their native version |
-| **U3** | settlement trusts no solver: pin equality, per-leg re-derivation against the current book, full re-checks, one atomic commit |
+| **U3** | clearing trusts no solver: pin equality, per-leg re-derivation against the current book, full re-checks, one atomic commit |
 | **U4** | solvers work on snapshots and pin roots in proposals |
 | **U5** | rates are positive; no signed prices anywhere |
 | **U6** | the baseline solver is deterministic: same book, same loop, every replica |
@@ -460,7 +460,7 @@ matching half are already running (§11, §5).
 
 Live test suites: `tests/test_swarm_book.py` (the P0 triangle on a live
 book), `tests/test_swarm_federation.py` (per-maker feeds, two
-aggregators, settlement feed, follower). Both skip without the
+aggregators, clearing feed, follower). Both skip without the
 variables; both use timestamped topics so reruns inherit nothing.
 
 ## 16. Exceptions

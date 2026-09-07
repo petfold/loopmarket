@@ -1,9 +1,9 @@
-"""The whole machine: publish -> snapshot-solve -> settle, atomically."""
+"""The whole machine: publish -> snapshot-solve -> clearing, atomically."""
 
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    GeoDisc, MockSettlement, OfferRegistry, Ontology, SolverAgent, Thing,
+    GeoDisc, MockClearing, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 
@@ -40,9 +40,9 @@ def _book(chen_oracle="countersign"):
     return registry
 
 
-def test_triangle_settles_and_book_empties():
+def test_triangle_clears_and_book_empties():
     registry = _book()
-    agent = SolverAgent(registry, ONT, MockSettlement(registry, ONT, clock=lambda: NOW))
+    agent = SolverAgent(registry, ONT, MockClearing(registry, ONT, clock=lambda: NOW))
     receipts = agent.step(now=NOW)
     assert len(receipts) == 1 and receipts[0].accepted
     # the fills landed atomically under a new root
@@ -52,64 +52,64 @@ def test_triangle_settles_and_book_empties():
     assert agent.step(now=NOW) == []
 
 
-def test_settlement_rejects_double_spend():
+def test_clearing_rejects_double_spend():
     registry = _book()
-    agent = SolverAgent(registry, ONT, MockSettlement(registry, ONT, clock=lambda: NOW))
+    agent = SolverAgent(registry, ONT, MockClearing(registry, ONT, clock=lambda: NOW))
     _, loops = agent.find_loops(now=NOW)
     assert len(loops) == 1
     from loopmarket import LoopProposal
     proposal = LoopProposal(loops[0], registry.store.root, "", "s", NOW)
-    settlement = MockSettlement(registry, ONT, clock=lambda: NOW)
-    assert settlement.submit(proposal).accepted
-    second = settlement.submit(proposal)          # same loop again
+    clearing = MockClearing(registry, ONT, clock=lambda: NOW)
+    assert clearing.submit(proposal).accepted
+    second = clearing.submit(proposal)          # same loop again
     assert not second.accepted and "filled" in second.reason
 
 
-def test_settlement_reverifies_against_ontology():
+def test_clearing_reverifies_against_ontology():
     registry = _book()
-    agent = SolverAgent(registry, ONT, MockSettlement(registry, ONT, clock=lambda: NOW))
+    agent = SolverAgent(registry, ONT, MockClearing(registry, ONT, clock=lambda: NOW))
     _, loops = agent.find_loops(now=NOW)
     from loopmarket import LoopProposal
-    # a settlement bound to a *different* catalogue must reject the loop
+    # a clearing bound to a *different* catalogue must reject the loop
     hostile = Ontology().load({"unrelated": []})
-    settlement = MockSettlement(registry, hostile, clock=lambda: NOW)
-    receipt = settlement.submit(
+    clearing = MockClearing(registry, hostile, clock=lambda: NOW)
+    receipt = clearing.submit(
         LoopProposal(loops[0], registry.store.root, "", "s", NOW)
     )
     assert not receipt.accepted and "re-verification" in receipt.reason
 
 
-def test_settlement_refuses_pin_mismatch_and_absence():
-    # U10's settlement rehearsal: the proposal's catalogue pin must equal
-    # the settlement's own — a claimed root the verifier cannot confirm is
+def test_clearing_refuses_pin_mismatch_and_absence():
+    # U10's clearing rehearsal: the proposal's catalogue pin must equal
+    # the clearing's own — a claimed root the verifier cannot confirm is
     # refused, and so is silence toward a pinned verifier
     registry = _book()
-    agent = SolverAgent(registry, ONT, MockSettlement(registry, ONT, clock=lambda: NOW))
+    agent = SolverAgent(registry, ONT, MockClearing(registry, ONT, clock=lambda: NOW))
     _, loops = agent.find_loops(now=NOW)
     from loopmarket import LoopProposal
-    settlement = MockSettlement(registry, ONT, clock=lambda: NOW)
-    claimed = settlement.submit(
+    clearing = MockClearing(registry, ONT, clock=lambda: NOW)
+    claimed = clearing.submit(
         LoopProposal(loops[0], registry.store.root, "some-root", "s", NOW)
     )
     assert not claimed.accepted and "pin" in claimed.reason
-    assert settlement.submit(
+    assert clearing.submit(
         LoopProposal(loops[0], registry.store.root, "", "s", NOW)
     ).accepted
 
 
-def test_settlement_refuses_unverifiable_oracle_types():
+def test_clearing_refuses_unverifiable_oracle_types():
     # the P3 refusal gate, fabric-free: a leg naming a witness type this
-    # settlement cannot verify fails closed, like U7 for vocabulary
+    # clearing cannot verify fails closed, like U7 for vocabulary
     registry = _book(chen_oracle="photo")
-    agent = SolverAgent(registry, ONT, MockSettlement(registry, ONT, clock=lambda: NOW))
+    agent = SolverAgent(registry, ONT, MockClearing(registry, ONT, clock=lambda: NOW))
     _, loops = agent.find_loops(now=NOW)
-    assert len(loops) == 1   # matching is oracle-blind; settlement is not
+    assert len(loops) == 1   # matching is oracle-blind; clearing is not
     from loopmarket import LoopProposal
     proposal = LoopProposal(loops[0], registry.store.root, "", "s", NOW)
-    strict = MockSettlement(registry, ONT, clock=lambda: NOW)
+    strict = MockClearing(registry, ONT, clock=lambda: NOW)
     receipt = strict.submit(proposal)
     assert not receipt.accepted and "oracle" in receipt.reason
-    lax = MockSettlement(registry, ONT, clock=lambda: NOW,
+    lax = MockClearing(registry, ONT, clock=lambda: NOW,
                          verifiable_oracles={"countersign", "photo"})
     assert lax.submit(proposal).accepted
 

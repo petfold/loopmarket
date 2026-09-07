@@ -4,7 +4,7 @@ One uniform offer form; a shared OntoDAG catalogue in which meanings, minutes
 and map regions are ordered by the same fits-within relation; a distributed,
 versioned offer book over recordstore (Swarm-backed via BeeBytesStore +
 SwarmFeedPointer); competing solver agents hunting profitable loops as
-negative cycles; settlement that re-verifies everything and trusts no one.
+negative cycles; clearing that re-verifies everything and trusts no one.
 
 Dependency direction (boundary B2, enforced by tests/test_boundaries.py):
 
@@ -26,7 +26,7 @@ from .matching import Match, candidate_matches, check_match
 from .sigs import maker_address, recover_maker, sign_offer, verify_offer_sig
 from .dimensions import DimensionIndex, candidate_matches_indexed
 from .graph import ExchangeGraph, Loop
-from .settlement import LoopProposal, MockSettlement, Receipt, Settlement
+from .clearing import LoopProposal, MockClearing, Receipt, Clearing
 from .solver.agent import SolverAgent
 
 __version__ = "0.1.0"
@@ -39,5 +39,5 @@ __all__ = [
     "Match", "candidate_matches", "check_match",
     "maker_address", "recover_maker", "sign_offer", "verify_offer_sig",
     "DimensionIndex", "candidate_matches_indexed", "ExchangeGraph", "Loop",
-    "LoopProposal", "MockSettlement", "Receipt", "Settlement", "SolverAgent",
+    "LoopProposal", "MockClearing", "Receipt", "Clearing", "SolverAgent",
 ]

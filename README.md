@@ -15,12 +15,12 @@ distributed, versioned **offer book** holds them (recordstore keyspace;
 Swarm-backed via `BeeBytesStore` + a signed `SwarmFeedPointer`). Competing
 **solver agents** hunt profitable **loops** — cycles whose exchange-rate
 product exceeds one, i.e. negative cycles under −log weights — and a
-**settlement** layer re-verifies every leg from scratch and commits the
+**clearing** layer re-verifies every leg from scratch and commits the
 whole loop atomically.
 
 ```python
 from recordstore import MemoryBytesStore, RecordStore
-from loopmarket import (Ontology, OfferRegistry, MockSettlement,
+from loopmarket import (Ontology, OfferRegistry, MockClearing,
                         SolverAgent, Thing, give, want, ...)
 
 ontology = Ontology().load({"produce": [], "vegetable-box": ["produce"], ...})
@@ -28,8 +28,8 @@ registry = OfferRegistry(RecordStore(MemoryBytesStore()))
 registry.publish_many([...])          # gives and wants, one uniform form
 registry.commit()
 
-agent = SolverAgent(registry, ontology, MockSettlement(registry, ontology))
-agent.step()                          # snapshot → match → hunt loops → settle
+agent = SolverAgent(registry, ontology, MockClearing(registry, ontology))
+agent.step()                          # snapshot → match → hunt loops → clear
 ```
 
 ## Try it
@@ -43,10 +43,10 @@ PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery,
 
 The first demo publishes the smallest nontrivial book — a piano teacher, a
 market gardener and a bicycle mechanic, no pair of whom can trade — and
-watches the solver find, verify and settle the triangle at a 12% surplus.
+watches the solver find, verify and clear the triangle at a 12% surplus.
 The second runs the federation: per-maker books, two aggregators folding
 to byte-identical manifests, a forged offer dying at the fold, a
-tombstoned offer staying closed, settlement provably based on the fold,
+tombstoned offer staying closed, clearing provably based on the fold,
 and a follower reading it all back — in memory by default, live against a
 Bee node when `BEE_API` and `BEE_BATCH` are set. New here? Start with the
 **[User Guide](docs/USER-GUIDE.md)** (tutorial) and the
@@ -75,7 +75,7 @@ federation layer runs too — in memory *and* live (the gated
 books under their own feeds and signers, an `Aggregator` folding them
 under the U8 admission rules into a four-root manifest published on its
 own feed, withdrawal tombstones, and a scorched-earth follower
-reconstructing the settled world from (address, topic) alone. Since
+reconstructing the cleared world from (address, topic) alone. Since
 2026-09-04 the federation demo adopts ontodag's `core` pack as the
 catalogue and includes a censoring aggregator: `audit_manifest` convicts
 it from its own manifest with absence proofs, and a solver folding the
@@ -111,7 +111,7 @@ when their enforcing code and tests land. factbond's mirror corpus is
 
 **Phase ↔ document map.** P1 (federation): `P1-federated-book.md`,
 supported by `ontodag-coupling.md` and `catalogue-bootstrap.md`. P2
-(verifiable settlement): the three P2 docs plus `proof-fabric.md`,
+(verifiable clearing): the three P2 docs plus `proof-fabric.md`,
 *constrained* by `P4-privacy.md`'s format-freeze list and gated by
 `THREATS.md` tripwires. P3 (guarantee fabric): `P3-guarantee-coupling.md`
 plus factbond's entire corpus — gated by factbond's Phase-0 simulation
@@ -121,7 +121,7 @@ whose Tier 1 may ship alongside P2. Cross-phase: `proof-fabric.md`,
 `ontodag-coupling.md`.
 
 **Reading order.** First pass: `ARCHITECTURE.md` → `THREATS.md` →
-`P1-federated-book.md`. Settlement track: `P2-loop-selection.md` →
+`P1-federated-book.md`. Clearing track: `P2-loop-selection.md` →
 `P2-settlement-pricing.md` → `P2-batch-auction.md` → `proof-fabric.md`.
 Guarantee track: factbond `DESIGN.md` → `mechanism-design.md` →
 `insurance-products.md` → `phase0-simulation.md` →
@@ -148,7 +148,7 @@ the corpus is built so that they can.
   and what the architecture does not promise.
 - **[CLAUDE.md](CLAUDE.md)** — working rules for development: dependency
   boundaries, core invariants U1–U7, known simplifications, roadmap phases
-  P0 (built) → P1 (federated book) → P2 (verifiable settlement, batch
+  P0 (built) → P1 (federated book) → P2 (verifiable clearing, batch
   auctions) → P3 (guarantee fabric via factbond) → P4 (privacy).
 - **[docs/loop-economy.md](docs/loop-economy.md)** — the vision essay: the
   loop economy, its gallery of loops, the solver ecology, judges without

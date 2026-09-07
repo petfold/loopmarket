@@ -5,14 +5,14 @@ directed edge giver -> receiver carrying an exchange rate r = B/A (the
 wanting side's quoted price over the giving side's quoted price). A loop
 p1 -> p2 -> ... -> pk -> p1 is *profitable* iff the product of rates around
 it exceeds 1: with divisible quantities the slack is real surplus that
-settlement prices can distribute (see ARCHITECTURE.md, "The arithmetic of
+clearing prices can distribute (see ARCHITECTURE.md, "The arithmetic of
 loops").
 
 Take weights w = -log(r) and "product > 1" becomes "sum < 0": profitable
 loops are negative cycles, found by Bellman-Ford in O(V*E) — the seventy-
 year-old workhorse, chosen here for exactness and auditability. Solver
 agents are free to bring anything smarter (this module is the baseline
-species, not the ceiling); settlement only ever re-verifies the loop, never
+species, not the ceiling); clearing only ever re-verifies the loop, never
 the search.
 
 Indivisible legs: the product condition assumes quantities can scale so
@@ -87,14 +87,14 @@ class Loop:
 
     @property
     def loop_id(self) -> str:
-        """Content address of the settlement decision: the cycle of legs.
+        """Content address of the clearing decision: the cycle of legs.
 
         Hashes the leg sequence (give>want pairs, cycle order) under its
         lexicographically minimal rotation — invariant to where the search
         entered the cycle, sensitive to how the offers are paired. Hashing
         the sorted offer *set* (the pre-2026-08-20 encoding) would collide
         two different pairings of the same offers onto one `loop/` key,
-        silently conflating distinct settlements (ARCHITECTURE.md §2).
+        silently conflating distinct clearings (ARCHITECTURE.md §2).
         """
         legs = [f"{m.give.offer_id}>{m.want.offer_id}" for m in self.matches]
         start = min(range(len(legs)), key=lambda i: legs[i:] + legs[:i])
@@ -129,7 +129,7 @@ class ExchangeGraph:
         """Bellman-Ford over w = -log(rate); returns one profitable Loop or None.
 
         Deterministic: nodes and edges are iterated in sorted order, so the
-        same book yields the same loop on every replica — settlement and
+        same book yields the same loop on every replica — clearing and
         audit can reproduce the search exactly.
         """
         nodes = self.nodes

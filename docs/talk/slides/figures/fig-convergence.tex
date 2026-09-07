@@ -7,7 +7,7 @@
   \draw[flow] (card.east) -- (cat.west); \draw[flow] (card.east) -- (book.west);
   \draw[strong] (cat) -- node[lbl, right, align=left] {bridge adapter:\\ item $\to$ give offer} (book);
   \node[box, right=30mm of book, fill=faint] (x) {x402 endpoint};
-  \node[root, right=30mm of cat] (set) {settlement};
+  \node[root, right=30mm of cat] (set) {clearing};
   \draw[flow] (book) -- (x);
   \draw[flow] (x) -- node[lbl, right, align=left] {ACT grant =\\ proof of delivery} (set);
   \draw[sub] (set) -- (cat);

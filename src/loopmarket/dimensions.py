@@ -15,7 +15,7 @@ native catalogue queries:
 Geo stays with the exact check (``GeoDisc.intersects``), as in the baseline:
 sibling geohash cells share no prefix, so a cell filter would lose recall
 ("cells are hints", ARCHITECTURE.md §3). The generator is therefore
-recall-exact against the baseline give x want product — and settlement
+recall-exact against the baseline give x want product — and clearing
 re-verification never depends on it either way (invariant U3).
 
 **The index is derived, local, and never shared.** Filing offers into the

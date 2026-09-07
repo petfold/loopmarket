@@ -199,8 +199,8 @@ class Offer:
 
     Fields `bond`, `oracle` and `arbitrator` are carried in the canonical
     encoding from day one (they are part of the offer's identity and of what
-    a settlement layer will verify) but are not yet acted on by the mock
-    settlement — see ARCHITECTURE.md, roadmap P3.
+    a clearing layer will verify) but are not yet acted on by the mock
+    clearing — see ARCHITECTURE.md, roadmap P3.
     """
 
     maker: str                    # key/address; also the personal-token issuer

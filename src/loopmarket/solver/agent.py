@@ -7,12 +7,12 @@ The cycle of one `step()`:
     3. generate matches         (exact pairwise check; see matching.py)
     4. build the exchange graph (best rate per giver->receiver pair)
     5. hunt profitable loops    (Bellman-Ford negative cycles)
-    6. propose to settlement    (which re-verifies everything)
+    6. propose to clearing    (which re-verifies everything)
 
 The agent is deliberately trust-poor in both directions: it works only
 against a pinned book root and pinned ontology root (so its search is
 reproducible and auditable), and nothing it computes is believed by
-settlement — proposals are re-derived there from the current book.
+clearing — proposals are re-derived there from the current book.
 
 This is a *baseline*: exact, deterministic, O(gives*wants) matching and
 O(V*E) cycle search. Competing agents are expected to beat it with motif
@@ -40,7 +40,7 @@ from ..graph import ExchangeGraph, Loop
 from ..matching import candidate_matches
 from ..ontology import Ontology
 from ..registry import OfferRegistry
-from ..settlement import LoopProposal, Receipt, Settlement
+from ..clearing import LoopProposal, Receipt, Clearing
 
 log = logging.getLogger("loopmarket.solver")
 
@@ -49,7 +49,7 @@ log = logging.getLogger("loopmarket.solver")
 class SolverAgent:
     registry: OfferRegistry
     ontology: Ontology
-    settlement: Settlement
+    clearing: Clearing
     solver_id: str = "solver-0"
     min_surplus: float = 0.005       # don't bother below half a percent
     max_loops_per_step: int = 10
@@ -72,7 +72,7 @@ class SolverAgent:
         return root, loops
 
     def step(self, *, now: int | None = None) -> list[Receipt]:
-        """One full solve-and-propose pass; returns settlement receipts."""
+        """One full solve-and-propose pass; returns clearing receipts."""
         found_at = int(_time.time()) if now is None else now
         root, loops = self.find_loops(now=now)
         receipts: list[Receipt] = []
@@ -84,7 +84,7 @@ class SolverAgent:
                 solver=self.solver_id,
                 found_at=found_at,
             )
-            receipt = self.settlement.submit(proposal)
+            receipt = self.clearing.submit(proposal)
             log.info(
                 "loop %s surplus=%.2f%% -> %s%s",
                 loop.loop_id[:12], 100 * loop.surplus,

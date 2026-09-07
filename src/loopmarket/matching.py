@@ -1,7 +1,7 @@
 """Pairwise matching: does this GIVE satisfy that WANT?
 
 A `Match` is one feasible handoff — the atom that loops are made of. The
-check is exact and self-contained so that settlement can re-run it
+check is exact and self-contained so that clearing can re-run it
 independently of whatever index or heuristic produced the candidate
 ("verification cheap and neutral; discovery someone else's expensive
 problem").

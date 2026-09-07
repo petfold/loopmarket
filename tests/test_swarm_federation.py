@@ -4,17 +4,17 @@ The live variant of the P1 federation gates (docs/plans/P1-federated-book.md
 §9's rule: every multi-writer path ships a scorched-earth follower test).
 Three makers publish their books under their *own* feeds and signers — the
 maker IS the feed-owner address, so U8's primary layer is real here, not
-declared — an aggregator folds them over the network, a solver settles the
-triangle against the fold, the aggregator re-folds the settlement book in
+declared — an aggregator folds them over the network, a solver clears the
+triangle against the fold, the aggregator re-folds the clearing book in
 and publishes its manifest under its own feed, and a follower armed with
-nothing but (aggregator address, topic) reads the whole settled world back.
+nothing but (aggregator address, topic) reads the whole cleared world back.
 
 Conventions follow test_swarm_book.py: skipped unless BEE_API, BEE_BATCH
 and BEE_SIGNER are set; a real purchased batch id so nothing auto-buys;
 timestamped topics so reruns inherit nothing; throwaway per-maker signers
 generated per run (feeds need no funds). Staging, provenance and index
 stores ride Bee blobs with local pointers — no feed updates there;
-settlement publishes under its own feed like every other writer, basing
+clearing publishes under its own feed like every other writer, basing
 it on the fold via `absorb` (the feed's first head reproduces
 `book_root` byte-for-byte — canonical addressing as clone verification).
 """
@@ -41,14 +41,14 @@ CATALOGUE = {
     "set BEE_API, BEE_BATCH and BEE_SIGNER to run the live federation test",
 )
 class TestFederatedBookOnLiveSwarm(unittest.TestCase):
-    def test_publish_fold_settle_refold_and_follow(self):
+    def test_publish_fold_clear_refold_and_follow(self):
         from recordstore import BeeBytesStore, RecordStore, swarm_store
 
         from loopmarket import (
-            Aggregator, GeoDisc, MockSettlement, OfferRegistry, Ontology,
+            Aggregator, GeoDisc, MockClearing, OfferRegistry, Ontology,
             SolverAgent, Thing, TimeWindow, give, want, maker_address,
         )
-        from loopmarket.federation import SETTLEMENT
+        from loopmarket.federation import CLEARING
 
         topic = f"loopfed-{int(time.time())}"
         swarm = dict(api_url=BEE_API, stamp=BEE_BATCH)
@@ -116,30 +116,30 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
             (m1b.book_root, m1b.provenance_root, m1b.index_root,
              m1b.announcement_root))
 
-        # settlement is its own writer under its OWN feed (P1 §1): it
+        # clearing is its own writer under its OWN feed (P1 §1): it
         # bases that feed on the fold by re-asserting it, and canonical
-        # addressing proves the base — the first head of the settlement
+        # addressing proves the base — the first head of the clearing
         # feed reproduces book_root byte-for-byte
-        settle_key = secrets.token_hex(32)
-        settle_addr = maker_address(settle_key)
-        settle = OfferRegistry(
-            swarm_store(f"{topic}-settlement", signer=settle_key, **swarm))
-        settle.absorb(folded)
-        self.assertEqual(settle.commit(), m1.book_root)
+        clearing_key = secrets.token_hex(32)
+        clearing_addr = maker_address(clearing_key)
+        clearing = OfferRegistry(
+            swarm_store(f"{topic}-clearing", signer=clearing_key, **swarm))
+        clearing.absorb(folded)
+        self.assertEqual(clearing.commit(), m1.book_root)
 
-        agent = SolverAgent(settle, catalogue,
-                            MockSettlement(settle, catalogue),
+        agent = SolverAgent(clearing, catalogue,
+                            MockClearing(clearing, catalogue),
                             solver_id="fed-live-solver")
-        settled = [r for r in agent.step() if r.accepted]
-        self.assertEqual(len(settled), 1, settled)
+        cleared = [r for r in agent.step() if r.accepted]
+        self.assertEqual(len(cleared), 1, cleared)
 
-        # both aggregators follow the settlement feed by (owner, topic) —
-        # settlement folds like any other book now — and stay identical
+        # both aggregators follow the clearing feed by (owner, topic) —
+        # clearing folds like any other book now — and stay identical
         for a in (agg, agg_b):
-            a.announce(settle_addr,
-                       swarm_store(f"{topic}-settlement", owner=settle_addr,
+            a.announce(clearing_addr,
+                       swarm_store(f"{topic}-clearing", owner=clearing_addr,
                                    **swarm),
-                       role=SETTLEMENT)
+                       role=CLEARING)
         m2 = agg.fold()
         self.assertNotEqual(m2.book_root, m1.book_root)
         m2b = agg_b.fold()
@@ -164,7 +164,7 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
         manifest = feed.get("manifest")
         follower = OfferRegistry(RecordStore(
             BeeBytesStore(BEE_API, BEE_BATCH), root=manifest["book_root"]))
-        loop_rec = follower.store.get(f"loop/{settled[0].loop_id}")
+        loop_rec = follower.store.get(f"loop/{cleared[0].loop_id}")
         self.assertEqual(len(loop_rec["legs"]), 3)
         self.assertEqual(len(list(follower.store.keys("fill/"))), 6)
         self.assertEqual(list(follower.offers(now=now)), [])
@@ -184,9 +184,9 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
             swarm_store(f"{topic}-book-{i}", owner=some_addr, **swarm))
         self.assertEqual(len(list(maker_view.offers(include_filled=True))), 2)
 
-        # and a second solver pass over the followed fold settles nothing
+        # and a second solver pass over the followed fold clears nothing
         second = SolverAgent(follower, catalogue,
-                             MockSettlement(follower, catalogue),
+                             MockClearing(follower, catalogue),
                              solver_id="second")
         self.assertEqual([r for r in second.step() if r.accepted], [])
 

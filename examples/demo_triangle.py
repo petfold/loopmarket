@@ -17,7 +17,7 @@ import time
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    GeoDisc, MockSettlement, OfferRegistry, Ontology, SolverAgent, Thing,
+    GeoDisc, MockClearing, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 
@@ -79,7 +79,7 @@ print(f"\nbook committed: root={root[:16]}…  ({len(offers)} offers)\n")
 agent = SolverAgent(
     registry=registry,
     ontology=ontology,
-    settlement=MockSettlement(registry, ontology),
+    clearing=MockClearing(registry, ontology),
     solver_id="demo-solver",
 )
 
@@ -87,7 +87,7 @@ receipts = agent.step()
 
 print()
 for r in receipts:
-    status = "SETTLED" if r.accepted else f"rejected: {r.reason}"
+    status = "CLEARED" if r.accepted else f"rejected: {r.reason}"
     print(f"loop {r.loop_id[:16]}… -> {status}")
     if r.accepted:
         loop_rec = registry.store.get(f"loop/{r.loop_id}")
@@ -102,5 +102,5 @@ for r in receipts:
         print(f"  new book root: {r.book_root[:16]}…")
 
 # A second pass finds nothing: the offers are filled, atomically, in the book.
-print("\nsecond pass (book now settled):")
+print("\nsecond pass (book now cleared):")
 agent.step()

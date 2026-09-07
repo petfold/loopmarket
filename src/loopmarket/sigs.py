@@ -16,7 +16,7 @@ that does not recover to the offer's maker (fail closed, U7's spirit).
 
 Makers are Ethereum-style addresses: the same secp256k1 key owns the
 maker's Swarm feed, recovers from these signatures, and will be the address
-P2's on-chain settlement sees — one identity, three roles. The aggregator's
+P2's on-chain clearing sees — one identity, three roles. The aggregator's
 fold rule (an offer from a foreign feed without a valid signature never
 enters the fold) lands with the P1 aggregator; this module is the primitive
 it will call.

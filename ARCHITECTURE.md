@@ -1,5 +1,8 @@
 # loopmarket — architecture
 
+> **Vocabulary note (2026-09-07).** The code now says **clearing** for the step this document calls "settlement": the atomic commit that turns a proposal into fixed obligations (`clearing.py`, `MockClearing`, invariant U3). **Settlement** is reserved for the makers delivering, which is P3's guarantee fabric. This document and `docs/plans/` were written before the rename and are left as they are; read "settlement" here as "clearing" unless the context is delivery, bonds or oracles.
+
+
 A distributed offer registry and loop-finding system over the
 OntoDAG / recordstore / Swarm stack. This document records the design and its
 rationale; `CLAUDE.md` records the working rules derived from it.

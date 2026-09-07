@@ -3,7 +3,7 @@
 \begin{tikzpicture}[hop/.style={box, align=center, font=\footnotesize, minimum width=22mm}]
   % Longer loops: every intermediary is an ordinary maker whose give and
   % want differ in one dimension -- place (shipping), time (storage),
-  % currency (exchange). The solver composes; settlement commits together.
+  % currency (exchange). The solver composes; clearing commits together.
   \node[hop] (F) at (0,0) {factory\\ Shenzhen};
   \node[hop, right=9mm of F] (ship) {container line\\ Shenzhen $\to$ Rotterdam\\ 5 weeks};
   \node[hop, right=9mm of ship] (wh) {warehouse\\ Rotterdam\\ holds 2 weeks};
@@ -16,6 +16,6 @@
   \node[hop, dashed, draw=accent, text=accent] (X) at ($(F)!0.5!(B) + (0,-20mm)$) {exchange\\ EUR $\leftrightarrow$ USDC};
   \draw[flow] (B) |- node[lbl, pos=0.75, above] {EUR} (X);
   \draw[flow] (X) -| node[lbl, pos=0.25, above] {USDC} (F);
-  \node[note, text width=128mm] at ($(X) + (0,-14mm)$) {Shipping moves a thing in \emph{place}, storage in \emph{time}, an exchange moves value across \emph{currencies}: each is an ordinary maker whose give and want differ in one dimension. The buyer pays in euros, the factory is paid in USDC, and the intermediaries are paid the same way (payment legs not drawn). The solver composes the chain; settlement commits every leg or none.};
+  \node[note, text width=128mm] at ($(X) + (0,-14mm)$) {Shipping moves a thing in \emph{place}, storage in \emph{time}, an exchange moves value across \emph{currencies}: each is an ordinary maker whose give and want differ in one dimension. The buyer pays in euros, the factory is paid in USDC, and the intermediaries are paid the same way (payment legs not drawn). The solver composes the chain; clearing commits every leg or none.};
 \end{tikzpicture}
 \end{document}

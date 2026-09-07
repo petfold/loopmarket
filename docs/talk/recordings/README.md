@@ -12,7 +12,7 @@ scriptreplay -t demo_federation-live-20260904-2353.timing demo_federation-live-2
 - `demo_federation-live-20260904-2353` — the full run, green: core-pack
   catalogue (4,157 categories) committed to Swarm in 41 s, three maker
   feeds, two honest aggregators byte-identical, Cain convicted by the
-  audit, the triangle settled, follower reads six fills. 20 min 52 s
+  audit, the triangle cleared, follower reads six fills. 20 min 52 s
   wall clock, most of it feed probes on a light node: an
   exists-check for a not-yet-written feed chunk costs ~4 s and
   sometimes a transient `500 read chunk failed`, retried by the demo.
