@@ -15,3 +15,11 @@ Needs `pdflatex` with beamer, tikz, pgfplots, standalone, booktabs;
 Style lives in one place, `figstyle.tex` (colours, node and arrow
 styles), shared by every figure and the deck. More figures are drawn
 than the deck uses; pick from `figures/png/`.
+
+v2 (2026-09-07) revised the deck after `../issues.txt`: barter-first loop,
+private-scale star (`fig-scale`), OntoDAG multi-parent examples
+(`fig-ontodag-features`, edges taken from ontodag's `core` pack), vertical
+catalogue figures, the toothbrush (`fig-toothbrush`, `fig-loop-delivery`),
+multi-hop chains (`fig-chain`), solvers (`fig-solvers`), factbond
+(`fig-factbond`), and a who-pays-for-what table. `fig-liquidity` moved to
+backup.

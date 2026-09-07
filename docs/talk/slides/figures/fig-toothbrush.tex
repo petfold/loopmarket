@@ -1,0 +1,11 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}
+  % The trade that exists and never happens: the want is precise in place
+  % and time, the give is 300 m away, and nobody is searching.
+  \node[maker, align=left, text width=44mm] (W) {\textbf{traveller, 00:05}\\[1pt]{\footnotesize wants toothbrush}\\{\footnotesize at hotel reception, $r = 10$\,m}\\{\footnotesize 00:05 -- 00:35}};
+  \node[maker, align=left, text width=44mm, right=36mm of W] (G) {\textbf{petrol station, 300\,m away}\\[1pt]{\footnotesize gives toothbrush}\\{\footnotesize at the forecourt}\\{\footnotesize open all night}};
+  \draw[wrong, dashed, <->] (W) -- node[lbl, text=warn, above=1pt] {neither knows the other exists} (G);
+  \node[note, anchor=north, text width=110mm] at ($(W.south)!0.5!(G.south) + (0,-6mm)$) {The want is precise: a thing, a place, a time. The give is there. The trade fails on \emph{search}: you would have to go looking, so you don't. By far the most, and the best, potential interactions are lost this way.\\[3pt] You should not have to search. The system should solve it.};
+\end{tikzpicture}
+\end{document}

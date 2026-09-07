@@ -1,10 +1,12 @@
 \input{preamble}
 \begin{document}
 \begin{tikzpicture}
-  \node[maker, align=left, text width=34mm] (A) {\textbf{Amara}\\[1pt]{\footnotesize gives piano lesson \hfill 100}\\{\footnotesize wants vegetable box \hfill 120}\\{\footnotesize\color{soft}on Amara's scale}};
-  \node[maker, align=left, text width=34mm, right=30mm of A] (B) {\textbf{Bruno}\\[1pt]{\footnotesize gives vegetable box \hfill 50}\\{\footnotesize wants piano lesson \hfill 60}\\{\footnotesize\color{soft}on Bruno's scale}};
+  % Well-defined items (one barcode each) so nothing about the thing itself
+  % needs negotiating; the only question is the rate.
+  \node[maker, align=left, text width=40mm] (A) {\textbf{Amara}\\[1pt]{\footnotesize gives cordless drill \hfill 100}\\{\footnotesize wants box of floor tiles \hfill 120}\\{\footnotesize\color{soft}on Amara's scale}};
+  \node[maker, align=left, text width=40mm, right=28mm of A] (B) {\textbf{Bruno}\\[1pt]{\footnotesize gives box of floor tiles \hfill 50}\\{\footnotesize wants cordless drill \hfill 60}\\{\footnotesize\color{soft}on Bruno's scale}};
   \draw[flow] (A.10) to[bend left=20] node[rate, above=2pt] {$60/100 = 0.60$} (B.170);
   \draw[flow] (B.190) to[bend left=20] node[rate, below=2pt] {$120/50 = 2.40$} (A.-10);
-  \node[note, anchor=north, text width=92mm] at ($(A.south)!0.5!(B.south) + (0,-5mm)$) {Each rate is the taker's bid over the giver's ask, in mixed units. Around the loop the units cancel:\\[3pt] $\displaystyle \prod \text{rate} \;=\; \prod_i \frac{\text{bid}_i}{\text{ask}_i} \;=\; \frac{120}{100}\cdot\frac{60}{50} \;=\; 1.44$\\[3pt] Nothing is held or transferred on either scale.};
+  \node[note, anchor=north, text width=100mm] at ($(A.south)!0.5!(B.south) + (0,-5mm)$) {One barcode each: the things need no negotiation, only the rate does. Each rate is the taker's bid over the giver's ask, in mixed units. Around the loop the units cancel:\\[3pt] $\displaystyle \prod \text{rate} \;=\; \prod_i \frac{\text{bid}_i}{\text{ask}_i} \;=\; \frac{120}{100}\cdot\frac{60}{50} \;=\; 1.44$\\[3pt] Nothing is held or transferred on either scale.};
 \end{tikzpicture}
 \end{document}

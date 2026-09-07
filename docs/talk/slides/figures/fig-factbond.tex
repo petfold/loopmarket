@@ -1,0 +1,18 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}[stg/.style={box, align=center, font=\footnotesize, minimum width=26mm, minimum height=11mm}]
+  % The bonded-assertion lifecycle (optimistic-oracle shape): the bond is
+  % sized to the cost of adjudication, not to the value at stake; the
+  % expensive machinery runs only where someone disagrees.
+  \node[stg] (assert) at (0,0) {claim + bond\\ {\color{soft}``jigsaw $\sqsubseteq$ saw''}};
+  \node[stg, right=12mm of assert] (window) {challenge window\\ {\color{soft}anyone may dispute}};
+  \node[stg, right=14mm of window, yshift=9mm, fill=accentlight, draw=accent] (cert) {certified by timeout\\ {\color{soft}bond returned, free}};
+  \node[stg, right=14mm of window, yshift=-9mm, fill=warnlight, draw=warn] (adj) {adjudication\\ {\color{soft}evidence; loser pays}};
+  \draw[flow] (assert) -- (window);
+  \draw[flow] (window) -- node[lbl, sloped, above, font=\scriptsize] {$\sim$99\%: silence} (cert);
+  \draw[wrong] (window) -- node[lbl, sloped, below, font=\scriptsize] {$\sim$1\%: a challenger} (adj);
+  \node[stg, dashed, draw=accent, text=accent, below=9mm of window] (ins) {information insurance\\ {\color{soft}the one about to act buys a cheap hedge}};
+  \draw[sub] (ins) -- (window);
+  \node[note, text width=128mm] at ($(window) + (12mm,-36mm)$) {Prediction markets cannot scale down to millions of mundane, near-certain facts (matched counterparty, full collateral, mandatory settlement). A bonded assertion needs none of that: undisputed claims certify for free; real price discovery spins up only where someone disagrees. The quoted premium becomes a market-priced reliability signal for every fact.};
+\end{tikzpicture}
+\end{document}

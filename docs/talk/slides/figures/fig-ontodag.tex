@@ -1,29 +1,32 @@
 \input{preamble}
 \begin{document}
-\begin{tikzpicture}[node distance=7mm and 6mm]
-  % services side
-  \node[cat] (teaching) {teaching};
-  \node[cat, below=of teaching] (lesson) {lesson};
-  \node[cat, below=of lesson] (music) {music-lesson};
-  \node[cat, below=of music, fill=accentlight, draw=accent] (piano) {piano-lesson};
-  \draw[sub] (lesson) -- (teaching);
-  \draw[sub] (music) -- (lesson);
-  \draw[sub] (piano) -- (music);
-  % goods side
-  \node[cat, right=38mm of teaching] (food) {food};
-  \node[cat, below left=7mm and 2mm of food] (produce) {produce};
-  \node[cat, below right=7mm and 2mm of food] (veg) {vegetable};
-  \node[cat, right=8mm of veg] (local) {local};
-  \node[cat, right=6mm of local] (weekly) {weekly};
-  \node[cat, below=14mm of veg, fill=accentlight, draw=accent] (box) {vegetable-box};
-  \node[cat, below=of produce] (tomato) {tomato};
-  \draw[sub] (produce) -- (food);
-  \draw[sub] (veg) -- (food);
-  \draw[sub] (veg) -- (produce);
-  \draw[sub] (tomato) -- (veg);
-  \draw[sub] (box) -- (produce);
-  \draw[sub] (box) -- (local);
-  \draw[sub] (box) -- (weekly);
-  \node[note, text width=100mm] at ($(piano)!0.5!(box) + (0,-14mm)$) {one relation, $\sqsubseteq$ (fits within). A want for \emph{music-lesson} is met by a give of \emph{piano-lesson}; a want for \{produce, local, weekly\} is met by \emph{vegetable-box}. Multiple parents are normal: a DAG, not a tree.};
+\begin{tikzpicture}
+  % One order, drawn one way: supercategories above, subcategories below.
+  % A want is a conjunction of categories; it is met by anything in the
+  % intersection of their cones. Coordinates are explicit so that neither
+  % cone's box swallows the other cone's apex.
+  \node[cat] (sander)   at (0mm,0)  {sander};
+  \node[cat] (chainsaw) at (22mm,0) {chainsaw};
+  \node[cat] (table)    at (45mm,0) {table-saw};
+  \node[cat, fill=accentlight, draw=accent] (jigsaw) at (67mm,0) {jigsaw};
+  \node[cat] (hand)     at (91mm,0) {hand-saw};
+  \node[cat] (power) at (11mm,15mm) {power-tool};
+  \node[cat] (saw)   at (91mm,15mm) {saw};
+  \node[cat] (machine) at (11mm,30mm) {machine};
+  \node[cat] (tool)    at (62mm,30mm) {tool};
+  \node[cat] (device)  at (36mm,45mm) {device};
+  \draw[sub] (machine) -- (device); \draw[sub] (tool) -- (device);
+  \draw[sub] (power) -- (machine); \draw[sub] (power) -- (tool);
+  \draw[sub] (saw) -- (tool);
+  \draw[sub] (sander) -- (power); \draw[sub] (chainsaw) -- (power);
+  \draw[sub] (table) -- (power); \draw[sub] (jigsaw) -- (power);
+  \draw[sub] (table) -- (saw); \draw[sub] (jigsaw) -- (saw); \draw[sub] (hand) -- (saw);
+  \begin{scope}[on background layer]
+    \node[fit=(power)(sander)(chainsaw)(table)(jigsaw), rounded corners=5pt, draw=soft, dashed, inner sep=3pt] (conepower) {};
+    \node[fit=(saw)(table)(jigsaw)(hand), rounded corners=5pt, draw=accent, dashed, inner sep=3pt] (conesaw) {};
+  \end{scope}
+  \node[note, anchor=north west] at ($(conepower.south west) + (0,-1mm)$) {cone of \emph{power-tool}};
+  \node[note, text=accent, anchor=north east] at ($(conesaw.south east) + (0,-1mm)$) {cone of \emph{saw}};
+  \node[note, text width=120mm] at (45mm,-17mm) {one relation, $\sqsubseteq$ (fits within), always drawn upwards. A want for \{saw\} is met by any saw, hand or powered; a want for \{power-tool, saw\} is met by the \emph{intersection} of the two cones: table-saw, jigsaw. The give of a jigsaw satisfies both. Multiple parents are normal: a DAG, not a tree.};
 \end{tikzpicture}
 \end{document}

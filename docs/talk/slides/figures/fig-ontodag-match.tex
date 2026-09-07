@@ -1,16 +1,19 @@
 \input{preamble}
 \begin{document}
-\begin{tikzpicture}[node distance=7mm and 8mm]
-  \node[cat] (lesson) {lesson};
-  \node[cat, below left=of lesson, fill=accentlight, draw=accent] (music) {music-lesson};
-  \node[cat, below right=of lesson] (lang) {language-lesson};
-  \node[cat, below left=7mm and 0mm of music] (piano) {piano-lesson};
-  \node[cat, below right=7mm and 0mm of music] (violin) {violin-lesson};
-  \draw[sub] (music) -- (lesson); \draw[sub] (lang) -- (lesson);
-  \draw[sub] (piano) -- (music); \draw[sub] (violin) -- (music);
+\begin{tikzpicture}[node distance=7mm and 6mm]
+  \node[cat] (tool) {tool};
+  \node[cat, below left=7mm and 4mm of tool] (power) {power-tool};
+  \node[cat, below right=7mm and 4mm of tool, fill=accentlight, draw=accent] (saw) {saw};
+  \node[cat, below left=7mm and 2mm of power] (sander) {sander};
+  \node[cat] (jigsaw) at ($(power)!0.5!(saw) + (0,-7mm)$) {jigsaw};
+  \node[cat, below right=7mm and 2mm of saw] (hand) {hand-saw};
+  \draw[sub] (power) -- (tool); \draw[sub] (saw) -- (tool);
+  \draw[sub] (sander) -- (power);
+  \draw[sub] (jigsaw) -- (power); \draw[sub] (jigsaw) -- (saw);
+  \draw[sub] (hand) -- (saw);
   \begin{scope}[on background layer]
-    \node[fit=(music)(piano)(violin), rounded corners=4pt, fill=accentlight, inner sep=4pt] (cone) {};
+    \node[fit=(saw)(jigsaw)(hand), rounded corners=4pt, fill=accentlight, inner sep=4pt] (cone) {};
   \end{scope}
-  \node[note, below=5mm of cone.south, text width=96mm, align=left, anchor=north, xshift=14mm] {Chen wants \emph{music-lesson}: anything in its cone satisfies her.\\[3pt] Amara gives \emph{piano-lesson}: inside the cone $\Rightarrow$ match.\\[3pt] Unknown category $\Rightarrow$ never matches (fails closed).};
+  \node[note, below=5mm of cone.south, text width=96mm, align=left, anchor=north, xshift=6mm] {Chen wants a \emph{saw} for the weekend: anything in its cone satisfies her.\\[3pt] Amara gives a \emph{jigsaw}: inside the cone $\Rightarrow$ match. Bruno's \emph{sander}: outside $\Rightarrow$ no.\\[3pt] Unknown category $\Rightarrow$ never matches (fails closed).};
 \end{tikzpicture}
 \end{document}

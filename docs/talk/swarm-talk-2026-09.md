@@ -1,17 +1,24 @@
 # loopmarket — a 30-minute introduction for a Swarm audience
 
-Draft 1, 2026-09-04. Speaker: Peter Földiák. Working title: **"Markets
-without a platform: the loop economy on Swarm"**.
+Draft 2, 2026-09-07 (draft 1: 2026-09-04; revised after `issues.txt`).
+Speaker: Peter Földiák. Title: **"Combinatorial marketplace without a
+platform: the loop economy on Swarm"**.
 
 Arc (four parts, ~30 minutes):
 
 | # | Part | Minutes | Slides |
 |---|------|--------:|-------:|
-| 1 | What is wrong with internet commerce | 5 | 1–3 |
-| 2 | A general solution: the loop economy | 6 | 4–7 |
-| 3 | What is built, one demo, what is planned | 8 | 8–12 |
-| 4 | The Swarm AI Data Exchange and loopmarket: differences, convergence | 9 | 13–17 |
-| — | Close and asks to the room | 2 | 18 |
+| 1 | What is wrong with internet commerce | 6 | 1–4 |
+| 2 | A general solution: the loop economy | 10 | 5–20 |
+| 3 | What is built, one demo, what is planned | 8 | 21–26 |
+| 4 | The Swarm AI Data Exchange and loopmarket: differences, convergence | 8 | 27–31 |
+| — | Close and asks to the room | 1 | 32 |
+
+Draft 2 runs long for 30 minutes: part 2 grew from 4 slides to 16 at
+the owner's request (barter first, private scales, OntoDAG on its own,
+longer loops, solvers, factbond). Cut candidates if time is short:
+slides 12 (fits-within, three ways), 16 (multi-hop chain), 20 (bridge:
+already covered by the exchange leg on 16).
 
 Conventions in this draft: **bold** lines are what goes on the slide;
 indented text is speaker notes; `[verify]` marks a number to check
@@ -20,7 +27,7 @@ Numbers quoted from the plan corpus carry their source doc.
 
 ---
 
-## Part 1 — What is wrong with internet commerce (5 min)
+## Part 1 — What is wrong with internet commerce (6 min)
 
 ### Slide 1 — Two failure modes, one cause
 
@@ -39,9 +46,9 @@ Numbers quoted from the plan corpus carry their source doc.
 
 ### Slide 2 — The rent, the gate, the ranking
 
-**Take rates: app stores ~30%, marketplaces 15%+ referral plus logistics
-and ads `[verify: Marketplace Pulse puts Amazon's total seller cost above
-50% of revenue for FBA sellers]`.**
+**Take rates: app stores 15–30%; Amazon referral 8–15% of price plus
+fulfilment and ads, all-in around half of a seller's revenue
+(Marketplace Pulse).**
 **Gatekeeping: delisting is unilateral and unappealable.**
 **Ranking: the platform's algorithm decides who exists.**
 
@@ -50,92 +57,217 @@ and ads `[verify: Marketplace Pulse puts Amazon's total seller cost above
     charge for inclusion and shape the market by omission. Say the word
     "omission" — it comes back in part 3 as a thing we can prove.
 
-### Slide 3 — The deeper limit: everything must pass through money
+### Slide 3 — The everyday misery: buying one thing for a renovation
 
-**Trade requires a double coincidence of wants — or a common medium.**
-**Where the medium is thin, good trades don't happen.**
-**Time banks stall in every town: within one service type the web of
-offers is too sparse to close cycles (loop-economy.md).**
-**Measured: pure cycles clear ~9.5% of debt on 1.28M Italian invoices;
-10% external liquidity lifts that to ~50% (arXiv:2507.22309, Fig. 10).**
+**Fifteen steps to buy one well-defined item; and that is a good, not
+a service. Your bathroom tap leaks — where do you even start?**
+**Conclusion: it's a mess; we can do better at discovery, selection,
+comparison, logistics, delivery.**
+
+    Personal experience, told fast; the list is on the slide, don't read
+    it. Land two things: (1) the effort is all *search and comparison*
+    across shops that each hold a private slice of the market; (2) for
+    services there is not even a slice to search. The five words at the
+    bottom are the five things the rest of the talk is about.
+
+### Slide 4 — The trades that never happen
+
+**Midnight in Barcelona after a late flight; you forgot your toothbrush.
+The petrol station 300 m away sells one. Neither of you knows.**
+**The want is precise: a thing, within 10 m of the reception, within 30
+minutes. You should not have to search. The system should solve it.**
 
     This is the slide that separates loopmarket from "yet another
-    decentralized marketplace". The problem is not only *who owns the
-    platform* but that markets only form where a currency and a platform
-    already exist. The invoice-clearing numbers show that multilateral
-    cycles are real and large, and that a small bridge of liquidity
-    unlocks most of the rest. Hold that thought for bridges (slide 7).
+    marketplace": by far the most, and the best, potential interactions
+    are lost not to price but to search. The example comes back twice —
+    as a longer loop with a delivery leg in part 2, and as the
+    content-routed GSOC question in part 3.
 
 ---
 
-## Part 2 — A general solution: the loop economy (6 min)
+## Part 2 — A general solution: the loop economy (10 min)
 
-### Slide 4 — One uniform offer
+### Slide 5 — The simplest loop: barter
+
+**Amara offers 5 apples for 4 oranges. Bruno offers 6 oranges for 4
+apples. No money, no units.**
+**Walk one apple round the loop: it comes back as 1.875 apples. The
+loop closes with room to spare; 4 apples for 5 oranges satisfies both.**
+
+    Start with barter so the loop condition is visible with nothing but
+    the two offers. Do NOT mention internal units or scales here. The
+    "walk one apple round" phrasing is the product-of-rates condition in
+    disguise; name it as such only on the negative-cycle slide.
+
+### Slide 6 — Private units, for internal bookkeeping only
+
+**Left: n gives against m wants is n×m exchange rates, and they can
+contradict each other.**
+**Right: one private scale per maker is n+m prices; every implied rate
+is a ratio, so no arbitrage is possible by construction.**
+
+    This is where the "personal scale" enters, and why. Stress that it
+    is bookkeeping: nothing is issued, held or transferred, each maker's
+    scale is their own, and only ratios ever leave the maker. The record
+    encoding calls it the maker's personal token; in speech say "scale".
+
+### Slide 7 — The simplest loop, on two private scales
+
+**Amara: gives a cordless drill (100), wants a box of floor tiles (120).
+Bruno: gives the tiles (50), wants the drill (60). Rates 0.60 and 2.40;
+product 1.44.**
+
+    Well-defined items, one barcode each, so nothing about the *thing*
+    needs negotiating — only the rate does. (The earlier vegetable-box
+    example was dropped: what is in the box, what "weekly" means and how
+    it is paid were all under-specified.) Around the loop the units
+    cancel; nothing is held on either scale.
+
+### Slide 8 — One uniform offer
 
 **Every economic intention is one record: a thing (a conjunction of
 catalogue categories), a service time window, a service region, a
 validity window, a price on the maker's own scale.**
-**Give or want — the same form. A shop, a person, a bus with empty
-seats, a bank's stablecoin: all makers.**
+**Give or want — the same form. A shop, a person, a courier, a bus with
+empty seats, a stablecoin: all makers.**
 
-    Show one offer as JSON-ish text (from `docs/USER-GUIDE.md` §2). Stress
-    "the maker's own scale": Amara prices in Amara-units, nothing is ever
-    held or transferred, the numbers cancel inside a loop. This is what
-    removes the common-medium requirement without inventing a token.
+    Show the offer card. The audience has now seen why the scale exists,
+    so this slide is just "and here is the record".
 
-### Slide 5 — The catalogue: meanings, minutes and map cells ordered the same way
+### Slide 9 — OntoDAG: categories as a DAG, not a tree
 
-**ontodag: one relation — fits-within — over categories, time windows
-and geo cells.**
-**A want for `music-lesson` is satisfied by a give of `piano-lesson`
-because `piano-lesson ⊑ music-lesson ⊑ lesson ⊑ teaching`.**
+**One relation, fits-within; one query, the intersection of descendant
+cones. Multiple parents are normal: a jigsaw is a saw *and* a power
+tool; fruit is botanical-fruit, food and produce.**
+**Typed dimensions are ordinary categories with a computed order:
+time(2026-09-07), weight(..5kg), a geohash cell.**
+**Canonical form: equal content ⇒ equal root; a catalogue is adoptable
+by fingerprint.**
+
+    Introduce ontodag on its own before using it. The three small DAGs
+    are real edges from the `core` pack. The third one (Flight, Japan,
+    boarding pass) makes the "items are categories" point: `get Japan`
+    returns the boarding pass nobody filed under Japan. Arrows always go
+    up: supercategories above subcategories, on every figure.
+
+### Slide 10 — The catalogue: a want is a conjunction, a give is a point
+
+**A want for {saw} is met by any saw; a want for {power-tool, saw} is
+met by the intersection of the two cones: table-saw, jigsaw.**
+
+    The music-lesson example is gone (people who want a lesson know
+    whether it is piano or violin). A renovator who wants "a saw for the
+    weekend" genuinely accepts any saw; adding power-tool narrows it.
+    Point at the two dashed cones and their overlap.
+
+### Slide 11 — ontodag as the language of offers
+
+**Match = the give's categories lie inside every cone the want names.
+Unknown category ⇒ never matches (fails closed).**
 **Shipped this week: ontodag's `core` pack, 4,137 consensus categories
 (WordNet, SUMO, OpenCyc, Wikidata, schema.org as witnesses), plus ten
 domain packs — a catalogue as a pinned root, adoptable by fingerprint.**
 
-    This is the "ontodag as a way of expressing offers" moment. Two
-    sentences on why a DAG and not a taxonomy tree (multi-parent: a
-    vegetable box is produce *and* local *and* weekly). One sentence on
-    why the catalogue is a *root*: every offer pins the catalogue
-    version it was written against, so a match is reproducible forever.
-    Honest footnote: core's goods layer is rich (toaster, jeans,
-    tomato); its *services* layer is thin — the next pack to build.
+    One sentence on why the catalogue is a *root*: every offer pins the
+    catalogue version it was written against, so a match is reproducible
+    forever. Honest footnote: core's goods layer is rich (toaster, jeans,
+    jigsaw); its *services* layer is thin — the next pack to build.
 
-### Slide 6 — Loops: the solver finds the trade nobody asked for
+### Slide 12 — Fits-within, three ways
+
+**The same relation orders meanings, minutes and map cells. Exact time
+and geo checks remain the truth at match time.**
+
+### Slide 13 — Loops: the solver finds the trade nobody asked for
 
 **No pair can trade. The triangle clears.**
 **Amara teaches piano, wants vegetables. Bruno grows vegetables, wants
 his bikes fixed. Chen fixes bikes, her daughter wants piano lessons.**
-**A loop is profitable iff the product of its rates exceeds 1 —
-a negative cycle under −log weights. Bellman–Ford finds it.**
-**Solvers compete and are trusted with nothing.**
+**Rates 0.830 · 0.650 · 2.080 = 1.12, surplus 12%.**
 
-    `[demo-lite]` The triangle demo's output fits on a slide as static
-    text (rates 0.830 · 0.650 · 2.080 = 1.12, surplus 12%). Explain the
+    `[demo-lite]` The triangle demo's output as static text. Explain the
     surplus in one line: everyone gets at least their asking price, and
     12% is left over to distribute. Say that this is P0 arithmetic; the
     fair distribution of surplus is specified for P2.
 
-### Slide 7 — Settlement trusts no one; money is just another offer
+### Slide 14 — A profitable loop is a negative cycle
+
+**A loop is profitable iff the product of its rates exceeds 1 — a
+negative cycle under −log weights. Bellman–Ford finds it,
+deterministically.**
+
+### Slide 15 — Longer loops: the toothbrush, solved
+
+**Traveller pays stablecoin twice; the station gives the toothbrush at
+the forecourt at 00:15; the courier's offer names the *same* thing at
+the reception at 00:35. Four legs, three makers, all or none.**
+
+    Delivery is an offer that moves a thing through space and time: the
+    courier's give and want differ only in place and time. Every maker's
+    legs cancel on its own scale. A two- or three-leg cycle is only the
+    smallest case; the general object is a set of legs that balances at
+    every node (P2's flow formulation).
+
+### Slide 16 — Longer loops: place, time and currency are just more legs
+
+**Factory in Shenzhen → container line → warehouse → van → buyer in
+Utrecht. The buyer pays euros; the factory is paid USDC; an exchange
+sits in between.**
+
+    Shipping moves a thing in place, storage in time, an exchange moves
+    value across currencies. Each is an ordinary maker. The solver
+    composes the chain; settlement commits every leg or none.
+
+### Slide 17 — Solvers: outside the protocol, competing, trusted with nothing
+
+**The CoW Protocol shape: anyone runs a solver; the best proposal wins;
+the solver is paid from the surplus it found — an endogenous spread
+bounded by the reserve bid.**
+**Solvers may be as clever, private and stochastic as they like. The
+baseline in the repo is deterministic and is the reserve bid.**
+
+    Solvers are external to loopmarket proper, exactly as CoW's solvers
+    are external to the protocol. The repo ships one — the species the
+    others have to beat — and nothing in settlement depends on any of
+    them being honest. P2's batch auction: sealed proposals per beat,
+    numeraire-free scoring, a fairness floor (P2-batch-auction.md).
+
+### Slide 18 — Settlement trusts no one
 
 **Settlement re-derives every leg from the pinned book and catalogue,
 re-checks the product, and commits all legs atomically — one root.**
 **A follower with nothing but an address reads the settled world back.**
-**Money enters as a *bridge offer*: a maker whose thing is a currency.
-Bridges turn almost-loops failing only on a money leg into loops
-(adoption-and-thickness.md §3).**
 
-    Two claims to make crisply: (1) trust is replaced by re-verification
-    wherever verification can reach (the settlement rule U3); (2) the
-    system does not *exclude* money, it *demotes* it to one more kind of
-    offer. That is the frame for part 4: x402 and stablecoins are
+### Slide 19 — Where verification cannot reach: factbond
+
+**A bonded assertion: one party posts a claim backed by a bond sized to
+the cost of adjudication; the world is the latent counterparty during a
+challenge window; undisputed claims certify by timeout for free; the
+expensive machinery runs only on the ~1% that someone disputes.**
+**Information insurance: the one about to act on a fact buys a cheap
+hedge; the premium is a market-priced reliability signal.**
+**In loopmarket (P3): bonds on the ⊑ edges a loop relied on, on oracle
+attestations ("delivered at reception, 00:21"), on identity facts.**
+
+    factbond is the sister repo (design stage, nothing implemented) and
+    is mentioned later on the reputation and ERC-8004 slides, so it
+    needs this introduction. Prediction markets cannot scale down to
+    millions of near-certain mundane facts; bonded assertions can.
+
+### Slide 20 — Money is just another offer
+
+**Money enters as a *bridge offer*: a maker whose thing is a currency.
+Bridges turn almost-loops failing only on a money leg into loops.**
+
+    The system does not *exclude* money, it *demotes* it to one more kind
+    of offer. That is the frame for part 4: x402 and stablecoins are
     welcome, as legs.
 
 ---
 
 ## Part 3 — What is built, one demo, what is planned (8 min)
 
-### Slide 8 — The stack, and why it is Swarm-shaped
+### Slide 21 — The stack, and why it is Swarm-shaped
 
 **loopmarket → ontodag → recordstore → Swarm.**
 **Book = a versioned key-value keyspace with canonical roots (equal
@@ -153,7 +285,7 @@ never a delete — the book cleans itself.**
     and GSOC reception; the book head lives in a feed so a reader needs
     (owner, topic) and nothing else.
 
-### Slide 9 — Invariants the code enforces
+### Slide 22 — Invariants the code enforces
 
 **U1 uniform offer · U2 immutable, content-addressed · U3 settlement
 trusts no solver · U4 solve against pinned roots · U5 positive rates
@@ -165,7 +297,7 @@ U11 no partially-filled loop survives a merge.**
     break", and that the same discipline runs across ontodag and
     recordstore.
 
-### Slide 10 — `[demo]` The federated book, live on Bee (≈ 3 min)
+### Slide 23 — `[demo]` The federated book, live on Bee (≈ 3 min)
 
 **Three makers, three feeds. Two honest aggregators fold in different
 orders — byte-identical manifests. Mallory forges an offer in Amara's
@@ -188,7 +320,7 @@ follower reads six atomic fills from the manifest alone.**
     Line to say: "an aggregator is whoever happened to compute the
     root; the root is the market."
 
-### Slide 11 — Are aggregators necessary? (an honest open question)
+### Slide 24 — Are aggregators necessary? (an honest open question)
 
 **Not for correctness, trust or permission — the fold is pure; any
 reader can recompute it.**
@@ -207,7 +339,19 @@ as the floor, GSOC as the fast path), never via a party who can omit.**
     problem (every chunk carries its uploader's stamp; readers need
     none); delivery guarantees and light-node reception are.
 
-### Slide 12 — Roadmap
+### Slide 25 — Who pays for what
+
+**Makers pay postage for their own book (the stamp's TTL is the offer's
+lifetime) and never gas. Solvers pay settlement gas and earn the spread.
+Aggregators sell serving, never inclusion. The protocol takes and gives
+nothing: no fees, no token, no rewards, no treasury.**
+
+    Ruling of 2026-08-21 (P2-batch-auction.md §9). Every actor bears its
+    own real cost, so a wash loop through sybils can never be paid for by
+    the system it games. Revisit triggers: solver monoculture, aggregator
+    scarcity, measured statistics pollution.
+
+### Slide 26 — Roadmap
 
 **P0 in-memory prototype — done. P1 Swarm book — federation live; open:
 read-path decentralization, GSOC announcements, latency/durability
@@ -227,7 +371,7 @@ catalogue edges.**
 
 ## Part 4 — The Swarm AI Data Exchange and loopmarket (9 min)
 
-### Slide 13 — Same substrate, same idioms
+### Slide 27 — Same substrate, same idioms
 
 **Both: content-addressed catalogues on Swarm; an atomic root in a
 feed; feed owner as identity; a light node suffices to read.**
@@ -244,7 +388,7 @@ aggregator manifests; settlement feed.**
     architectural choices at the storage layer. The differences are one
     level up."
 
-### Slide 14 — The differences
+### Slide 28 — The differences
 
 | | Swarm AI Data Exchange | loopmarket |
 |---|---|---|
@@ -262,7 +406,7 @@ aggregator manifests; settlement feed.**
     "a storefront and a clearing house — and the clearing house is the
     bigger problem, because it creates trades that a storefront cannot."
 
-### Slide 15 — Why not reputation-based
+### Slide 29 — Why not reputation-based
 
 **eBay: 0.3% of transactions rated negative, yet P(negative | partner
 rated negative) > 37% — retaliation suppressed truthful feedback until
@@ -278,7 +422,7 @@ Reputation is a *statistic you derive*, not an institution you believe.**
     unnecessary where it can (settlement recomputes everything) and
     expensive to game where it cannot (bonds).
 
-### Slide 16 — x402 and ERC-8004 fit loopmarket — as legs, identities and proofs
+### Slide 30 — x402 and ERC-8004 fit loopmarket — as legs, identities and proofs
 
 **x402 is a bilateral rail; it cannot settle a k-leg loop. It fits
 three places the plan already has: the stablecoin leg of a bridge offer
@@ -297,7 +441,7 @@ validation events with proofs, not opinions.**
     Keep the tone "and", not "instead". The line: "x402 for the money
     leg, loopmarket for the parts x402 cannot see."
 
-### Slide 17 — How we could converge
+### Slide 31 — How we could converge
 
 **1. Shared identity: one ERC-8004 Agent Card carrying both a
 `swarm-ai-catalog` and a `loopmarket-book` service.**
@@ -327,7 +471,7 @@ a number on *some* scale; let the scale be a field.**
 
 ## Close (2 min)
 
-### Slide 18 — Asks to the room
+### Slide 32 — Asks to the room
 
 **GSOC reception from light nodes; pub/sub timing.**
 **A services layer for ontodag's core pack (the goods are in; repair,
@@ -336,7 +480,7 @@ tutoring, cleaning are not).**
 wedge.**
 **Repos: loopmarket, ontodag, recordstore, factbond (github.com/petfold).**
 
-    End on the sentence from slide 10: the root is the market; Swarm
+    End on the sentence from slide 23: the root is the market; Swarm
     holds the books; the chain is the floor for discovery; the one
     remaining point of trust is settlement, and it is next.
 
@@ -360,8 +504,8 @@ wedge.**
 
 ## To do before the talk
 
-- [ ] `[verify]` the platform take-rate figures on slide 2 (or drop numbers, keep the shape).
+- [x] take-rate figures on slide 2: app stores 15–30%, Amazon referral 8–15% + fulfilment/ads, ~50% all-in (Marketplace Pulse); the `[verify]` tag is gone from the slide.
 - [ ] Record the in-memory federation demo (~5 s) and the live run (minutes) as terminal recordings; decide which to show.
-- [ ] Decide whether to show the triangle as a live 30-second run or as static output on slide 6.
-- [ ] Read `swarm-ai-data-exchange/documents/...design-v1...md` §10–11 once more for the exact purchase-flow wording on slide 13.
-- [ ] Check with Solar Punk whether the Marketplace Event Collector is planned as a required discovery component (slide 17, item 5) before saying so on stage.
+- [ ] Decide whether to show the triangle as a live 30-second run or as static output on slide 13.
+- [ ] Read `swarm-ai-data-exchange/documents/...design-v1...md` §10–11 once more for the exact purchase-flow wording on slide 27.
+- [ ] Check with Solar Punk whether the Marketplace Event Collector is planned as a required discovery component (slide 31, item 5) before saying so on stage.

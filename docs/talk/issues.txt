@@ -1,0 +1,55 @@
+title: Combinatorial marketplace without a platform
+
+slide 3: [verify] comment left in by mistake?
+
+skip slide 4 entirely, this (no need to mention time banks)
+replacement for slide 4:
+
+include a slide about the current misery of ecommerce.
+It takes a lot of effort to find things (or just a good one, not the best)
+So you want to buy an item for your house renovation (personal experience):
+first find which online stores are relevant that serve your area
+then search each one of those
+then identify which products meet your criteria
+then select the best price, including delivery (some only give you a full price at the very end)
+then select the specific conditions of the store, compare delivery options and times
+you found an item but they don't deliver to your country or area
+sometimes it's cheaper to pick it up yourself, but you have to search for where you can pick up
+then choose the shop
+then select the payment type (some charge fees for certain cards)
+then revise your choice
+then wait for delivery and hope
+then stay at home at the predicted delivery time
+then phone them about why it's not on time, and find the tracking number
+then find the delivery website and paste the tracking number
+then stay at home for the actual delivery time
+then hope that the product actually meets your criteria
+
+and that does not even mention services:
+your bathroom tap leaks and you need to find someone to fix it. good luck. where do you even start?
+or your gas heater doesn't start.
+
+conclusion: it's a mess and we can do better than that
+discovery, selection, comparison, logistics, delivery
+
+mention that by far the most (and the best) of the potential interactions get missed
+
+Examples: arrived to a hotel at midnight after a late flight to Barcelona and you forgot your toothbrush. A nearby pertrol station sells toothbrushes but you don't know about it and don't want to go out looking for one. You need the toothbrush in a 10 meter radius of the hotel reception within 30 minutes. You should not have to do the search, the system should solve it.
+
+The simplest loop should start with barter.
+A offers 5 apples for 4 oranges, B offers 6 oragnes for 4 apples. Don't introduce internal units here.
+
+Make a slide about private (numeraire) units for internal purposes with 2 figures: m the left a bipartite graph of exchange rates for all wants and gives n x , on the right one internal node and n + m edges with rates that cannot be arbitraged.
+
+Then show the current slide 7, but replace the vegetable box example as it is hard to specify what is acceptable in the box and also what weekly means and how it is paid (weekly? in advance?). Let's start with the much easier cases of well defined items (maybe ones with bar codes).
+
+The "The catalogue" slides needs changes too. The music-lesson is not great, as people who want a music lesson have a good idea whether they want a piano lesson or a violin lesson. On the right hand side the figure shows arrows going horizontally. The arrows should always go vertically with supercategories above subcategories. An ontodag slide would be good to have before this, mentioning the unique features of OntoDAG, and a few examples figures with multiple parents.
+
+After the "A profitable loop" slide, more complex loops could be shown, e.g. product plus precise (time and place) delivery (e.g. toothbrush example). And we can include other reasons to have more complex loops (e.g. payment accepted and payment offered are in different currencies, so an exchange would go in between, or storage would also be involved, or delivery in multiple hops (e.g. in a shipping container plus a precise local delivery)
+
+You mention factbond a few times but it doesn't seem to be introduced. It needs its own slide.
+
+
+---
+who pays for what
+

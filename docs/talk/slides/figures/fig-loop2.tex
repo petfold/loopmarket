@@ -1,10 +1,12 @@
 \input{preamble}
 \begin{document}
 \begin{tikzpicture}
-  \node[maker] (A) {Amara};
-  \node[maker, right=42mm of A] (B) {Bruno};
-  \draw[flow] (A) to[bend left=28] node[lbl, above=1pt] {piano lesson} node[rate, below=2pt] {rate $0.60$} (B);
-  \draw[flow] (B) to[bend left=28] node[lbl, below=1pt] {vegetable box} node[rate, above=2pt] {rate $2.40$} (A);
-  \node[note, below=16mm of $(A)!0.5!(B)$] {$0.60 \times 2.40 = 1.44 > 1$ \quad the loop is profitable};
+  % Barter first: no prices, no units, no money. The loop condition is
+  % visible with nothing but the two offers.
+  \node[maker, align=left, text width=30mm] (A) {\textbf{Amara}\\[1pt]{\footnotesize gives 5 apples}\\{\footnotesize wants 4 oranges}};
+  \node[maker, align=left, text width=30mm, right=40mm of A] (B) {\textbf{Bruno}\\[1pt]{\footnotesize gives 6 oranges}\\{\footnotesize wants 4 apples}};
+  \draw[flow] (A.15) to[bend left=22] node[lbl, above=1pt] {apples} (B.165);
+  \draw[flow] (B.195) to[bend left=22] node[lbl, below=1pt] {oranges} (A.-15);
+  \node[note, anchor=north, text width=100mm] at ($(A.south)!0.5!(B.south) + (0,-7mm)$) {Walk one apple round the loop: Bruno turns it into $6/4 = 1.5$ oranges, Amara turns those back into $1.5 \times 5/4 = 1.875$ apples.\\[2pt] More comes back than went out $\Rightarrow$ the loop closes, with room to spare.\\[2pt] One settlement that satisfies both offers: \textbf{4 apples for 5 oranges}.};
 \end{tikzpicture}
 \end{document}

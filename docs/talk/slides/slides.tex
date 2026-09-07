@@ -1,5 +1,6 @@
 % loopmarket — a 30-minute introduction for a Swarm audience
 % Build: make            (figures first, then the deck)
+% v2 (2026-09-07): revised after docs/talk/issues.txt — see the git log.
 \documentclass[aspectratio=169,11pt]{beamer}
 \input{figstyle}
 \usepackage{booktabs}
@@ -22,6 +23,7 @@
 \setbeamertemplate{frametitle}{\vspace*{6mm}\insertframetitle\par\vspace*{1mm}}
 \setbeamertemplate{itemize items}{\textcolor{accent}{\raisebox{0.35ex}{\rule{0.9ex}{0.9ex}}}}
 \setbeamertemplate{itemize subitem}{\textcolor{soft}{--}}
+\setbeamertemplate{enumerate items}[default]
 \setbeamertemplate{footline}{%
   \hfill\textcolor{soft}{\footnotesize\insertframenumber}\hspace*{6mm}\vspace*{3mm}}
 \setlength{\leftmargini}{1.4em}
@@ -30,7 +32,7 @@
 \newcommand{\fig}[2][0.9]{\centering\includegraphics[width=#1\linewidth, height=0.7\textheight, keepaspectratio]{#2}}
 \newcommand{\colfig}[2][0.78]{\includegraphics[width=\linewidth, height=#1\textheight, keepaspectratio]{#2}}
 
-\title{Markets without a platform}
+\title{Combinatorial marketplace without a platform}
 \subtitle{the loop economy on Swarm}
 \author{Peter F\"oldi\'ak}
 \date{September 2026}
@@ -60,7 +62,7 @@
 
 \begin{frame}{The rent, the gate, the ranking}
   \begin{itemize}
-    \item Take rates: app stores $\sim$30\%; marketplaces 15\%+ referral, plus logistics and ads. \src{[verify]}
+    \item Take rates: app stores 15--30\%; Amazon referral 8--15\% of price, plus fulfilment and ads, all-in around half of a seller's revenue. \src{Marketplace Pulse}
     \item Gatekeeping: delisting is unilateral and unappealable.
     \item Ranking: the platform's algorithm decides who exists.
   \end{itemize}
@@ -68,22 +70,57 @@
   Platform power is structural: whoever holds the only index can charge for inclusion and shape the market by \alert{omission}.
 \end{frame}
 
-\begin{frame}{The deeper limit: everything must pass through money}
+\begin{frame}{The everyday misery: buying one thing for a renovation}
+  \footnotesize\setlength{\itemsep}{0pt}
   \begin{columns}[T]
     \begin{column}{0.5\textwidth}
-      \begin{itemize}
-        \item Trade needs a double coincidence of wants, or a common medium.
-        \item Where the medium is thin, good trades don't happen.
-        \item Time banks stall in every town: within one service type the web of offers is too sparse to close cycles.
-      \end{itemize}
+      \begin{enumerate}
+        \item find which online shops even serve your area
+        \item search each one
+        \item work out which products meet your criteria
+        \item compare prices \emph{with} delivery: some only tell you at the last step
+        \item compare the shops' conditions, delivery options and dates
+        \item the one you found does not deliver to your country
+        \item pick-up would be cheaper: now search for where
+        \item choose the shop; choose a payment type (some cards carry fees)
+      \end{enumerate}
     \end{column}
     \begin{column}{0.5\textwidth}
-      \includegraphics[width=\linewidth]{fig-liquidity}
+      \begin{enumerate}
+        \setcounter{enumi}{8}
+        \item revise your choice
+        \item wait, and hope
+        \item stay at home at the predicted delivery time
+        \item phone them about why it is late; find the tracking number
+        \item find the carrier's website; paste the number
+        \item stay at home at the actual delivery time
+        \item hope the product meets your criteria after all
+      \end{enumerate}
+      \vspace{1mm}
+      \textcolor{soft}{And that is a well-defined \emph{good}. Your bathroom tap leaks; the gas heater will not start. Where do you even begin?}
     \end{column}
   \end{columns}
+  \vspace{2mm}
+  \centering\small It's a mess, and we can do better: \textbf{discovery, selection, comparison, logistics, delivery}.
+\end{frame}
+
+\begin{frame}{The trades that never happen}
+  \fig[0.95]{fig-toothbrush}
 \end{frame}
 
 % =============================================================== Part 2
+\begin{frame}{The simplest loop: barter}
+  \fig[0.85]{fig-loop2}
+\end{frame}
+
+\begin{frame}{Private units, for internal bookkeeping only}
+  \fig[0.98]{fig-scale}
+\end{frame}
+
+\begin{frame}{The simplest loop, on two private scales}
+  \fig[0.85]{fig-loop2-scales}
+\end{frame}
+
 \begin{frame}{One uniform offer}
   \begin{columns}[T]
     \begin{column}{0.55\textwidth}
@@ -95,21 +132,24 @@
         \item A thing, a time, a place, a validity, a price.
         \item Give or want: the same form.
         \item Priced on the maker's \emph{own scale}: nothing is held or transferred; the numbers cancel inside a loop.
-        \item A shop, a person, a bus with empty seats, a stablecoin: all makers.
+        \item A shop, a person, a courier, a bus with empty seats, a stablecoin: all makers.
       \end{itemize}
     \end{column}
   \end{columns}
 \end{frame}
 
-\begin{frame}{The simplest loop}
-  \fig[0.7]{fig-loop2}
+\begin{frame}{OntoDAG: categories as a DAG, not a tree}
+  \centering\includegraphics[width=0.98\linewidth, height=0.44\textheight, keepaspectratio]{fig-ontodag-features}
+  \vspace{1mm}
+  \small
+  \begin{itemize}
+    \item One relation, \emph{fits within}; one query, the intersection of descendant cones: \texttt{get food produce}.
+    \item Typed dimensions are ordinary categories: \texttt{time(2026-09-07)}, \texttt{weight(..5kg)}, a geohash cell, with the order computed, never stored.
+    \item Canonical form: equal content $\Rightarrow$ equal root. A catalogue is adoptable by fingerprint and pinned by every offer.
+  \end{itemize}
 \end{frame}
 
-\begin{frame}{The simplest loop, on two scales}
-  \fig[0.85]{fig-loop2-scales}
-\end{frame}
-
-\begin{frame}{The catalogue: meanings, minutes and map cells, one order}
+\begin{frame}{The catalogue: a want is a conjunction, a give is a point}
   \fig[0.95]{fig-ontodag}
 \end{frame}
 
@@ -121,10 +161,10 @@
     \begin{column}{0.45\textwidth}
       \vspace{4mm}
       \begin{itemize}
-        \item One primitive: intersection of descendant cones.
+        \item Match = the give's categories lie inside every cone the want names.
         \item Shipped this week: the \texttt{core} pack, 4,137 consensus categories (WordNet, SUMO, OpenCyc, Wikidata, schema.org as witnesses) + ten domain packs.
-        \item A catalogue is a \emph{pinned root}: every offer names the version it was written against.
-        \item Honest footnote: goods are rich (toaster, jeans, tomato); services are the next pack.
+        \item Every offer pins the catalogue root it was written against: a match is reproducible forever.
+        \item Goods are rich (toaster, jeans, jigsaw); services are the next pack.
       \end{itemize}
     \end{column}
   \end{columns}
@@ -149,8 +189,35 @@
   \fig[0.8]{fig-neglog}
 \end{frame}
 
+\begin{frame}{Longer loops: the toothbrush, solved}
+  \fig[0.8]{fig-loop-delivery}
+\end{frame}
+
+\begin{frame}{Longer loops: place, time and currency are just more legs}
+  \fig[0.98]{fig-chain}
+\end{frame}
+
+\begin{frame}{Solvers: outside the protocol, competing, trusted with nothing}
+  \centering\includegraphics[width=0.98\linewidth, height=0.42\textheight, keepaspectratio]{fig-solvers}
+  \vspace{1mm}
+  \footnotesize
+  \begin{itemize}
+    \item The CoW Protocol shape: anyone runs a solver; the best proposal wins; the solver is paid from the surplus it found, an endogenous spread bounded by the reserve bid.
+    \item Solvers may be as clever, private and stochastic as they like. The baseline in the repo is deterministic and is the reserve bid.
+    \item P2: sealed proposals per beat, numeraire-free scoring, a fairness floor. \src{docs/plans/P2-batch-auction.md}
+  \end{itemize}
+\end{frame}
+
 \begin{frame}{Settlement trusts no one}
   \fig[0.9]{fig-settlement}
+\end{frame}
+
+\begin{frame}{Where verification cannot reach: factbond}
+  \begin{center}
+    \includegraphics[width=0.95\linewidth, height=0.56\textheight, keepaspectratio]{fig-factbond}
+  \end{center}
+  \vspace{-2mm}
+  \small In loopmarket (P3): bonds on the $\sqsubseteq$ edges a loop relied on, on oracle attestations (``delivered at reception, 00:21''), on identity facts; loss experience per edge is the catalogue's reliability audit. \src{github.com/petfold/factbond, design stage}
 \end{frame}
 
 \begin{frame}{Money is just another offer}
@@ -233,6 +300,24 @@
   \textbf{Question for this room:} GSOC reception from light nodes, and pub/sub. Content-routed GSOC (one address per catalogue cone $\times$ geo cell $\times$ day) would make the index \emph{the address space}. Stamps are not the problem; delivery guarantees are.
 \end{frame}
 
+\begin{frame}{Who pays for what}
+  \renewcommand{\arraystretch}{1.3}
+  \small
+  \begin{tabular}{@{}p{24mm}p{58mm}p{48mm}@{}}
+    \toprule
+    & pays & earns \\
+    \midrule
+    maker & postage for their own book: the stamp's TTL \emph{is} the offer's lifetime; no gas, ever & the trade, at or above their asking price \\
+    solver & settlement gas for the loops it wins & an endogenous spread, bounded by the reserve bid \\
+    aggregator & its own storage and bandwidth & fees for \emph{serving} fast, never for inclusion \\
+    settlement & nothing of its own & nothing: gas is the winner's \\
+    the protocol & \multicolumn{2}{p{106mm}@{}}{\textbf{nothing, in either direction}: no fees, no token, no rewards, no treasury. Every actor bears its own real cost, so a wash loop through sybils can never be paid for by the system it games.} \\
+    \bottomrule
+  \end{tabular}
+  \vspace{3mm}
+  \src{Ruling 2026-08-21; docs/plans/P2-batch-auction.md \S 9. Revisit triggers: solver monoculture, aggregator scarcity, measured statistics pollution.}
+\end{frame}
+
 \begin{frame}{Roadmap}
   \fig[0.95]{fig-roadmap}
   \vspace{4mm}
@@ -277,7 +362,7 @@
   \begin{itemize}
     \item eBay: 0.3\% of transactions rated negative, yet $P(\text{negative} \mid \text{partner rated negative}) > 37\%$: retaliation suppressed truthful feedback until one-sided ratings in 2007. \src{Resnick \& Zeckhauser}
     \item Cheap ratings inflate toward uselessness. \src{Filippas, Horton, Golden, EC'18}
-    \item loopmarket's rule U12: standing counts settled, fee-paid loops only; loss experience comes from bonded, adjudicated events (factbond).
+    \item loopmarket's rule U12: standing counts settled, cost-borne loops only; loss experience comes from bonded, adjudicated events (factbond).
   \end{itemize}
   \vspace{4mm}
   Reputation answers ``should I trust this seller''. loopmarket makes the question unnecessary where it can, and expensive to game where it cannot. Reputation becomes a statistic you derive, not an institution you believe.
@@ -328,6 +413,9 @@
 \appendix
 \begin{frame}{Backup: a match is an edge}
   \fig[0.9]{fig-match}
+\end{frame}
+\begin{frame}{Backup: a small bridge of liquidity clears most of the rest}
+  \fig[0.8]{fig-liquidity}
 \end{frame}
 \begin{frame}{Backup: Graphviz renderings (dot2tex)}
   \begin{columns}[T]
