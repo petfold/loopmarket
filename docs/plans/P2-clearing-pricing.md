@@ -1,4 +1,6 @@
-# loopmarket — settlement pricing (P2)
+# loopmarket — clearing pricing (P2)
+
+> Renamed from `P2-settlement-pricing.md` on 2026-09-07 with the code: *clearing* is the atomic commit that fixes obligations and the prices this document chooses; *settlement* is the makers delivering (P3).
 
 Status: design, 2026-08-07. Decided here: the equal log-surplus split as the
 pricing rule (architect-derived, provenance marked below); the precedence of
@@ -8,8 +10,8 @@ pricing time. Open here: the uniqueness proof for the split; the residual
 tension between uniform clearing and the equal split; quantified shading
 behaviour.
 
-This document specifies how settlement chooses actual prices inside each
-[ask, bid] interval and distributes loop surplus — the "real settlement
+This document specifies how clearing chooses actual prices inside each
+[ask, bid] interval and distributes loop surplus — the "real clearing
 pricing" that `../../CLAUDE.md` known simplification #1 and
 `../../ARCHITECTURE.md` §7 reserve for P2. Companions: `P2-batch-auction.md`
 (the beat, the fairness floor, solver rewards, fees), `P2-loop-selection.md`
@@ -23,7 +25,7 @@ rule's incentive claims get tested).
 
 `graph.py` proves a loop profitable when the product of its match rates
 exceeds 1: around a cycle, Π rᵢ telescopes into Π (node's bid price / node's
-own ask price) = S. That is an existence proof, not a settlement. To settle,
+own ask price) = S. That is an existence proof, not a clearing. To clear,
 every node i must sell xᵢ units of its thing at some price uᵢ ≥ aᵢ (its ask,
 in its own token) and buy xᵢ₋₁ units of the previous thing at some price
 vᵢ ≤ bᵢ (its bid, in its own token), such that its personal-token inflow and
@@ -32,16 +34,16 @@ the loop passes through the maker (`../../ARCHITECTURE.md` §2); the
 cancellation constraint is that fact written as arithmetic.
 
 What pricing can and cannot choose is fixed by a conservation identity.
-Define node i's surplus factor σᵢ = (uᵢ/aᵢ)·(bᵢ/vᵢ) — how much its settled
+Define node i's surplus factor σᵢ = (uᵢ/aᵢ)·(bᵢ/vᵢ) — how much its cleared
 prices beat its stated bounds, dimensionless in its own token. Then
 
     Π σᵢ = Π (bᵢ/aᵢ) · Π (uᵢ/vᵢ) = S · Π (xᵢ₋₁/xᵢ) = S,
 
 because the cancellation constraints make Π (uᵢ/vᵢ) telescope to 1. Total
 log-surplus Σ log σᵢ = log S is conserved no matter what prices are chosen;
-a pricing rule chooses only the *split*. Equivalently, the settled per-leg
-exchange rates ρᵢ = vᵢ₊₁/uᵢ always satisfy Π ρᵢ = 1: settlement extracts the
-entire negative cycle, and the settled book is arbitrage-free at its own
+a pricing rule chooses only the *split*. Equivalently, the cleared per-leg
+exchange rates ρᵢ = vᵢ₊₁/uᵢ always satisfy Π ρᵢ = 1: clearing extracts the
+entire negative cycle, and the cleared book is arbitrage-free at its own
 prices by construction. In −log terms, the rule distributes the cycle's
 weight −log S across its participants. Everything distributed is drawn from
 inside the loop that produced it — the self-funded property planned
@@ -54,10 +56,10 @@ owns them.
 ## 2. The rule: equal log-surplus split
 
 **Every node in an n-loop receives the same surplus factor S^(1/n).** In leg
-terms: each leg settles at its match rate deflated by the geometric mean of
+terms: each leg clears at its match rate deflated by the geometric mean of
 the loop's rates, ρᵢ = rᵢ / S^(1/n), which makes Π ρᵢ = 1 automatically. In
 −log terms: add the mean cycle weight (log S)/n to every edge, so the
-settled cycle weighs exactly zero. The rule is closed-form, deterministic
+cleared cycle weighs exactly zero. The rule is closed-form, deterministic
 (same accepted loops ⇒ same prices on every replica — U6's discipline
 extended to prices), numeraire-free (planned invariant **U14**,
 "numeraire-free scoring": every σᵢ is a ratio in one node's own token, so
@@ -82,14 +84,14 @@ the approved plan.
 
 **Rational realization** (decided 2026-08, lands with P2). S^(1/n) is
 irrational for almost all rational S, and **U9** ("exact rationals in
-everything settlement re-verifies") forbids settling on an irrational
+everything clearing re-verifies") forbids clearing on an irrational
 target. The implemented rule therefore targets the equal split through a
 deterministic fixed-precision integer n-th root: compute σ̂ ≤ S^(1/n) as a
 reduced rational at a fixed power-of-two precision, assign σ̂ to n−1 nodes in
 deterministic order, and give the residual factor S/σ̂ⁿ⁻¹ to the last node,
 so conservation Π σᵢ = S holds *exactly* in rationals and the residual
 node's advantage is bounded by the chosen precision. The rounding scheme is
-part of the normative rule: settlement re-verification recomputes it
+part of the normative rule: clearing re-verification recomputes it
 byte-for-byte, never checks "approximately equal".
 
 ## 3. Worked triangle, exact rationals
@@ -106,7 +108,7 @@ maker's own token. C posts zero spread on purpose.
 Match rates: r₁ (X, A→B) = 32/20 = 8/5; r₂ (Y, B→C) = 40/25 = 8/5;
 r₃ (Z, C→A) = 27/40. Product S = 216/125, so S^(1/3) = 6/5 exactly (the
 example is engineered to need no rounding; §2's scheme covers the general
-case). Settled leg rates ρᵢ = rᵢ·(5/6): 4/3, 4/3, 9/16 — product exactly 1.
+case). Cleared leg rates ρᵢ = rᵢ·(5/6): 4/3, 4/3, 9/16 — product exactly 1.
 Quantities follow from cancellation, xᵢ/xᵢ₋₁ = sᵢ/S^(1/n), normalized so the
 largest fill hits capacity: A sells 15/16 X, B sells 1 Y, C sells 5/6 Z.
 Bookkeeping under the sell-at-ask convention (uᵢ = aᵢ, vᵢ = bᵢ·5/6):
@@ -118,7 +120,7 @@ Bookkeeping under the sell-at-ask convention (uᵢ = aᵢ, vᵢ = bᵢ·5/6):
 | C    | 5/6 Z @ 40   | 100/3 C| 1 Y @ 100/3       | 100/3 C | 6/5    |
 
 Every token book cancels exactly; every number is a reduced rational; every
-node's settled prices beat its stated bounds by exactly 6/5 — including C,
+node's cleared prices beat its stated bounds by exactly 6/5 — including C,
 whose own spread contributed nothing. The redistribution is paid for by
 partial fills (A fills 15/16, C fills 5/6): divisibility is the currency of
 the equal split. Which side of a leg carries the gain in the recorded prices
@@ -137,7 +139,7 @@ canonical.
   liquid anchors, per the solver-auctions research). It is also not
   scale-invariant across personal numeraires and exponential in coalition
   enumeration. Rejected.
-- **Ask-side-take-all** (settle every leg at the bid; symmetrically,
+- **Ask-side-take-all** (clear every leg at the bid; symmetrically,
   bid-side-take-all). One side's stated bound is extracted in full: a maker
   who truthfully reveals its reservation pays or receives exactly it, and
   learns to shade next time. This is precisely the failure Roth's market-
@@ -156,13 +158,13 @@ canonical.
 ## 5. Precedence: uniform directional clearing binds
 
 CoW's fair combinatorial auction (CIP-67, live June 2025) requires uniform
-directional clearing prices — the same directed token pair settles at one
+directional clearing prices — the same directed token pair clears at one
 price within a winning outcome — because differential pricing of one pair
 across batched orders is exactly the surplus-shifting CoW previously had to
 police as a slashable offence ("local token conservation"). The loopmarket
 analog, adopted here as the **precedence rule**: when the same directed
 (ask, bid) pair is consumed by more than one winning loop in a beat
-(divisible offers split across loops), that pair settles at **one rate** for
+(divisible offers split across loops), that pair clears at **one rate** for
 the whole beat. One offer, one directed counterparty, one price — the
 structural block on shifting surplus between loops that share an offer, and
 on a solver constructing sibling loops to move value toward its own legs
@@ -186,7 +188,7 @@ approximation objective itself is gameable, is a registered open problem
 **Divisible legs scale to cancel exactly.** The quantity ratios
 xᵢ/xᵢ₋₁ = sᵢ/S^(1/n) are forced by the split; normalization lifts the
 largest fill to its capacity. A node whose own spread is below 1 still
-settles at prices beating its bounds by S^(1/n); the quantities absorb the
+clears at prices beating its bounds by S^(1/n); the quantities absorb the
 difference. This is the regime where the equal split is fully realized.
 
 **Indivisible legs are pinned.** With unit quantities, cancellation forces
@@ -212,7 +214,7 @@ gates must agree.
 Full strategy-proofness is unavailable: by the Myerson–Satterthwaite
 impossibility, no bilateral-trade mechanism is simultaneously efficient,
 budget-balanced, individually rational and incentive-compatible — and a
-loop is a cycle of bilateral trades settled budget-balanced (§1's
+loop is a cycle of bilateral trades cleared budget-balanced (§1's
 conservation identity is budget balance). So this document claims only
 **bounded manipulability, and that claim is an inference, not a theorem.**
 The leg-local arithmetic behind the inference: a node that shades one bound
@@ -223,7 +225,7 @@ exists, and the fairness floor still passes. Shading is therefore never
 free: it bears 1/n of its own damage, risks pricing the maker out of loop
 formation entirely, and shrinks the maker's own reference outcome under the
 floor. What the rule does guarantee: truthful bounds are never extracted in
-full (the ask-side-take-all failure), settled prices always beat stated
+full (the ask-side-take-all failure), cleared prices always beat stated
 bounds, and the fairness floor (`P2-batch-auction.md`) is the backstop — no
 participant ever does worse than its standalone reference, whatever pricing
 games others play. That is the Roth-safety posture: truth-telling is not
@@ -248,7 +250,7 @@ frictions).
 
 ## 8. Exact arithmetic — the U9 migration
 
-Planned invariant **U9**: "exact rationals in everything settlement
+Planned invariant **U9**: "exact rationals in everything clearing
 re-verifies." Today everything is float — quantities, amounts,
 `Match.rate`, `unit_price = tokens.amount / thing.qty`, surplus thresholds,
 with 1e-9/1e-12/1e-15 epsilons scattered through the gates — which cannot
@@ -271,41 +273,41 @@ total). The migration (decided 2026-08, lands with P2):
   `proof-fabric.md` §3).
 - **Floats solver-side only.** Bellman–Ford's w = −log r stays floating
   point: the −log weights are a search heuristic that ranks candidates,
-  never truth. Settlement re-verifies Π rᵢ > 1 by exact cross-multiplied
+  never truth. Clearing re-verifies Π rᵢ > 1 by exact cross-multiplied
   integer comparison, the split by the §2 rounding scheme, cancellation by
-  rational equality — no epsilon anywhere on the settlement path. A solver
+  rational equality — no epsilon anywhere on the clearing path. A solver
   whose float search proposes a loop that exact arithmetic rejects simply
   loses the proposal; U3 already assumes solvers are wrong.
 - **Records.** `Match.rate` becomes a reduced rational, and fill records
-  grow settled quantities (today `fill/` holds only `{"loop"}` — the
+  grow cleared quantities (today `fill/` holds only `{"loop"}` — the
   `at` field was dropped 2026-08-20 for fill determinism) — originally
   slated for the offer/record v2 bump so ids never churn twice (decided
   2026-08). **Update 2026-08-20: the v2 bump landed without these** —
-  the quantities recorded are the *settled* ones, which presuppose the
+  the quantities recorded are the *cleared* ones, which presuppose the
   pricing rule this document proposes (discussion agenda #9), and the
   rational representation waits on the unit-family design (see
   `ontodag-coupling.md`'s dated note). They ride the v3 bump with U9,
-  before P2. Settled *prices* follow
+  before P2. Cleared *prices* follow
   `P4-privacy.md` §5's format-freeze ruling: the per-leg price vector goes
   into private per-participant receipt envelopes, never public fill
   records; the public beat record carries per-directed-pair aggregates —
   which is exactly what §9's reference-rate note needs, and all it gets. Geometric gates (haversine disc intersection) are a separate
-  exactness question: they are re-run by settlement but are booleans, not
+  exactness question: they are re-run by clearing but are booleans, not
   arithmetic the contract recomputes; their exact-rational option (ontodag's
   planar tangent-plane discs) and what the on-chain verifier actually
   re-checks belong to `proof-fabric.md`.
 
-## 9. Settled rates as future reference rates (a note, not a commitment)
+## 9. Cleared rates as future reference rates (a note, not a commitment)
 
 Uniform directional clearing leaves each beat with an audited list of
-settled rates per directed pair, under a pinned root. Renegade's dark pool
+cleared rates per directed pair, under a pinned root. Renegade's dark pool
 is tractable precisely because it imports an external midpoint price and
 reduces private matching to a boolean cross test instead of price formation
 (privacy research). Loopmarket has no external midpoint — but its own
-settled clearing rates are the native candidate for that role: a future
+cleared rates are the native candidate for that role: a future
 private-matching tier (`P4-privacy.md`, Tier 3) could peg to trailing
-settled rates per category pair the way Renegade pegs to Binance. Recorded
-here so the P2 record format keeps settled rates queryable per directed
+cleared rates per category pair the way Renegade pegs to Binance. Recorded
+here so the P2 record format keeps cleared rates queryable per directed
 pair; nothing else is promised.
 
 ## Gates
@@ -326,8 +328,8 @@ pair; nothing else is promised.
   threshold is fixed before the first run, in the pre-registration style
   Phase-0 mandates. No launch of P2 pricing without the number.
 - **G4 — exact-rational pipeline lands.** Rational `Match.rate`,
-  rational settled prices/quantities in v2 records, epsilon-free settlement
-  path, CI test proving no float enters anything settlement re-verifies
+  rational cleared prices/quantities in v2 records, epsilon-free clearing
+  path, CI test proving no float enters anything clearing re-verifies
   (**U9** enforced by test, at which point U9 graduates into
   `../../CLAUDE.md` per the marking convention).
 - **G5 — precedence approximation bounded.** The netting step's deviation
@@ -361,14 +363,14 @@ pair; nothing else is promised.
   in the P2 spec before any contract freezes them. Work package: P2, with
   `proof-fabric.md` for what the verifier recomputes.
 - **Reference-rate governance.** If P4 ever pegs private matching to
-  trailing settled rates (§9), those rates become a manipulation target
-  (settle small loops to move the peg); scoping whether and how they may be
+  trailing cleared rates (§9), those rates become a manipulation target
+  (clear small loops to move the peg); scoping whether and how they may be
   consumed belongs to `P4-privacy.md` before anything consumes them. Work
   package: P4.
 
 ## What this document does not promise
 
-- **Settlement certifies re-verification, not delivery.** The settled
+- **Clearing certifies re-verification, not delivery.** The cleared
   prices prove every leg re-derived under the pinned roots and every token
   book cancelled exactly; whether the cello arrives is the guarantee
   fabric's business (`P3-guarantee-coupling.md`), and certified ≠ true on
@@ -382,7 +384,7 @@ pair; nothing else is promised.
   guarantees a manipulation surface exists; §7's bound is leg-local
   arithmetic plus a backstop, pending G2's experiments — not an equilibrium
   theorem.
-- **Settled rates are prices, not probabilities or values.** A beat's
+- **Cleared rates are prices, not probabilities or values.** A beat's
   clearing rates are outputs of this mechanism under its constraints; they
   estimate nothing, and consuming them as reference truth (§9) is a P4
   decision not made here.

@@ -99,7 +99,7 @@ when their enforcing code and tests land. factbond's mirror corpus is
 |---|---|
 | [`P1-federated-book.md`](docs/plans/P1-federated-book.md) | Per-maker books under own feeds/signers; announcement, aggregation, merge discipline, lifecycle, postage economics, spam floors. |
 | [`P2-batch-auction.md`](docs/plans/P2-batch-auction.md) | The beat: sealed proposals, numeraire-free scoring, the fairness floor, capped solver rewards, collusion resistance, fees. |
-| [`P2-settlement-pricing.md`](docs/plans/P2-settlement-pricing.md) | Turning a winning loop's surplus into per-leg prices: equal log-surplus split under uniform directional clearing. |
+| [`P2-clearing-pricing.md`](docs/plans/P2-clearing-pricing.md) | Turning a winning loop's surplus into per-leg prices: equal log-surplus split under uniform directional clearing. |
 | [`P2-loop-selection.md`](docs/plans/P2-loop-selection.md) | Clearing as optimization: flow LP vs packing ILP, chains, failure-aware objective, pre-commit compression. |
 | [`proof-fabric.md`](docs/plans/proof-fabric.md) | Cross-phase proofs and certificates: trie proofs vs POT, the pin table, certificate envelopes, absence proofs. |
 | [`P3-guarantee-coupling.md`](docs/plans/P3-guarantee-coupling.md) | loopmarket's half of the factbond coupling: witness edges, reliance-capped insurance, oracle consumption, risk-priced routing. |
@@ -122,7 +122,7 @@ whose Tier 1 may ship alongside P2. Cross-phase: `proof-fabric.md`,
 
 **Reading order.** First pass: `ARCHITECTURE.md` → `THREATS.md` →
 `P1-federated-book.md`. Clearing track: `P2-loop-selection.md` →
-`P2-settlement-pricing.md` → `P2-batch-auction.md` → `proof-fabric.md`.
+`P2-clearing-pricing.md` → `P2-batch-auction.md` → `proof-fabric.md`.
 Guarantee track: factbond `DESIGN.md` → `mechanism-design.md` →
 `insurance-products.md` → `phase0-simulation.md` →
 `P3-guarantee-coupling.md`. Market track: `adoption-and-thickness.md` →

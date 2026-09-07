@@ -508,7 +508,7 @@ wedge.**
 ## Backup material (not in the 30 minutes)
 
 - **Divisibility and the P2 pricing rule.** Equal log-surplus split under
-  uniform directional clearing (`docs/plans/P2-settlement-pricing.md`).
+  uniform directional clearing (`docs/plans/P2-clearing-pricing.md`).
 - **Why no protocol fees or emissions.** Nothing to farm ⇒ wash loops
   have no surface (agenda item 4, THREATS T1).
 - **Batch auctions.** Sealed proposals, numeraire-free scoring, the

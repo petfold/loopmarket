@@ -18,7 +18,7 @@ hidden fills; witness-telemetry aggregation; reference-rate governance.
 This is the P4 design CLAUDE.md's known simplification #7 waits on ("do
 not add ad-hoc encryption before that design lands" — this is that
 design). It constrains P2 rather than following it: §5 lists the
-record-format decisions `P2-batch-auction.md`, `P2-settlement-pricing.md`
+record-format decisions `P2-batch-auction.md`, `P2-clearing-pricing.md`
 and `proof-fabric.md` may not freeze without answering this document.
 Companions: `P1-federated-book.md` (the per-maker split every key scheme
 rides), `P3-guarantee-coupling.md` (whose witness-telemetry leak is owned
@@ -34,7 +34,7 @@ settlement links k parties per loop under one content-addressed root.
 Privacy here is also market safety, not only confidentiality: concealed
 [ask, bid] bounds protect truthful revelation the same way sealed bids
 do (Roth's safety criterion — a market that punishes revealed truth
-teaches shading and thins itself; `P2-settlement-pricing.md` §7), so
+teaches shading and thins itself; `P2-clearing-pricing.md` §7), so
 several defenses below earn their cost twice.
 Six vectors, numbered PV1–PV6 to stay distinct from the register T1–T9:
 
@@ -193,7 +193,7 @@ with P2 — the plan-index matrix lets Tier 1 ship alongside P2).
   tier only settled legs disclose. Renegade's tractability trick —
   import an external midpoint so private matching is a boolean cross
   test, not price formation — has a native analogue in trailing settled
-  rates per directed pair (`P2-settlement-pricing.md` §9), usable only
+  rates per directed pair (`P2-clearing-pricing.md` §9), usable only
   after the reference-rate governance problem (below) is ruled.
 - **TEE solvers, mid-tier.** An attested-TDX solver matching over sealed
   offers, BuilderNet-style (Flashbots evaluated SGX/MPC/FHE/TDX and
@@ -246,7 +246,7 @@ the owning P2 document without the named answer (decided 2026-08; items
    settled price vector goes into private per-participant receipt
    envelopes (`proof-fabric.md` §6's legal artifacts); the public beat
    record carries per-directed-pair aggregates.
-   `P2-settlement-pricing.md` §9's commitment to keep settled rates
+   `P2-clearing-pricing.md` §9's commitment to keep settled rates
    queryable per directed pair must be satisfiable from aggregates —
    never by identity-keyed plaintext.
 5. **Reputation formats key on provable membership, not raw addresses.**
@@ -390,7 +390,7 @@ the owning P2 document without the named answer (decided 2026-08; items
   opt-out, aggregation before publication). Work package: P3 coupling +
   Tier 1 aggregates.
 - **Reference-rate governance.** Accepted from
-  `P2-settlement-pricing.md` §9: trailing settled rates become a
+  `P2-clearing-pricing.md` §9: trailing settled rates become a
   manipulation target the moment private matching pegs to them (settle
   small loops, move the peg). Whether and how §4's trusted-solver cross
   test may consume them must be ruled here before anything consumes

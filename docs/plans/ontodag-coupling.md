@@ -24,7 +24,7 @@ relies on upstream, what it must never build locally, and what evidence
 obliges it to ask for more. The catalogue's *content* — seeds, imports,
 governance — is `catalogue-bootstrap.md`; pins and certificates are
 `proof-fabric.md`; the exact-rational settlement migration leaning on §3
-is `P2-settlement-pricing.md` §8; the aggregator publishing §5's derived
+is `P2-clearing-pricing.md` §8; the aggregator publishing §5's derived
 `index_root` is `P1-federated-book.md` §2; §4's demand signals feed
 `P3-guarantee-coupling.md`. Normative upstream: ontodag `docs/CONTRACT.md`,
 `docs/DIMENSIONS.md`, `docs/UNITS.md` + `UNIT_TABLE.md`,
@@ -135,7 +135,7 @@ ontodag's D9 rational anchoring (registry v3, 2026-08-01) supplies the
 representation: canonical values are reduced rationals of the anchor unit,
 comparisons cross-multiply, no floats anywhere — 247 built-in suffixes,
 446 spellings with packs, decimals parsed exact (`0.99USD` → `99/100USD`).
-`P2-settlement-pricing.md` §8 owns the settlement migration; this section
+`P2-clearing-pricing.md` §8 owns the settlement migration; this section
 owns the catalogue side:
 
 - **Quantities and token amounts become unit-family rationals.**
@@ -148,7 +148,7 @@ owns the catalogue side:
   a stopgap `[num, den]` encoding would churn offer ids a third time when
   the real design lands. Revised landing: qty/amount rationals ride the
   **v3 bump together with U9's other record changes**
-  (`P2-settlement-pricing.md` §8), before P2. The original "ids never
+  (`P2-clearing-pricing.md` §8), before P2. The original "ids never
   churn twice" goal is traded consciously: churn stays cheap before
   federation ships real books, and `from_record`'s version dispatch
   (landed with v2) makes v3 mechanical. Indivisible quantities take the `count` dimension — whole-number
@@ -399,7 +399,7 @@ implementation with its own bugs and no treaty.
   declarations: same-family different-suffix offers match with exact
   conversion; cross-family refuses; a personal-token family declared in
   one store parses in a scorched-earth reader. Shared with
-  `P2-settlement-pricing.md` G4. Owner: the v2 bump → P2.
+  `P2-clearing-pricing.md` G4. Owner: the v2 bump → P2.
 - **G3 — the threshold is a measurement.** N* pinned by benchmark
   (baseline vs indexed generator over growing randomized books, both
   recall-exact by test); `SolverAgent` switches at N* with the equality

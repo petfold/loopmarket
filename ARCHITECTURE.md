@@ -439,7 +439,7 @@ solver's own loops generated, and the deterministic baseline as permanent
 reserve bid — `docs/plans/P2-batch-auction.md`. The pricing rule that
 turns a winning loop's surplus into per-leg prices — equal log-surplus
 split under uniform directional clearing — is
-`docs/plans/P2-settlement-pricing.md`.
+`docs/plans/P2-clearing-pricing.md`.
 
 ## 9. The solver agent (solver/agent.py)
 
@@ -456,7 +456,7 @@ Bonds/oracles/arbitrators (carried, unenforced — P3; the mechanism design
 now lives in the **factbond** sister repo — see the §4 update), aggregated
 risk markets and rate premia (P3, fed by factbond's per-edge loss
 experience), batch auctions and settlement pricing (P2 — now specified in
-`docs/plans/P2-batch-auction.md` and `docs/plans/P2-settlement-pricing.md`),
+`docs/plans/P2-batch-auction.md` and `docs/plans/P2-clearing-pricing.md`),
 privacy — staged disclosure, committed offers, ZK fits-within proofs (P4 —
 now staged in `docs/plans/P4-privacy.md`, whose Tier 1 needs no new
 cryptography and whose format-freeze list *constrains P2*),

@@ -304,7 +304,7 @@ from data rather than priors on day one.
 
 ## Open problems
 
-- **Leg valuation under U14** (work package: `P2-settlement-pricing.md` +
+- **Leg valuation under U14** (work package: `P2-clearing-pricing.md` +
   `factbond/docs/plans/insurance-products.md`). Reliance is structurally
   provable but personal-token legs have no external price, so indemnity
   caps rest on declared coverage plus per-leg/per-edge ceilings. Declared

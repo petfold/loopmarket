@@ -431,7 +431,7 @@ hatch — is already the T14 defense.
   (agenda item 7, Option C: no token objects; §7 carries the ruling).**
   The residual is P2's to discharge: confirm every leg type — partial
   fills of divisible things, the per-leg prices of
-  `P2-settlement-pricing.md`, bridge transfers — is expressible as
+  `P2-clearing-pricing.md`, bridge transfers — is expressible as
   verified records plus bridge-asset movements; minimal native tokens
   unlock only through §7's composition-need gate.
 - **Bridge funding under U13** (work package: `P2-batch-auction.md` §9 +

@@ -13,7 +13,7 @@ mixed divisible/indivisible decomposition; tolerance semantics under U9.
 This document names the optimization problem P0 deliberately dodged:
 choosing *which set* of loops settles in a beat, not finding *a* loop.
 Companions: `P2-batch-auction.md` (beat mechanics, sealed bids, scoring,
-the reserve bid this document preconditions), `P2-settlement-pricing.md`
+the reserve bid this document preconditions), `P2-clearing-pricing.md`
 (rates inside the selected loops), `P3-guarantee-coupling.md` (the bonds
 that unlock bridge donors), `P1-federated-book.md` (the per-maker books
 whose merge feeds a beat), and `THREATS.md` (T1/T2/T3/T8 all touch
@@ -243,7 +243,7 @@ exact-net preservation. Adopted (decided 2026-08, lands with P2):
   fill record, never implicit. The exact semantics — Thing-side vs
   token-side drift, and where dust goes without violating U9 ("exact
   rationals in everything settlement re-verifies") or U13's budget
-  balance — is an open problem owned by `P2-settlement-pricing.md`.
+  balance — is an open problem owned by `P2-clearing-pricing.md`.
 - **One netting domain per beat.** Duffie & Zhu (Rev. Asset Pricing
   Studies 2011): fragmenting clearing across domains destroys netting —
   every domain that cannot net against the others costs collateral. When
@@ -254,7 +254,7 @@ exact-net preservation. Adopted (decided 2026-08, lands with P2):
 - **Precedence.** Uniform directional clearing binds: the same (ask, bid)
   pair in multiple winning loops settles at one rate, and compression
   approximates the equal log-surplus split target — the residual tension
-  is registered in `P2-settlement-pricing.md`.
+  is registered in `P2-clearing-pricing.md`.
 
 ## 8. Determinism: lexicographic tie-breaks, extending U6
 
@@ -339,12 +339,12 @@ package: P2, this document.
 **Tolerance semantics under U9/U13.** What a net-drift tolerance means on
 a Thing leg vs a token leg, in exact rationals, and where forgiven dust
 goes without opening a wash-loop subsidy channel. Work package:
-`P2-settlement-pricing.md`.
+`P2-clearing-pricing.md`.
 
 **Compression vs uniform directional clearing.** Netting perturbs the
 per-leg quantities the equal log-surplus split priced; the precedence
 rule is decided, the residual gap unquantified. Work package:
-`P2-settlement-pricing.md`; named here because compression is this
+`P2-clearing-pricing.md`; named here because compression is this
 document's mechanism.
 
 - **Price and capacity schedules in offers** (far roadmap — owner-added

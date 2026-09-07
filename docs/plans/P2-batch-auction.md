@@ -27,7 +27,7 @@ what a proposal is worth, who wins, what discovery earns, and why colluding
 or self-dealing does not pay. It consumes two things it does not own:
 `P2-loop-selection.md` owns the optimization inside winner selection
 (packing, chains, failure-aware objective, the recall-gap defect gating §8);
-`P2-settlement-pricing.md` owns what winning legs pay (equal log-surplus
+`P2-clearing-pricing.md` owns what winning legs pay (equal log-surplus
 split, uniform directional clearing). Threats T1/T3 live in full in
 `THREATS.md`; solver-bond plumbing is `P3-guarantee-coupling.md` and
 factbond's `../../../factbond/docs/plans/loopmarket-coupling.md`.
@@ -133,7 +133,7 @@ its total log surplus: Σ over winning loops of log Π(rates) — dimensionless
 and invariant under re-denomination of any personal token, since each
 maker's unit appears once above and once below the line within its own loop
 and cancels. Per-offer shares of that headroom (as the equal log-surplus
-split of `P2-settlement-pricing.md` distributes them) are what §5's
+split of `P2-clearing-pricing.md` distributes them) are what §5's
 fairness floor compares. Failure-aware weighting (expected settled surplus)
 belongs to the objective in `P2-loop-selection.md`.
 
