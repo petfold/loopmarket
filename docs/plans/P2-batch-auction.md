@@ -307,7 +307,10 @@ rewards, no rebates, no treasury; any future emission proposal must
 first prove the wash-loop inequality below.** U12 is reworded: statistics
 count settled **cost-borne** loops (floor: postage + settlement gas —
 lower than a fee floor, so statistics-pollution weight shifts to T8's
-tripwires). Revisit triggers, any of which reopens a *minimal, targeted*
+tripwires). 2026-09-07, with the settlement→clearing rename: "settled"
+here means *cleared* — counted at commit, never at delivery; delivery
+adds no credit and adjudicated failures subtract (ARCHITECTURE.md, U12
+refinement). Revisit triggers, any of which reopens a *minimal, targeted*
 mechanism through the U13 gate: solver monoculture (win Herfindahl),
 aggregator scarcity (T14 paging below two), measured statistics
 pollution (T8).

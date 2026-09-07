@@ -499,7 +499,20 @@ only path back to any emission, through the U13 gate.
   cannot appear in a settled loop without a real counterparty on every leg,
   so that ledger is the one thing sybils cannot cheaply populate; every
   reward, reputation, centrality and premium statistic reads from it and
-  nothing else.
+  nothing else. **Refined 2026-09-07 (clearing ≠ settlement).** The ledger
+  is *cleared*, cost-borne loops — counted when the loop commits, never
+  when it is delivered. Reliance is created at clearing (the loop committed
+  under a root that pinned the edge) and only clearing is recomputable from
+  pinned roots by every replica (U4). Delivery never adds credit: the
+  default oracle is optimistic countersign, so colluders manufacture a
+  "delivered" loop as cheaply as a cleared one, and it arrives late through
+  oracles. Delivery enters statistics in two ways only: negatively, as
+  adjudicated failures — lost disputes, paid claims, slashed bonds
+  (factbond) — and as the *exit* of exposure: a leg's open reliance leaves
+  the centrality ledger when it settles, by attestation or undisputed
+  timeout (factbond `loopmarket-coupling.md` §2 and its epoching note).
+  Standing is therefore cleared volume against loss experience, and
+  nothing positive ever flows from the settlement layer.
 - **Sybil defense is a cost curve, not detection.** Per-offer postage plus
   per-commit fees set a floor; no per-offer benefit may exceed it.
 - **Scoring is numeraire-free (planned U14).** No external price of any
