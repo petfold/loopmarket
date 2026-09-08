@@ -310,6 +310,44 @@ cleared rates per category pair the way Renegade pegs to Binance. Recorded
 here so the P2 record format keeps cleared rates queryable per directed
 pair; nothing else is promised.
 
+## 10. Clearing prices are node potentials (2026-09-07)
+
+`P2-loop-selection.md` §11 reframes the cleared object as a circulation
+in a generalized flow network. Read from the pricing side, this document
+was always about the dual of that LP. The dual variables are one number
+per maker — a potential — and §1's condition Π ρᵢ = 1 on the cleared
+rates is the statement that potentials exist: log-rates are potential
+differences, so they sum to zero round every cycle (Kirchhoff's voltage
+law, in logs). The potentials *are* the personal scales: a maker's prices
+on one scale give every rate between their own legs as a ratio, which is
+why a scale can never be arbitraged against itself.
+
+Consequences for this document:
+
+- **§2's rule is a choice of potentials.** Any potential vector that puts
+  every cleared leg inside its [ask, bid] interval makes the field
+  conservative and distributes the whole surplus (Tellegen: the sum of
+  value in minus value out over all nodes is zero at clearing — nothing
+  created, nothing lost). Equal log-surplus split is the one such vector
+  that gives every node the same factor; §4's rejected alternatives are
+  other vectors; §5's uniform directional clearing says one potential
+  difference per directed pair per beat.
+- **Verification is a potential check.** Clearing (and the P2 contract)
+  need not recompute the split: given the fills and the potentials, check
+  each leg's reduced cost is zero and each cleared price is within
+  bounds — O(legs), no logs, exact rationals (U9). The duality gap
+  between a proposal's flow and its potentials is a proof of quality the
+  batch auction's scoring can consume directly (`P2-batch-auction.md`
+  §5–6; loop-selection §11 item 2).
+- **§9's reference rates are potentials too.** A trailing cleared rate
+  per directed pair is a potential difference under a pinned root; the
+  manipulation concern there (clear small loops to move the peg) is the
+  concern of anyone who can perturb a potential — the same defence, cost
+  floors and U12's ledger, applies.
+
+Nothing above changes the rule, the gates or the U9 migration; it names
+what they were.
+
 ## Gates
 
 - **G1 — uniqueness or revision.** The symmetric + re-denomination-

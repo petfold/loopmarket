@@ -395,6 +395,29 @@ families; `−log` weights remain a search heuristic, never a truth an
 on-chain verifier is asked to reproduce. Formulations, the failure-aware
 objective and pre-commit netting: `docs/plans/P2-loop-selection.md`.
 
+**Update 2026-09-07 — the primitive is a circulation, and the loop is its
+smallest case.** Composed wants (a toothbrush delivered to a hotel needs a
+shop *and* a courier; a heavy object needs six lifters; a shipped pallet
+is paid for by four payment legs through two exchanges) are not cycles
+and do not decompose into cycles. The cleared object is a **circulation**:
+a flow on the maker graph conserved at every node, conservation measured
+in value on that node's own scale, with *hyper-legs* where one want is
+composed from several unconditional gives (`P2-loop-selection.md` §10).
+"The numbers cancel in-loop" is exactly "the numbers cancel at every
+node". This is generalized network flow (flows with gains, Goldberg–
+Plotkin–Tardos 1991): the rate is the edge gain, a profitable loop is a
+flow-generating cycle, `graph.py`'s Bellman–Ford is the classical
+detector for the one-cycle case, and cycle cancelling (Klein 1967;
+minimum-mean-cycle for U6 determinism, Goldberg–Tarjan 1989) is the
+classical way to build the whole circulation from repeated Bellman–Ford.
+The LP's dual variables are node potentials and they *are* the personal
+scales: clearing prices are a potential assignment (Π ρ = 1 on every
+cycle is Kirchhoff's voltage law in logs; `P2-clearing-pricing.md` §10),
+so clearing can verify a proposal by checking potentials in O(legs)
+rather than by searching. Algorithms this suggests, records it touches
+(`loop_id` generalizes to the content address of a leg multiset) and
+what stays fixed: `P2-loop-selection.md` §11.
+
 ## 8. Settlement (settlement.py)
 
 `LoopProposal` = the loop + the pinned `book_root` and `ontology_root` + the

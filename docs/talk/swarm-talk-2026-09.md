@@ -229,15 +229,24 @@ give, split six ways at the clearing prices.**
     solver that composes is a different species, and clearing re-verifies
     the composition exactly as it re-verifies a leg.
 
-### Slide 17 — Longer loops: place, time and currency are just more legs
+### Slide 17 — Not loops: circulations
 
 **Factory in Shenzhen → container line → warehouse → van → buyer in
-Utrecht. The buyer pays euros; the factory is paid USDC; an exchange
-sits in between.**
+Utrecht. The buyer pays once, in euros; clearing splits it four ways at
+the per-leg prices, through exchanges where the factory wants USDC and
+the shipper francs. Every node nets to zero on its own scale.**
+**The cleared object is a circulation; a loop is its smallest case.**
 
-    Shipping moves a thing in place, storage in time, an exchange moves
-    value across currencies. Each is an ordinary maker. The solver
-    composes the chain; clearing commits every leg or none.
+    The reframing (P2-loop-selection.md §11, 2026-09-07). What the
+    system clears is a flow on the maker graph conserved at every node,
+    in value on that node's own scale, with hyper-legs where one want is
+    composed from several gives. That is generalized network flow: the
+    rate is the edge gain, a profitable loop is a flow-generating cycle,
+    Bellman–Ford is the one-cycle detector, cycle cancelling builds the
+    whole circulation from repeated Bellman–Ford, and the clearing prices
+    are the LP's node potentials — Kirchhoff's voltage law in logs, with
+    each maker's personal scale as the potential. For an engineering
+    audience the Kirchhoff line lands; keep it to one sentence.
 
 ### Slide 18 — Solvers: outside the protocol, competing, trusted with nothing
 

@@ -6,7 +6,7 @@ ILP); exact winner determination for small beats with the deterministic
 greedy as fallback; a failure-aware expected-settled-surplus objective;
 chains admitted receive-before-give only until the bond fabric exists;
 pre-commit netting under maker-declared tolerances, one netting domain per
-beat; lexicographic tie-breaking extending U6; composition on the want side only — one want, many unconditional gives, the buyer pays once and clearing splits (§10, 2026-09-07). Open here: chain atomicity
+beat; lexicographic tie-breaking extending U6; composition on the want side only — one want, many unconditional gives, the buyer pays once and clearing splits (§10, 2026-09-07); the cleared object is a value-conserving *circulation* in a generalized flow network with hyper-legs — cycles are its smallest case, clearing prices are its node potentials, cycle cancelling its classical solver (§11, 2026-09-07). Open here: chain atomicity
 across beats; failure-prior cold start and its wash-loop interaction; the
 mixed divisible/indivisible decomposition; tolerance semantics under U9.
 
@@ -350,7 +350,7 @@ payment), or k inflows and one outflow if you count the gives. It is a
 balanced flow with a hub node. The principle the essay states as "the
 numbers cancel in-loop" is exactly "the numbers cancel at every node, on
 that node's own scale"; a simple cycle is the case where every maker has
-one in and one out. §2's flow formulation already carries this; §1's
+one in and one out. §11 names the object: a circulation. §2's flow formulation already carries this; §1's
 packing gains hyper-legs (one want variable bound to several give
 variables), which is a constraint shape the ILP handles natively and the
 P0 Bellman–Ford solver cannot see at all — a solver that composes is a
@@ -379,6 +379,132 @@ that the cone intersection already gives for categories but not for
 operators; and the recall of composition search — candidate generation
 over sets is the combinatorial part this document otherwise avoids, and
 it is the solvers' problem to be good at, not clearing's.
+
+## 11. The primitive is a circulation (reframed 2026-09-07)
+
+§10 changed the object under this document without saying so. Said so:
+**what loopmarket clears is not a loop but a circulation** — a flow on
+the maker graph that is conserved at every node, where conservation is
+of *value on that node's own scale* and some legs are hyper-legs (one
+want composed from several gives, §10). A simple cycle is the smallest
+non-trivial circulation; the P0 solver finds exactly those and nothing
+else. "The numbers cancel in-loop" (the essay) is precisely "the numbers
+cancel at every node". Nothing in U1–U7 or U11 changes; they were always
+statements about nodes and legs, never about cycles.
+
+The reframing puts the project inside a body of theory with names for
+everything it had been rediscovering.
+
+**Circulations (network flow, 1956–).** A flow with no sources or sinks
+is a circulation. Three classical results carry over directly.
+*Decomposition:* on an ordinary graph every circulation is a sum of flows
+around simple cycles, at most one cycle per edge — the precise sense in
+which a cleared set is "a combination of loops"; hyper-legs break the
+decomposition, which is why §10's shapes are not "two loops".
+*Feasibility:* Hoffman's circulation theorem (1960) — with a lower and
+upper bound on every edge, a circulation exists iff no cut is
+over-demanded — is the test that a set of bounded offers can clear at
+all, and a cheap infeasibility pruner for solvers. *Optimality:*
+minimum-cost circulation is an LP with Klein's cycle-cancelling algorithm
+(1967): while the residual network has a negative-cost cycle, push flow
+round it; stop when none remains. Negative cycles are found by
+Bellman–Ford. The P0 baseline is one iteration of this loop.
+
+**Generalized flows (flows with gains, 1960s; Goldberg–Plotkin–Tardos
+1991).** Each edge multiplies what passes through it by a factor — here
+the rate. Conservation is of value, not units; a cycle whose factors
+multiply to more than one is a *flow-generating cycle* — the finance
+word is arbitrage, ours is surplus — and under −log weights it is a
+negative cycle, which is exactly `graph.py`. Generalized circulation is
+still an LP with polynomial combinatorial algorithms. loopmarket's two
+departures are §10's hyper-legs (a hypergraph flow: still an LP for
+divisible legs, a coupling constraint the LP handles natively) and
+indivisible legs (§2's ILP boundary, unchanged).
+
+**Duality: clearing prices are node potentials.** The dual variables of
+the circulation LP are one number per node — a potential — and an edge's
+reduced cost is the difference of its endpoints' potentials less its
+cost. Complementary slackness says flow runs only on edges of zero
+reduced cost. Translated: at the clearing prices the log-rates round
+every cycle sum to zero (Π ρ = 1, `P2-clearing-pricing.md` §1), the
+potentials *are* the makers' personal scales (a scale is a node potential
+by construction — that is why one maker's offers can never be arbitraged
+against each other, §10 of the talk), and the equal log-surplus split is
+one particular choice of potentials among those that make the field
+conservative. The Kirchhoff correspondence, for the record: current law =
+per-node conservation; voltage law = potentials exist ⇔ Π ρ = 1 on every
+cycle; a profitable loop before clearing is a non-conservative field;
+Tellegen's theorem (Σ voltage × current = 0 for any lawful pair) =
+surplus exactly distributed, none created or lost, at clearing. Where the
+analogy stops: one commodity and passive edges there; a gain at every
+node, bounded offers as edges, and hyper-legs here.
+
+**Algorithms this suggests.** In order of how soon they pay.
+
+1. **Cycle cancelling as the second species.** Repeated Bellman–Ford on
+   the residual generalized network, pushing flow round each negative
+   cycle, builds a whole circulation from many loops and handles
+   divisible quantities natively — the natural successor to
+   `find_profitable_loops`' greedy extraction, and it is *the* classical
+   algorithm rather than a heuristic. Deterministic variant for U6:
+   **minimum-mean-cycle cancelling** (Goldberg–Tarjan 1989) — strongly
+   polynomial, and the cycle chosen at each step is canonical, so the same
+   book yields the same circulation on every replica. Candidate for the
+   reserve bid's upgrade once the recorded best-rate-per-pair defect (§6)
+   is fixed; gate: recall-exact against the LP on the benchmark book.
+2. **Verification by potentials (U3 in linear time).** A solver submits
+   its circulation *and* the potentials that certify it. Clearing checks
+   conservation at each node, each leg inside its [ask, bid] bounds, and
+   zero reduced cost on every used leg — all O(legs), no search — and the
+   duality gap between the submitted primal and dual is a proof of how
+   good the proposal is. That is exactly what the fairness floor and
+   winner scoring (`P2-batch-auction.md` §5–6) want to check without
+   re-solving: "beats the reserve bid" becomes a certificate, not a
+   recomputation. The on-chain verifier of P2 checks a potential vector,
+   never runs Bellman–Ford — the same posture U9 takes on −log weights.
+3. **Reduced-cost pruning in candidate generation.** With the potentials
+   of the previous beat in hand, a new offer's legs have reduced costs
+   computable in O(1) each; a leg with positive reduced cost against every
+   current potential cannot lie on any improving cycle. Streaming
+   candidate generation: most offers are rejected on arrival without a
+   graph search. Composes with the indexed generator (`dimensions.py`).
+4. **Composition as column generation.** §10's hyper-legs enter the
+   packing ILP as columns (a hyper-leg with its consumption vector), the
+   way PICEF (§5) adds chains as position-indexed variables; the pricing
+   subproblem that finds an improving column is again a shortest-path /
+   negative-cycle search over the residual network, so solvers that are
+   good at (1) are good at this. Gate: the flow LP with hyper-legs, then
+   branch-and-price for the indivisible case, on the §6 benchmark.
+5. **Hoffman cuts as infeasibility proofs.** When a beat cannot clear a
+   want (six lifters, five offered), the over-demanded cut is a compact,
+   checkable explanation — the same shape as T14's absence proofs, on the
+   selection side. Publishable beside the beat's result.
+6. **A conservation audit for followers.** Tellegen's sum over a cleared
+   circulation is zero at the clearing prices; any follower with the
+   fills and prices checks it in one pass, with no ontology and no
+   matching — a cheap tripwire that a clearing instance's arithmetic is
+   honest, weaker than U3's re-derivation and far cheaper.
+
+**Consequences for records and vocabulary.** `loop/` records name a
+cycle of legs and `loop_id` is the content address of that cycle
+(`graph.py`); the general object is a *multiset of legs with quantities*
+conserved at every node — the settled-quantities v3 record
+(`P2-clearing-pricing.md` §8) and §10's multi-give fills already push in
+this direction, and the id should become the content address of the leg
+multiset, of which a cycle is the special case (ids of today's loops are
+unchanged by construction). The words: *loop* stays for a simple cycle
+and for the essay's name of the whole idea; *circulation* is the cleared
+object; *leg* and *hyper-leg* are its parts; nothing is renamed in code
+until the v3 record lands. `P2-clearing-pricing.md` §10 records the
+potentials view from the pricing side.
+
+**What does not change.** U3's posture (clearing verifies, never
+searches) gets stronger, not weaker: verification by potentials is
+*cheaper* than re-running Bellman–Ford. U4/U6 determinism holds for
+min-mean-cycle cancelling as for Bellman–Ford. U5 is the requirement that
+gains be positive so that logs exist. Solvers remain outside the
+protocol; the theory tells them which algorithms are classical, not
+which they must use.
 
 ## Gates
 
