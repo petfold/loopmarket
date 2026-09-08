@@ -1,27 +1,32 @@
 \input{preamble}
 \begin{document}
-\begin{tikzpicture}[hop/.style={box, align=center, font=\footnotesize, minimum width=22mm}]
-  % Not a loop: a circulation. Goods run left to right; every intermediary
-  % is paid, through exchanges where currencies differ; every node nets to
-  % zero on its own scale. Drawn honestly, nothing here is a cycle.
-  \node[hop] (F) at (0,0) {factory\\ Shenzhen};
-  \node[hop, right=9mm of F] (ship) {container line\\ Shenzhen $\to$ Rotterdam\\ 5 weeks};
-  \node[hop, right=9mm of ship] (wh) {warehouse\\ Rotterdam\\ holds 2 weeks};
-  \node[hop, right=9mm of wh] (van) {van\\ Rotterdam $\to$ door\\ Tue 9--12};
-  \node[hop, right=9mm of van, fill=accentlight, draw=accent] (B) {buyer\\ Utrecht};
-  \draw[strong] (F) -- node[lbl, above] {tiles} (ship);
-  \draw[strong] (ship) -- node[lbl, above] {tiles} (wh);
-  \draw[strong] (wh) -- node[lbl, above] {tiles} (van);
-  \draw[strong] (van) -- node[lbl, above] {tiles} (B);
-  % payment legs: the buyer's one euro give splits four ways
-  \node[hop, dashed, draw=accent, text=accent] (X1) at ($(F)!0.5!(ship) + (0,-22mm)$) {exchange\\ EUR $\to$ USDC};
-  \node[hop, dashed, draw=accent, text=accent] (X2) at ($(wh)!0.5!(van) + (0,-22mm)$) {exchange\\ EUR $\to$ CHF};
-  \coordinate (bus) at ($(B.south) + (0,-30mm)$);
-  \draw[flow] (B.south) -- node[lbl, right, pos=0.5] {EUR, once} (bus);
-  \draw[flow] (bus) -| (van.south);
-  \draw[flow] (bus) -| (X2.south); \draw[flow] (X2.north) -- node[lbl, right, font=\scriptsize] {CHF} (ship.south -| X2.north) -- (ship.south);
-  \draw[flow] (bus) -| ($(wh.south) + (-3mm,0)$);
-  \draw[flow] (bus) -| (X1.south); \draw[flow] (X1.north) -- node[lbl, left, font=\scriptsize] {USDC} (F.south -| X1.north) -- (F.south);
-  \node[note, text width=130mm] at ($(bus) + (-60mm,-9mm)$) {Not a loop. The buyer pays \emph{once}; clearing splits the euro give four ways at the per-leg prices, two of them through exchanges, because the factory is paid in USDC and the shipper in francs. Goods legs run one way, payment legs the other, and every node nets to zero on its own scale. That conservation, not the cycle, is the invariant: the cleared object is a \emph{circulation}, and a loop is its smallest case.};
+\begin{tikzpicture}[giver/.style={box, align=left, font=\footnotesize, minimum width=44mm, text width=42mm},
+                    xch/.style={box, dashed, draw=accent, text=accent, font=\scriptsize, inner sep=2pt, minimum width=22mm, align=center}]
+  % One hyper-leg: the factory sells tiles where they are, the carriers sell
+  % carriage, the warehouse sells storage. Nobody hands tiles to anybody
+  % else as a market leg; the buyer's single want is composed from four
+  % unconditional gives. The buyer pays once; clearing splits, two of the
+  % payments through exchanges. Not a loop: a circulation with a hub.
+  \node[giver] (F)  at (10mm,33mm)  {\textbf{factory, Shenzhen}\\ gives tiles @ Shenzhen\\ wants USDC};
+  \node[giver] (L)  at (10mm,11mm)  {\textbf{container line}\\ gives carriage Shenzhen $\to$ Rotterdam, 5 wk\\ wants CHF};
+  \node[giver] (W)  at (10mm,-11mm) {\textbf{warehouse, Rotterdam}\\ gives storage, 2 weeks\\ wants EUR};
+  \node[giver] (V)  at (10mm,-33mm) {\textbf{van}\\ gives carriage Rotterdam $\to$ door, Tue 9--12\\ wants EUR};
+  \node[maker, align=center, fill=accentlight, draw=accent] (B) at (100mm,0) {\textbf{buyer, Utrecht}\\{\footnotesize wants tiles @ door, Tue 9--12}\\{\footnotesize gives up to 510 EUR (divisible)}};
+  % the hyper-leg
+  \begin{scope}[on background layer]
+    \fill[accentlight, opacity=0.55, rounded corners=8pt] (34mm,44mm) -- (80mm,9mm) -- (80mm,-9mm) -- (34mm,-44mm) -- cycle;
+  \end{scope}
+  \foreach \g in {F,L,W,V} { \draw[strong] (\g.east) -- (B.west); }
+  \node[note, text=accent, font=\footnotesize, text width=60mm] at (57mm,-50mm) {one hyper-leg: tiles@Shenzhen $\otimes$ carriage $\otimes$ storage $\otimes$ carriage $\sqsubseteq$ tiles@door, Tue 9--12};
+  % payments: one give, split four ways, routed on the left
+  \coordinate (top) at (100mm,50mm); \coordinate (bus) at (-62mm,50mm);
+  \draw[flow, -] (B.north) -- node[lbl, right] {EUR, once} (top) -- (bus) -- (-62mm,-33mm);
+  \node[xch] (X1) at (-36mm,33mm) {EUR $\to$ USDC};
+  \node[xch] (X2) at (-36mm,11mm) {EUR $\to$ CHF};
+  \draw[flow, -] (-62mm,33mm) -- (X1.west); \draw[flow] (X1.east) -- node[lbl, above, font=\scriptsize] {USDC} (F.west);
+  \draw[flow, -] (-62mm,11mm) -- (X2.west); \draw[flow] (X2.east) -- node[lbl, above, font=\scriptsize] {CHF} (L.west);
+  \draw[flow] (-62mm,-11mm) -- node[lbl, above, font=\scriptsize, pos=0.7] {EUR} (W.west);
+  \draw[flow] (-62mm,-33mm) -- node[lbl, above, font=\scriptsize, pos=0.7] {EUR} (V.west);
+  \node[note, text width=150mm] at (20mm,-63mm) {Nobody hands tiles to anybody as a market leg: the factory sells tiles where they are, the carriers sell carriage, the warehouse sells storage, each unconditional. The buyer's one want is composed from all four, so it clears with all or none. The buyer pays once; clearing splits the euro give at the per-leg prices, twice through exchanges. Every node nets to zero on its own scale. Not a loop: a circulation with a hub, on a hypergraph.};
 \end{tikzpicture}
 \end{document}

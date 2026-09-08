@@ -197,8 +197,20 @@
   \fig[0.7]{fig-lifters}
 \end{frame}
 
-\begin{frame}{Not loops: circulations. Every node nets to zero on its own scale}
+\begin{frame}{One hyper-leg, four givers, two currencies: the buyer pays once}
   \fig[0.98]{fig-chain}
+\end{frame}
+
+\begin{frame}{The object: a circulation on a hypergraph}
+  \centering\includegraphics[width=0.9\linewidth, height=0.36\textheight, keepaspectratio]{fig-hyperleg}
+  \vspace{1mm}
+  \footnotesize
+  \begin{itemize}
+    \item \textbf{Circulation:} value in equals value out at every maker, on that maker's own scale. A \emph{loop} is any cleared circulation; a \emph{cycle} is the strict circle, all the P0 solver can find.
+    \item \textbf{Generalized flow:} the rate is the edge gain; Bellman--Ford detects one flow-generating cycle; cycle cancelling builds the whole circulation from many.
+    \item \textbf{Clearing prices are node potentials:} log-rates sum to zero round every cycle (Kirchhoff in logs); the personal scale \emph{is} the potential; verifying a proposal is a potential check, linear in the legs.
+    \item \textbf{Hyper-legs} make it a hypergraph flow: an LP while legs are divisible, an ILP where a hyper-leg is all-or-nothing.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Solvers: outside the protocol, competing, trusted with nothing}

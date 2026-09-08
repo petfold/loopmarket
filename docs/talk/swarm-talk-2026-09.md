@@ -9,15 +9,15 @@ Arc (four parts, ~30 minutes):
 | # | Part | Minutes | Slides |
 |---|------|--------:|-------:|
 | 1 | What is wrong with internet commerce | 6 | 1–4 |
-| 2 | A general solution: the loop economy | 11 | 5–22 |
-| 3 | What is built, one demo, what is planned | 8 | 23–28 |
-| 4 | The Swarm AI Data Exchange and loopmarket: differences, convergence | 8 | 29–33 |
-| — | Close and asks to the room | 1 | 34 |
+| 2 | A general solution: the loop economy | 12 | 5–23 |
+| 3 | What is built, one demo, what is planned | 8 | 24–29 |
+| 4 | The Swarm AI Data Exchange and loopmarket: differences, convergence | 8 | 30–34 |
+| — | Close and asks to the room | 1 | 35 |
 
 Draft 2 runs long for 30 minutes: part 2 grew from 4 slides to 16 at
 the owner's request (barter first, private scales, OntoDAG on its own,
 longer loops, solvers, factbond). Cut candidates if time is short:
-slides 12 (fits-within, three ways), 17 (multi-hop chain), 22 (bridge:
+slides 12 (fits-within, three ways), 17 (the hyper-leg), 23 (bridge:
 already covered by the exchange leg on 16).
 
 Conventions in this draft: **bold** lines are what goes on the slide;
@@ -229,26 +229,41 @@ give, split six ways at the clearing prices.**
     solver that composes is a different species, and clearing re-verifies
     the composition exactly as it re-verifies a leg.
 
-### Slide 17 — Not loops: circulations
+### Slide 17 — One hyper-leg, four givers, two currencies
 
-**Factory in Shenzhen → container line → warehouse → van → buyer in
-Utrecht. The buyer pays once, in euros; clearing splits it four ways at
-the per-leg prices, through exchanges where the factory wants USDC and
-the shipper francs. Every node nets to zero on its own scale.**
-**The cleared object is a circulation; a loop is its smallest case.**
+**The factory sells tiles where they are; the container line and the van
+sell carriage; the warehouse sells storage — four unconditional gives.
+The buyer's one want, tiles at the door on Tuesday, is composed from all
+four, so it clears with all or none. The buyer pays once; clearing splits
+the euro give at the per-leg prices, twice through exchanges.**
 
-    The reframing (P2-loop-selection.md §11, 2026-09-07). What the
-    system clears is a flow on the maker graph conserved at every node,
-    in value on that node's own scale, with hyper-legs where one want is
-    composed from several gives. That is generalized network flow: the
-    rate is the edge gain, a profitable loop is a flow-generating cycle,
-    Bellman–Ford is the one-cycle detector, cycle cancelling builds the
-    whole circulation from repeated Bellman–Ford, and the clearing prices
-    are the LP's node potentials — Kirchhoff's voltage law in logs, with
-    each maker's personal scale as the potential. For an engineering
-    audience the Kirchhoff line lands; keep it to one sentence.
+    Say what changed from the first drawing: nobody hands tiles to anybody
+    as a market leg any more. That was the transformer picture, and it
+    fails because an intermediary's want could clear alone. Here every
+    give is a plain service and the conjunction sits in the buyer's want
+    (P2-loop-selection.md §10). Point at the shaded region: that is one
+    hyper-leg. Point at the payment routing: one give, split four ways.
 
-### Slide 18 — Solvers: outside the protocol, competing, trusted with nothing
+### Slide 18 — The object: a circulation on a hypergraph
+
+**A leg is an edge; a composed leg is a hyperedge — k tails, one head,
+one flow variable, so it fills every tail or none. The maker graph with
+hyper-legs is a hypergraph; a cleared set is a circulation on it.**
+**Loop = any cleared circulation; cycle = the strict circle. Bellman–Ford
+detects one flow-generating cycle; cycle cancelling builds the rest.
+Clearing prices are node potentials: Kirchhoff's voltage law in logs.**
+
+    The reframing (P2-loop-selection.md §11, 2026-09-07), one slide. For
+    a Swarm audience keep the theory names as anchors, not as content:
+    generalized network flow, Hoffman's circulation theorem, Klein's cycle
+    cancelling, LP duality. The line that lands with engineers is the
+    Kirchhoff one — current law is per-node conservation, voltage law is
+    "rates round every cycle multiply to one at the clearing prices", and
+    each maker's personal scale is the node potential. Then the payoff:
+    verifying a proposal is a potential check, linear in the legs, which
+    is what an on-chain verifier wants to run.
+
+### Slide 19 — Solvers: outside the protocol, competing, trusted with nothing
 
 **The CoW Protocol shape: anyone runs a solver; the best proposal wins;
 the solver is paid from the surplus it found — an endogenous spread
@@ -262,13 +277,13 @@ baseline in the repo is deterministic and is the reserve bid.**
     them being honest. P2's batch auction: sealed proposals per beat,
     numeraire-free scoring, a fairness floor (P2-batch-auction.md).
 
-### Slide 19 — Clearing trusts no one
+### Slide 20 — Clearing trusts no one
 
 **Clearing re-derives every leg from the pinned book and catalogue,
 re-checks the product, and commits all legs atomically — one root.**
 **A follower with nothing but an address reads the cleared world back.**
 
-### Slide 20 — Who commits? Not the solver
+### Slide 21 — Who commits? Not the solver
 
 **The maker signs the offer once and may go offline: a signed offer is a
 standing commitment. The solver only proposes. Clearing is the one
@@ -287,7 +302,7 @@ is simply refused (U11 keeps loops and fills consistent after folds).**
     obligations; the goods still have to move, and that is what P3's
     bonds, oracles and factbond certificates secure.
 
-### Slide 21 — Where verification cannot reach: factbond
+### Slide 22 — Where verification cannot reach: factbond
 
 **A bonded assertion: one party posts a claim backed by a bond sized to
 the cost of adjudication; the world is the latent counterparty during a
@@ -303,7 +318,7 @@ attestations ("delivered at reception, 00:21"), on identity facts.**
     needs this introduction. Prediction markets cannot scale down to
     millions of near-certain mundane facts; bonded assertions can.
 
-### Slide 22 — Money is just another offer
+### Slide 23 — Money is just another offer
 
 **Money enters as a *bridge offer*: a maker whose thing is a currency.
 Bridges turn almost-loops failing only on a money leg into loops.**
@@ -316,7 +331,7 @@ Bridges turn almost-loops failing only on a money leg into loops.**
 
 ## Part 3 — What is built, one demo, what is planned (8 min)
 
-### Slide 23 — The stack, and why it is Swarm-shaped
+### Slide 24 — The stack, and why it is Swarm-shaped
 
 **loopmarket → ontodag → recordstore → Swarm.**
 **Book = a versioned key-value keyspace with canonical roots (equal
@@ -334,7 +349,7 @@ never a delete — the book cleans itself.**
     and GSOC reception; the book head lives in a feed so a reader needs
     (owner, topic) and nothing else.
 
-### Slide 24 — Invariants the code enforces
+### Slide 25 — Invariants the code enforces
 
 **U1 uniform offer · U2 immutable, content-addressed · U3 clearing
 trusts no solver · U4 solve against pinned roots · U5 positive rates
@@ -346,7 +361,7 @@ U11 no partially-filled loop survives a merge.**
     break", and that the same discipline runs across ontodag and
     recordstore.
 
-### Slide 25 — `[demo]` The federated book, live on Bee (≈ 3 min)
+### Slide 26 — `[demo]` The federated book, live on Bee (≈ 3 min)
 
 **Three makers, three feeds. Two honest aggregators fold in different
 orders — byte-identical manifests. Mallory forges an offer in Amara's
@@ -369,7 +384,7 @@ follower reads six atomic fills from the manifest alone.**
     Line to say: "an aggregator is whoever happened to compute the
     root; the root is the market."
 
-### Slide 26 — Are aggregators necessary? (an honest open question)
+### Slide 27 — Are aggregators necessary? (an honest open question)
 
 **Not for correctness, trust or permission — the fold is pure; any
 reader can recompute it.**
@@ -388,7 +403,7 @@ as the floor, GSOC as the fast path), never via a party who can omit.**
     problem (every chunk carries its uploader's stamp; readers need
     none); delivery guarantees and light-node reception are.
 
-### Slide 27 — Who pays for what
+### Slide 28 — Who pays for what
 
 **Makers pay postage for their own book (the stamp's TTL is the offer's
 lifetime) and never gas. Solvers pay clearing gas and earn the spread.
@@ -400,7 +415,7 @@ nothing: no fees, no token, no rewards, no treasury.**
     the system it games. Revisit triggers: solver monoculture, aggregator
     scarcity, measured statistics pollution.
 
-### Slide 28 — Roadmap
+### Slide 29 — Roadmap
 
 **P0 in-memory prototype — done. P1 Swarm book — federation live; open:
 read-path decentralization, GSOC announcements, latency/durability
@@ -420,7 +435,7 @@ catalogue edges.**
 
 ## Part 4 — The Swarm AI Data Exchange and loopmarket (9 min)
 
-### Slide 29 — Same substrate, same idioms
+### Slide 30 — Same substrate, same idioms
 
 **Both: content-addressed catalogues on Swarm; an atomic root in a
 feed; feed owner as identity; a light node suffices to read.**
@@ -437,7 +452,7 @@ aggregator manifests; clearing feed.**
     architectural choices at the storage layer. The differences are one
     level up."
 
-### Slide 30 — The differences
+### Slide 31 — The differences
 
 | | Swarm AI Data Exchange | loopmarket |
 |---|---|---|
@@ -455,7 +470,7 @@ aggregator manifests; clearing feed.**
     "a storefront and a clearing house — and the clearing house is the
     bigger problem, because it creates trades that a storefront cannot."
 
-### Slide 31 — Why not reputation-based
+### Slide 32 — Why not reputation-based
 
 **eBay: 0.3% of transactions rated negative, yet P(negative | partner
 rated negative) > 37% — retaliation suppressed truthful feedback until
@@ -471,7 +486,7 @@ Reputation is a *statistic you derive*, not an institution you believe.**
     unnecessary where it can (clearing recomputes everything) and
     expensive to game where it cannot (bonds).
 
-### Slide 32 — x402 and ERC-8004 fit loopmarket — as legs, identities and proofs
+### Slide 33 — x402 and ERC-8004 fit loopmarket — as legs, identities and proofs
 
 **x402 is a bilateral rail; it cannot settle a k-leg loop. It fits
 three places the plan already has: the stablecoin leg of a bridge offer
@@ -490,7 +505,7 @@ validation events with proofs, not opinions.**
     Keep the tone "and", not "instead". The line: "x402 for the money
     leg, loopmarket for the parts x402 cannot see."
 
-### Slide 33 — How we could converge
+### Slide 34 — How we could converge
 
 **1. Shared identity: one ERC-8004 Agent Card carrying both a
 `swarm-ai-catalog` and a `loopmarket-book` service.**
@@ -520,7 +535,7 @@ a number on *some* scale; let the scale be a field.**
 
 ## Close (2 min)
 
-### Slide 34 — Asks to the room
+### Slide 35 — Asks to the room
 
 **GSOC reception from light nodes; pub/sub timing.**
 **A services layer for ontodag's core pack (the goods are in; repair,
@@ -529,7 +544,7 @@ tutoring, cleaning are not).**
 wedge.**
 **Repos: loopmarket, ontodag, recordstore, factbond (github.com/petfold).**
 
-    End on the sentence from slide 25: the root is the market; Swarm
+    End on the sentence from slide 26: the root is the market; Swarm
     holds the books; the chain is the floor for discovery; the one
     remaining point of trust is clearing, and it is next.
 
@@ -556,5 +571,5 @@ wedge.**
 - [x] take-rate figures on slide 2: app stores 15–30%, Amazon referral 8–15% + fulfilment/ads, ~50% all-in (Marketplace Pulse); the `[verify]` tag is gone from the slide.
 - [ ] Record the in-memory federation demo (~5 s) and the live run (minutes) as terminal recordings; decide which to show.
 - [ ] Decide whether to show the triangle as a live 30-second run or as static output on slide 13.
-- [ ] Read `swarm-ai-data-exchange/documents/...design-v1...md` §10–11 once more for the exact purchase-flow wording on slide 29.
-- [ ] Check with Solar Punk whether the Marketplace Event Collector is planned as a required discovery component (slide 33, item 5) before saying so on stage.
+- [ ] Read `swarm-ai-data-exchange/documents/...design-v1...md` §10–11 once more for the exact purchase-flow wording on slide 30.
+- [ ] Check with Solar Punk whether the Marketplace Event Collector is planned as a required discovery component (slide 34, item 5) before saying so on stage.

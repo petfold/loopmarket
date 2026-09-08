@@ -1,0 +1,25 @@
+\input{preamble}
+\begin{document}
+\begin{tikzpicture}[m/.style={box, font=\footnotesize, minimum width=18mm}]
+  % An ordinary leg is an edge; a composed leg is a hyperedge with several
+  % tails and one head and a single flow variable.
+  \begin{scope}
+    \node[m] (g) at (0,0) {giver};
+    \node[m] (w) at (36mm,0) {wanter};
+    \draw[strong] (g) -- node[lbl, above, font=\scriptsize] {one give, one want} (w);
+    \node[note, text width=44mm] at (18mm,-14mm) {\textbf{leg = edge}\\ one giver, one wanter, one rate};
+  \end{scope}
+  \begin{scope}[xshift=72mm]
+    \node[m] (g1) at (0,12mm) {giver 1};
+    \node[m] (g2) at (0,0) {giver 2};
+    \node[m] (g3) at (0,-12mm) {giver 3};
+    \node[m] (w) at (44mm,0) {wanter};
+    \begin{scope}[on background layer]
+      \fill[accentlight, opacity=0.6, rounded corners=6pt] (11mm,18mm) -- (34mm,5mm) -- (34mm,-5mm) -- (11mm,-18mm) -- cycle;
+    \end{scope}
+    \foreach \g in {g1,g2,g3} { \draw[strong] (\g.east) -- (w.west); }
+    \node[note, text width=60mm] at (22mm,-26mm) {\textbf{hyper-leg = hyperedge}\\ $k$ tails, one head, \emph{one} flow variable:\\ fills every tail or none};
+  \end{scope}
+  \node[note, text width=136mm] at (60mm,-40mm) {The maker graph with hyper-legs is a \emph{hypergraph}. A cleared set is a \emph{circulation} on it: value in equals value out at every node, on that node's own scale. A cycle is the case where every node has one in and one out.};
+\end{tikzpicture}
+\end{document}
