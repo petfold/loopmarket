@@ -468,7 +468,7 @@ split under uniform directional clearing — is
 
 ## 9. The solver agent (solver/agent.py)
 
-> **2026-09-07.** The baseline here is deliberately the whole of loopmarket's solving; smarter species live outside the protocol, propose, and are verified like anything else. Our own is the separate `circulator` repository (private for now): cycle cancelling, potentials, route-planning hubs, composition as planning, sealed beats — its roadmap follows `docs/plans/P2-loop-selection.md` §11.
+> **2026-09-07.** The baseline here is deliberately the whole of loopmarket's solving; smarter species live outside the protocol, propose, and are verified like anything else. The algorithms such a species would build on are listed in `docs/plans/P2-loop-selection.md` §11.
 
 `step()`: snapshot → load active offers → exact matches → best-rate graph →
 negative cycles → proposals. Deliberately trust-poor in both directions:
