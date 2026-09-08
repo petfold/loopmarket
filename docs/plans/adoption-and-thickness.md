@@ -170,7 +170,9 @@ Discipline, in order of sharpness:
 
 ## 4. Loop-length discipline
 
-Thickness decays with loop length: a k-loop needs a k-way coincidence of
+Length means number of legs; every argument here is per leg, so it holds
+for any circulation, not only for cycles. Thickness decays with loop
+length: a k-leg loop needs a k-way coincidence of
 wants (Roth, "What Have We Learned from Market Design?", Economic Journal
 2008), and Roth–Sönmez–Ünver (AER 2007) showed 2- and 3-cycles capture most
 of the welfare in dense pools. Reliability argues the same direction with
@@ -182,7 +184,7 @@ as belt-and-braces. Two adoption-side consequences. The launch metrics
 thin and papered over by fragile long cycles. And standing bridge offers are
 the altruistic-donor analog: in kidney exchange, non-directed donors turned
 fragile simultaneous cycles into robust chains; here, a standing
-widely-acceptable bridge offer converts a fragile k-loop into two short ones
+widely-acceptable bridge offer converts a fragile k-leg loop into two short ones
 through the bridge. Long structures are chains when they land, never long
 cycles (`P2-loop-selection.md` §5).
 

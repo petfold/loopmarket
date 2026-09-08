@@ -119,7 +119,7 @@ token amount or external price enters. Three consequences:
   six simultaneous operating rooms), not computation; Roth–Sönmez–Ünver
   (AER 2007) showed 2- and 3-cycles capture most of the welfare. A length
   cap is kept as belt-and-braces — it also bounds cycle enumeration — and
-  thickness argues the same way: a k-loop needs a k-way coincidence of
+  thickness argues the same way: a k-leg loop needs a k-way coincidence of
   wants (Roth, "What Have We Learned from Market Design?", Economic
   Journal 2008).
 - **Priors obey U12** ("reward/reputation statistics count settled
@@ -193,8 +193,8 @@ withhold exactly the loops the reserve provably cannot see.
   highest rate. A discarded lower-rate parallel edge can pair a
   *different* ask/bid of the same nodes whose unit prices pass the
   per-node feasibility floor where the best-rate pairing fails: complete
-  for the product test, incomplete for feasibility. Loops that would
-  settle are silently invisible.
+  for the product test, incomplete for feasibility. Cycles that would
+  clear are silently invisible.
 - **Post-hoc `min_surplus` masks qualifying cycles.**
   `find_profitable_loop` tests the threshold only on the one cycle
   Bellman–Ford happened to certify; a below-threshold negative cycle
@@ -408,7 +408,7 @@ all, and a cheap infeasibility pruner for solvers. *Optimality:*
 minimum-cost circulation is an LP with Klein's cycle-cancelling algorithm
 (1967): while the residual network has a negative-cost cycle, push flow
 round it; stop when none remains. Negative cycles are found by
-Bellman–Ford. The P0 baseline is one iteration of this loop.
+Bellman–Ford. The P0 baseline is one iteration of that procedure.
 
 **Generalized flows (flows with gains, 1960s; Goldberg–Plotkin–Tardos
 1991).** Each edge multiplies what passes through it by a factor — here

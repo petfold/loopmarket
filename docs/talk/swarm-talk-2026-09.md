@@ -192,7 +192,7 @@ his bikes fixed. Chen fixes bikes, her daughter wants piano lessons.**
 
 ### Slide 14 — A profitable loop is a negative cycle
 
-**A loop is profitable iff the product of its rates exceeds 1 — a
+**A cycle is profitable iff the product of its rates exceeds 1 — a
 negative cycle under −log weights. Bellman–Ford finds it,
 deterministically.**
 

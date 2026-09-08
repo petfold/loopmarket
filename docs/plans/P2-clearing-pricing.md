@@ -23,7 +23,7 @@ rule's incentive claims get tested).
 
 ## 1. The problem: Π > 1 proves surplus; prices realize it
 
-`graph.py` proves a loop profitable when the product of its match rates
+`graph.py` proves a cycle profitable when the product of its match rates
 exceeds 1: around a cycle, Π rᵢ telescopes into Π (node's bid price / node's
 own ask price) = S. That is an existence proof, not a clearing. To clear,
 every node i must sell xᵢ units of its thing at some price uᵢ ≥ aᵢ (its ask,
@@ -214,7 +214,7 @@ gates must agree.
 Full strategy-proofness is unavailable: by the Myerson–Satterthwaite
 impossibility, no bilateral-trade mechanism is simultaneously efficient,
 budget-balanced, individually rational and incentive-compatible — and a
-loop is a cycle of bilateral trades cleared budget-balanced (§1's
+loop is a set of bilateral trades cleared budget-balanced (§1's
 conservation identity is budget balance). So this document claims only
 **bounded manipulability, and that claim is an inference, not a theorem.**
 The leg-local arithmetic behind the inference: a node that shades one bound

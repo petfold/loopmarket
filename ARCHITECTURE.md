@@ -359,7 +359,7 @@ is a positively-priced *service* ("removal of X"); emptiness is a
 positively-priced *good*. The waste/recycling economy needs no signed
 numbers, only the right category names.
 
-Search: weights `w = −log r`, so profitable loops are negative cycles;
+Search: weights `w = −log r`, so profitable cycles are negative cycles;
 Bellman–Ford with predecessor extraction finds one in O(V·E), deterministic
 by sorted iteration (same book ⇒ same loop on every replica — reproducible
 audits). `find_profitable_loops` greedily extracts disjoint loops. This is

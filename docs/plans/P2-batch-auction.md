@@ -154,14 +154,14 @@ lands with P2):
 
 - **Per-offer reference outcome** = the best standalone proposal through
   that offer among the beat's submissions — its best 2-cycle (direct
-  barter) or best simple loop — *always including the deterministic
+  barter) or best simple cycle — *always including the deterministic
   baseline's proposals*. Including the baseline is load-bearing: it stops
   solvers collectively withholding standalone bids to deflate references,
   because the free replica-computable solution is always in the reference
   set. An offer no submission reaches standalone has reference = no-trade.
 - **Filter**: any proposal whose settlement would give some participating
   offer a worse outcome than its reference is discarded before selection.
-  A k-loop wins only if every member does at least as well as going alone.
+  A k-leg loop wins only if every member does at least as well as going alone.
 
 Two consequences. First, `per_node_ok` is **kept as arithmetic fact,
 superseded as policy**: the arithmetic stays (a loop whose indivisible legs
