@@ -21,7 +21,7 @@ selection). ARCHITECTURE.md §7 records the arithmetic this builds on.
 
 ## 1. Selection is packing, not search
 
-The baseline (`graph.py`) answers "does a profitable loop exist?" —
+The baseline (`graph.py`) answers "does a profitable cycle exist?" —
 Bellman–Ford, then greedy disjoint extraction. The P2 question is
 different: given a beat's proposals — many loops, overlapping in offers —
 pick the feasible subset that maximizes what actually settles. Greedy

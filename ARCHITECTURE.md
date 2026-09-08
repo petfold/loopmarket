@@ -405,7 +405,7 @@ in value on that node's own scale, with *hyper-legs* where one want is
 composed from several unconditional gives (`P2-loop-selection.md` §10).
 "The numbers cancel in-loop" is exactly "the numbers cancel at every
 node". This is generalized network flow (flows with gains, Goldberg–
-Plotkin–Tardos 1991): the rate is the edge gain, a profitable loop is a
+Plotkin–Tardos 1991): the rate is the edge gain, a profitable cycle is a
 flow-generating cycle, `graph.py`'s Bellman–Ford is the classical
 detector for the one-cycle case, and cycle cancelling (Klein 1967;
 minimum-mean-cycle for U6 determinism, Goldberg–Tarjan 1989) is the
