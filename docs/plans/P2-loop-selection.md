@@ -392,6 +392,24 @@ else. "The numbers cancel in-loop" (the essay) is precisely "the numbers
 cancel at every node". Nothing in U1–U7 or U11 changes; they were always
 statements about nodes and legs, never about cycles.
 
+**Hypergraphs, since the word is load-bearing.** A hypergraph is a graph
+whose edges may join more than two nodes; in the directed form a
+hyperedge has a set of tail nodes and a set of head nodes. An ordinary
+leg is an edge from one giver to one wanter. A composed leg is a
+hyperedge: the givers are its tails (six lifters; the station and the
+courier) and the one wanting maker is its head. It is a hyperedge and not
+k edges because it carries *one* flow variable — the composition rule
+fixes how much of each tail's give it consumes (one person-hour from
+each; one brush and one carriage) — so filling it fills every tail and
+not filling it fills none. That is what "all or nothing" means here, not
+an added constraint. The payment side is not a hyperedge: the buyer's one
+divisible money give leaving along k ordinary edges is plain flow
+splitting. Conservation on a hypergraph reads as on a graph once each
+hyperedge's flow is weighted by its consumption of each incident node's
+give or want at that node's own price. Flow on hypergraphs with this
+structure is a linear program for divisible legs and an integer program
+when a hyperedge is all-or-nothing, which is the §2 boundary again.
+
 The reframing puts the project inside a body of theory with names for
 everything it had been rediscovering.
 

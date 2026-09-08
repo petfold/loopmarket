@@ -100,6 +100,7 @@ Three words carry the design and are used precisely since 2026-09-07:
 - **loop** — any cleared circulation: the essay's word and the name in code (`Loop`, `LoopProposal`, `loop/`, `loop_id`).
 - **cycle** (simple loop) — the strict circle; all the P0 solver finds, and the only case where "the product of rates around it" means anything.
 - **circulation** — the technical name for the cleared object: a flow conserved at every maker on that maker's own scale, with composed legs where one want takes several gives (`docs/plans/P2-loop-selection.md` §10–11).
+- **hyper-leg** — a composed leg: several givers as tails, one wanting maker as head, one flow variable, so it fills every tail or none. The maker graph with hyper-legs is a hypergraph; its flow is an LP for divisible legs and an ILP where a hyper-leg is all-or-nothing.
 
 And two more: **clearing** is the atomic commit that fixes obligations; **settlement** is the makers delivering.
 

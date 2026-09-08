@@ -402,7 +402,9 @@ is paid for by four payment legs through two exchanges) are not cycles
 and do not decompose into cycles. The cleared object is a **circulation**:
 a flow on the maker graph conserved at every node, conservation measured
 in value on that node's own scale, with *hyper-legs* where one want is
-composed from several unconditional gives (`P2-loop-selection.md` §10).
+composed from several unconditional gives — a hyperedge with the givers
+as tails and the wanter as head, one flow variable, so it fills every
+tail or none (`P2-loop-selection.md` §10–11).
 "The numbers cancel in-loop" is exactly "the numbers cancel at every
 node". This is generalized network flow (flows with gains, Goldberg–
 Plotkin–Tardos 1991): the rate is the edge gain, a profitable cycle is a
