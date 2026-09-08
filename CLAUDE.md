@@ -57,7 +57,7 @@ Live-node runs follow ontodag's convention: skip unless `BEE_API` **and** `BEE_B
 - `src/loopmarket/matching.py` — the exact pairwise check (`check_match`) and the O(gives×wants) baseline candidate generator.
 - `src/loopmarket/graph.py` — `ExchangeGraph` (best rate per pair), Bellman–Ford negative cycles, `Loop` (product, surplus, per-node check, `loop_id`).
 - `src/loopmarket/clearing.py` — `LoopProposal`, `Receipt`, the `Clearing` protocol, `MockClearing` (injectable `clock` for deterministic tests).
-- `src/loopmarket/solver/agent.py` — the baseline `SolverAgent`: snapshot → match → graph → hunt → propose; the species other solvers must beat.
+- `src/loopmarket/solver/agent.py` — the baseline `SolverAgent`: snapshot → match → graph → hunt → propose; the species other solvers must beat. Smarter species live *outside* this repo by design (they propose, clearing verifies); ours is **circulator** (github.com/petfold/circulator, private as of 2026-09-07), which wraps this baseline as its reserve bid and benchmarks every strategy against `MockClearing`. loopmarket never imports it.
 
 ## Known simplifications (deliberate; each has a roadmap home)
 
