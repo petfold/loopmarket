@@ -492,10 +492,18 @@ conserved at every node — the settled-quantities v3 record
 (`P2-clearing-pricing.md` §8) and §10's multi-give fills already push in
 this direction, and the id should become the content address of the leg
 multiset, of which a cycle is the special case (ids of today's loops are
-unchanged by construction). The words: *loop* stays for a simple cycle
-and for the essay's name of the whole idea; *circulation* is the cleared
-object; *leg* and *hyper-leg* are its parts; nothing is renamed in code
-until the v3 record lands. `P2-clearing-pricing.md` §10 records the
+unchanged by construction). The words (decided 2026-09-07):
+**keep the names, widen the meaning.** *Loop* means any cleared
+circulation — the essay's word, the brand, `Loop`, `LoopProposal`,
+`loop/`, `loop_id`, "the solver proposes a loop" all stay and all become
+exactly right under that reading; *cycle* (or *simple loop*) is the strict
+circle, which is what P0's code can find and the only thing today's `Loop`
+can hold; *circulation* is the technical name when the theory is being
+invoked; *leg* and *hyper-leg* are the parts. Renaming the identifiers
+now would make code promise what it cannot yet deliver, and `loop/` is a
+persisted keyspace whose rename is a record-format bump (U2). When the
+v3 record lets a `Loop` hold a leg multiset, the class simply grows into
+its name. `P2-clearing-pricing.md` §10 records the
 potentials view from the pricing side.
 
 **What does not change.** U3's posture (clearing verifies, never
