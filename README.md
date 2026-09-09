@@ -119,6 +119,7 @@ And two more: **clearing** is the atomic commit that fixes obligations; **settle
 | [`catalogue-bootstrap.md`](docs/plans/catalogue-bootstrap.md) | Seeding and governing the shared catalogue: seed taxonomies, the import pipeline, norms as protocol rules. |
 | [`adoption-and-thickness.md`](docs/plans/adoption-and-thickness.md) | Where the first loops come from: launch verticals, the broker surface, bridge liquidity, thickness engineering. |
 | [`THREATS.md`](docs/plans/THREATS.md) | The threat register, T1–T9, ordered by expected damage to a young system; mirrored in factbond. |
+| [swarm-da](https://github.com/petfold/swarm-da) (separate repo) | Memo, 2026-09-09: what building this book on Swarm taught about Swarm as a data-availability layer — the archival-DA opportunity, Bee's push-sync receipts as the half-built publication primitive, and what loopmarket sheds the day they are exposed and anchored. |
 
 **Phase ↔ document map.** P1 (federation): `P1-federated-book.md`,
 supported by `ontodag-coupling.md` and `catalogue-bootstrap.md`. P2
