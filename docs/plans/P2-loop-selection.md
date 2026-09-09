@@ -592,6 +592,58 @@ rule is decided, the residual gap unquantified. Work package:
 `P2-clearing-pricing.md`; named here because compression is this
 document's mechanism.
 
+**Integer granularity of a give — DECISION REQUIRED before the v3 record
+bump** (raised 2026-09-10). `Thing.divisible` is a boolean: off means
+all-or-nothing, on means continuously divisible, and nothing in between
+is representable. That leaves out the common case of one maker with a
+large whole-unit quantity — 1,000 apples sold by the apple, grain in
+25 kg sacks, 400 seats — which today needs either n one-unit offers
+(book bloat, n matches, n fills) or a continuous give that clearing may
+fill at 12.7 apples. §2's qty-as-flow-capacity partial fills remove the
+n-offers cost but keep the continuity; §10's aggregation puts
+integrality on the *want* (fill-or-kill ≥ 6) and still uses one offer
+per unit on the give side; the capacity/slot schedules below are far
+roadmap and about distinct slots, not fungible whole units. No document
+specifies a step. The question cannot be deferred past the v3 bump:
+under U2 a new record field changes every offer id, and v3 is already
+scheduled to carry per-fill quantities (`P2-clearing-pricing.md` §8) and
+U9's rational amounts, so the step must ride the same bump or wait for
+another.
+
+  Options on the table:
+  1. **`step` replaces the boolean.** A quantity in the Thing's unit:
+     `step == qty` is today's indivisible, `step == 0` today's continuous,
+     `step == 1` whole apples, `step == 25 kg` sacks. Matching requires
+     the want's quantity to be a positive multiple of the give's step;
+     clearing constrains each fill to a multiple. Exact under U9 (a
+     rational), one field, `from_record` maps v2's boolean to the two
+     degenerate values. Recommended representation.
+  2. **Keep the boolean, add `min_qty`.** Cheaper to read, but a minimum
+     is not a granularity (it forbids 3 of 1,000, not 12.7) and leaves
+     the fractional-fill problem in place. Included for completeness;
+     not recommended.
+  3. **Do nothing; one offer per unit stays the convention.** Zero code,
+     and the P1 book already tolerates it; but the announcement, postage
+     and matching costs scale with n, and a 400-seat bus posting 400
+     offers is the case the owner flagged as the reason to decide.
+
+  The clearing consequence is the real content of the decision: a
+  stepped leg is not a continuous flow, and the rates on edges break the
+  integrality that plain network flow enjoys, so stepped legs either
+  (a) join the indivisible legs on the ILP side of §2 — exact, but every
+  stepped bulk offer drags its beat out of the polynomial regime — or
+  (b) stay in the LP and are rounded *down* to the step inside the
+  equal log-surplus split, the remainder left unfilled and the rounding
+  loss booked as the U13 dust rule already has to book it — polynomial,
+  but the fairness filter must be shown to survive the rounding. (a) is
+  the natural default for large steps relative to the quantity, (b) for
+  small ones (whole apples out of 1,000); a threshold between them is a
+  parameter nobody has chosen. Decide: representation (1 vs 2 vs 3),
+  clearing regime ((a), (b), or a threshold), and whether the v3 bump
+  waits for it. Owner: P2 kickoff, alongside the U9 migration; the
+  matching change is one line in `check_match`, the record change rides
+  v3, the clearing change is this document's §2.
+
 - **Price and capacity schedules in offers** (far roadmap — owner-added
   2026-08-21;
   lands, if ever, with a post-P4 record bump). Today an offer quotes one
