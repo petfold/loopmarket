@@ -299,6 +299,19 @@ two consumers, shared conformance tests.
   "the *current* book" when the verifier is a contract. Discussion agenda
   item; work package: P2 settlement design (`P2-batch-auction.md`),
   revising this document.
+- **Publication of the anchored root (added 2026-09-10).** Anchoring
+  `book_root` on chain proves nothing about whether the blobs under it
+  were ever released; a withholding aggregator (T14) passes every proof
+  here and fails only as an unprovable liveness gap that `audit_manifest`
+  cannot close without the bytes. Bee already signs a per-chunk storer
+  receipt in push-sync and discards it inside the node; if those receipts
+  are exposed and block-anchored (the ask in
+  [petfold/swarm-da](https://github.com/petfold/swarm-da) §4.1), the
+  beat's anchoring transaction can carry them and the contract can refuse
+  an unreceipted root, and a maker's tombstone receipt dates a withdrawal
+  against the cutoff without trusting the aggregator's provenance. Until
+  then the self-hosted pinning node and chain-as-authority remain the
+  mitigation. Owner: P2 contract design, watching Bee.
 - **POT mirroring fidelity.** If G4 fires, the POT root and the recordstore
   root describe the same book through different trees; the proof that they
   agree (every key, both directions) is itself a non-monotone completeness

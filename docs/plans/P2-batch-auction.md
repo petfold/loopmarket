@@ -199,6 +199,20 @@ Deliberately ahead of Cycles, whose min-cost-flow optimum "is not unique"
 with tie-breaking punted to governance (arXiv:2507.22309); loopmarket's
 audits need byte-identical replay, not a committee.
 
+**One clearing commit per beat; conflicts are selection's job, not the
+block's (made explicit 2026-09-10).** Two proposals that share an offer
+are competing candidates for the packing above, never two clearing
+transactions. The beat's outcome reaches the chain as one transaction,
+so nothing inside a block can conflict with it, and because selection is
+deterministic any honest submitter of the beat produces the same
+content; the contract accepts one outcome per beat. Contrast the naive
+port of `MockClearing`'s first-valid-wins to a contract: there each
+proposal would be its own transaction, transactions in a block execute
+in the order the proposer chose, the first would write its fills and the
+second would revert on the fill check — a winner decided by builder
+ordering, not by surplus. That model is what the beat replaces; the
+leg-level fill check survives only as the safety net under U3.
+
 ## 7. Solver rewards
 
 **Ruling (2026-08-21, agenda item 4): struck.** The owner decided no
