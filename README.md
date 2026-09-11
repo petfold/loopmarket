@@ -36,7 +36,7 @@ agent.step()                          # snapshot → match → hunt loops → cl
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 56 tests (two need a live Bee node)
+python3 -m pytest tests/ -v           # 59 tests (two need a live Bee node)
 PYTHONPATH=src python3 examples/demo_triangle.py     # P0 in one file
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
 ```
