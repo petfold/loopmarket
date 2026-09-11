@@ -116,13 +116,15 @@ And two more: **clearing** is the atomic commit that fixes obligations; **settle
 | [`P3-guarantee-coupling.md`](docs/plans/P3-guarantee-coupling.md) | loopmarket's half of the factbond coupling: witness edges, reliance-capped insurance, oracle consumption, risk-priced routing. |
 | [`P4-privacy.md`](docs/plans/P4-privacy.md) | Staged privacy: Tier 1 with zero new cryptography, the P2 format-freeze list, explicit dead/deferred rulings. |
 | [`ontodag-coupling.md`](docs/plans/ontodag-coupling.md) | The catalogue contract: dimension terms, unit families, match degrees, the upstream-vs-local tripwire table. |
+| [`cli.md`](docs/plans/cli.md) | The command line (2026-09-11): `loop` in the package, ontodag's grammar plus quantity-first/price-last, every name a catalogue node, last-price memory, "declare in the direction you know" instead of a tolerance parameter, the approval block, batch scripts. |
 | [`catalogue-bootstrap.md`](docs/plans/catalogue-bootstrap.md) | Seeding and governing the shared catalogue: seed taxonomies, the import pipeline, norms as protocol rules. |
 | [`adoption-and-thickness.md`](docs/plans/adoption-and-thickness.md) | Where the first loops come from: launch verticals, the broker surface, bridge liquidity, thickness engineering. |
 | [`THREATS.md`](docs/plans/THREATS.md) | The threat register, T1–T9, ordered by expected damage to a young system; mirrored in factbond. |
 | [swarm-da](https://github.com/petfold/swarm-da) (separate repo) | Memo, 2026-09-09: what building this book on Swarm taught about Swarm as a data-availability layer — the archival-DA opportunity, Bee's push-sync receipts as the half-built publication primitive, and what loopmarket sheds the day they are exposed and anchored. |
 
 **Phase ↔ document map.** P1 (federation): `P1-federated-book.md`,
-supported by `ontodag-coupling.md` and `catalogue-bootstrap.md`. P2
+supported by `ontodag-coupling.md` and `catalogue-bootstrap.md`, with
+`cli.md` as its tooling. P2
 (verifiable clearing): the three P2 docs plus `proof-fabric.md`,
 *constrained* by `P4-privacy.md`'s format-freeze list and gated by
 `THREATS.md` tripwires. P3 (guarantee fabric): `P3-guarantee-coupling.md`

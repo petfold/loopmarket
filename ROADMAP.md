@@ -42,7 +42,14 @@ aggregator that cannot lie about what it folded.
       itself recovers the honest fold (T14).
 - [ ] Two-layer offer authenticity (U8) hardened beyond the demo path:
       detached signatures and fold-time `origin/` records as the plan
-      specifies.
+      specifies; the detached signature in EIP-712 typed-data form so a
+      hardware wallet renders the offer's fields (added 2026-09-11).
+- [ ] The command line · [plan](docs/plans/cli.md) — `loop` in the
+      package, ontodag's grammar with two conventions (quantity first,
+      price last), names as catalogue nodes, last-price memory, the
+      direction rule instead of any tolerance parameter, the approval
+      block before publish, batch scripts replacing the Python demos.
+      Design 2026-09-11, nothing built; `loop-mcp` follows it.
 
 ## P2 — verifiable clearing
 
@@ -60,6 +67,11 @@ Three plans, all at *design* as of 2026-08-07, none built.
       divisible legs are a flow LP, indivisible legs a bounded-cycle packing
       ILP; exact winner determination for small beats.
 - [ ] Open before v3: the integer granularity of a give.
+- [ ] Decide with the contract design: anchored offer ids (maker-optional,
+      bodies on Swarm) as the contract's set authority where present,
+      trie proofs otherwise — the alternative recorded 2026-09-11 in
+      [P1 §4a](docs/plans/P1-federated-book.md), with the substrate
+      capacity table to be refreshed then.
 
 ## P3 — the guarantee fabric · [plan](docs/plans/P3-guarantee-coupling.md)
 

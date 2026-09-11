@@ -189,6 +189,19 @@ owns the catalogue side:
   certificate rung adjudicates. The `pct`/`bp` suffixes are ready-made
   for P3 rate premia.
 
+- **Quantities declare a direction, never a tolerance** (decided
+  2026-09-11, `cli.md` §6). A consumer's quantity is a floor
+  (`weight(10kg..)`), a capacity service's is a ceiling (`..11kg`), a
+  good with variable quantity declares its band (`10kg..10.5kg`), and
+  each party declares only the direction it knows; matching composes
+  them by containment on stored names and clearing picks a point in the
+  intersection — the same overlap-shaped gate as §2's time windows. What
+  "10 kg" tolerates at delivery is a settlement norm per leg and
+  category (`P3-guarantee-coupling.md`, open problems), never a matching
+  parameter: no tolerance parameter or default band exists anywhere in
+  the stack. The band spellings wait on this section's unit-family
+  terms; until then the CLI accepts and refuses them at publish.
+
 Cross-dimension *computation* stays walled upstream (`price × quantity` —
 DATABASE_DIRECTION's exact-arithmetic tripwire was fired by loopmarket
 2026-07-30 and resolved as parametric dimensions, with that explicit
@@ -386,6 +399,9 @@ implementation with its own bugs and no treaty.
 | ZK proofs over private stores | "loopmarket-shaped counterparty" — P4 by name | Nothing built; `P4-privacy.md` owns the firing. Noted: exact rationals + one primitive = circuit-friendly. |
 | Semantic codes / bitmaps      | logged hot solver query-sets          | **Logging on from day one** (§5); cone summaries + `DimensionIndex` meanwhile. |
 | Overlap terms in the query planner | **fired 2026-09-07** (Peter): `DimensionIndex.candidates` runs `get(concepts)` and `get_overlapping(window)` to completion and intersects in Python, so the planner's smallest-first / early-stop logic never crosses dimensions — a category offered only in a few windows or regions can't cut the search short | **Asked upstream** — [ontodag #14](https://github.com/petfold/ontodag/issues/14): `get(terms, overlapping=[...])`, the overlap cone planned with the containment cones (never pre-intersected as a meet). Meanwhile: two queries + `&`, recall-exact, a cost loss only. Lands with §5's indexed-generator wiring (P1); place joins the same call once cell/region terms are shared (§2). |
+| Coordinate spelling for `geo` | **fired 2026-09-11** (`cli.md` §4): a named place is a catalogue node, but the prelude's `geo` head takes only cell names as input, so `odag put my_home 'geo(LAT,LON,R)'` cannot be typed | **To ask upstream**: `geo(lat,lon,radius)` as input vocabulary canonicalising to a cell at the radius' precision (D10 shape; geohash is exact bit interleaving on rationals). Meanwhile: `loop place NAME LAT,LON,R` writes the node through the facade with the disc as node metadata — dated, deletable. |
+| Relative time spellings       | **fired 2026-09-11** (`cli.md` §2): `valid(2h)`, `when(today..+90d)` at the prompt | **To ask upstream**: `today`, `+2h`, `..+90d` as input vocabulary elaborated to fixed UTC at entry. Meanwhile: loopmarket elaborates the same spellings itself — a superset of the time grammar, no conflict. |
+| Public store-spec opener      | `cli.md` §11: the `catalogue` setting accepts any odag spec (`.od` / `rs:` / `swarm:`) | **To ask upstream**: a public `open(spec)`; loopmarket never copies `_load_native`. Meanwhile: `Ontology.persistent()` over `rs:`/`swarm:` record stores only. |
 | Chunk layout / leaf-packing   | hydration cost breaching P1 latency gate | Hydrate-once + `get_many` batching; published summaries. |
 
 ## Gates

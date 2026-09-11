@@ -584,7 +584,12 @@ package: P2, this document.
 **Tolerance semantics under U9/U13.** What a net-drift tolerance means on
 a Thing leg vs a token leg, in exact rationals, and where forgiven dust
 goes without opening a wash-loop subsidy channel. Work package:
-`P2-clearing-pricing.md`.
+`P2-clearing-pricing.md`. *Not this problem (2026-09-11):* tolerance on a
+**good's quantity** — "is 10.1 kg 10 kg?" — is a settlement norm per leg
+and category, decided in `docs/plans/cli.md` §6 and
+`ontodag-coupling.md` §3 (declare in the direction you know; no tolerance
+parameter anywhere). Net-drift tolerance here is a clearing-side rational
+bound and stays open as stated.
 
 **Compression vs uniform directional clearing.** Netting perturbs the
 per-leg quantities the equal log-surplus split priced; the precedence

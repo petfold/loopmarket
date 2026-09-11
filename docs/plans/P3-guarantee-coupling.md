@@ -325,6 +325,17 @@ from data rather than priors on day one.
   statistics pollution; U12 restricts the inputs but cannot thicken them).
   How fast priors may narrow, on how little data, is an actuarial question
   the shared simulation harness must answer before G4.
+- **Quantity norms per leg** (added 2026-09-11; `cli.md` §6). The same
+  number is a floor for a consumer and a ceiling for a capacity service,
+  so over-delivery against a fill is performance on the goods leg and a
+  misdeclaration on the transport leg it feeds; recourse follows the legs
+  (courier → recipient → grower) and factbond sees two disputes with one
+  cause. "Declare in the direction you know" (band, floor, ceiling
+  composed by containment) keeps this out of matching. Open here: whether
+  the oracle roster (§4) needs a *measured-quantity* witness for
+  weight-bearing legs, and how one cause across two legs is adjudicated
+  once rather than twice. Work package: §4 +
+  `factbond/docs/plans/evidence-policy.md`.
 - **Witness-telemetry privacy** (work package: `P4-privacy.md`). The
   witness feed publishes which catalogue edges real settlements walk —
   trade semantics at edge granularity, exactly the aggregate P4's threat

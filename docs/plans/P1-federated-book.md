@@ -224,6 +224,128 @@ semantics would also revisit the "PSS stays out" ruling for solver-facing
 feeds. Channel: the Swarm ecosystem directly (Solar Punk maintains
 `@solarpunkltd/gsoc`).
 
+### 4a. Anchoring offers on chain (recorded 2026-09-11, not adopted)
+
+Peter's question, asked while weighing the aggregator machinery: *what if
+the chain did everything — no aggregators?* Or, less drastically, *bodies
+on Swarm, offer hashes on chain?* An offer is the maker's binding
+commitment (trust-nothing clearing depends on it; the maker keeps only
+`valid` and withdrawal afterwards), so it "deserves a place on chain" and
+a hardware-wallet signature in proportion to its size. Recorded here, next
+to the registry-event floor it extends, with the disposition at the end.
+Not urgent at zero volume; by the time volume exists the substrate will
+have moved — but the shape is decided enough to write down.
+
+**The full version is rejected** (bodies on chain). Not on cost — a
+571-byte canonical offer as an event log is ~35k gas, sub-cent anywhere —
+but on three grounds: a chain never forgets, and Swarm's postage expiry is
+a *feature* for a marketplace (P4 gets strictly harder with permanent
+plaintext bodies); the throughput ceiling pushes onto a rollup, whose
+sequencer is an aggregator under another name, usually a single one
+(worse than "several aggregators minimum"); and the chain gives the
+authoritative *set*, not the ontology-shaped index solvers need — someone
+still folds and indexes, so aggregators shrink to caches, they do not
+vanish. Also: "we were looking for Swarm use cases" is a bias to name, not
+a reason — bodies on Swarm and 32 bytes on chain *is* the Swarm use case.
+
+**The half version is not heresy: the chain orders the set, Swarm holds
+the bodies.** Extend §4's registry event from "my book is (owner, topic)"
+to "I posted offer id X" / "I withdrew Y", emitted by the maker's own
+transaction. What it buys, each a named problem elsewhere in this plan:
+
+- **A total order.** The withdraw-vs-clear race and the loop-granularity
+  resolver (open problems below, "until P2's on-chain settlement
+  serializes it") are settled by transaction order for anchored offers.
+- **Inclusion and absence become lookups** for the anchored subset. The
+  P2 clearing contract must know the book state anyway; holding the id
+  set shrinks `proof-fabric.md`'s trie-proof route to the Swarm body
+  check (noted there, open problems).
+- **U8 collapses** for anchored offers: `msg.sender` *is* the maker and
+  the transaction signature *is* the offer signature — the hardware
+  wallet signs the transaction.
+- **T14 becomes trivial.** An aggregator that omits an anchored offer is
+  convicted by anyone reading the chain. Manifests become pure caches —
+  already the stance since 2026-09-04.
+
+Costs: a transaction per post and per withdrawal (expiry is free),
+posting liveness coupled to chain congestion, and makers needing the gas
+token (they need BZZ for postage already). Modifications adopted into the
+record:
+
+1. **Anchoring is a maker option, never a mandate.** The footprint
+   scales with the commitment: P3's bond escrow is a transaction anyway
+   and carries the offer id for free, so a big offer lands on chain
+   *because it is bonded*; a small one stays Swarm-only. Two classes of
+   offer in one book: anchored withdrawals are chain-ordered, unanchored
+   ones merge-ordered as today. (`cli.md`: an `anchor(...)` term.)
+2. **Hardware wallets do not need the chain.** What makes a device
+   signature feel right is *seeing the fields*: EIP-712 typed data for
+   the offer record, adoptable in U8's detached-signature layer
+   off-chain regardless of anchoring; the id stays content-addressed.
+   Added to the U8 hardening item in ROADMAP.md.
+3. **The clearing contract consumes anchored ids** as its set authority
+   where present, proofs otherwise — decided with the P2 contract design,
+   not before.
+
+**Numbers (measured/looked up 2026-09-11).** One anchor: the 32-byte id;
+~25k gas; ~240 bytes as a standalone L1 transaction (envelope + 65-byte
+signature + log), ~120 bytes compressed inside a rollup batch (the
+signature does not compress; ~50 bytes only with signature aggregation,
+which is a batcher). Lifecycle per offer ≈ 300 bytes if cleared or
+expired, ≈ 480 if withdrawn. Card networks for scale: Visa processed
+257.5 B transactions in FY2025 (~8,200/s average), Mastercard ~178 B/yr
+(~5,600/s); peaks 2–3× average. Bodies on Swarm at that combined volume
+≈ 7 MB/s, ~220 TB/yr — bulk, which is what Swarm is for; the ids are 5%
+of it.
+
+| system (2026) | anchors/s | per anchor | ordering / permission | Visa 8,200/s | both 13,800/s |
+|---|---|---|---|---|---|
+| Gnosis L1 (30M gas / 5 s, 0.01 gwei) | ~240 | ~$3·10⁻⁷ | permissionless validators; the ecosystem's home (xDAI, Shutter, Swarm) | 34× over | 58× over |
+| Ethereum L1 (60M gas; 200M with Glamsterdam) | ~200 → ~670 | cents | permissionless | 12× over | 21× over |
+| Ethereum blobs (14/21 since Jan 2026; 48 planned mid-2026; 128 full danksharding) | ~1,240 → ~4,300 → ~11,400 | sub-cent via a rollup | shared by every rollup; the rollup's sequencer orders | fits only at 128 | 1.2× over at 128; fits with sig aggregation |
+| Arbitrum One (7M gas/s) | ~280, blob-bound | ~$0.002–0.01 | single sequencer; forced inclusion ≈ 1 day | no | no |
+| Base (125–150 Mgas/s; 400–500 targeted 2026) | 5,000–20,000 execution, blob-bound | ~$0.001 | single sequencer; forced inclusion ≈ 12 h | execution yes, DA no until 48+ blobs | no until danksharding |
+| Hedera Consensus Service | 10,000 governed cap (bursts 16,000) | $0.0008 (×8 in Jan 2026) | hashgraph aBFT, fair ordering — built as exactly this service; **council-run nodes** | at average, not peak | no |
+| Solana | 1,600–3,800 sustained real; Alpenglow/Firedancer pending | ~$0.001 | permissionless, heavy hardware | no today | no |
+| Celestia (8 MB / 6 s) | ~11,000 as DA; 21 MB/s on testnet | fractions of a cent | permissionless DA; execution in a rollup | fits | 1.25× over |
+| EigenDA (100 MB/s) | ~800,000 as DA | | a committee = an aggregator | fits | fits |
+
+**Consequences.** (i) Per-offer anchors on Gnosis or Base carry the
+first years — a few hundred to a few thousand offers a second is already
+a very large marketplace. (ii) *The original design does not fit at card
+scale either*: a clearing with per-leg trie proofs costs ~100k gas and
+~900 bytes per leg, more than an anchor; at Visa volume that is 7 MB/s
+of proof data, 5× full danksharding — so proofs get aggregated into a
+validity proof and only the state diff lands, at which point anchoring
+and clearing cost the same 32 bytes per leg. (iii) **At full scale the
+answer is the same for everyone: batch, then anchor.** The batcher
+orders, posts a root, the base chain holds the escape hatch. The design
+question is *who batches*: a single sequencer is one aggregator; a shared
+sequencer (Espresso, Astria) is a plural one; a hashgraph or any BFT run
+by the several aggregators the north star already demands is a plural one
+too — ordering anchors among themselves at Hedera-like throughput, then
+anchoring roots to Gnosis, with Ethereum-at-128-blobs or Celestia as the
+data layer and Swarm holding bodies throughout. That is this plan's
+aggregator layer given a consensus instead of an audit, and the rung
+after per-offer anchors; `proof-fabric.md`'s trie proofs return on that
+rung.
+
+**Disposition (Peter, 2026-09-11).** No change to P1 now. Revisit when
+the P2 clearing contract exists — the moment chain infrastructure is in
+place anyway — and expect the substrate table above to be stale by then.
+Sources: [EF Checkpoint 8](https://blog.ethereum.org/2026/01/20/checkpoint-8),
+[EF priorities 2026](https://blog.ethereum.org/2026/02/18/protocol-priorities-update-2026),
+[ethereum.org PeerDAS](https://ethereum.org/roadmap/fusaka/peerdas/),
+[Base 125 Mgas/s](https://finance.yahoo.com/news/network-increases-gas-limit-125-190944252.html),
+[Arbitrum speed limit](https://docs.arbitrum.io/launch-orbit-chain/maintain-your-chain/guidance/state-size-limit),
+[GnosisScan gas](https://gnosisscan.io/gastracker),
+[Hedera HCS price](https://hedera.com/blog/price-update-to-consensussubmitmessage-in-consensus-service-january-2026/),
+[Hedera throttles](https://hedera.com/blog/throttling-in-hedera-ensuring-stability-and-fairness/),
+[Solana real TPS](https://cryptobriefing.com/solana-true-tps-surpasses-2500/),
+[DA layers 2026](https://blockeden.xyz/blog/2026/02/24/modular-blockchain-wars-data-availability/),
+[Visa FY25](https://www.electronicpaymentsinternational.com/news/visa-fy25-net-income/),
+[Mastercard Q3 2025](https://www.digitaltransactions.net/a-strong-economy-lifts-mastercards-transaction-volumes-as-well-as-its-top-and-bottom-lines/).
+
 ## 5. Lifecycle: withdrawal, expiry, compaction
 
 Today an offer has no exit but expiry, and the book grows forever.
@@ -421,6 +543,10 @@ cleared.
   settlement cannot happen concurrently (one settlement writer per offer
   partition), or accept fold-stable-but-eventually-consistent settlement
   until P2's on-chain settlement serializes it. Neither is chosen here.
+  A third candidate, recorded 2026-09-11 (§4a): anchored offers and
+  withdrawals carry a chain-assigned total order, so for the anchored
+  subset the race is decided by transaction order and the resolver only
+  has to be deterministic for the unanchored remainder.
 - **Resurrection windows** (this work package, with factbond
   records-and-anchoring). How long must tombstones outlive their offers
   before a compaction generation may drop them, when peer staleness has

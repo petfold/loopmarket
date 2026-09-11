@@ -333,6 +333,15 @@ two consumers, shared conformance tests.
   item; work package: P4 (`P4-privacy.md`) jointly with factbond evidence
   storage.
 
+- **Anchored ids versus proofs** (recorded 2026-09-11;
+  `P1-federated-book.md` §4a). If makers may anchor offer ids on chain,
+  per-leg inclusion is a lookup and absence a failed lookup for the
+  anchored subset, and trie proofs remain for unanchored offers and for
+  the per-root scaling rung (an aggregator committee anchoring roots).
+  The pin table is unchanged — an anchor pins the same 32-byte id. Which
+  the P2 contract consumes, and whether both shapes coexist in one
+  `LoopProposal`, is decided with the contract design, not before.
+
 ## What this document does not promise
 
 Proofs attest structure, never truth (ontodag's L1; factbond F7 — "certified
