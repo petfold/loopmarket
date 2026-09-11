@@ -158,10 +158,12 @@ the corpus is built so that they can.
   keyspace and multi-writer story, the loop arithmetic (and why prices are
   never negative), the trust model, the proof fabric, economic security,
   and what the architecture does not promise.
+- **[ROADMAP.md](ROADMAP.md)** — the phase index with status:
+  P0 (built) → P1 (federated book, live since 2026-08-21) → P2 (verifiable
+  clearing, batch auctions) → P3 (guarantee fabric via factbond) →
+  P4 (privacy), each linking to its plan document.
 - **[CLAUDE.md](CLAUDE.md)** — working rules for development: dependency
-  boundaries, core invariants U1–U7, known simplifications, roadmap phases
-  P0 (built) → P1 (federated book) → P2 (verifiable clearing, batch
-  auctions) → P3 (guarantee fabric via factbond) → P4 (privacy).
+  boundaries, core invariants U1–U7, known simplifications.
 - **[docs/loop-economy.md](docs/loop-economy.md)** — the vision essay: the
   loop economy, its gallery of loops, the solver ecology, judges without
   swords, and the path in.
