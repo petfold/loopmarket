@@ -1,0 +1,49 @@
+name: Publish to PyPI
+
+# Token-less publishing via PyPI Trusted Publishers: PyPI trusts this
+# exact repo + workflow FILENAME + environment, so no credentials are
+# stored anywhere. Renaming this file or changing the environment below
+# breaks publishing until the entry at
+# pypi.org/manage/project/loopmarket/settings/publishing/ is updated to match.
+# Pushing a v* tag publishes; workflow_dispatch retries a failed run
+# without needing a new tag.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[test]"
+      # A v* tag publishes irreversibly — PyPI never allows re-uploading a
+      # version, only yanking. Run the suite first so a tag cannot ship a red
+      # build.
+      - run: pytest
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # the OIDC handshake with PyPI
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
