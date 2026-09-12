@@ -449,10 +449,9 @@ the record.
    overlapping=[...])` call when ontodag #14 lands (`ontodag-coupling.md`
    §5). **Done 2026-09-12 night** (#14 landed): `candidates` is exactly one
    `get([line marker, *plain], overlapping=[v2 window, role meets],
-   items_only=True)`; gives silent on a role are filed under a
-   whole-space value (a private region over the one-character prefixes;
-   `from(geo)` itself is ontodag #17); the `idx/{c,t,g}` index retired
-   with it. The CLI cannot flip yet: it publishes v2 and must keep mapping
+   items_only=True)`; gives silent on a role are filed under its whole
+   space, the base head as parameter (`from(geo)`, ontodag #17 the same
+   night); the `idx/{c,t,g}` index retired with it. The CLI cannot flip yet: it publishes v2 and must keep mapping
    `when`/`where` onto fields until the record changes.
 
 5. **The v3 record — done 2026-09-12.** `service` and `where` leave `to_record`/`from_record`

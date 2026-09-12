@@ -235,18 +235,16 @@ Needs ontodag's `get(terms, overlapping=[...], items_only=True)` (issue
 | member | meaning |
 |---|---|
 | `time_term(window)` | (v1/v2 records) the window as one inclusive `service-time(a..b)` value |
-| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted); declares a record-line marker per line and a whole-space value per service role the catalogue declares (a private region above the 62 one-character prefixes for prefix roles, the full ISO range for time roles; `from(geo)` itself is ontodag #17) |
+| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted); declares a record-line marker per line; the whole space of a service role is its base head as parameter (`from(geo)`, `depart(time)` — ontodag #17) |
 | `.file(offer) -> bool` | index a give under its concepts, its line marker, its v2 window, and the whole space of every role head it is silent on; `False` for non-gives, unknown vocabulary (U7's outcome) and a same-head conjunction that is empty or undecidable |
 | `.candidates(want) -> set[str]` | one `get`: the want's line marker and plain concepts as containment cones, its v2 window and each named role head's meet as overlap terms, `items_only`. Role terms prune by the graph — cells, places, regions, floors |
 | `candidate_matches_indexed(offers, ontology, *, now, index=None)` | drop-in for `candidate_matches` |
 
 The v2 `where` disc stays with the exact check (a disc is not a cell) and
 is not filed; place *role terms* prune exactly, since cells and the graph
-are the truth for them (`docs/plans/P1-spacetime-terms.md` §4–5). Cost
-note: an overlap decision that meets the whole-space region walks its
-covering, so books with many named places file and query in seconds —
-fine behind the not-yet-flipped solver switch (ontodag #17 and #18,
-`ontodag-coupling.md` §7).
+are the truth for them (`docs/plans/P1-spacetime-terms.md` §4–5). Needs
+ontodag with #17/#18 (the whole-space reading and the dimension cache);
+a names-heavy book of eighty offers files in ~4 s and queries in ~1 s.
 
 ---
 

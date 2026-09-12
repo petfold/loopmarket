@@ -231,18 +231,14 @@ named role head's meet as overlap terms — and loopmarket does no set
 arithmetic on the answer. The one device this needed on our side: the
 "absent = unconstrained" rule (a give naming no `from(...)` serves a want
 anywhere) is invisible to an overlap term, so the index files every give
-under a *whole-space* value for each role it is silent on — for a prefix
-role a private region node in the base dimension above the 62
-one-character prefixes (exact: every prefix value begins with one, so
-#15's rule makes it overlap every cell, place and region), for a time
-role the full ISO range. The natural spelling, the base head as the
-parameter (`from(geo)` — Peter's `*`-shaped question found it), is what
-`overlaps` already accepts, but `get`'s planner reads the head as a
-region covering only the values present, so it is asked for upstream
-([ontodag #17](https://github.com/petfold/ontodag/issues/17)) rather
-than relied on; the cost of the region device, and the uncached
-`_dimension_of` walk under it, is
-[ontodag #18](https://github.com/petfold/ontodag/issues/18). With the one-query generator in place the redundant
+under the *whole space* of each role it is silent on — the base head as
+the parameter, `from(geo)`, `depart(time)`; Peter's `*`-shaped question
+found the spelling, and [ontodag #17](https://github.com/petfold/ontodag/issues/17)
+(same night) made it mean the whole space structurally in every query
+face, where the planner had read it as a region covering only the values
+present; [ontodag #18](https://github.com/petfold/ontodag/issues/18)
+cached the dimension walk under it. One edge per silent role, exact,
+nothing declared. With the one-query generator in place the redundant
 `idx/{c,t,g}` recordstore index **retired** as committed 2026-09-07:
 `index_offers`, `ids_by_index` and the bucket/cell chains are gone,
 maker and clearing books hold no index, and the manifest lost its

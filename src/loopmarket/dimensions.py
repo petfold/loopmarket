@@ -34,20 +34,16 @@ What the one query says:
   **Absent = unconstrained** is `Ontology.satisfies`' rule — a give that
   names no `from(...)` serves a want anywhere — and an overlap term cannot
   see a give filed under no value of its head. So the index files every
-  give under a *whole-space* value for each role head it is silent on. No
-  value spells the whole space of a prefix dimension, so the index
-  declares one: a region node in the base dimension above every
-  one-character prefix (`from(loopmarket:anywhere:geo)`; every prefix
-  value begins with one of them, so by ontodag's §14 rule the region
-  overlaps every cell, place and region the grammar admits) — one region
-  per base head, shared by the roles over it; a time role's whole space is
-  the full ISO range. Index-private vocabulary in a derived copy; nothing
-  of it is ever shared. The natural spelling — the base head itself as the
-  parameter, `from(geo)` — is what `overlaps` already accepts, but `get`'s
-  overlap planner reads it as a region covering only the values that
-  happen to be present (a lower bound: it misses when no `geo(...)` value
-  meets the want), so it is asked for upstream rather than relied on
-  (`ontodag-coupling.md` §7);
+  give under the *whole space* of each role head it is silent on, spelled
+  with the base head as the parameter: `from(geo)`, `depart(time)`. Since
+  ontodag #17 (2026-09-12) that term denotes the whole space structurally
+  — every term of the head fits within it, it overlaps everything, it is
+  the identity of the meet — in `overlaps`, `get_overlapping` and the
+  planner alike, whether or not any value of the dimension is present. One
+  edge, exact, nothing declared, nothing shared. (Before #17 the planner
+  read the head as a region covering only the values present, and the
+  index carried a private region over the 62 one-character prefixes
+  instead — twice the cost, `ontodag-coupling.md` §7.)
 - v1/v2 fields: ``service-time(a..b)`` over the offer's `service` window
   as one more overlap term — *exact* for the window-overlap gate, because
   the filed value IS the offer's window. The `where` disc stays with the
@@ -72,16 +68,10 @@ parents — two same-head role terms on one give are their meet, and ontodag
 refuses provably disjoint ones); a give whose same-head terms have no
 nameable meet is not filed, as `satisfies` matches it against nothing.
 
-Cost note (2026-09-12): an overlap decision that meets the whole-space
-region walks its covering, and ontodag re-derives each head's dimension
-per star member uncached, so a names-heavy book of eighty offers files and
-queries in seconds (`ontodag-coupling.md` §7). Fine while the baseline
-generator is the solver's default.
 """
 
 from __future__ import annotations
 
-import string
 from datetime import datetime, timezone
 from typing import Iterable, Iterator
 
@@ -96,16 +86,6 @@ TIME_DIMENSION = "service-time"
 #: Index-private marker categories: which record line a filed give is on.
 _LINE = {2: "loopmarket:record-line-2", 3: "loopmarket:record-line-3"}
 
-
-#: The whole calendar as one inclusive range — what a time role is silent
-#: about. ISO 8601 has four-digit years; every want window lies inside.
-_ALL_TIME = "0001-01-01T00:00:00Z..9999-12-31T23:59:59Z"
-
-#: Every character a prefix value may begin with (ontodag's grammar,
-#: `[0-9A-Za-z]` first) — the one-character cells a whole-space region
-#: node covers. Geohash uses 32 of them; the region covers the grammar,
-#: so a want naming any cell ontodag accepts meets it.
-_PREFIX_ALPHABET = string.digits + string.ascii_letters
 
 
 def _iso(t: int) -> str:
@@ -140,9 +120,8 @@ class DimensionIndex:
         self._dag = ontology.dag.deepcopy()  # derived: catalogue + offers
         self._filed: set[str] = set()
         # role head -> the whole-space term a give silent on it is filed
-        # under, one per service role the catalogue declares
+        # under (`from(geo)`), one per service role the catalogue declares
         self._anywhere: dict[str, str] = {}
-        self._regions: dict[str, str] = {}   # base head -> its region node
         self._declare()
 
     def _declare(self) -> None:
@@ -155,7 +134,7 @@ class DimensionIndex:
             if name not in self._dag.nodes:
                 self._dag.put(name, supers)
         for head in self._role_heads():
-            self._anywhere[head] = self._whole_space(head)
+            self._anywhere[head] = f"{head}({self._base_of(head)})"
 
     def _role_heads(self) -> list[str]:
         """The service-role heads the catalogue declares (the marker's
@@ -170,35 +149,12 @@ class DimensionIndex:
 
     def _base_of(self, head: str) -> str:
         """The base head of a role: the head directly under the kind node
-        (`from` → `geo`), whose nodes a role term may name (ontodag #15)."""
+        (`from` → `geo`). Its nodes are what a role term may name (ontodag
+        #15), and the head itself, named, is the role's whole space (#17)."""
         for item in [self._dag.nodes[head], *self._dag.get_ancestors(head)]:
             if any(p.name in _dims.KINDS for p in item.parents):
                 return item.name
         raise ValueError(f"{head!r} has no base dimension head")
-
-    def _whole_space(self, head: str) -> str:
-        """The term a give silent on `head` is filed under: for a prefix
-        kind a region node in the base dimension covering every
-        one-character prefix, declared once per base head; for a calendar
-        kind the full ISO range. Loud for a kind without a whole-space
-        spelling — silently dropping recall for gives silent on such a
-        role would break the recall-exactness guard."""
-        kind = self.ontology.head_kind(head)
-        if kind == _dims.KIND_PREFIX:
-            base = self._base_of(head)
-            region = self._regions.get(base)
-            if region is None:
-                region = self._regions[base] = f"loopmarket:anywhere:{base}"
-                self._dag.put(region, [base])
-                for ch in _PREFIX_ALPHABET:
-                    self._dag.put(f"{base}({ch})", [region])
-            return f"{head}({region})"
-        if kind == _dims.KIND_CALENDAR:
-            return f"{head}({_ALL_TIME})"
-        raise NotImplementedError(
-            f"service role {head!r} is a {kind}: the index has no "
-            f"whole-space value to file gives silent on it under "
-            f"(docs/plans/ontodag-coupling.md §7, the whole-space ask)")
 
     def file(self, offer: Offer) -> bool:
         """Index a GIVE. Returns False (not filed) when its vocabulary is
@@ -239,7 +195,7 @@ class DimensionIndex:
         wanted plain cone, on the want's record line, service windows
         overlapping (v1/v2), and for each role head the want names,
         overlapping its meet — gives silent on the head are filed under its
-        whole space, so they are in. One `get`; recall-exact
+        whole space (`from(geo)`), so they are in. One `get`; recall-exact
         for those gates; every candidate still faces `check_match`."""
         concepts = want_offer.thing.concepts
         if not all(self.ontology.known(c) for c in concepts):

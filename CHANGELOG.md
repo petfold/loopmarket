@@ -33,11 +33,10 @@ the time of writing) — tag ontodag first.
 - **`DimensionIndex.candidates` is one `get`** (ontodag #14):
   `get([line marker, *plain], overlapping=[window, role meets],
   items_only=True)` — no `get_overlapping`, no set arithmetic on the
-  answer. Gives silent on a role head are filed under a whole-space value
-  for it (a private region above the 62 one-character prefixes; the full
-  ISO range for time roles), so "absent = unconstrained" survives inside
-  the one plan; the natural spelling `from(geo)` is ontodag #17, its cost
-  ontodag #18.
+  answer. Gives silent on a role head are filed under its whole space —
+  the base head as parameter, `from(geo)`, `depart(time)` (ontodag #17
+  and #18, landed the same night) — so "absent = unconstrained" survives
+  inside the one plan as one edge.
   Recall-exact against the baseline, with names in the random books.
 
 ### Removed
