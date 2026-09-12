@@ -397,6 +397,13 @@ the record.
      denotes their value (or their covering, for a region node), so
      `from(ljubljana)` stands as a stored term and `from(my_home) ⊑
      from(ljubljana)` computes. Deletes the CLI's value substitution;
+     *Refinement filed 2026-09-12 (after the 0.3.0 live run put the whole
+     triangle in `u24`):* a **covering as a value** — a prefix-kind
+     parameter that is a set of cells, `where(u24m+u24q)`, the union
+     computed setwise, canonical form the sorted minimal set — needs no
+     node, hence no name, hence no privacy question; region nodes stay for
+     named public places. If the grammar cannot carry it, loopmarket
+     publishes anonymous region nodes named by content instead;
    - (c) **a Boolean overlap face**, `overlaps(a, b)` — filed as
      [ontodag #16](https://github.com/petfold/ontodag/issues/16), which also
      carries (d) — the mirror of
