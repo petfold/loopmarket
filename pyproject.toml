@@ -25,12 +25,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "ontodag>=0.24.0",        # catalogue: subsumption, dimensions, is_below; the CLI.
-                              # NEEDS ontodag main after 0.24.0 (issues #14/#15/#16:
-                              # get(overlapping=, items_only=), overlaps/meet, role
-                              # heads taking nodes) — raise the floor to the release
-                              # that carries them before tagging (CHANGELOG blocker).
-                             # leans on odag's store backends, prelude and surface
+    "ontodag>=0.25.0",        # catalogue: subsumption, dimensions, is_below, role heads
+                              # taking nodes, overlaps/meet, get(overlapping=, items_only=)
+                              # (issues #14/#15/#16, 0.25.0); the CLI
     "recordstore>=0.16.0",   # the book: canonical versioned KV, merge, snapshots,
                              # diff/merge_delta (O(divergence) folds), prove/verify_proof
 ]
