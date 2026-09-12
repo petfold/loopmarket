@@ -987,29 +987,36 @@ def _resolve_offer(session: Session, side: str, parsed: Parsed,
                    ontology: Ontology):
     """Every default and shorthand expanded into one Offer, plus the notes
     the approval block prints beside it."""
-    now = session.now
     part = _resolve_part(session, parsed, ontology)
+    return _offer_from_part(session, side, part, parsed.price, ontology,
+                            valid_text=parsed.heads.get("valid"))
+
+
+def _offer_from_part(session: Session, side: str, part: Part, price,
+                     ontology: Ontology, *, valid_text: str | None = None):
+    """A resolved part plus a price (or the price memory) → one Offer with
+    its notes; the step a `want` line and `offer NAME` share."""
+    now = session.now
     thing, service, disc = part.thing, part.service, part.where
     notes = list(part.notes)
     maker = session.maker
-    valid = validity(parsed.heads.get("valid") or _configured("valid"), now)
+    valid = validity(valid_text or _configured("valid"), now)
     qty = thing.qty
 
     reused = False
-    price = parsed.price
     if price is None:
-        found = _last_unit_price(session, maker, side, parsed.concepts, now)
+        found = _last_unit_price(session, maker, side, thing.concepts, now)
         if found is None:
             raise ValueError(
                 f"no price, and no earlier {side} of "
-                f"{' '.join(_bare_key(parsed.concepts))} by {maker} to reuse — "
+                f"{' '.join(_bare_key(thing.concepts))} by {maker} to reuse — "
                 f"a bare number last is the price")
         unit_price, source = found
-        if source.thing.unit != parsed.unit:
+        if source.thing.unit != thing.unit:
             raise ValueError(
-                f"the last {side} of {' '.join(_bare_key(parsed.concepts))} "
+                f"the last {side} of {' '.join(_bare_key(thing.concepts))} "
                 f"was priced per {source.thing.unit}, this one is per "
-                f"{parsed.unit} — type the price")
+                f"{thing.unit} — type the price")
         price = unit_price * qty
         reused = True
         age = now - source.nonce // 1000
@@ -1086,8 +1093,18 @@ def _confirm(reused: bool, out) -> bool:
 
 
 # --------------------------------------------------------------------------- #
-# Composed wants (cli.md §13): drafts at the edge, one offer at the end
+# Drafts (cli.md §13): values at the edge, offers at the end
 # --------------------------------------------------------------------------- #
+#
+# A draft is an unpublished offer or one part of a composed want: resolved
+# now, exactly as a `want` line resolves, named or numbered, kept in a
+# local file that is never the book — no id, no matching, no price unless
+# the person put one there. `draft NAME A + B` composes drafts with the same
+# `+` the one-line want uses (Peter, 2026-09-12: one operator, not a verb);
+# `offer NAME [PRICE]` turns a draft into an offer. Draft names are working
+# memory, never vocabulary: they cannot appear in an offer, because
+# composition expands them. Settings stay a closed table (`set`), so a typo
+# cannot quietly become a draft.
 
 def _drafts_path() -> str:
     return os.path.join(_home_dir(), "drafts")
@@ -1118,6 +1135,120 @@ def _part_from_record(rec: dict) -> Part:
     return Part(Thing(tuple(t["concepts"]), t["qty"], t["unit"], t["divisible"]),
                 TimeWindow(*rec["service"]), GeoDisc(*rec["where"]),
                 list(rec["notes"]))
+
+
+def _draft_line(d: dict) -> str:
+    """A draft's canonical spelling: the offer line `offer` will speak."""
+    body = f" {PART_SEP} ".join(part_line(_part_from_record(r)) for r in d["parts"])
+    price = "" if d.get("price") is None else f" {_num(d['price'])}"
+    return f"{d['side']} {body}{price}"
+
+
+def _find_draft(drafts: list[dict], ref: str) -> dict:
+    for d in drafts:
+        if d["name"] == ref:
+            return d
+    raise ValueError(f"no such draft: {ref} (`loop drafts` lists them)")
+
+
+_VERBS = (GIVE, WANT)
+
+
+def cmd_draft(args, session, out):
+    """`draft [NAME] want|give ...` stages a resolved offer or part;
+    `draft [NAME] A + B ...` composes drafts. Re-drafting a name replaces
+    it; an omitted name is the next number."""
+    toks = list(args.tokens)
+    if not toks:
+        raise ValueError("draft [NAME] want|give ...   or   draft [NAME] A + B ...")
+    name = None
+    if toks[0] not in _VERBS:
+        name = toks.pop(0)
+        if name in _VERBS or name == PART_SEP or _PRICE_RE.match(name):
+            raise ValueError(f"{name!r} cannot name a draft — verbs, `{PART_SEP}` "
+                             f"and numbers are taken (numbers are the unnamed)")
+    if not toks:
+        raise ValueError(f"draft {name}: then a want/give line, or drafts joined "
+                         f"by {PART_SEP}")
+    drafts = _read_drafts()
+    ontology = session.catalogue
+    maker = session.maker
+    if toks[0] in _VERBS:
+        side = toks.pop(0)
+        if side == WANT:
+            parsed = parse_want_line(toks)
+        else:
+            parsed = parse_offer_tokens(toks)
+        if isinstance(parsed, Composed):
+            parts = [_resolve_part(session, p, ontology) for p in parsed.parts]
+            price = parsed.price
+        else:
+            if "valid" in parsed.heads:
+                raise ValueError("a draft has no validity of its own — it gets the "
+                                 "`valid` setting when offered")
+            parts = [_resolve_part(session, parsed, ontology)]
+            price = parsed.price
+    else:
+        # drafts joined by `+`: composition, want side only, flattening
+        refs = [t for t in toks if t != PART_SEP]
+        if any(t == PART_SEP for t in (toks[0], toks[-1])) or \
+                len(refs) != toks.count(PART_SEP) + 1:
+            raise ValueError(f"drafts are joined as A {PART_SEP} B {PART_SEP} C")
+        side, parts, price = WANT, [], None
+        for ref in refs:
+            d = _find_draft(drafts, ref)
+            if d["side"] != WANT:
+                raise ValueError(f"{ref} is a give: composition is want-side only "
+                                 f"(docs/plans/cli.md §13) — a kit is one give")
+            if d.get("price") is not None and len(refs) > 1:
+                raise ValueError(
+                    f"{ref} carries a price ({_num(d['price'])}); parts carry no "
+                    f"prices — one price for the whole, at `offer` "
+                    f"(P2-loop-selection.md §10 pays once). Re-draft it without")
+            if d["maker"] != maker:
+                raise ValueError(f"{ref} was drafted as {d['maker']}, not {maker}")
+            parts.extend(_part_from_record(r) for r in d["parts"])
+            if len(refs) == 1:
+                price = d.get("price")        # a copy keeps its price
+    existing = _find_draft(drafts, name) if name and any(
+        d["name"] == name for d in drafts) else None
+    n = existing["n"] if existing else max((d["n"] for d in drafts), default=0) + 1
+    record = {"name": name or str(n), "n": n, "maker": maker, "side": side,
+              "parts": [_part_record(p) for p in parts], "price": price,
+              "typed": " ".join(args.tokens), "created": session.now}
+    drafts = [d for d in drafts if d["n"] != n] + [record]
+    drafts.sort(key=lambda d: d["n"])
+    _write_drafts(drafts)
+    print(f"{record['name']}  {_draft_line(record)}", file=out)
+    return 0
+
+
+def cmd_drafts(args, session, out):
+    """Every draft in its canonical spelling — what `offer` will say —
+    with the typed spelling and the name→value notes beneath: the
+    approval block's two layers."""
+    drafts = _read_drafts()
+    for d in drafts:
+        print(f"{d['name']}  {_draft_line(d)}", file=out)
+        print(f"   typed {d['typed']}", file=out)
+        notes = [f"part {i}: {n}" if len(d["parts"]) > 1 else n
+                 for i, r in enumerate(d["parts"], 1) for n in r["notes"]]
+        for note in notes:
+            print(f"   note  {note}", file=out)
+        if d["maker"] != _configured("maker"):
+            print(f"   maker {d['maker']}", file=out)
+    return 0 if drafts else 1
+
+
+def cmd_discard(args, session, out):
+    drafts = _read_drafts()
+    if not args.refs:
+        _write_drafts([])
+        print(f"{len(drafts)} discarded", file=_err())
+        return 0
+    chosen = [_find_draft(drafts, ref) for ref in args.refs]
+    _write_drafts([d for d in drafts if d not in chosen])
+    return 0
 
 
 def render_composed(maker: str, parts: list[Part], price, valid: TimeWindow,
@@ -1156,13 +1287,12 @@ _COMPOSE_REFUSAL = (
     "nothing was published")
 
 
-def _compose(session: Session, parts: list[Part], price, out) -> int:
+def _offer_composed(session: Session, parts: list[Part], price, out) -> int:
     """Render the composed want and — until the v3 record — refuse to
     publish it, the G6 pattern: the grammar is accepted, the encoding is
     not there yet, and the person sees exactly what would have been said."""
     if len(parts) < 2:
-        raise ValueError("a composed want has at least two parts — for one "
-                         "thing, `want` is the verb")
+        raise ValueError("a composed want has at least two parts")
     if price is None:
         raise ValueError("a composed want needs its price, last on the line "
                          "(there is no price memory for a composition)")
@@ -1178,100 +1308,10 @@ def _compose(session: Session, parts: list[Part], price, out) -> int:
     raise ValueError(_COMPOSE_REFUSAL)
 
 
-def cmd_draft(args, session, out):
-    """Stage one part: resolved now, exactly as `want` resolves a thing,
-    numbered stably, kept in a local file that is never the book."""
-    if not args.tokens or args.tokens[0] != WANT:
-        raise ValueError("draft want [QTY] CATEGORY|TERM... — composition is "
-                         "want-side only (docs/plans/cli.md §13)")
-    parsed = parse_part_tokens(args.tokens[1:])
-    part = _resolve_part(session, parsed, session.catalogue)
-    drafts = _read_drafts()
-    n = max((d["n"] for d in drafts), default=0) + 1
-    drafts.append({"n": n, "maker": session.maker,
-                   "typed": list(args.tokens[1:]), "line": part_line(part),
-                   "created": session.now, **_part_record(part)})
-    _write_drafts(drafts)
-    print(f"{n}  want {part_line(part)}", file=out)
-    return 0
-
-
-def cmd_drafts(args, session, out):
-    """The staged parts in their canonical one-line spelling, the surface
-    spellings as notes beneath — the approval block's two layers."""
-    drafts = _read_drafts()
-    for d in drafts:
-        print(f"{d['n']}  want {d['line']}", file=out)
-        typed = " ".join(d["typed"])
-        if typed != d["line"]:
-            print(f"   typed {typed}", file=out)
-        for note in d["notes"]:
-            print(f"   note  {note}", file=out)
-        if d["maker"] != _configured("maker"):
-            print(f"   maker {d['maker']}", file=out)
-    return 0 if drafts else 1
-
-
-def _select_drafts(numbers: list[int], drafts: list[dict]) -> list[dict]:
-    if not numbers:
-        return list(drafts)
-    by_n = {d["n"]: d for d in drafts}
-    missing = [n for n in numbers if n not in by_n]
-    if missing:
-        raise ValueError(f"no such draft: {', '.join(map(str, missing))} "
-                         f"(`loop drafts` lists them)")
-    return [by_n[n] for n in numbers]
-
-
-def cmd_compose(args, session, out):
-    """`compose [N...] PRICE`: all drafts, or the numbered ones, as one
-    want priced PRICE the lot. The last bare number is the price, every
-    number before it selects a draft."""
-    toks = list(args.tokens)
-    if not toks or not all(_PRICE_RE.match(t) for t in toks):
-        raise ValueError("compose [N...] PRICE — draft numbers, then the price "
-                         "of the whole")
-    price = _number(toks.pop())
-    numbers = [int(t) for t in toks]
-    drafts = _read_drafts()
-    if not drafts:
-        raise ValueError("no drafts — `loop draft want ...` stages a part")
-    chosen = _select_drafts(numbers, drafts)
-    maker = session.maker
-    foreign = [d for d in chosen if d["maker"] != maker]
-    if foreign:
-        raise ValueError(
-            f"draft {foreign[0]['n']} was staged as {foreign[0]['maker']}, "
-            f"not {maker} — a composed want has one maker")
-    parts = [_part_from_record(d) for d in chosen]
-    return _compose(session, parts, price, out)
-    # when the v3 record lands: publish, then drop the composed drafts and
-    # keep the rest — `_write_drafts([d for d in drafts if d not in chosen])`
-
-
-def cmd_discard(args, session, out):
-    drafts = _read_drafts()
-    if not args.numbers:
-        _write_drafts([])
-        print(f"{len(drafts)} discarded", file=_err())
-        return 0
-    numbers = [int(n) for n in args.numbers]
-    chosen = _select_drafts(numbers, drafts)
-    _write_drafts([d for d in drafts if d not in chosen])
-    return 0
-
-
-def _publish(args, session: Session, out, side: str) -> int:
-    if side == WANT:
-        parsed = parse_want_line(args.tokens)
-        if isinstance(parsed, Composed):
-            ontology = session.catalogue
-            parts = [_resolve_part(session, p, ontology) for p in parsed.parts]
-            return _compose(session, parts, parsed.price, out)
-    else:
-        parsed = parse_offer_tokens(args.tokens)
-    ontology = session.catalogue
-    offer, notes, reused = _resolve_offer(session, side, parsed, ontology)
+def _publish_offer(session: Session, offer: Offer, notes: list[str],
+                   reused: bool, out) -> int:
+    """Show, ask, publish, commit, print the id — the tail every publishing
+    verb shares."""
     print(render_offer(offer), file=out)
     for note in notes:
         print(f"  note     {note}", file=out)
@@ -1292,6 +1332,74 @@ def _publish(args, session: Session, out, side: str) -> int:
     # commitment, and the id is what `withdraw` needs.
     print(oid, file=out)
     return 0
+
+
+def cmd_offer(args, session, out):
+    """`offer NAME [PRICE]`: a draft becomes an offer. The draft's own
+    price if it has one, the given price otherwise (or over it, shown in
+    the block), the price memory for a simple draft with neither."""
+    toks = list(args.tokens)
+    if not toks or len(toks) > 2 or (len(toks) == 2 and not _PRICE_RE.match(toks[1])):
+        raise ValueError("offer NAME [PRICE]")
+    drafts = _read_drafts()
+    d = _find_draft(drafts, toks[0])
+    if d["maker"] != session.maker:
+        raise ValueError(f"{toks[0]} was drafted as {d['maker']}, not "
+                         f"{session.maker}")
+    price = _number(toks[1]) if len(toks) == 2 else d.get("price")
+    parts = [_part_from_record(r) for r in d["parts"]]
+    if len(parts) > 1:
+        return _offer_composed(session, parts, price, out)
+    offer, notes, reused = _offer_from_part(session, d["side"], parts[0], price,
+                                            session.catalogue)
+    code = _publish_offer(session, offer, notes, reused, out)
+    if code == 0:
+        _write_drafts([x for x in drafts if x is not d])
+    return code
+
+
+# --------------------------------------------------------------------------- #
+# The line as Python's offer literal (cli.md §13): one grammar for the shell,
+# the API and the assistant — a program builds offers as objects or as lines,
+# and both end at the same approval block.
+# --------------------------------------------------------------------------- #
+
+def offer_from_line(line: str, session: "Session | None" = None) -> Offer:
+    """`"want 10kg apple where(home) 100"` → the resolved `Offer`, under the
+    session's settings (maker, defaults, catalogue), not published. A
+    composed line raises with the v3 refusal."""
+    session = session or Session()
+    toks = shlex.split(line)
+    if not toks or toks[0] not in _VERBS:
+        raise ValueError("an offer line starts with give or want")
+    side = toks.pop(0)
+    parsed = parse_want_line(toks) if side == WANT else parse_offer_tokens(toks)
+    if isinstance(parsed, Composed):
+        raise ValueError(_COMPOSE_REFUSAL)
+    offer, _notes, _reused = _resolve_offer(session, side, parsed, session.catalogue)
+    return offer
+
+
+def line_for(offer: Offer) -> str:
+    """The canonical offer line of an `Offer`: everything the maker typed or
+    defaulted, in re-parseable spelling; maker, nonce and pins come from
+    the session that speaks it."""
+    part = Part(offer.thing, offer.service, offer.where, [])
+    valid = f"valid({_iso(offer.valid.start)}..{_iso(offer.valid.end)})"
+    return f"{offer.kind} {part_line(part)} {valid} {_num(offer.tokens.amount)}"
+
+
+def _publish(args, session: Session, out, side: str) -> int:
+    if side == WANT:
+        parsed = parse_want_line(args.tokens)
+        if isinstance(parsed, Composed):
+            ontology = session.catalogue
+            parts = [_resolve_part(session, p, ontology) for p in parsed.parts]
+            return _offer_composed(session, parts, parsed.price, out)
+    else:
+        parsed = parse_offer_tokens(args.tokens)
+    offer, notes, reused = _resolve_offer(session, side, parsed, session.catalogue)
+    return _publish_offer(session, offer, notes, reused, out)
 
 
 def cmd_give(args, session, out):
@@ -1453,9 +1561,11 @@ def cmd_loops(args, session, out):
     return 0 if loops else 1
 
 
-def cmd_clear(args, session, out):
+def cmd_clearing(args, session, out):
     """Run the clearing house locally: MockClearing over the fold, fills
-    committed to my book. With peers, my book first absorbs the fold — a
+    committed to my book. Named for what it does; `clear` means delete on
+    every terminal, and publishing is not clearing (Peter, 2026-09-12) —
+    it stays as a silent alias for one release. With peers, my book first absorbs the fold — a
     clearing book legitimately contains what it cleared on (P1 §1)."""
     now = session.now
     if _peer_specs():
@@ -1569,8 +1679,10 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop give  [QTY] CATEGORY|TERM... [PRICE]   I give this, priced on my scale
   loop want  [QTY] CATEGORY|TERM... [PRICE]   I want this, priced on my scale
   loop want PART + PART... PRICE   a composed want: parts that clear together
-  loop draft want [QTY] CATEGORY|TERM...   stage one part (a local file, not the book)
-  loop drafts | compose [N...] PRICE | discard [N...]   list, compose, drop staged parts
+  loop draft [NAME] want|give ...  stage a resolved offer or part (a local file, not the book)
+  loop draft [NAME] A + B ...      compose drafts into one (want side only)
+  loop drafts | discard [NAME...]  list drafts / drop them (all, if none named)
+  loop offer NAME [PRICE]          a draft becomes an offer: block, question, publish
   loop withdraw ID           tombstone one of my offers (id or unique prefix)
   loop mine                  my offers, all states
   loop place NAME LAT,LON,R  a place node with coordinates (temporary bridge)
@@ -1578,7 +1690,7 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop show ID               one offer, fully — the approval block
   loop matches               every feasible handoff in the fold
   loop loops                 profitable loops on a snapshot (exit 1: none)
-  loop clear                 run clearing locally over the fold (exit 1: none)
+  loop clearing              run the clearing house locally over the fold (exit 1: none)
   loop status                roots, counts, settings in force
   loop set [KEY [VALUE]]     show / change a durable setting
   loop export | import [FILE]   offers as JSON lines of canonical records
@@ -1640,7 +1752,7 @@ def build_parser():
     sub.required = True
 
     for verb, fn in (("give", cmd_give), ("want", cmd_want),
-                     ("draft", cmd_draft), ("compose", cmd_compose)):
+                     ("draft", cmd_draft), ("offer", cmd_offer)):
         p = sub.add_parser(verb, add_help=False)
         p.add_argument("tokens", nargs=argparse.REMAINDER)
         p.set_defaults(func=fn)
@@ -1649,7 +1761,7 @@ def build_parser():
     p.set_defaults(func=cmd_drafts)
 
     p = sub.add_parser("discard", add_help=False)
-    p.add_argument("numbers", nargs="*")
+    p.add_argument("refs", nargs="*")
     p.set_defaults(func=cmd_discard)
 
     p = sub.add_parser("withdraw", add_help=False)
@@ -1681,8 +1793,9 @@ def build_parser():
         _add_output_flags(p)
         p.set_defaults(func=fn)
 
-    p = sub.add_parser("clear", add_help=False)
-    p.set_defaults(func=cmd_clear)
+    for name in ("clearing", "clear"):          # `clear`: alias, one release
+        p = sub.add_parser(name, add_help=False)
+        p.set_defaults(func=cmd_clearing)
 
     p = sub.add_parser("import", add_help=False)
     p.add_argument("file", nargs="?")

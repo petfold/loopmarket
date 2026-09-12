@@ -20,4 +20,4 @@ set maker chen
 give bicycle-repair where(chen_shop) 80
 want music-lesson where(chen_shop) 83
 loops
-clear
+clearing
