@@ -244,13 +244,11 @@ for owner in reversed(announce_a):
     agg_b.announce(owner, (books.get(owner) or mallory).store)
 
 m_a, m_b = agg_a.fold(), agg_b.fold()
-identical = (m_a.book_root, m_a.provenance_root, m_a.index_root,
-             m_a.announcement_root) == \
-            (m_b.book_root, m_b.provenance_root, m_b.index_root,
-             m_b.announcement_root)
+identical = (m_a.book_root, m_a.provenance_root, m_a.announcement_root) == \
+            (m_b.book_root, m_b.provenance_root, m_b.announcement_root)
 print(f"aggregator A folded: book={short(m_a.book_root)}")
 print(f"aggregator B folded (reverse order): book={short(m_b.book_root)}")
-print(f"all four manifest roots byte-identical: {identical}")
+print(f"all three manifest roots byte-identical: {identical}")
 
 BLOB_SPACE = books[a].store.blobs
 

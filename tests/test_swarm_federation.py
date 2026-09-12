@@ -123,10 +123,8 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
                 addr, swarm_store(f"{topic}-book-{i}", owner=addr, **swarm))
         m1b = agg_b.fold()
         self.assertEqual(
-            (m1.book_root, m1.provenance_root, m1.index_root,
-             m1.announcement_root),
-            (m1b.book_root, m1b.provenance_root, m1b.index_root,
-             m1b.announcement_root))
+            (m1.book_root, m1.provenance_root, m1.announcement_root),
+            (m1b.book_root, m1b.provenance_root, m1b.announcement_root))
 
         # clearing is its own writer under its OWN feed (P1 §1): it
         # bases that feed on the fold by re-asserting it, and canonical
@@ -156,16 +154,14 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
         self.assertNotEqual(m2.book_root, m1.book_root)
         m2b = agg_b.fold()
         self.assertEqual(
-            (m2.book_root, m2.provenance_root, m2.index_root,
-             m2.announcement_root),
-            (m2b.book_root, m2b.provenance_root, m2b.index_root,
-             m2b.announcement_root))
+            (m2.book_root, m2.provenance_root, m2.announcement_root),
+            (m2b.book_root, m2b.provenance_root, m2b.announcement_root))
         agg_key = secrets.token_hex(32)
         agg_addr = maker_address(agg_key)
         manifest_feed = swarm_store(f"{topic}-manifest", signer=agg_key, **swarm)
         manifest_feed.put("manifest", {
             "aggregator": m2.aggregator, "book_root": m2.book_root,
-            "provenance_root": m2.provenance_root, "index_root": m2.index_root,
+            "provenance_root": m2.provenance_root,
             "announcement_root": m2.announcement_root,
         })
         self.assertTrue(manifest_feed.commit())

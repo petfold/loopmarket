@@ -8,7 +8,7 @@ conflicts exist only at the fold. An **aggregator** folds announced books
 with three-way merge under the loop-aware resolver, applies the U8 fold
 rules per offer, records its decisions as attributed provenance, and
 publishes the **manifest tuple**
-`{book_root, provenance_root, index_root, announcement_root}`
+`{book_root, provenance_root, announcement_root}`
 (docs/plans/P1-federated-book.md §2).
 
 The fold is *pure*: deterministic admission rules plus commutative merge
@@ -48,20 +48,21 @@ CLEARING = "clearing"
 
 @dataclass(frozen=True, slots=True)
 class Manifest:
-    """What an aggregator publishes: four roots and its name.
+    """What an aggregator publishes: three roots and its name.
 
     `book_root` is the pure fold (byte-identical across honest aggregators
     with the same inputs); `provenance_root` holds the aggregator's
-    attributed speech acts (`origin/`, `reject/`); `index_root` is reserved
-    for derived, regenerable query structures (never merged) — empty since
-    the `idx/{c,t,g}` index retired 2026-09-12; `announcement_root` commits to the
-    exact input set this fold consumed — the completeness handle (T14).
+    attributed speech acts (`origin/`, `reject/`); `announcement_root`
+    commits to the exact input set this fold consumed — the completeness
+    handle (T14). There is no derived root: the `idx/{c,t,g}` index that
+    an `index_root` once named retired 2026-09-12 (Peter: nothing stays
+    for a field that names nothing); published cone summaries, if they
+    ever come, add a root then (`P1-federated-book.md` §2).
     """
 
     aggregator: str
     book_root: str
     provenance_root: str
-    index_root: str
     announcement_root: str
 
 
@@ -142,10 +143,6 @@ class Aggregator:
             aggregator=self.id,
             book_root=book_root,
             provenance_root=provenance.commit() or "",
-            # nothing derived is published yet: the idx/{c,t,g} prefix
-            # index retired 2026-09-12 (registry.py); cone summaries, the
-            # DimensionIndex's published sibling, are P1-federated-book §2
-            index_root="",
             announcement_root=announcement.commit() or "",
         )
 

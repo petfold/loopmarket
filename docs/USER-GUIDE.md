@@ -571,7 +571,7 @@ chen_book  = OfferRegistry(RecordStore(blobs)); chen_book.publish_many([fix, lea
 ### 8.2 The aggregator
 
 Solvers don't poll makers; they read an **aggregator** — anyone who folds
-announced books into one view and publishes a four-root **manifest**:
+announced books into one view and publishes a three-root **manifest**:
 
 ```python
 from loopmarket import Aggregator
@@ -584,7 +584,6 @@ manifest = agg.fold()
 
 manifest.book_root          # the pure fold — the book a solver reads
 manifest.provenance_root    # who said what, and what was rejected and why
-manifest.index_root         # derived idx/{concept,time,geo} query structures
 manifest.announcement_root  # commitment to the exact input set folded
 ```
 

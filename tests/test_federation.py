@@ -82,12 +82,12 @@ def test_convergence_gate():
     assert m_a.book_root and m_a.book_root == m_b.book_root
     # the whole manifest reproduces, not just the book: same inputs, same
     # rules, same derived state
-    assert (m_a.provenance_root, m_a.index_root, m_a.announcement_root) == \
-           (m_b.provenance_root, m_b.index_root, m_b.announcement_root)
+    assert (m_a.provenance_root, m_a.announcement_root) == \
+           (m_b.provenance_root, m_b.announcement_root)
 
-    # no index anywhere: the idx/{c,t,g} prefixes retired 2026-09-12 and
-    # `index_root` is reserved for published cone summaries (P1 §2)
-    assert m_a.index_root == ""
+    # no index anywhere: the idx/{c,t,g} prefixes retired 2026-09-12, and
+    # the manifest has no root for one
+    assert not hasattr(m_a, "index_root")
     assert not any(k.startswith("idx/") for k in books["amara"].store.keys())
 
     # clearing is its own writer: it bases its own book on the fold by
