@@ -41,10 +41,15 @@ def test_known_accepts_terms_ontodag_can_interpret_and_nothing_else():
 # containment for what the thing is, overlap for where and when it changes
 # hands. The head decides, and the head's role is catalogue vocabulary.
 
+# Seed vocabulary, not core: the four roles the tests speak. A head has one
+# value space, so a route's places and a transport's times are separate heads.
+ROLES = {"when": "time", "where": "geo", "from": "geo", "to": "geo"}
+
+
 def _roles_catalogue():
     from ontodag import OntoDAG
     ont = Ontology(OntoDAG())
-    ont.declare_service_roles()                 # when→time, where/from/to→geo
+    ont.declare_service_roles(ROLES)
     ont.load({"amphora": [], "ride": []})
     ont.dag.put("made_in", ["geo"])             # descriptive: same kind, no role
     ont.dag.put("made", ["time"])
@@ -58,7 +63,7 @@ def test_declare_service_roles_adopts_the_prelude_and_pins_kinds():
     assert ont.is_service_role("when") and ont.is_service_role("to")
     assert not ont.is_service_role("geo") and not ont.is_service_role("made_in")
     assert ont.head_kind("geo") and ont.head_kind("prefix-dimension") is None
-    ont.declare_service_roles()                 # idempotent, like the prelude
+    ont.declare_service_roles(ROLES)            # idempotent, like the prelude
     import pytest
     with pytest.raises(ValueError):
         ont.declare_service_roles({"at": "amphora"})   # not a value space

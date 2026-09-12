@@ -106,7 +106,7 @@ def test_service_role_terms_reach_matching_without_a_record_change():
     The offer's `where` disc still gates alongside until the v3 record."""
     from ontodag import OntoDAG
     roles = Ontology(OntoDAG())
-    roles.declare_service_roles()
+    roles.declare_service_roles({"from": "geo"})   # seed line, not core
     roles.load({"ride": []})
     from ontodag.prelude import apply as apply_prelude
     plain = Ontology(OntoDAG())

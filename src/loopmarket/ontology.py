@@ -7,16 +7,20 @@ covered by some offered concept — equal to it, or an ancestor of it in the
 DAG (the offered concept fits within the wanted one).
 
 Since 2026-09-12 a conjunction may also carry *service-role* terms —
-`when(...)`, `from(...)`, `to(...)`, `where(...)` — whose heads hang under
-the marker node `service-role`. They describe where and when the handover
-happens rather than what the thing is, and they match by **overlap**
-(a delivery instant, a handover point exists) instead of containment. The
-relation is a property of the head, declared in the catalogue and so
-pinned by its root, never of the dimension: `made_in(greece)` is a `geo`
-term that matches by containment like any category, `from(u2e4x)` is a
-`geo` term that matches by overlap. This is the mechanism that lets the
-offer's `service` window and `where` disc leave the record
-(`docs/plans/P1-spacetime-terms.md`).
+heads that hang under the marker node `service-role`, such as a route's
+`from(...)`/`to(...)` or a transport's `depart(...)`/`arrive(...)`. They
+describe where and when the handover happens rather than what the thing
+is, and they match by **overlap** (a delivery instant, a handover point
+exists) instead of containment. The relation is a property of the head,
+declared in the catalogue and so pinned by its root, never of the
+dimension: `made_in(greece)` is a `geo` term that matches by containment
+like any category, `from(u2e4x)` is a `geo` term that matches by overlap.
+**The marker is the only name this module knows** (Peter, 2026-09-12): it
+is the maker's job to put the spacetime terms they want into the
+conjunction, and the seed catalogue's job to declare which heads are
+roles — loopmarket names no head, requires none, and renders none
+specially. This is the mechanism that lets the offer's `service` window
+and `where` disc leave the record (`docs/plans/P1-spacetime-terms.md`).
 
 Offers pin the catalogue version they were written against
 (`Offer.ontology_root`): persistence through `EagerOntoDAG` over a
@@ -46,16 +50,11 @@ except Exception:  # pragma: no cover
 #: terms match by overlap. A plain node, so it merges, versions and pins
 #: like any other vocabulary — a fork of this code cannot change the match
 #: relation of a pinned catalogue (U3/U4). The name is provisional until
-#: the v3 record freezes it into published roots.
+#: the v3 record freezes it into published roots. It is the one name the
+#: core knows: which heads are roles is seed vocabulary (a head has one
+#: value space, so `from`/`to` over `geo` and `depart`/`arrive` over `time`
+#: are four declarations, not a table here).
 SERVICE_ROLE = "service-role"
-
-#: The roles the `loop` grammar speaks (`docs/plans/cli.md` §2): head → the
-#: base dimension head whose value space and kind the role inherits. All
-#: four are prelude heads' roles; `where` is the generic handover place,
-#: `from`/`to` the two places of a route.
-SERVICE_ROLES: Mapping[str, str] = {
-    "when": "time", "where": "geo", "from": "geo", "to": "geo",
-}
 
 
 class Ontology:
@@ -96,14 +95,17 @@ class Ontology:
                 raise ValueError(f"unresolvable supercategories in {sorted(pending)}")
         return self
 
-    def declare_service_roles(self, roles: Mapping[str, str] = SERVICE_ROLES) -> None:
-        """Declare role heads whose terms match by overlap.
+    def declare_service_roles(self, roles: Mapping[str, str]) -> None:
+        """Declare role heads whose terms match by overlap: {head: base}.
 
         Each `head` is put under its base dimension head (inheriting the
         value grammar and the kind ontodag orders it by) *and* under the
-        `service-role` marker. The bases are prelude heads, so a catalogue
-        that has not adopted ontodag's prelude adopts it here — a merge,
-        idempotent and canonical, the same step `odag prelude` performs.
+        `service-role` marker — the same two edges `odag put from geo
+        service-role` writes; this is a convenience for seeds and tests,
+        and deliberately has no default: the core names no heads. When a
+        base is a prelude head the catalogue has not adopted, ontodag's
+        prelude is merged in — idempotent and canonical, the step `odag
+        prelude` performs.
         Declaring this vocabulary is a catalogue write: on a persistent
         catalogue it moves the root, so it belongs with the other seed
         declarations, before offers pin the root.

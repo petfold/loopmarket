@@ -176,9 +176,9 @@ want them; loopmarket does not need to worry about when and where*).
 Correct, with the one caveat above: the core must know the *relation*,
 and that is exactly one catalogue name, `service-role`. So the four-head
 table `SERVICE_ROLES` and the defaults of `declare_service_roles` that
-landed in step 2 are seed vocabulary in the wrong place — they move to
-the example catalogues and the CLI's convenience, and the core takes the
-marker and nothing else (step 4). A maker or a vertical declares its own
+landed in step 2 were seed vocabulary in the wrong place — **removed the
+same evening**: the core takes the marker and nothing else, the tests
+declare their own roles, and the example catalogues get theirs at step 4. A maker or a vertical declares its own
 roles with `odag put from geo service-role`. Consequences downstream:
 the CLI interprets no head but `valid` after v3; there is no
 "anywhere / any time" rendering, because printing it would need the CLI
@@ -325,10 +325,9 @@ the record.
      linear head with declared units would fail closed).
 
 4. **The shared catalogue carries the roles; the index files them.**
-   The four-head table leaves the core: `declare_service_roles` takes the
-   roles as a required argument (or goes, in favour of plain `put`s), and
-   `when`/`where`/`from`/`to` are declared in the example catalogues and by
-   the CLI's convenience layer (`catalogue-bootstrap.md`'s release
+   ~~The four-head table leaves the core~~ (done 2026-09-12:
+   `declare_service_roles({head: base})`, no default); the roles are
+   declared in the example catalogues and by the CLI's convenience layer (`catalogue-bootstrap.md`'s release
    pipeline for the shared seed).
    `DimensionIndex.file` puts a give under its `when`/place terms directly
    — no more private `service-time`/`service-cell` heads — and

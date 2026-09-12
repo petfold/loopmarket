@@ -15,9 +15,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   decided with Peter 2026-09-12): `Ontology.satisfies` now walks one
   conjunction with two relations — containment for what a thing is,
   overlap for where and when it changes hands — and the *head* decides
-  which, declared in the catalogue under the marker node `service-role`
-  (`Ontology.declare_service_roles()`: `when` under `time`, `where`/`from`/
-  `to` under `geo`). A give from anywhere in `u2e` now serves a want at
+  which, declared in the catalogue under the marker node `service-role`.
+  The marker is the only name the core knows: which heads are roles
+  (`from`/`to` over `geo`, `depart`/`arrive` over `time`) is seed
+  vocabulary, written with `odag put from geo service-role` or
+  `Ontology.declare_service_roles({...})`. A give from anywhere in `u2e`
+  now serves a want at
   `u2e4x` and vice versa; `made_in(u2e4x)` still only satisfies
   `made_in(u2e)` one way. Absent role = unconstrained; same-head terms are
   their meet; an uninterpretable role term fails closed on either side.
