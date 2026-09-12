@@ -15,6 +15,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   `2eab00cd3c84c475…`, the same id the in-memory G1 test produces — a
   fixed `now` makes the live book byte-reproducible) in 1m51s; a fresh
   session read the book root and six filled offers back in 11s.
+- The federation demo live on the same node with ontodag's core pack, 4m25s:
+  three per-maker feeds and a Swarm catalogue with v3 offers, two aggregators
+  folding to byte-identical manifests, the censoring aggregator convicted by
+  two absence proofs verified without a store, the forgery refused, the
+  tombstone honoured, the triangle cleared at 12.22% on a book re-based on
+  the fold, and a follower reading the loop and six fills from the manifest.
 
 ## [0.3.0] — 2026-09-12
 
