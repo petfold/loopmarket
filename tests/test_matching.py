@@ -96,3 +96,27 @@ def test_pinned_catalogue_refuses_unpinned_offers():
     pinned_a = give("x", Thing(("vegetable-box",)), 50, **cat.pins, **W)
     pinned_b = want("y", Thing(("produce",)), 60, **cat.pins, **W)
     assert check_match(pinned_a, pinned_b, cat, now=NOW) is not None
+
+
+def test_service_role_terms_reach_matching_without_a_record_change():
+    """A give from anywhere in `u2e` serves a want at `u2e4x` when `from`
+    is a declared service role (overlap); the same pair under a catalogue
+    that declares `from` as a plain geo head is refused (containment) —
+    the relation is the catalogue's, pinned by its root, not this code's.
+    The offer's `where` disc still gates alongside until the v3 record."""
+    from ontodag import OntoDAG
+    roles = Ontology(OntoDAG())
+    roles.declare_service_roles()
+    roles.load({"ride": []})
+    from ontodag.prelude import apply as apply_prelude
+    plain = Ontology(OntoDAG())
+    apply_prelude(plain.dag)                 # `geo`, but no role marker
+    plain.dag.put("from", ["geo"])
+    plain.load({"ride": []})
+    a = give("bruno", Thing(("ride", "from(u2e)")), 5, **W)
+    b = want("amara", Thing(("ride", "from(u2e4x)")), 6, **W)
+    assert check_match(a, b, roles, now=NOW) is not None
+    assert check_match(a, b, plain, now=NOW) is None
+    assert check_match(give("bruno", Thing(("ride", "from(u2e4x)")), 5, **W),
+                       want("amara", Thing(("ride", "from(u2e)")), 6, **W),
+                       plain, now=NOW) is not None

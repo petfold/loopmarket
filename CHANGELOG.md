@@ -11,6 +11,19 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Service roles in the catalogue** (`docs/plans/P1-spacetime-terms.md`,
+  decided with Peter 2026-09-12): `Ontology.satisfies` now walks one
+  conjunction with two relations — containment for what a thing is,
+  overlap for where and when it changes hands — and the *head* decides
+  which, declared in the catalogue under the marker node `service-role`
+  (`Ontology.declare_service_roles()`: `when` under `time`, `where`/`from`/
+  `to` under `geo`). A give from anywhere in `u2e` now serves a want at
+  `u2e4x` and vice versa; `made_in(u2e4x)` still only satisfies
+  `made_in(u2e)` one way. Absent role = unconstrained; same-head terms are
+  their meet; an uninterpretable role term fails closed on either side.
+  No record change: the `service`/`where` field gates still run beside it,
+  and a catalogue that declares no roles behaves exactly as before. The
+  fields leave at the v3 bump, the package's step 5.
 - **Drafts and composed wants at the command line** (`docs/plans/cli.md`
   §13, `P2-loop-selection.md` §10 "Declared parts", decided with Peter
   2026-09-12): a theatre ticket with transport is one want with two parts,
