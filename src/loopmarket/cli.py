@@ -392,6 +392,17 @@ def radius_m(text: str) -> float:
     return int(value) if value.denominator == 1 else float(value)
 
 
+def parse_coords(text: str) -> GeoDisc:
+    """`LAT,LON,RADIUS` — the spelling `place` takes, and the literal
+    `where(...)` accepts so a canonical part line re-parses (cli.md §13);
+    the day odag accepts `geo(LAT,LON,R)` this maps onto it (§11.1)."""
+    parts = [p.strip() for p in text.split(",")]
+    if len(parts) != 3:
+        raise ValueError(
+            f"{text!r}: coordinates are LAT,LON,RADIUS (e.g. 46.05,14.50,5km)")
+    return GeoDisc(float(parts[0]), float(parts[1]), radius_m(parts[2]))
+
+
 def parse_now(text: str) -> int:
     text = text.strip()
     if re.match(r"^\d{9,}$", text):
@@ -623,6 +634,54 @@ def _number(text: str) -> int | float:
     return float(text) if "." in text else int(text)
 
 Parsed = namedtuple("Parsed", "qty unit divisible band concepts heads price")
+Composed = namedtuple("Composed", "parts price")
+
+#: The part separator of a composed want (cli.md §13, confirmed by Peter
+#: 2026-09-12): the third loopmarket-only convention, want side only. A
+#: token, not a word — no category is shadowed, and `+2h` inside when(...)
+#: is a different token.
+PART_SEP = "+"
+
+
+def parse_want_line(tokens: list[str]) -> "Parsed | Composed":
+    """A `want` line: one thing, or parts separated by `+` with one price
+    last for the lot. Each part reads as a want line without its price
+    (a bare number first is that part's quantity); parts carry no price
+    (P2-loop-selection.md §10 pays once) and no validity of their own."""
+    toks = list(tokens)
+    if PART_SEP not in toks:
+        return parse_offer_tokens(toks)
+    price = None
+    if toks and _PRICE_RE.match(toks[-1]):
+        price = _number(toks.pop())
+    parts, current = [], []
+    for tok in toks + [PART_SEP]:
+        if tok == PART_SEP:
+            if not current:
+                raise ValueError(
+                    f"{' '.join(tokens)}: an empty part around `{PART_SEP}` — "
+                    f"each part names what is wanted")
+            parts.append(parse_part_tokens(current))
+            current = []
+        else:
+            current.append(tok)
+    return Composed(tuple(parts), price)
+
+
+def parse_part_tokens(tokens: list[str]) -> Parsed:
+    """One part of a composed want: a want line with no price and no
+    validity (the composed want has one of each)."""
+    parsed = parse_offer_tokens(tokens)
+    if parsed.price is not None:
+        raise ValueError(
+            f"{' '.join(tokens)}: parts carry no prices — one price, last on "
+            f"the line, for the whole (docs/plans/P2-loop-selection.md §10 "
+            f"pays once; clearing splits)")
+    if "valid" in parsed.heads:
+        raise ValueError(
+            f"{' '.join(tokens)}: a part has no validity of its own — the "
+            f"composed want's is the `valid` setting (or --valid)")
+    return parsed
 
 
 def parse_offer_tokens(tokens: list[str]) -> Parsed:
@@ -636,6 +695,11 @@ def parse_offer_tokens(tokens: list[str]) -> Parsed:
     toks = list(tokens)
     if not toks:
         raise ValueError("what? — give/want [QUANTITY] CATEGORY... [PRICE]")
+    if PART_SEP in toks:
+        raise ValueError(
+            f"`{PART_SEP}` composes parts of a *want* only (docs/plans/cli.md "
+            f"§13): a give of several things that go together is one give of "
+            f"one thing — the kit is a category")
     qty, unit, divisible, band = None, "unit", False, None
     m = _QTY_RE.match(toks[0])
     if _BAND_RE.match(toks[0]) and toks[0] != "..":
@@ -697,11 +761,18 @@ def _value_of(view: OntoDAG, name: str, kind: str) -> str | None:
     node = view.nodes.get(name)
     if node is None:
         return None
+    best = None
     for item in [node, *view.get_ancestors(node)]:
         split = _dims.split_term(item.name)
-        if split and _head_kind(view, split[0]) == kind:
-            return split[1]
-    return None
+        if not split or _head_kind(view, split[0]) != kind:
+            continue
+        # A place hangs under its own cell and, by computed prefix
+        # containment, under every coarser cell too; ancestors come as a
+        # set. The name's value is the most specific term: the one that
+        # fits within all the others.
+        if best is None or view.is_below(item.name, best.name):
+            best = item
+    return _dims.split_term(best.name)[1] if best is not None else None
 
 
 def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
@@ -759,11 +830,14 @@ def _num(x: float) -> str:
 def reading(offer: Offer) -> str:
     """cli.md §6's direction rule, in words: what the encoded quantity
     means for this side. Printed, never acted on — matching stays exact."""
-    t = offer.thing
+    return reading_for(offer.thing, offer.kind)
+
+
+def reading_for(t: Thing, kind: str) -> str:
     q = _num(t.qty)
     if t.unit == "unit":
         return f"{q}, indivisible" if not t.divisible else f"up to {q}, divisible"
-    if offer.kind == GIVE:
+    if kind == GIVE:
         return f"up to {q} {t.unit}, divisible"
     return (f"{q} {t.unit} — the point; a floor (`{q}{t.unit}..`) is not "
             f"encodable yet")
@@ -840,10 +914,14 @@ def _print_table(rows: list[list[str]], args, out) -> None:
 # Commands: maker
 # --------------------------------------------------------------------------- #
 
-def _resolve_offer(session: Session, side: str, parsed: Parsed,
-                   ontology: Ontology):
-    """Every default and shorthand expanded into one Offer, plus the notes
-    the approval block prints beside it. Refusals here are the loud kind."""
+Part = namedtuple("Part", "thing service where notes")
+
+
+def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology) -> Part:
+    """The thing, its window and its place — every default and shorthand
+    expanded, every name resolved to its value — plus the notes that carry
+    the surface spellings. Shared by a simple offer, a draft and each part
+    of a composed want. Refusals here are the loud kind."""
     now = session.now
     notes: list[str] = []
     if parsed.band:
@@ -860,15 +938,17 @@ def _resolve_offer(session: Session, side: str, parsed: Parsed,
             raise ValueError(
                 f"unknown category: {c} — vocabulary fails closed (U7); "
                 f"`odag put {c} PARENT` adds it to the catalogue")
-    maker = session.maker
 
-    place_name = parsed.heads.get("where") or _configured("where")
-    if not place_name:
+    place_text = parsed.heads.get("where") or _configured("where")
+    if not place_text:
         raise ValueError(
             "no place: where(NAME) on the line, or `loop set where NAME` "
             "(NAME is a catalogue node — `loop place NAME LAT,LON,RADIUS`)")
-    disc = session.place(place_name)
-    notes.append(f"place {place_name}")
+    if "," in place_text:
+        disc = parse_coords(place_text)      # the literal a canonical line uses
+    else:
+        disc = session.place(place_text)
+        notes.append(f"place {place_text}")
 
     when_text = parsed.heads.get("when") or _configured("when")
     service = session.named_window(when_text)
@@ -876,7 +956,6 @@ def _resolve_offer(session: Session, side: str, parsed: Parsed,
         service = window(when_text, now)
     else:
         notes.append(f"when {when_text}")
-    valid = validity(parsed.heads.get("valid") or _configured("valid"), now)
 
     # An omitted quantity is the schema's own default, not a typed `1`:
     # canonical JSON tells 1 from 1.0, and `Thing(("x",))` from the API
@@ -884,6 +963,36 @@ def _resolve_offer(session: Session, side: str, parsed: Parsed,
     thing = Thing(concepts, unit=parsed.unit, divisible=parsed.divisible) \
         if parsed.qty is None else \
         Thing(concepts, parsed.qty, parsed.unit, parsed.divisible)
+    return Part(thing, service, disc, notes)
+
+
+def part_line(part: Part) -> str:
+    """The canonical one-line spelling of a resolved part: what `compose`
+    encodes, re-parseable as typed (cli.md §13 — `drafts` prints it, and a
+    composed want's `+` line is these joined)."""
+    t = part.thing
+    toks = []
+    if t.unit != "unit":
+        toks.append(f"{_num(t.qty)}{t.unit}")
+    elif t.qty != 1 or t.divisible:
+        toks.append(_num(t.qty))
+    toks.extend(t.concepts)
+    toks.append(f"when({_iso(part.service.start)}..{_iso(part.service.end)})")
+    w = part.where
+    toks.append(f"where({w.lat},{w.lon},{_num(w.radius_m)}m)")
+    return " ".join(toks)
+
+
+def _resolve_offer(session: Session, side: str, parsed: Parsed,
+                   ontology: Ontology):
+    """Every default and shorthand expanded into one Offer, plus the notes
+    the approval block prints beside it."""
+    now = session.now
+    part = _resolve_part(session, parsed, ontology)
+    thing, service, disc = part.thing, part.service, part.where
+    notes = list(part.notes)
+    maker = session.maker
+    valid = validity(parsed.heads.get("valid") or _configured("valid"), now)
     qty = thing.qty
 
     reused = False
@@ -976,8 +1085,191 @@ def _confirm(reused: bool, out) -> bool:
     return answer.strip().lower() in ("y", "yes")
 
 
+# --------------------------------------------------------------------------- #
+# Composed wants (cli.md §13): drafts at the edge, one offer at the end
+# --------------------------------------------------------------------------- #
+
+def _drafts_path() -> str:
+    return os.path.join(_home_dir(), "drafts")
+
+
+def _read_drafts() -> list[dict]:
+    path = _drafts_path()
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as fh:
+        return [json.loads(line) for line in fh if line.strip()]
+
+
+def _write_drafts(drafts: list[dict]) -> None:
+    os.makedirs(_home_dir(), mode=0o700, exist_ok=True)
+    with open(_drafts_path(), "w", encoding="utf-8") as fh:
+        for d in drafts:
+            fh.write(json.dumps(d, sort_keys=True, separators=(",", ":")) + "\n")
+
+
+def _part_record(part: Part) -> dict:
+    return {"thing": part.thing.to_record(), "service": part.service.to_record(),
+            "where": part.where.to_record(), "notes": list(part.notes)}
+
+
+def _part_from_record(rec: dict) -> Part:
+    t = rec["thing"]
+    return Part(Thing(tuple(t["concepts"]), t["qty"], t["unit"], t["divisible"]),
+                TimeWindow(*rec["service"]), GeoDisc(*rec["where"]),
+                list(rec["notes"]))
+
+
+def render_composed(maker: str, parts: list[Part], price, valid: TimeWindow,
+                    pins: dict) -> str:
+    """The approval block of a composed want: every part, one price. When
+    the v3 record lands this is what `show` prints for one (gate G4)."""
+    heads = f" {PART_SEP} ".join(" ".join(p.thing.concepts) for p in parts)
+    lines = [f"want     {heads}", f"  maker    {maker}"]
+    for i, p in enumerate(parts, 1):
+        t = p.thing
+        lines += [
+            f"  part {i}   {' '.join(t.concepts)}",
+            f"           quantity {_num(t.qty)} {t.unit} — {reading_for(t, WANT)}",
+            f"           service  {_iso(p.service.start)} .. {_iso(p.service.end)}",
+            f"           where    {p.where.lat},{p.where.lon} "
+            f"radius {_num(p.where.radius_m)}m",
+        ]
+    lines += [
+        f"  price    {_num(price)} (the lot, on {maker}'s scale; split across "
+        f"the parts at clearing)",
+        f"  valid    {_iso(valid.start)} .. {_iso(valid.end)}",
+        f"           local {_local(valid.start)} .. {_local(valid.end)}",
+        f"  pins     catalogue {pins['ontology_root'][:16] or '-'}  "
+        f"registry {pins['registry_version'] or '-'}  "
+        f"contract {pins['contract_version'] or '-'}  v3 (pending)",
+        "  terms    bond 0  oracle countersign  arbitrator -",
+        "  offer_id (none: a composed want is not encodable before the v3 "
+        "record)",
+    ]
+    return "\n".join(lines)
+
+
+_COMPOSE_REFUSAL = (
+    "a composed want is not encodable until the v3 record lets `wants` carry "
+    "parts (docs/plans/cli.md §13, docs/plans/P2-loop-selection.md §10); "
+    "nothing was published")
+
+
+def _compose(session: Session, parts: list[Part], price, out) -> int:
+    """Render the composed want and — until the v3 record — refuse to
+    publish it, the G6 pattern: the grammar is accepted, the encoding is
+    not there yet, and the person sees exactly what would have been said."""
+    if len(parts) < 2:
+        raise ValueError("a composed want has at least two parts — for one "
+                         "thing, `want` is the verb")
+    if price is None:
+        raise ValueError("a composed want needs its price, last on the line "
+                         "(there is no price memory for a composition)")
+    maker = session.maker
+    valid = validity(_configured("valid"), session.now)
+    print(render_composed(maker, parts, price, valid, session.catalogue.pins),
+          file=out)
+    for i, p in enumerate(parts, 1):
+        for note in p.notes:
+            print(f"  note     part {i}: {note}", file=out)
+    if hasattr(out, "flush"):
+        out.flush()          # the block before the refusal, on any stream pair
+    raise ValueError(_COMPOSE_REFUSAL)
+
+
+def cmd_draft(args, session, out):
+    """Stage one part: resolved now, exactly as `want` resolves a thing,
+    numbered stably, kept in a local file that is never the book."""
+    if not args.tokens or args.tokens[0] != WANT:
+        raise ValueError("draft want [QTY] CATEGORY|TERM... — composition is "
+                         "want-side only (docs/plans/cli.md §13)")
+    parsed = parse_part_tokens(args.tokens[1:])
+    part = _resolve_part(session, parsed, session.catalogue)
+    drafts = _read_drafts()
+    n = max((d["n"] for d in drafts), default=0) + 1
+    drafts.append({"n": n, "maker": session.maker,
+                   "typed": list(args.tokens[1:]), "line": part_line(part),
+                   "created": session.now, **_part_record(part)})
+    _write_drafts(drafts)
+    print(f"{n}  want {part_line(part)}", file=out)
+    return 0
+
+
+def cmd_drafts(args, session, out):
+    """The staged parts in their canonical one-line spelling, the surface
+    spellings as notes beneath — the approval block's two layers."""
+    drafts = _read_drafts()
+    for d in drafts:
+        print(f"{d['n']}  want {d['line']}", file=out)
+        typed = " ".join(d["typed"])
+        if typed != d["line"]:
+            print(f"   typed {typed}", file=out)
+        for note in d["notes"]:
+            print(f"   note  {note}", file=out)
+        if d["maker"] != _configured("maker"):
+            print(f"   maker {d['maker']}", file=out)
+    return 0 if drafts else 1
+
+
+def _select_drafts(numbers: list[int], drafts: list[dict]) -> list[dict]:
+    if not numbers:
+        return list(drafts)
+    by_n = {d["n"]: d for d in drafts}
+    missing = [n for n in numbers if n not in by_n]
+    if missing:
+        raise ValueError(f"no such draft: {', '.join(map(str, missing))} "
+                         f"(`loop drafts` lists them)")
+    return [by_n[n] for n in numbers]
+
+
+def cmd_compose(args, session, out):
+    """`compose [N...] PRICE`: all drafts, or the numbered ones, as one
+    want priced PRICE the lot. The last bare number is the price, every
+    number before it selects a draft."""
+    toks = list(args.tokens)
+    if not toks or not all(_PRICE_RE.match(t) for t in toks):
+        raise ValueError("compose [N...] PRICE — draft numbers, then the price "
+                         "of the whole")
+    price = _number(toks.pop())
+    numbers = [int(t) for t in toks]
+    drafts = _read_drafts()
+    if not drafts:
+        raise ValueError("no drafts — `loop draft want ...` stages a part")
+    chosen = _select_drafts(numbers, drafts)
+    maker = session.maker
+    foreign = [d for d in chosen if d["maker"] != maker]
+    if foreign:
+        raise ValueError(
+            f"draft {foreign[0]['n']} was staged as {foreign[0]['maker']}, "
+            f"not {maker} — a composed want has one maker")
+    parts = [_part_from_record(d) for d in chosen]
+    return _compose(session, parts, price, out)
+    # when the v3 record lands: publish, then drop the composed drafts and
+    # keep the rest — `_write_drafts([d for d in drafts if d not in chosen])`
+
+
+def cmd_discard(args, session, out):
+    drafts = _read_drafts()
+    if not args.numbers:
+        _write_drafts([])
+        print(f"{len(drafts)} discarded", file=_err())
+        return 0
+    numbers = [int(n) for n in args.numbers]
+    chosen = _select_drafts(numbers, drafts)
+    _write_drafts([d for d in drafts if d not in chosen])
+    return 0
+
+
 def _publish(args, session: Session, out, side: str) -> int:
-    parsed = parse_offer_tokens(args.tokens)
+    if side == WANT:
+        parsed = parse_want_line(args.tokens)
+        if isinstance(parsed, Composed):
+            ontology = session.catalogue
+            parts = [_resolve_part(session, p, ontology) for p in parsed.parts]
+            return _compose(session, parts, parsed.price, out)
+    else:
+        parsed = parse_offer_tokens(args.tokens)
     ontology = session.catalogue
     offer, notes, reused = _resolve_offer(session, side, parsed, ontology)
     print(render_offer(offer), file=out)
@@ -1049,11 +1341,8 @@ def cmd_place(args, session, out):
     """The dated bridge (cli.md §4, §11.1): a place node with its disc as
     metadata, written to the personal layer. Deleted the day odag accepts
     `geo(LAT,LON,R)` as input vocabulary."""
-    parts = [p.strip() for p in args.coords.split(",")]
-    if len(parts) != 3:
-        raise ValueError("coordinates are LAT,LON,RADIUS (e.g. 46.05,14.50,5km)")
-    lat, lon = float(parts[0]), float(parts[1])
-    disc = GeoDisc(lat, lon, radius_m(parts[2]))
+    disc = parse_coords(args.coords)
+    lat, lon = disc.lat, disc.lon
     personal = session.personal_session
     dag = personal.dag
     if not ("geo" in dag.nodes and "prefix-dimension" in dag.nodes
@@ -1279,6 +1568,9 @@ loop — the loopmarket command line (docs/plans/cli.md)
 
   loop give  [QTY] CATEGORY|TERM... [PRICE]   I give this, priced on my scale
   loop want  [QTY] CATEGORY|TERM... [PRICE]   I want this, priced on my scale
+  loop want PART + PART... PRICE   a composed want: parts that clear together
+  loop draft want [QTY] CATEGORY|TERM...   stage one part (a local file, not the book)
+  loop drafts | compose [N...] PRICE | discard [N...]   list, compose, drop staged parts
   loop withdraw ID           tombstone one of my offers (id or unique prefix)
   loop mine                  my offers, all states
   loop place NAME LAT,LON,R  a place node with coordinates (temporary bridge)
@@ -1297,7 +1589,9 @@ term is head(param) in ontodag's spelling — quote the parentheses in a
 shell; a bare number FIRST is the quantity (10kg = up to 10 kg divisible,
 3 = three indivisible), a bare number LAST is the price. An omitted price
 is your last unit price for the same thing, scaled, and marked.
-Interpreted heads: when(WINDOW) where(PLACE) valid(DURATION|WINDOW).
+Interpreted heads: when(WINDOW) where(PLACE|LAT,LON,R) valid(DURATION|WINDOW).
+A composed want (`+` between parts, one price last) renders and is refused
+until the v3 record carries parts (docs/plans/cli.md §13).
 Time: now, today, tomorrow, +90d, -2h, ISO dates, A..B.
 
   loop give 10kg apple 100
@@ -1345,10 +1639,18 @@ def build_parser():
     sub = parser.add_subparsers(dest="command", metavar="<command>")
     sub.required = True
 
-    for verb, fn in (("give", cmd_give), ("want", cmd_want)):
+    for verb, fn in (("give", cmd_give), ("want", cmd_want),
+                     ("draft", cmd_draft), ("compose", cmd_compose)):
         p = sub.add_parser(verb, add_help=False)
         p.add_argument("tokens", nargs=argparse.REMAINDER)
         p.set_defaults(func=fn)
+
+    p = sub.add_parser("drafts", add_help=False)
+    p.set_defaults(func=cmd_drafts)
+
+    p = sub.add_parser("discard", add_help=False)
+    p.add_argument("numbers", nargs="*")
+    p.set_defaults(func=cmd_discard)
 
     p = sub.add_parser("withdraw", add_help=False)
     p.add_argument("id")

@@ -608,3 +608,124 @@ def test_peers_fold_into_every_answer_and_clear_rebases(env, tmp_path, monkeypat
     assert "filled 6" in chen.ok("status")
     # a bad peer spec is refused at set time
     assert chen("set", "peers", "/no/scheme")[0] == 1
+
+
+# ---------------------------------------------------------------- composed wants (cli.md §13)
+
+def test_plus_separates_parts_of_a_want_and_nothing_else():
+    c = cli.parse_want_line(["ticket", "hamlet", "+", "2", "transport", "from(home)", "60"])
+    assert isinstance(c, cli.Composed) and c.price == 60
+    assert [p.concepts for p in c.parts] == [("ticket", "hamlet"),
+                                             ("transport", "from(home)")]
+    assert c.parts[1].qty == 2 and c.parts[1].heads == {}
+    assert c.parts[0].price is None and c.parts[1].price is None
+    # a line without `+` is an ordinary want
+    assert isinstance(cli.parse_want_line(["ticket", "60"]), cli.Parsed)
+    with pytest.raises(ValueError, match="parts carry no prices"):
+        cli.parse_want_line(["ticket", "5", "+", "transport", "60"])
+    with pytest.raises(ValueError, match="no validity of its own"):
+        cli.parse_want_line(["ticket", "valid(2h)", "+", "transport", "60"])
+    with pytest.raises(ValueError, match="empty part"):
+        cli.parse_want_line(["ticket", "+", "+", "transport", "60"])
+    with pytest.raises(ValueError, match="want.*only"):
+        cli.parse_offer_tokens(["bicycle", "+", "helmet", "900"])
+
+
+@pytest.fixture
+def stage(env, tmp_path, monkeypatch):
+    """A catalogue with role heads, two places, and the maker amara."""
+    _od_with_prelude(tmp_path / "stage.od",
+                     [("from", ["prefix-dimension"]), ("to", ["prefix-dimension"]),
+                      ("theatre-ticket", []), ("hamlet", ["theatre-ticket"]),
+                      ("transport", []), ("person", [])])
+    monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "stage.od"))
+    monkeypatch.setenv("LOOP_WHERE", "home")
+    run = Runner()
+    run.ok("place", "home", "46.05,14.50,5km")
+    run.ok("place", "venue", "46.051,14.506,100m")
+    return run
+
+
+TICKET = ["theatre-ticket", "hamlet",
+          "when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z)", "where(venue)"]
+RIDE = ["transport", "person", "from(home)", "to(venue)",
+        "when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z)"]
+
+
+def test_drafts_are_numbered_canonical_and_never_in_the_book(stage):
+    from loopmarket.spacetime import cell_for
+    home = cell_for(GeoDisc(46.05, 14.50, 5000))
+    venue = cell_for(GeoDisc(46.051, 14.506, 100))
+    out = stage.ok("draft", "want", *TICKET)
+    assert out.startswith("1  want hamlet theatre-ticket when(2026-10-05T19:00:00Z.."
+                          "2026-10-05T22:00:00Z) where(46.051,14.506,100m)")
+    stage.ok("draft", "want", *RIDE)
+    listing = stage.ok("drafts")
+    assert f"2  want from({home}) person to({venue}) transport when(" in listing
+    assert "   typed transport person from(home) to(venue)" in listing
+    assert f"   note  from(home) → from({home})" in listing
+    assert "   note  place venue" in listing
+    assert stage.ok("mine", "--raw") == ""                # nothing published
+    assert stage.ok("offers", "--raw") == ""
+    assert os.path.exists(os.path.join(os.environ["LOOP_HOME"], "drafts"))
+    # the canonical line re-parses to the same window and place
+    line = listing.splitlines()[0].split(" ", 3)[3].split()
+    out = stage.ok("want", *line, "5")
+    assert "service  2026-10-05T19:00:00Z .. 2026-10-05T22:00:00Z" in out
+    assert "where    46.051,14.506 radius 100m" in out
+    # numbering is stable across discards; discard alone empties
+    stage.ok("discard", "1")
+    assert stage.ok("drafts").startswith("2  want")
+    stage.ok("draft", "want", *TICKET)
+    assert "3  want" in stage.ok("drafts")
+    code, out, err = stage("discard")
+    assert code == 0 and err.strip() == "2 discarded"
+    assert stage("drafts")[0] == 1
+    # a part may not carry a price or a validity; give has no drafts
+    assert "parts carry no prices" in stage("draft", "want", "hamlet", "5")[2]
+    assert "want-side only" in stage("draft", "give", "hamlet")[2]
+
+
+def test_compose_renders_every_part_and_refuses_until_v3(stage, monkeypatch):
+    stage.ok("draft", "want", *TICKET)
+    stage.ok("draft", "want", *RIDE)
+    stage.ok("draft", "want", "person", "transport", "where(home)")
+    code, out, err = stage("compose", "60")
+    assert code == 1
+    assert "not encodable until the v3 record" in err and "cli.md §13" in err
+    assert "nothing was published" in err
+    assert out.startswith("want     hamlet theatre-ticket + ")
+    assert "  part 1   hamlet theatre-ticket" in out
+    assert "  part 3   person transport" in out
+    assert "price    60 (the lot, on amara's scale; split across the parts" in out
+    assert "offer_id (none" in out
+    assert "note     part 2: from(home) →" in out
+    assert len(stage.ok("drafts").splitlines()) > 3          # drafts kept
+    # a numbered subset, in the order given
+    code, out, err = stage("compose", "3", "1", "45")
+    assert code == 1 and "part 1   person transport" in out \
+        and "part 2   hamlet theatre-ticket" in out and "part 3" not in out
+    assert "price    45" in out
+    # fewer than two parts, a bad number, a missing price
+    assert "at least two parts" in stage("compose", "1", "60")[2]
+    assert "no such draft: 9" in stage("compose", "9", "60")[2]
+    assert "compose [N...] PRICE" in stage("compose")[2]
+    # one maker per composed want
+    monkeypatch.setenv("LOOP_MAKER", "bruno")
+    assert "was staged as amara" in stage("compose", "60")[2]
+    monkeypatch.setenv("LOOP_MAKER", "amara")
+    # nothing in the book through all of it
+    assert stage.ok("mine", "--raw") == ""
+
+
+def test_one_line_composed_want_is_the_same_block(stage):
+    code, out, err = stage("want", *TICKET, "+", *RIDE, "60")
+    assert code == 1 and "not encodable until the v3 record" in err
+    assert out.startswith("want     hamlet theatre-ticket + ")
+    assert "  part 2   from(" in out and "price    60" in out
+    assert stage("drafts")[0] == 1                       # the line staged nothing
+    assert stage.ok("mine", "--raw") == ""
+    # a coordinate literal in where(...) is the spelling `place` takes
+    out = stage.ok("want", "hamlet", "where(46.1,14.6,2km)", "5")
+    assert "where    46.1,14.6 radius 2000m" in out
+    assert "note     place" not in out
