@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from recordstore import RecordStore
 
 from .registry import (
+    HANDOFF,
     FILL, LOOP, OFFER, SIG, WITHDRAW, OfferRegistry, index_offers,
     or_set_resolver,
 )
@@ -164,6 +165,7 @@ class Aggregator:
                            {"owner": owner, "reason": reason})
 
         offers: dict[str, Offer] = {}
+        deferred: list[tuple[str, object]] = []
         records = dict(source.items())
         for key in sorted(records):
             rec = records[key]
@@ -223,8 +225,26 @@ class Aggregator:
                     reject(key, "clearing keys in a maker book")
                     continue
                 staged.put(key, rec)
+            elif key.startswith(HANDOFF):
+                if role != MAKER:
+                    reject(key, "handoff outside a maker book")
+                    continue
+                deferred.append((key, rec))   # handoff/ sorts before offer/
             else:
                 reject(key, "unknown keyspace")
+        for key, rec in deferred:
+            # A sealed handoff is the place-owner's speech about *their own*
+            # filled offer (P1-spacetime-terms.md §4): admitted only beside
+            # an offer this book's owner made and signed as its sender. The
+            # payload is opaque here — aggregators carry it unread; whether
+            # the fill exists is the reader's check against the fold.
+            loop_id, _, oid = key[len(HANDOFF):].partition("/")
+            offer = offers.get(oid)
+            if (not loop_id or offer is None or offer.maker != owner
+                    or not isinstance(rec, dict) or rec.get("from") != owner):
+                reject(key, "handoff for an offer this book does not own")
+                continue
+            staged.put(key, rec)
         return staged
 
     @staticmethod

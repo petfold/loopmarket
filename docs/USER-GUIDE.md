@@ -466,6 +466,41 @@ receipt.accepted, receipt.book_root          # True, the new root
 clearing.submit(proposal).accepted           # False: "already filled"
 ```
 
+### 7.1 Getting the address to the courier
+
+Matching runs on cells; a delivery needs a door. The door is *settlement*
+text, never vocabulary: give it to the place node, and it never enters an
+offer, an id or the catalogue.
+
+```console
+$ loop place home 46.05,14.50,5km Trubarjeva 12, 4th floor, ring twice
+$ loop want ride 'where(home)' 5
+...
+  note     handoff where(home): Trubarjeva 12, 4th floor, ring twice — sealed to the counterparty at clearing
+```
+
+Nothing is sent anywhere. Once a loop clears, `loop watch` (or `watch
+--once` in a script) reports your fills — the fill record *is* the
+notification — and seals each remembered text to the leg counterparty's
+public key, recovered from the signature on their own offer, writing it
+beside your filled offer in your own book. The courier's `loop watch`
+reads the fold they already follow and opens it with their `bee_signer`:
+
+```console
+$ loop watch --once                    # the courier
+filled   4f1c…  in loop 9a2e…: 0x1563… gives ride to 0x19E7…
+handoff  from 0x19E7… for loop 9a2e…: where(home): Trubarjeva 12, 4th floor, ring twice
+```
+
+`loop handoff ID TEXT` replaces the text for one offer; `loop handoffs`
+lists what was sealed to you. Both makers need the `sig` extra and a
+`bee_signer`: the same key that owns a feed and signs offers is the key
+things are sealed to, so there is no registry. Someone offering courier
+service only to harvest addresses learns one per *cleared* obligation —
+bonded and slashable once P3 lands — and a maker who wants to disclose
+nothing names a locker or a public pickup place instead
+(`docs/plans/P1-spacetime-terms.md` §4).
+
 ## 8. The solver agent — and then federation
 
 Everything above, as one loop of one method — and as one script. The

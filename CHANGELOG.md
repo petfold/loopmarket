@@ -11,6 +11,21 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Sealed handoffs and `watch`** (`docs/plans/P1-spacetime-terms.md` §4,
+  decided with Peter 2026-09-12): the address is settlement text on the
+  place node (`loop place NAME LAT,LON,R [ADDRESS...]`), never vocabulary
+  or record. After a loop clears, `loop watch` reports the maker's fills
+  (the fill record is the notification), seals each remembered text to the
+  leg counterparty's public key — recovered from the signature on their
+  own offer, no registry — and writes it as `handoff/<loop>/<offer>` beside
+  the maker's filled offer in their own book; the counterparty's `watch`
+  opens it with `bee_signer`. `loop handoff ID TEXT` sets the text for one
+  offer, `loop handoffs` lists what was sealed to you, the `interval`
+  setting paces `watch`. New module `loopmarket.handoff` (ECIES over the
+  makers' secp256k1 keys; the `sig` extra gains coincurve and
+  cryptography), `sigs.recover_public_key`, registry
+  `attach_handoff`/`handoff`/`handoffs`/`loop_of`, and fold admission of a
+  maker's own handoffs only.
 - **The v3 offer record** (`docs/plans/P1-spacetime-terms.md` step 5,
   decided with Peter 2026-09-12): no `service` window, no `where` disc —
   where and when a thing changes hands are role terms in the conjunction

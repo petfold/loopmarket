@@ -298,8 +298,9 @@ the record.
   counterparty only. A shop or venue may instead publish its node with
   the address in the shared catalogue. Not a gazetteer hierarchy of
   country/city/street: a bootstrap problem the cell already answers.
-  Tooling to follow on Peter's word: `place NAME LAT,LON,R [ADDRESS]`
-  storing the text on the node, `show` printing it for one's own offers.
+  **Built 2026-09-12:** `place NAME LAT,LON,R [ADDRESS]` stores the text on
+  the node; an offer naming the place shows it in its approval block and
+  remembers it per offer (`handoff ID TEXT` overrides).
 - *How the address reaches the courier — an encrypted sidecar, not a
   message* (Peter, 2026-09-12: no side channel; an adversary may offer
   courier service only to harvest addresses). Makers already hold
@@ -319,7 +320,12 @@ the record.
   settlement mode; coarse-first disclosure is the maker's dial). Home: P3's
   settlement channel (`P3-guarantee-coupling.md`), P4 Tier 1 by
   construction; ontodag's deterministic encrypted store is the later seam
-  for a whole private place layer. To build on Peter's word.
+  for a whole private place layer. **Built 2026-09-12:** `handoff.py`
+  (ECIES: ephemeral key, ECDH, HKDF-SHA256, AES-GCM), `sigs.recover_public_key`,
+  `OfferRegistry.attach_handoff`/`handoff`/`handoffs`/`loop_of`, fold
+  admission of a maker's own handoffs, and the CLI's `watch`, `handoff`,
+  `handoffs` (`tests/test_handoff.py`: sealing, recovery, the sidecar and
+  its admission, and the two-maker flow end to end).
 - *Whose job, when, where; and how anyone learns they cleared* (Peter,
   2026-09-12). A smart contract cannot keep a secret — everything it holds
   is public — so "encrypt to the contract, it re-encrypts to the courier"
@@ -338,7 +344,7 @@ the record.
   with GSOC (per-maker topic from the address — the same mechanism the P1
   announcement channel wants, `P1-federated-book.md`); the P2 contract's
   clearing event as a third signal. The book stays the authority a client
-  verifies against.
+  verifies against. **Built 2026-09-12** as `loop watch [--once]`.
 - *Time was exact already.* `when(a..b)` over fixed ISO-8601 UTC seconds;
   calendar values are inclusive, `TimeWindow` is half-open, so the
   encoding rule is `[start, end-1]` — `dimensions.time_term`'s convention,

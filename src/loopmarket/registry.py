@@ -4,6 +4,7 @@ Layout (one book = one RecordStore, one root reference per version):
 
     offer/<offer_id>                 -> the offer record (immutable value)
     sig/<offer_id>                   -> detached maker signature (U8, off-feed)
+    handoff/<loop_id>/<offer_id>     -> sealed settlement text (handoff.py)
     withdraw/<offer_id>              -> 1  (monotone tombstone: offer closed)
     fill/<offer_id>                  -> {"loop": <loop_id>}
     loop/<loop_id>                   -> the cleared loop record
@@ -48,6 +49,7 @@ SIG = "sig/"
 WITHDRAW = "withdraw/"
 FILL = "fill/"
 LOOP = "loop/"
+HANDOFF = "handoff/"   # handoff/<loop_id>/<offer_id> -> sealed text (see handoff.py)
 
 
 class PartialLoopError(RuntimeError):
@@ -153,6 +155,38 @@ class OfferRegistry:
         """The offer's detached signature, if one has been attached."""
         key = SIG + offer_id
         return self.store.get(key) if self.store.contains(key) else None
+
+    def loop_of(self, offer_id: str) -> str | None:
+        """The loop that filled `offer_id`, if any."""
+        key = FILL + offer_id
+        rec = self.store.get(key) if self.store.contains(key) else None
+        return rec.get("loop") if isinstance(rec, dict) else None
+
+    def attach_handoff(self, loop_id: str, offer_id: str, record: dict, *,
+                       fold=None) -> None:
+        """Store a sealed handoff beside a *filled* offer of this book's
+        maker: `handoff/<loop_id>/<offer_id>` (docs/plans/P1-spacetime-terms.md
+        §4; `handoff.seal` makes the record). A sidecar like `sig/` — never
+        in identity, OR-set presence in merges, unread by aggregators. The
+        fill is checked against `fold` when given (fills live in the
+        clearing book, which a maker's own book need not contain), else
+        against this book. Fail closed: no fill, no handoff."""
+        book = fold if fold is not None else self
+        if book.loop_of(offer_id) != loop_id:
+            raise ValueError("handoff for an offer this loop did not fill")
+        if not isinstance(record, dict) or "ct" not in record:
+            raise ValueError("a handoff record is a sealed payload")
+        self.store.put(f"{HANDOFF}{loop_id}/{offer_id}", record)
+
+    def handoff(self, loop_id: str, offer_id: str) -> dict | None:
+        key = f"{HANDOFF}{loop_id}/{offer_id}"
+        return self.store.get(key) if self.store.contains(key) else None
+
+    def handoffs(self) -> Iterator[tuple[str, str, dict]]:
+        """Every (loop_id, offer_id, sealed record) in the book."""
+        for key, rec in self.store.items(HANDOFF):
+            loop_id, _, offer_id = key[len(HANDOFF):].partition("/")
+            yield loop_id, offer_id, rec
 
     def mark_filled(self, offer_ids: Iterable[str], loop_id: str,
                     loop_record: dict) -> None:

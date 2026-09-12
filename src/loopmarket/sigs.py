@@ -80,3 +80,17 @@ def verify_offer_sig(offer: Offer, sig_hex: str) -> bool:
         return recover_maker(offer.offer_id, sig_hex) == offer.maker
     except Exception:  # malformed signature: invalid, never an error
         return False
+
+
+def recover_public_key(offer_id: str, sig_hex: str) -> bytes:
+    """The signer's compressed public key, from a detached signature over
+    an offer id — what `handoff.seal` encrypts to. No key registry: any
+    signature a maker left is their public key."""
+    keys = _keys()
+    sig = keys.Signature(bytes.fromhex(_strip(sig_hex)))
+    return sig.recover_public_key_from_msg_hash(
+        bytes.fromhex(offer_id)).to_compressed_bytes()
+
+
+def _strip(hex_: str) -> str:
+    return hex_[2:] if hex_.startswith("0x") else hex_

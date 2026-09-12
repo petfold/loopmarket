@@ -372,7 +372,7 @@ shell redirect.
 
 | role | commands |
 |---|---|
-| maker | `give`, `want`, `withdraw ID`, `mine`, `place NAME LAT,LON,R` (temporary, §4); `draft [NAME] want\|give ...`, `draft [NAME] A + B`, `drafts`, `offer NAME [PRICE]`, `discard [NAME...]` (§13; a composed draft offers with the v3 record) |
+| maker | `give`, `want`, `withdraw ID`, `mine`, `place NAME LAT,LON,R [ADDRESS]` (temporary, §4), `handoff ID TEXT`, `watch [--once]`, `handoffs` (§14); `draft [NAME] want\|give ...`, `draft [NAME] A + B`, `drafts`, `offer NAME [PRICE]`, `discard [NAME...]` (§13; a composed draft offers with the v3 record) |
 | anyone reading | `offers [CATEGORY...]` (filtered through `satisfies`), `show ID`, `matches`, `status` (roots, counts, settings in force) |
 | solver | `loops` (find on a pinned snapshot, print, never clear), `propose` |
 | clearing / aggregator | `clearing` (local `MockClearing` over the fold — "you are running the clearing house"; `clear` is a one-release alias, §13), `fold` (write a manifest), `audit MANIFEST` (T14 absence proofs) |
@@ -632,6 +632,23 @@ already spells as the minimum order quantity (`30seat..` on a give)
 and which lands with the v3 bump. Different things to different takers
 all-or-none (sirloin here, mince there, only if the whole animal sells)
 is the tying door §10 keeps shut; the reseller is the route.
+
+## 14. Handoffs and watch (built 2026-09-12)
+
+The address is settlement text on the place node (`place NAME LAT,LON,R
+[ADDRESS]`), shown in the approval block of any offer that names the
+place and remembered locally per offer (`$LOOP_HOME/handoffs`; `handoff
+ID TEXT` overrides it). `watch [--once]` polls the fold every `interval`:
+it reports the maker's fills (the fill record is the notification —
+today a poll, GSOC push later, the P2 contract's event after that),
+seals each remembered text to the leg counterparty's public key —
+recovered from the signature on *their* offer, so there is no key
+registry — as `handoff/<loop>/<offer>` in the maker's own book
+(`handoff.py`: ECIES on the makers' secp256k1 keys; the fold admits a
+handoff only beside an offer its owner made), and opens the handoffs
+sealed to the maker with `bee_signer`. `handoffs` lists them. `--once`
+is a predicate for scripts. Design and the harvesting argument:
+`P1-spacetime-terms.md` §4.
 
 ## Open problems
 

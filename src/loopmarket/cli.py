@@ -98,6 +98,9 @@ _SETTINGS = {
     "valid": _Setting(
         "LOOP_VALID", "30d", "--valid DURATION",
         "how long my offers stand (a duration, or an absolute window)"),
+    "interval": _Setting(
+        "LOOP_INTERVAL", "30s", "--interval DURATION",
+        "how often `watch` polls the fold"),
     "now": _Setting(
         "LOOP_NOW", "", "--now TIME",
         "the clock (unix seconds or ISO-8601), for reproducible runs; "
@@ -759,9 +762,11 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
     public value, turn coordinates into a cell and relative time into fixed
     UTC (input vocabulary, cli.md §2), and check the result is vocabulary.
     Head-agnostic on purpose — the CLI knows kinds, never heads (Peter,
-    2026-09-12). Returns (concepts, notes)."""
+    2026-09-12). Returns (concepts, notes, addresses): the addresses are
+    the settlement texts of the named places (`place NAME ... ADDRESS`),
+    kept locally and sealed to the counterparty at clearing (handoff.py)."""
     dag = ontology.dag
-    out, notes = [], []
+    out, notes, addresses = [], [], []
     for c in concepts:
         split = _dims.split_term(c)
         kind = _head_kind(dag, split[0]) if split else None
@@ -788,6 +793,10 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
         term = c
         if value is not None:
             term = f"{head}({value})"
+            address = view.nodes[param].metadata.get("address") \
+                if param in view.nodes else None
+            if address:
+                addresses.append(f"{c}: {address}")
         elif kind == _dims.KIND_PREFIX and "," in param:
             lat, lon, radius = parse_coords(param)
             term = f"{head}({cell_for_coords(lat, lon, radius)})"
@@ -803,7 +812,7 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
                 f"{c}: not a value `{head}` accepts, and not a name the "
                 f"catalogue knows in that dimension")
         out.append(c)
-    return tuple(out), notes
+    return tuple(out), notes, addresses
 
 
 def _bare_key(concepts) -> tuple[str, ...]:
@@ -904,7 +913,7 @@ def _print_table(rows: list[list[str]], args, out) -> None:
 # Commands: maker
 # --------------------------------------------------------------------------- #
 
-Part = namedtuple("Part", "thing notes")
+Part = namedtuple("Part", "thing notes addresses")
 
 
 def _default_terms(parsed: Parsed) -> list[str]:
@@ -939,7 +948,7 @@ def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology) -> Part:
     defaults = _default_terms(parsed)
     for term in defaults:
         notes.append(f"default {term}")
-    concepts, term_notes = _elaborate_terms(
+    concepts, term_notes, addresses = _elaborate_terms(
         session, tuple(parsed.concepts) + tuple(defaults), ontology)
     notes.extend(term_notes)
     for c in concepts:
@@ -954,7 +963,7 @@ def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology) -> Part:
     thing = Thing(concepts, unit=parsed.unit, divisible=parsed.divisible) \
         if parsed.qty is None else \
         Thing(concepts, parsed.qty, parsed.unit, parsed.divisible)
-    return Part(thing, notes)
+    return Part(thing, notes, addresses)
 
 
 def part_line(part: Part) -> str:
@@ -1113,13 +1122,14 @@ def _write_drafts(drafts: list[dict]) -> None:
 
 
 def _part_record(part: Part) -> dict:
-    return {"thing": part.thing.to_record(), "notes": list(part.notes)}
+    return {"thing": part.thing.to_record(), "notes": list(part.notes),
+            "addresses": list(part.addresses)}
 
 
 def _part_from_record(rec: dict) -> Part:
     t = rec["thing"]
     return Part(Thing(tuple(t["concepts"]), t["qty"], t["unit"], t["divisible"]),
-                list(rec["notes"]))
+                list(rec["notes"]), list(rec.get("addresses", [])))
 
 
 def _draft_line(d: dict) -> str:
@@ -1293,12 +1303,17 @@ def _offer_composed(session: Session, parts: list[Part], price, out) -> int:
 
 
 def _publish_offer(session: Session, offer: Offer, notes: list[str],
-                   reused: bool, out) -> int:
+                   reused: bool, out, addresses=()) -> int:
     """Show, ask, publish, commit, print the id — the tail every publishing
-    verb shares."""
+    verb shares. `addresses` are the named places' settlement texts: shown
+    here (this is what the counterparty will read), kept in
+    `$LOOP_HOME/handoffs`, sealed by `watch` once the offer clears."""
     print(render_offer(offer), file=out)
     for note in notes:
         print(f"  note     {note}", file=out)
+    for address in addresses:
+        print(f"  note     handoff {address} — sealed to the counterparty "
+              f"at clearing", file=out)
     if not _confirm(reused, out):
         print("not published", file=_err())
         return 1
@@ -1312,6 +1327,8 @@ def _publish_offer(session: Session, offer: Offer, notes: list[str],
         except Exception:  # noqa: BLE001 — signing is the optional layer
             pass
     session.book.commit()
+    if addresses:
+        _remember_handoff(oid, "\n".join(addresses))
     # By exception to odag's silent-on-success rule: publishing is a
     # commitment, and the id is what `withdraw` needs.
     print(oid, file=out)
@@ -1336,7 +1353,8 @@ def cmd_offer(args, session, out):
         return _offer_composed(session, parts, price, out)
     offer, notes, reused = _offer_from_part(session, d["side"], parts[0], price,
                                             session.catalogue)
-    code = _publish_offer(session, offer, notes, reused, out)
+    code = _publish_offer(session, offer, notes, reused, out,
+                          addresses=parts[0].addresses)
     if code == 0:
         _write_drafts([x for x in drafts if x is not d])
     return code
@@ -1368,7 +1386,7 @@ def line_for(offer: Offer) -> str:
     """The canonical offer line of an `Offer`: everything the maker typed or
     defaulted, in re-parseable spelling; maker, nonce and pins come from
     the session that speaks it."""
-    part = Part(offer.thing, [])
+    part = Part(offer.thing, [], [])
     end = "" if offer.valid.end is None else _iso(offer.valid.end)
     valid = f"valid({_iso(offer.valid.start)}..{end})"
     return f"{offer.kind} {part_line(part)} {valid} {_num(offer.tokens.amount)}"
@@ -1383,8 +1401,12 @@ def _publish(args, session: Session, out, side: str) -> int:
             return _offer_composed(session, parts, parsed.price, out)
     else:
         parsed = parse_offer_tokens(args.tokens)
-    offer, notes, reused = _resolve_offer(session, side, parsed, session.catalogue)
-    return _publish_offer(session, offer, notes, reused, out)
+    part = _resolve_part(session, parsed, session.catalogue)
+    offer, notes, reused = _offer_from_part(
+        session, side, part, parsed.price, session.catalogue,
+        valid_text=parsed.heads.get("valid"))
+    return _publish_offer(session, offer, notes, reused, out,
+                          addresses=part.addresses)
 
 
 def cmd_give(args, session, out):
@@ -1434,7 +1456,10 @@ def cmd_place(args, session, out):
     """The dated bridge (cli.md §4, §11.1): a place node under the cell of
     that radius around that point, written to the personal layer — the
     cell is the place (no disc anywhere since the v3 record). Deleted the
-    day odag accepts `geo(LAT,LON,R)` as input vocabulary."""
+    day odag accepts `geo(LAT,LON,R)` as input vocabulary. The optional
+    ADDRESS is settlement text on the node (P1-spacetime-terms.md §4):
+    never vocabulary, never in a record — shown in the approval block of
+    an offer naming the place and sealed to the cleared counterparty."""
     lat, lon, radius = parse_coords(args.coords)
     personal = session.personal_session
     dag = personal.dag
@@ -1450,8 +1475,212 @@ def cmd_place(args, session, out):
               f"({personal.describe()}) so places hang under geo cells",
               file=_err())
     dag.put(args.name, [f"geo({cell_for_coords(lat, lon, radius)})"])
+    address = " ".join(args.address).strip()
+    if address:
+        dag.nodes[args.name].metadata["address"] = address
     personal.save()
     return 0
+
+
+# --------------------------------------------------------------------------- #
+# Commands: settlement — handoffs and watch (P1-spacetime-terms.md §4)
+#
+# The address reaches the courier through the book: after a loop clears,
+# the place-owner's client seals the text to the leg counterparty's public
+# key (recovered from the signature on their offer) and writes it beside
+# its own filled offer; the counterparty's `watch` reads the fold it already
+# follows and opens it with bee_signer. No side channel. `watch` is also
+# how anyone learns they cleared: the fill record is the notification.
+# --------------------------------------------------------------------------- #
+
+def _handoffs_path() -> str:
+    return os.path.join(_home_dir(), "handoffs")
+
+
+def _seen_path() -> str:
+    return os.path.join(_home_dir(), "seen")
+
+
+def _read_json(path: str, default):
+    if not os.path.exists(path):
+        return default
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _write_json(path: str, value) -> None:
+    os.makedirs(_home_dir(), mode=0o700, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(value, fh, sort_keys=True)
+    os.chmod(path, 0o600)
+
+
+def _remember_handoff(offer_id: str, text: str) -> None:
+    pending = _read_json(_handoffs_path(), {})
+    pending[offer_id] = text
+    _write_json(_handoffs_path(), pending)
+
+
+def _leg_of(fold: OfferRegistry, offer_id: str):
+    """(loop_id, leg, my side) for a filled offer, else None."""
+    loop_id = fold.loop_of(offer_id)
+    if not loop_id:
+        return None
+    rec = fold.store.get(f"loop/{loop_id}")
+    for leg in rec.get("legs", []):
+        if offer_id in (leg["give"], leg["want"]):
+            return loop_id, leg, ("give" if leg["give"] == offer_id else "want")
+    return None
+
+
+def cmd_handoff(args, session, out):
+    """`handoff ID TEXT...`: what the cleared counterparty of my offer ID
+    may read — a door, a gate code, "ring twice". Kept locally; sealed and
+    published by `watch` once the offer is filled (now, if it already is).
+    Replaces the place's address text for this offer."""
+    text = " ".join(args.text).strip()
+    if not text:
+        raise ValueError("handoff ID TEXT — the text the cleared counterparty may read")
+    oid = _resolve_id(session, args.id, mine_only=True)
+    _remember_handoff(oid, text)
+    fold = session.fold()
+    if fold.is_filled(oid):
+        _seal_pending(session, fold, out, only={oid})
+    return 0
+
+
+def _seal_pending(session: Session, fold: OfferRegistry, out, *, only=None) -> bool:
+    """Seal every remembered text whose offer has cleared and whose
+    counterparty left a public key; returns whether anything was sealed."""
+    from .handoff import seal
+    from .sigs import recover_public_key
+
+    pending = _read_json(_handoffs_path(), {})
+    me = session.maker
+    sealed = False
+    for oid, text in sorted(pending.items()):
+        if only is not None and oid not in only:
+            continue
+        found = _leg_of(fold, oid)
+        if found is None:
+            continue
+        loop_id, leg, side = found
+        if session.book.handoff(loop_id, oid) is not None \
+                or fold.handoff(loop_id, oid) is not None:
+            continue
+        other = fold.get(leg["want"] if side == "give" else leg["give"])
+        sig = fold.signature(other.offer_id)
+        if sig is None:
+            print(f"handoff  {oid[:12]} waits: no public key for {other.maker} "
+                  f"(their offer carries no signature)", file=_err())
+            continue
+        record = dict(seal(text, recover_public_key(other.offer_id, sig)),
+                      **{"from": me, "to": other.maker})
+        session.book.attach_handoff(loop_id, oid, record, fold=fold)
+        session.book.commit()
+        print(f"handoff  {oid[:12]} sealed to {other.maker} for loop "
+              f"{loop_id[:16]}…", file=out)
+        sealed = True
+    return sealed
+
+
+def _incoming(session: Session, fold: OfferRegistry):
+    """(key, loop_id, other maker, sealed record) for every handoff a
+    counterparty sealed to me on a loop that filled one of my offers."""
+    me = session.maker
+    for offer in fold.offers(include_filled=True):
+        if offer.maker != me:
+            continue
+        found = _leg_of(fold, offer.offer_id)
+        if found is None:
+            continue
+        loop_id, leg, side = found
+        other_id = leg["want"] if side == "give" else leg["give"]
+        record = fold.handoff(loop_id, other_id)
+        if record is not None and record.get("to") == me:
+            yield f"{loop_id}/{other_id}", loop_id, fold.get(other_id).maker, record
+
+
+def _open_incoming(session: Session, fold: OfferRegistry, out, seen) -> bool:
+    from .handoff import open_
+
+    signer = _configured("bee_signer")
+    news = False
+    for key, loop_id, other, record in _incoming(session, fold):
+        if key in seen:
+            continue
+        if not signer:
+            print(f"handoff  from {other} for loop {loop_id[:16]}…: sealed to me, "
+                  f"but bee_signer is unset — cannot open", file=_err())
+            continue
+        try:
+            text = open_(record, signer)
+        except Exception as exc:  # noqa: BLE001 — a bad key or a tampered record
+            print(f"handoff  from {other} for loop {loop_id[:16]}…: cannot open "
+                  f"({exc.__class__.__name__})", file=_err())
+            continue
+        print(f"handoff  from {other} for loop {loop_id[:16]}…: {text}", file=out)
+        seen.append(key)
+        news = True
+    return news
+
+
+def _watch_pass(session: Session, out) -> bool:
+    """One pass: report my new fills, seal what is pending, open what
+    arrived. Returns whether anything new was reported."""
+    fold = session.fold()
+    me = session.maker
+    seen = _read_json(_seen_path(), {"fills": [], "handoffs": []})
+    news = False
+    for offer in fold.offers(include_filled=True):
+        oid = offer.offer_id
+        if offer.maker != me or oid in seen["fills"]:
+            continue
+        found = _leg_of(fold, oid)
+        if found is None:
+            continue
+        loop_id, leg, side = found
+        other = fold.get(leg["want"] if side == "give" else leg["give"])
+        thing = " ".join(_bare_key((offer if side == "give" else other).thing.concepts))
+        verb = f"gives {thing} to" if side == "give" else f"receives {thing} from"
+        print(f"filled   {oid[:12]} in loop {loop_id[:16]}…: {me} {verb} "
+              f"{other.maker}", file=out)
+        seen["fills"].append(oid)
+        news = True
+    news = _seal_pending(session, fold, out) or news
+    news = _open_incoming(session, fold, out, seen["handoffs"]) or news
+    _write_json(_seen_path(), seen)
+    return news
+
+
+def cmd_watch(args, session, out):
+    """`watch [--once]`: poll the fold every `interval`; report my fills,
+    seal pending handoffs, open incoming ones. `--once` is one pass and a
+    predicate: exit 0 when something new was reported."""
+    interval = duration_s(_configured("interval"))
+    while True:
+        news = _watch_pass(session, out)
+        if args.once:
+            return 0 if news else 1
+        out.flush()
+        session._book = None          # re-open: another writer may have committed
+        _time.sleep(interval)
+
+
+def cmd_handoffs(args, session, out):
+    """Every handoff sealed to me, opened with bee_signer. Exit 1 if none."""
+    from .handoff import open_
+
+    fold = session.fold()
+    signer = _configured("bee_signer")
+    rows = list(_incoming(session, fold))
+    for _key, loop_id, other, record in rows:
+        try:
+            text = open_(record, signer) if signer else "(sealed; set bee_signer to open)"
+        except Exception as exc:  # noqa: BLE001
+            text = f"(cannot open: {exc.__class__.__name__})"
+        print(f"{loop_id[:16]}…  from {other}: {text}", file=out)
+    return 0 if rows else 1
 
 
 # --------------------------------------------------------------------------- #
@@ -1672,7 +1901,11 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop offer NAME [PRICE]          a draft becomes an offer: block, question, publish
   loop withdraw ID           tombstone one of my offers (id or unique prefix)
   loop mine                  my offers, all states
-  loop place NAME LAT,LON,R  a place node with coordinates (temporary bridge)
+  loop place NAME LAT,LON,R [ADDRESS...]  a place node under its cell; the address
+                             is settlement text, sealed to the cleared counterparty
+  loop handoff ID TEXT...    what my offer's cleared counterparty may read
+  loop watch [--once]        poll the fold: my fills, seal handoffs, open incoming
+  loop handoffs              what counterparties sealed to me (opened with bee_signer)
   loop offers [CATEGORY...]  open offers in the fold (filtered by satisfies)
   loop show ID               one offer, fully — the approval block
   loop matches               every feasible handoff in the fold
@@ -1766,7 +1999,22 @@ def build_parser():
     p = sub.add_parser("place", add_help=False)
     p.add_argument("name")
     p.add_argument("coords")
+    p.add_argument("address", nargs="*")
     p.set_defaults(func=cmd_place)
+
+    p = sub.add_parser("handoff", add_help=False)
+    p.add_argument("id")
+    p.add_argument("text", nargs="*")
+    p.set_defaults(func=cmd_handoff)
+
+    p = sub.add_parser("handoffs", add_help=False)
+    _add_output_flags(p)
+    p.set_defaults(func=cmd_handoffs)
+
+    p = sub.add_parser("watch", add_help=False)
+    p.add_argument("--once", action="store_true")
+    _add_output_flags(p)
+    p.set_defaults(func=cmd_watch)
 
     p = sub.add_parser("offers", add_help=False)
     p.add_argument("categories", nargs="*")

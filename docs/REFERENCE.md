@@ -98,8 +98,9 @@ and one a `Tokens` whose `issuer == maker` (invariant U1); `bond >= 0`;
 `bond`, `oracle`, `arbitrator` are carried in identity from day one but
 only `oracle` is enforced today (clearing's refusal gate).
 
-### `give(maker, thing, amount, *, service, where, valid, **kw) -> Offer`
-### `want(maker, thing, amount, *, service, where, valid, **kw) -> Offer`
+### `give(maker, thing, amount, *, valid, service=None, where=None, **kw) -> Offer`
+### `want(maker, thing, amount, *, valid, service=None, where=None, **kw) -> Offer`
+A v3 record by default; passing `service`/`where` yields the v2 field form.
 Convenience constructors; `**kw` passes through (`nonce=`, pins, etc.).
 Splat `**Ontology.pins` to pin the catalogue.
 
@@ -168,6 +169,9 @@ Reading:
 | `.get(offer_id) -> Offer` | `KeyError` if absent |
 | `.is_filled(offer_id)` / `.is_withdrawn(offer_id)` | |
 | `.signature(offer_id) -> str | None` | |
+| `.loop_of(offer_id) -> str | None` | the loop that filled the offer |
+| `.attach_handoff(loop_id, offer_id, record, *, fold=None)` | store a sealed handoff (`handoff.seal` + `from`/`to`) beside my *filled* offer, `handoff/<loop_id>/<offer_id>`; the fill is checked against `fold` (the clearing book) when given; `ValueError` otherwise |
+| `.handoff(loop_id, offer_id) -> dict | None`, `.handoffs()` | read the sidecars |
 | `.offers(*, now=None, include_filled=False)` | active offers: fills and tombstones filtered, expiry filtered when `now` given; `include_filled=True` disables all filtering (full-book scan) |
 | `.ids_by_index(prefix)` | offer ids under an `idx/` prefix — meaningful only on an aggregator's derived-index store |
 | `.verify_loop_atomicity()` | raises `PartialLoopError` unless every `loop/` record holds all its fills and every fill points at a present loop (U11) |
@@ -333,6 +337,21 @@ Signatures live *beside* offers (`sig/` keys), never inside
 
 ---
 
+## 10b. `loopmarket.handoff` — sealed handoffs (the address reaches the courier)
+
+Settlement text — the door, the gate code — sealed to the leg counterparty's
+public key and written into the place-owner's own book after clearing
+(`docs/plans/P1-spacetime-terms.md` §4). ECIES over the makers' secp256k1
+keys: ephemeral key, ECDH, HKDF-SHA256, AES-256-GCM. Needs the `sig` extra
+(coincurve, cryptography); imports lazily.
+
+| function | meaning |
+|---|---|
+| `seal(text, recipient_public_key) -> dict` | `{"v": 1, "epk", "nonce", "ct"}` (hex); a fresh ephemeral key each call |
+| `open_(record, private_key_hex) -> str` | raises on a wrong key or a tampered record |
+| `public_key_of(private_key_hex) -> bytes` | compressed SEC1 |
+| `sigs.recover_public_key(offer_id, sig_hex) -> bytes` | the signer's public key from a detached signature — no key registry |
+
 ## 11. `loopmarket.federation` — the aggregator
 
 Constants: `MAKER = "maker"`, `CLEARING = "clearing"` (book roles).
@@ -391,6 +410,7 @@ sig/<offer_id>          detached maker signature, hex (never in identity)
 withdraw/<offer_id>     1 — monotone tombstone: the offer is closed
 fill/<offer_id>         {"loop": <loop_id>} — pure function of the decision
 loop/<loop_id>          the cleared proposal record
+handoff/<loop_id>/<offer_id>  sealed settlement text, the place-owner's own filled offer (maker books; folded only for the owner)
 idx/c/<concept>/<id>    1 — aggregator-derived only
 idx/t/<bucket>/<id>     1 —      "
 idx/g/<prefix>/<id>     1 —      "
@@ -584,7 +604,10 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `want [QTY] CAT\|TERM... [PRICE]` | the other side |
 | | `withdraw ID` | tombstone one of my open offers (id or unique prefix); filled refuses |
 | | `mine` | my offers, all states |
-| | `place NAME LAT,LON,RADIUS` | a place node under its `geo(cell)` with `{"disc": [lat, lon, r]}` in metadata, written to odag's active store (temporary bridge; adopts the prelude there if absent) |
+| | `place NAME LAT,LON,RADIUS [ADDRESS...]` | a place node under the cell containing that radius, written to odag's active store (temporary bridge; adopts the prelude there if absent); the address is settlement text on the node, shown in the block of an offer naming the place and sealed to the cleared counterparty |
+| | `handoff ID TEXT...` | what my offer's cleared counterparty may read (replaces the place text for this offer); kept in `$LOOP_HOME/handoffs`, sealed by `watch` once filled |
+| | `watch [--once]` | poll the fold every `interval`: report my fills, seal pending handoffs to the counterparty's key (from the signature on their offer), open incoming ones with `bee_signer`; `--once` is one pass, exit 1 when nothing new |
+| | `handoffs` | every handoff sealed to me, opened (exit 1: none) |
 | | `want PART + PART... PRICE` | a composed want on one line: resolves every part, renders the composed block, **refuses** until the v3 record carries parts (exit 1, nothing published) |
 | | `draft [NAME] want\|give ...` | stage one resolved offer (price optional) or part in `$LOOP_HOME/drafts` (a file, never the book; no id); re-drafting a name replaces it; numbers name the unnamed |
 | | `draft [NAME] A + B ...` | compose drafts (want side only, flattening, a priced part refused); a single name copies |
@@ -613,11 +636,12 @@ carrying parts, fills naming every give consumed).
 `show` uses — byte-identical for the same offer (gate G4): side and
 concepts, maker, quantity with its *reading* ("up to 10 kg, divisible";
 "3, indivisible"; a want's point with the note that a floor is not
-encodable yet), price and unit price on the maker's scale, service and
-validity windows in UTC and local time, the disc, the pins, bond /
-oracle / arbitrator, nonce, `offer_id`. Below the block, `note` lines:
-the place name, a reused price with its source offer and age, and every
-name→value substitution. The nonce is `now` in milliseconds plus the
+encodable yet), price and unit price on the maker's scale, the validity window in UTC
+and local time ("until withdrawn" when open), the pins, bond / oracle /
+arbitrator, nonce, `offer_id`. Below the block, `note` lines: every
+name→value and spelling→term substitution, the defaults added from
+`terms`, a reused price with its source offer and age, and the handoff
+texts that will be sealed to the counterparty. The nonce is `now` in milliseconds plus the
 maker's offer count in the book, so a fixed `now` still gives identical
 lines distinct ids.
 
@@ -640,7 +664,8 @@ loop config (owner-readable, 0600); secrets print masked.
 | `peers` | `LOOP_PEERS` | none | read-only books folded into every answer: `rs:PATH`, `swarm:TOPIC@OWNER`; comma-separated. A trusted OR-set union today (U8 admission needs owners: the `fold` command) |
 | `maker` | `LOOP_MAKER` | none | my identity; unset with `bee_signer` set and `[sig]` installed ⇒ the key's address, and offers get detached signatures |
 | `terms` | `LOOP_TERMS` | none | terms added to every offer whose line does not name that head, e.g. `where(home) when(..+90d)`; unset ⇒ anywhere, any time |
-| `valid` | `LOOP_VALID` | `30d` | how long offers stand |
+| `valid` | `LOOP_VALID` | `30d` | how long offers stand (`A..` until withdrawn) |
+| `interval` | `LOOP_INTERVAL` | `30s` | how often `watch` polls |
 | `now` | `LOOP_NOW` | wall clock | the clock: unix seconds or an ISO-8601 literal |
 | `confirm` | `LOOP_CONFIRM` | `auto` | `auto` / `on` / `off` |
 | `render`, `limit` | `LOOP_RENDER`, `LOOP_LIMIT` | `auto` | as odag: tables and 50 rows at a terminal, raw and unlimited in a pipe |
