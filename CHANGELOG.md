@@ -30,6 +30,9 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   `cli.line_for` round-trip an `Offer` and its canonical line.
 - `where(LAT,LON,R)` as a literal place, the spelling `place` takes, so a
   canonical draft line re-parses to the same disc.
+- Live-checked on a Bee 2.8.2 light node after the changes: both gated
+  Swarm suites pass (5m38s), and the triangle script on a Swarm feed
+  clears in 58s to the same `loop_id` and book root as before.
 
 ### Fixed
 

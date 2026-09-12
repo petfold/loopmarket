@@ -508,7 +508,9 @@ decide something the design left implicit.
   (`cdbcb7b2…`), and a fresh session on the same topic read back
   `offers = 6 (filled 6)` under the same root. One commit per `give`
   is the shape's cost — each is a feed update; a batch-level commit is
-  the obvious speed-up if scripts grow.
+  the obvious speed-up if scripts grow. Re-run 2026-09-13 morning with
+  `clearing` as the verb: 58s, identical `loop_id` and book root
+  (`05e17fef…`) — a fixed `now` makes the live book byte-reproducible.
 - **The one private import** is `_open_catalogue` (odag's `Session`
   over a store spec, plus pushing loopmarket's `--bee-*` flags into
   odag's flag layer), isolated and dated; §11.3 deletes it.
