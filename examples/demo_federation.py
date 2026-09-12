@@ -126,11 +126,18 @@ else:
         "local": [], "weekly": [],
         "vegetable-box": ["produce", "local", "weekly"],
     })
+# Service roles (docs/plans/P1-spacetime-terms.md §3, 2026-09-12): heads
+# under the marker `service-role` match by overlap — a route's `from`/`to`
+# over geo cells, a transport's `depart`/`arrive` windows over time. Seed
+# vocabulary, one value space per head; the core knows only the marker.
+SERVICE_ROLES = {"from": "geo", "to": "geo", "depart": "time", "arrive": "time"}
+catalogue.declare_service_roles(SERVICE_ROLES)
 t0 = time.time()
 committed(catalogue)
 pins = catalogue.pins
 print(f"catalogue committed in {time.time() - t0:.1f}s: "
       f"root={short(catalogue.root)}")
+
 
 
 def lineage(name):

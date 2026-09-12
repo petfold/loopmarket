@@ -27,6 +27,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   No record change: the `service`/`where` field gates still run beside it,
   and a catalogue that declares no roles behaves exactly as before. The
   fields leave at the v3 bump, the package's step 5.
+- **Role terms in candidate generation** (step 4 of the same package):
+  `DimensionIndex` files a give under its service-role terms and
+  `candidates` asks overlap per role head the want names, plus the gives
+  silent on that head — place prunes through cells for the first time.
+  Recall-exact against the baseline over randomized books carrying
+  `from`/`to`/`depart`/`made_in` terms. `Ontology.split_roles` and
+  `Ontology.meet` are public. The example seeds (`triangle.od`, both
+  demos) declare `from`/`to` over `geo` and `depart`/`arrive` over `time`
+  under `service-role`; `triangle.od` carries ontodag's prelude for it.
 - **Drafts and composed wants at the command line** (`docs/plans/cli.md`
   §13, `P2-loop-selection.md` §10 "Declared parts", decided with Peter
   2026-09-12): a theatre ticket with transport is one want with two parts,

@@ -325,7 +325,10 @@ the record.
      unit declarations, which time and geo do not need; a role over a
      linear head with declared units would fail closed).
 
-4. **The shared catalogue carries the roles; the index files them.**
+4. **The shared catalogue carries the roles; the index files them — done
+   2026-09-12** (`triangle.od` with the prelude, both demos,
+   `DimensionIndex` role-aware, `TestRoleTerms` recall-exact; the private
+   `service-time`/`service-cell` heads stay for the v2 fields until v3).
    ~~The four-head table leaves the core~~ (done 2026-09-12:
    `declare_service_roles({head: base})`, no default); the roles are
    declared in the example catalogues and by the CLI's convenience layer (`catalogue-bootstrap.md`'s release

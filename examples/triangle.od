@@ -1,4 +1,32 @@
 # ontodag store v1 — the triangle demo's catalogue (examples/demo_triangle.py)
+# ontodag's prelude (what `odag prelude` merges), so roles can hang under geo/time
+dimension
+linear-dimension dimension
+calendar-dimension dimension
+prefix-dimension dimension
+dominance-dimension dimension
+count-dimension dimension
+weight linear-dimension
+length linear-dimension
+duration linear-dimension
+area linear-dimension
+volume linear-dimension
+speed linear-dimension
+pressure linear-dimension
+temperature linear-dimension
+energy linear-dimension
+count count-dimension
+time calendar-dimension
+geo prefix-dimension
+size dominance-dimension
+# service roles (docs/plans/P1-spacetime-terms.md §3): heads under service-role
+# match by overlap — a route's places, a transport's windows; one value space each
+service-role
+from geo service-role
+to geo service-role
+depart time service-role
+arrive time service-role
+# the triangle's trades
 service
 lesson service
 music-lesson lesson

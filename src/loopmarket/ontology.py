@@ -211,16 +211,16 @@ class Ontology:
         "anywhere". Same-head terms that are provably disjoint make the
         conjunction empty and match nothing.
         """
-        offered_roles, offered_plain = self._split_roles(offered)
-        wanted_roles, wanted_plain = self._split_roles(wanted)
+        offered_roles, offered_plain = self.split_roles(offered)
+        wanted_roles, wanted_plain = self.split_roles(wanted)
         if offered_roles is None or wanted_roles is None:
             return False
         if not all(any(self.covers(w, o) for o in offered_plain)
                    for w in wanted_plain):
             return False
         try:
-            offered_meets = {h: self._meet(h, ts) for h, ts in offered_roles.items()}
-            wanted_meets = {h: self._meet(h, ts) for h, ts in wanted_roles.items()}
+            offered_meets = {h: self.meet(h, ts) for h, ts in offered_roles.items()}
+            wanted_meets = {h: self.meet(h, ts) for h, ts in wanted_roles.items()}
         except ValueError:  # a value the head's grammar refuses
             return False
         if None in offered_meets.values() or None in wanted_meets.values():
@@ -237,10 +237,11 @@ class Ontology:
                 return False
         return True
 
-    def _split_roles(self, concepts: Iterable[str]):
+    def split_roles(self, concepts: Iterable[str]):
         """Partition a conjunction into ({role head: [terms]}, [the rest]).
         Returns (None, rest) when a service-role term is not interpretable
-        vocabulary — the caller fails closed."""
+        vocabulary — the caller fails closed. Public so candidate generators
+        (`dimensions.DimensionIndex`) split exactly as the exact check does."""
         roles: dict[str, list[str]] = {}
         plain: list[str] = []
         for c in concepts:
@@ -253,9 +254,9 @@ class Ontology:
             roles.setdefault(split[0], []).append(c)
         return roles, plain
 
-    def _meet(self, head: str, terms: list[str]) -> str | None:
+    def meet(self, head: str, terms: list[str]) -> str | None:
         """The intersection of same-head terms as one canonical term, or
-        None when it is provably empty. Within a dimension meets are exact
+        None when it is provably empty (ValueError for a malformed value). Within a dimension meets are exact
         (ontodag DIMENSIONS.md §8); a conjunction *is* the meet of its
         terms, so two `from(...)` on one offer mean their intersection."""
         kind = self.head_kind(head)

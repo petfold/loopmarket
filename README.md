@@ -52,7 +52,7 @@ agent.step()                          # snapshot → match → hunt loops → cl
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 105 tests (two need a live Bee node)
+python3 -m pytest tests/ -v           # 107 tests (two need a live Bee node)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
@@ -76,8 +76,10 @@ one-screen version; the design record with its reasons is
 [`docs/plans/cli.md`](docs/plans/cli.md).
 
 Candidate generation can also run through ontodag's **parametric
-dimensions**: `DimensionIndex` files gives under their exact service window
-and centre cell, and `candidate_matches_indexed` prunes by concept cones
+dimensions**: `DimensionIndex` files gives under their exact service window,
+their centre cell and their service-role terms (`from(u2e4)`, `depart(...)`,
+matched by overlap; place prunes through cells since 2026-09-12), and
+`candidate_matches_indexed` prunes by concept cones
 and window overlap — provably the same matches as the exhaustive baseline
 (the recall test enforces set-equality), with far fewer exact checks. The
 index is a derived, per-solver copy; the shared catalogue and its pinned

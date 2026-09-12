@@ -189,7 +189,14 @@ heads under the marker node `service-role` (`when`, `where`, `from`,
 `to`) match by overlap, all other terms by containment, so `made_in(...)`
 under `geo` is descriptive and `from(...)` under `geo` is a handover
 place. `Ontology.satisfies` implements the rule since the same day, with
-no record change yet: the field gates run beside it until v3.
+no record change yet: the field gates run beside it until v3. Step 4 of
+that package landed the same evening: the example seeds declare the roles
+(`from`/`to` over `geo`, `depart`/`arrive` over `time`; `triangle.od`
+carries ontodag's prelude for the purpose), and `DimensionIndex` files a
+give under whatever role terms it carries and asks overlap per role head
+the want names, plus the gives silent on that head — so place prunes at
+last, through cells, the truth for role terms; the v2 disc keeps its exact
+check until v3.
 
 ## 4. The catalogue (ontology.py)
 

@@ -39,6 +39,13 @@ ontology = Ontology().load({
     "vegetable-box": ["produce", "local", "weekly"],
 })
 
+# Service roles (docs/plans/P1-spacetime-terms.md §3, 2026-09-12): heads
+# under the marker `service-role` match by overlap — a route's `from`/`to`
+# over geo cells, a transport's `depart`/`arrive` windows over time. Seed
+# vocabulary, one value space per head; the core knows only the marker.
+SERVICE_ROLES = {"from": "geo", "to": "geo", "depart": "time", "arrive": "time"}
+ontology.declare_service_roles(SERVICE_ROLES)
+
 # --- the book ------------------------------------------------------------------
 
 registry = OfferRegistry(RecordStore(MemoryBytesStore()))

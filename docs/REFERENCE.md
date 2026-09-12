@@ -231,11 +231,13 @@ baseline (enforced by test).
 | `cell_term(offer)` | the centre cell as one `service-cell(...)` prefix value |
 | `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) |
 | `.file(offer) -> bool` | index a give; `False` for non-gives and unknown vocabulary (U7's outcome) |
-| `.candidates(want) -> set[str]` | give ids inside every wanted cone with overlapping windows |
+| `.candidates(want) -> set[str]` | give ids inside every wanted plain cone, with overlapping service windows, and — per service-role head the want names (`from(...)`, `depart(...)`) — overlapping that head's meet or silent on it (absent = unconstrained). Role terms prune by cell; a give with provably disjoint same-head terms is not filed (it matches nothing) |
 | `candidate_matches_indexed(offers, ontology, *, now, index=None)` | drop-in for `candidate_matches` |
 
-Geo deliberately stays with the exact check: sibling cells share no
-prefix, so a cell filter would lose recall.
+The v2 `where` disc stays with the exact check (a disc is not a cell; its
+centre cell is an index fact only); place *role terms* prune exactly, since
+cells are the truth for them (`docs/plans/P1-spacetime-terms.md` §4–5).
+The private `service-time`/`service-cell` heads retire with the v3 record.
 
 ---
 
