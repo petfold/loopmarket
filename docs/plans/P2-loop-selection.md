@@ -6,7 +6,7 @@ ILP); exact winner determination for small beats with the deterministic
 greedy as fallback; a failure-aware expected-settled-surplus objective;
 chains admitted receive-before-give only until the bond fabric exists;
 pre-commit netting under maker-declared tolerances, one netting domain per
-beat; lexicographic tie-breaking extending U6; composition on the want side only — one want, many unconditional gives, the buyer pays once and clearing splits (§10, 2026-09-07); the cleared object is a value-conserving *circulation* in a generalized flow network with hyper-legs — cycles are its smallest case, clearing prices are its node potentials, cycle cancelling its classical solver (§11, 2026-09-07). Open here: chain atomicity
+beat; lexicographic tie-breaking extending U6; composition on the want side only — one want, many unconditional gives, the buyer pays once and clearing splits (§10, 2026-09-07; declared parts first and a give-side *floor* instead of give-side parts, 2026-09-12); the cleared object is a value-conserving *circulation* in a generalized flow network with hyper-legs — cycles are its smallest case, clearing prices are its node potentials, cycle cancelling its classical solver (§11, 2026-09-07). Open here: chain atomicity
 across beats; failure-prior cold start and its wash-loop interaction; the
 mixed divisible/indivisible decomposition; tolerance semantics under U9.
 
@@ -371,14 +371,79 @@ any other leg; the reseller routing (courier buys, then sells delivered)
 is the *maker's* choice to offer, and then the courier bears it. Both are
 expressible; the protocol prefers neither.
 
+**Declared parts (decided 2026-09-12).** A third example set the order
+of work: a theatre ticket with transport to the theatre — no ticket
+without a way there, no transport without a ticket. The theatre gives a
+ticket, a bus company gives carriage of a person from one cell to
+another in a window; neither cares about the bundle, only the buyer
+does, so it is want-side composition exactly as above, with the person
+as the thing being moved. What the case adds is *who names the parts*.
+The operator rule above is the **discovered** form: the buyer states the
+end state ("brush at the reception at 00:35") and the solver binds the
+courier. The theatre case is the **declared** form: the buyer names the
+parts — a ticket at the venue in the evening window, transport from home
+to the venue arriving before it — and the solver only has to find one
+give per part. Declared parts are the simpler species, need no operator
+algebra and no spacetime terms in the shared catalogue, and are what a
+person types (`cli.md` §13: `draft`, `drafts`, `compose`); they are the
+first form to build, and the discovered form lands later on the same
+record. Fixed by the same ruling:
+
+- *Record (v3).* A want may carry **parts**: a list of two or more
+  `Thing`s, canonically ordered by their canonical bytes so U2 holds; a
+  `fill/` of a composed want names every give it consumed and the
+  quantity taken from each (already listed under "what changes where").
+  Gives are unchanged: one `Thing`.
+- *Matching.* `check_composition(want, gives)`: exactly one give per
+  part, each part covered by its give under `check_match`'s own gates
+  (kinds, validity, window overlap, disc intersection, quantity and
+  unit, pins, subsumption), the gives from any makers other than the
+  buyer — two parts from one maker are fine — and the buyer's node
+  balanced on its own scale under the clearing split. Clearing re-runs
+  it (U3).
+- *No prices on parts.* The buyer prices the composed thing once, "up
+  to 60"; the split across the gives is clearing's
+  (`P2-clearing-pricing.md`), never the buyer's guess.
+- *No cross-part constraints in the protocol.* "Transport must arrive
+  before curtain" is the buyer's spelling of the two windows —
+  `cli.md` §6's rule, declare in the direction you know — not a
+  constraint language. A part's terms may name catalogue names that
+  resolve to values (`from(home)` → `from(u24m)`) exactly as a simple
+  want's do.
+- *Drafts are not records.* A staged part lives at the buyer's edge
+  until composed; a "draft" in the book would be a conditional offer,
+  the shape rejected above.
+
+**The give side gets a floor, not parts (same ruling).** Every case
+that looks like a composed give falls into one of three: (i) one maker,
+one taker, several things that go together — the packed box, the
+furniture lot, the bicycle-and-helmet kit — is *one indivisible give of
+one thing*, the kit as a category, nothing to compose; (ii) one maker,
+many interchangeable takers, all or none — the chartered bus that runs
+only if thirty seats sell, the workshop with a minimum of eight, the
+production run, the crowdfunding threshold, the cow that cannot be half
+slaughtered — is the **mirror of aggregation**: one give carrying a
+*minimum fill*, same category, quantities adding, a lower bound on one
+edge of the flow (Hoffman's condition decides feasibility), which
+`cli.md` §6 already spells as the minimum order quantity `30seat..` and
+which rides the v3 bump with the integer-granularity decision below;
+(iii) one maker, many takers, *different* things, all or none — sirloin
+to one buyer and mince to another only if the whole animal sells — is
+the tying door this document keeps shut, and the reseller who buys the
+cow and sells cuts is the market's route. So composition stays
+want-side only; the v3 bump carries want parts, fills naming gives with
+per-give quantities, the give-side minimum, and the integer-granularity
+decision (open problems).
+
 **Open under this heading.** Operator algebra beyond one hop (container
 then van: two place operators compose; the intermediate coordinate is a
-free variable the solver binds); whether a want may name *alternative*
-compositions (any saw, or a jigsaw plus a blade) — an OR on the want side
-that the cone intersection already gives for categories but not for
-operators; and the recall of composition search — candidate generation
-over sets is the combinatorial part this document otherwise avoids, and
-it is the solvers' problem to be good at, not clearing's.
+free variable the solver binds); whether a want — now a *part* — may
+name *alternative* compositions (any saw, or a jigsaw plus a blade) — an
+OR on the want side that the cone intersection already gives for
+categories but not for operators (left open 2026-09-12); and the recall
+of composition search — candidate generation over sets is the
+combinatorial part this document otherwise avoids, and it is the
+solvers' problem to be good at, not clearing's.
 
 ## 11. The primitive is a circulation (reframed 2026-09-07)
 

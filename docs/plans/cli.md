@@ -3,7 +3,8 @@
 Status: **built 2026-09-12** — `src/loopmarket/cli.py`, gates G1–G6 in
 `tests/test_cli.py`, the triangle as `examples/triangle.loop` (§12 records
 what landed, the two rulings Peter made that day, and the decisions the
-build forced). Designed 2026-09-11 in discussion with Peter. Decided here: the CLI lives *in the package* as `loop`, a sibling
+build forced; §13, the same evening, specifies composed wants — `draft`,
+`drafts`, `compose` — for the v3 record). Designed 2026-09-11 in discussion with Peter. Decided here: the CLI lives *in the package* as `loop`, a sibling
 of ontodag's `odag`, lifted from it where the code is generic; its grammar
 is ontodag's grammar with exactly two loopmarket-only conventions (a bare
 number first is the quantity, a bare number last is the price); every
@@ -85,9 +86,11 @@ three things:
   spelling is ever wanted it lands upstream (§11) and loopmarket follows.
 - **A bare number first is the quantity, a bare number last is the
   price.** `give 10kg apple 100`; `give apple 100`; `give apple` (§5).
-  odag has neither concept, so these are the only deviations; the long
-  forms `weight(10kg)` and an explicit price are always accepted, so
-  anything valid at the odag prompt is valid here.
+  odag has neither concept, so these are the only deviations — plus, on
+  the want side only, the part separator `+` of a composed want (§13,
+  confirmed 2026-09-12); the long forms `weight(10kg)` and an
+  explicit price are always accepted, so anything valid at the odag
+  prompt is valid here.
 
 ```
 loop give 10kg apple 100
@@ -285,7 +288,7 @@ CLI and by anything above it):
 | `10kg` on a good | want | at least 10 kg | **no** — encoded as the point 10 kg, printed as such |
 | `10kg` on a capacity service | give | up to 10 kg | as divisible capacity |
 | `9kg..11kg`, `10kg..`, `..11kg` | any | band / floor / ceiling | **no** |
-| `10kg..` on a give | give | minimum order quantity | **no** |
+| `10kg..` on a give | give | minimum order quantity — the give-side *floor* (§13, decided 2026-09-12: a flow lower bound, never give-side parts) | **no** |
 
 The band spellings are accepted (they are the grammar) and **refused at
 publish time** with the point spelling named as the fallback, until
@@ -362,7 +365,7 @@ shell redirect.
 
 | role | commands |
 |---|---|
-| maker | `give`, `want`, `withdraw ID`, `mine`, `place NAME LAT,LON,R` (temporary, §4) |
+| maker | `give`, `want`, `withdraw ID`, `mine`, `place NAME LAT,LON,R` (temporary, §4); `draft want ...`, `drafts`, `compose [N...] PRICE`, `discard [N...]` (§13; `compose` publishes with the v3 record) |
 | anyone reading | `offers [CATEGORY...]` (filtered through `satisfies`), `show ID`, `matches`, `status` (roots, counts, settings in force) |
 | solver | `loops` (find on a pinned snapshot, print, never clear), `propose` |
 | clearing / aggregator | `clear` (local `MockClearing` over the fold — "you are running the clearing house"), `fold` (write a manifest), `audit MANIFEST` (T14 absence proofs) |
@@ -508,6 +511,92 @@ decide something the design left implicit.
 - **The one private import** is `_open_catalogue` (odag's `Session`
   over a store spec, plus pushing loopmarket's `--bee-*` flags into
   odag's flag layer), isolated and dated; §11.3 deletes it.
+
+## 13. Composed wants: draft, drafts, compose (decided 2026-09-12)
+
+A theatre ticket with transport to the theatre: you do not want the
+ticket if you cannot get there, nor the transport without the ticket.
+The protocol answer is `P2-loop-selection.md` §10 — composition on the
+want side, the parts *declared* by the buyer, one offer, one fill
+decision, one price, the split clearing's. This section is the CLI's
+half, settled with Peter the same day.
+
+- **`draft want [QTY] CATEGORY|TERM...`** stages one part. It is
+  resolved exactly as `want` resolves a thing — names to values, relative
+  times to absolute UTC, the place to its disc, unknown vocabulary and
+  quantity/time terms refused *now* — and given a stable number. Drafts
+  live in `$LOOP_HOME/drafts`, a local file, never the book: a draft is
+  not an offer, has no price and no id, and nobody can match it. They
+  persist across sessions until composed or discarded, so a person can
+  assemble an evening over days.
+- **`drafts`** lists them, numbered, each in its **canonical one-line
+  spelling** — the resolved part as `compose` will encode it,
+  `from(u24m)`, absolute windows — with the surface spelling the person
+  typed as a note beneath (`from(home)`, `when(today..+7d)`): the same
+  two layers as the approval block (Peter: "drafts show the canonical
+  form, the surface form in the notes").
+- **`compose [N...] PRICE`** composes all drafts, or the numbered
+  subset, into one want priced PRICE the lot: one approval block (every
+  part, one price, one nonce, one id, the notes), one question, one
+  offer published, the composed drafts removed and the rest kept.
+  Grammar: the last bare number is the price, every bare number before
+  it selects a draft — `compose 60` composes everything, `compose 1 3
+  60` composes drafts 1 and 3. Fewer than two parts is an error naming
+  `want`. There are **no prices on parts** (§10 pays once) and no
+  cross-part constraints: transport arriving before curtain is the
+  buyer's spelling of the two windows, §6's rule.
+- **`discard [N...]`** removes drafts; alone, it empties the list and
+  says how many went.
+- **Reading back.** `show ID` renders a composed want with its parts, one
+  block per part under the one price; `mine`/`offers` join the parts
+  with ` + ` in the thing column.
+
+**One line, no drafts (confirmed by Peter 2026-09-12).** Scripts and
+assistants should not need a staging file, so the same composed want has
+a one-line spelling with `+` between parts:
+
+```
+want theatre-ticket hamlet 'when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z)' 'where(venue)' \
+   + transport person 'from(home)' 'to(venue)' 'when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z)' 60
+```
+
+Each part reads as a `want` line without its price — a bare number first
+in a part is that part's quantity — and the last bare number of the line
+is the price of the whole. `drafts` prints exactly this spelling, so the
+canonical listing *is* the one-liner, and `compose` is that line
+assembled. This is a **third loopmarket-only convention**, want side
+only; it reserves a token, not a word — no category is shadowed, and
+`+2h` inside `when(...)` is unaffected — and odag has nothing to say
+about wants, so the one-grammar rule is not strained. Give side: none.
+
+**Built the same evening (2026-09-12).** `draft want ...`, `drafts`,
+`compose [N...] PRICE`, `discard [N...]` and the `+` line are in
+`cli.py`; `compose` and the `+` form resolve every part, render the
+composed block (one part block each, one price, the notes) and then
+*refuse* with this section and `P2-loop-selection.md` §10 named — the G6
+pattern — until `wants` can carry parts; nothing enters the book and the
+drafts are kept. Two details the build fixed: a part's `where(...)` may
+be the coordinate literal `LAT,LON,R` that `place` takes, so the canonical
+line `drafts` prints re-parses to the same disc (the day odag accepts
+`geo(LAT,LON,R)`, §11.1, this maps onto it); and a name in a role term
+takes its *most specific* value — a place hangs under its own cell and,
+by computed containment, under every coarser cell, and ancestors come as
+a set. The v3 bump also brings fills that name every give consumed, so
+`show` can list which gives satisfied which part.
+
+**The give side gets a floor, not parts.** Asked the same day whether a
+composed *give* is ever needed ("something strongly packed up in a
+box?"): no. The box, the lot, the kit are one indivisible give of one
+thing — the kit is a category. The chartered bus that runs only if
+thirty seats sell, the workshop with a minimum of eight, the production
+run, the crowdfunding threshold, the cow that cannot be half slaughtered
+— one maker, many interchangeable takers, all or none — are the mirror
+of §10's six lifters: a **minimum fill on one give**, same category,
+quantities adding, a lower bound on one flow edge, which §6's table
+already spells as the minimum order quantity (`30seat..` on a give)
+and which lands with the v3 bump. Different things to different takers
+all-or-none (sirloin here, mince there, only if the whole animal sells)
+is the tying door §10 keeps shut; the reseller is the route.
 
 ## Open problems
 
