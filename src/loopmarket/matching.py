@@ -9,14 +9,22 @@ problem").
 Conditions, in cheap-to-expensive order:
 
 1. kinds:      one GIVE, one WANT, different makers
-2. validity:   both offers open at `now`
-3. time:       the service windows intersect (a delivery instant exists)
-4. space:      the service discs intersect (a handover point exists)
-5. quantity:   wanted quantity within given quantity (equal, unless
+2. record:     both sides on the same side of the v2/v3 line — a v2
+               offer's place is a disc, a v3 offer's a cell, and a view
+               of one as the other would say what the maker never said
+               (decided 2026-09-12: refuse; repost instead)
+3. validity:   both offers open at `now`
+4. time:       v1/v2 only — the service windows intersect (a delivery
+               instant exists); v3 says it with `when(...)` in step 7
+5. space:      v1/v2 only — the service discs intersect (a handover point
+               exists); v3 says it with `where(...)`/`from(...)`/`to(...)`
+6. quantity:   wanted quantity within given quantity (equal, unless
                divisible), identical units
-6. meaning:    the given thing's concepts satisfy the wanted categories,
-               under the pinned ontology
-7. version:    pinned semantic ground must not move between the two sides:
+7. meaning:    the given conjunction satisfies the wanted one under the
+               pinned ontology — containment for what the thing is,
+               overlap for the service-role terms that say where and when
+               it changes hands (`Ontology.satisfies`)
+8. version:    pinned semantic ground must not move between the two sides:
                ontology roots must agree, registry/contract versions must
                not diverge on their major component (ontodag D10: minor
                skew is vocabulary-additive and interoperates) — and once
@@ -81,12 +89,15 @@ def check_match(give: Offer, want: Offer, ontology: Ontology, *,
     """The exact pairwise check; returns a Match or None."""
     if give.kind != GIVE or want.kind != WANT or give.maker == want.maker:
         return None
+    if (give.v >= 3) != (want.v >= 3):
+        return None
     if not (give.valid.is_open_at(now) and want.valid.is_open_at(now)):
         return None
-    if not give.service.overlaps(want.service):
-        return None
-    if not give.where.intersects(want.where):
-        return None
+    if give.v < 3:
+        if not give.service.overlaps(want.service):
+            return None
+        if not give.where.intersects(want.where):
+            return None
     g, w = give.thing, want.thing
     if w.qty > g.qty or (not g.divisible and w.qty != g.qty):
         return None

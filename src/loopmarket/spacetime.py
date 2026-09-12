@@ -58,17 +58,24 @@ def geohash(lat: float, lon: float, precision: int = 6) -> str:
     return "".join(out)
 
 
-def cell_for(disc: GeoDisc, max_precision: int = 6) -> str:
-    """The finest geohash cell that is not smaller than the disc.
-
-    Coarse-side-safe for indexing the disc's *centre*; boundary-crossing
-    discs may also touch neighbour cells, which is why cells are an index
-    hint, never a correctness dependency.
-    """
+def cell_for_coords(lat: float, lon: float, radius_m: float,
+                    max_precision: int = 6) -> str:
+    """The finest geohash cell not smaller than a radius around a point —
+    the v3 spelling of a place: `where(LAT,LON,R)` at the prompt becomes
+    `where(cell)`, and the cell is what the offer says (the truth, since
+    2026-09-12 — `docs/plans/P1-spacetime-terms.md` §4). The maker who
+    wants a neighbour cell covered names a coarser one."""
     for precision in range(max_precision, 0, -1):
-        if _CELL_M[precision] >= 2 * disc.radius_m:
-            return geohash(disc.lat, disc.lon, precision)
-    return geohash(disc.lat, disc.lon, 1)
+        if _CELL_M[precision] >= 2 * radius_m:
+            return geohash(lat, lon, precision)
+    return geohash(lat, lon, 1)
+
+
+def cell_for(disc: GeoDisc, max_precision: int = 6) -> str:
+    """The centre cell of a v1/v2 disc, an index hint: boundary-crossing
+    discs also touch neighbour cells, which is why, for a disc, the exact
+    check stays `GeoDisc.intersects`."""
+    return cell_for_coords(disc.lat, disc.lon, disc.radius_m, max_precision)
 
 
 def cell_chain(cell: str) -> list[str]:

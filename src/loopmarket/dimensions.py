@@ -17,7 +17,9 @@ queries:
   `Ontology.satisfies` applies). This is where place prunes: role terms
   carry cells, and cells are the truth for them, so a give `from(u2f)`
   never reaches the exact check for a want `from(u2e4x)`;
-- v2 fields: ``dag.get_overlapping(service-time(a..b))`` over the offer's
+- v2 fields (v1/v2 records only; a want sees only gives of its own record
+  line, since `check_match` refuses pairs across the v2/v3 line):
+  ``dag.get_overlapping(service-time(a..b))`` over the offer's
   `service` window — *exact* for the window-overlap gate, because the
   filed value IS the offer's window (no buckets, no quantization error).
   The `where` disc stays with the exact check (``GeoDisc.intersects``): a
@@ -77,6 +79,10 @@ def time_term(window: TimeWindow) -> str:
     return f"{TIME_DIMENSION}({_iso(window.start)}..{_iso(window.end - 1)})"
 
 
+def _line(offer: Offer) -> int:
+    return 3 if offer.v >= 3 else 2
+
+
 def cell_term(offer: Offer) -> str:
     """The offer's centre geohash cell as one prefix value (an index fact,
     not a pruning gate — see the module docstring)."""
@@ -95,6 +101,9 @@ class DimensionIndex:
         self.ontology = ontology            # the exact-check ground truth
         self._dag = ontology.dag.deepcopy()  # derived: catalogue + offers
         self._filed: set[str] = set()
+        # the v2/v3 line: check_match refuses pairs across it (a disc is not
+        # a cell), so a want only ever sees gives of its own record line
+        self._line: dict[int, set[str]] = {2: set(), 3: set()}
         # role head -> the filed gives naming a term of it; the complement
         # is what an overlap query cannot see and a want must still meet
         self._with_role: dict[str, set[str]] = {}
@@ -131,11 +140,11 @@ class DimensionIndex:
                 # empty, `satisfies` matches it against nothing, and
                 # ontodag's disjoint-parents lint would refuse the put
                 return False
-        self._dag.put(
-            offer.offer_id,
-            list(offer.thing.concepts)
-            + [time_term(offer.service), cell_term(offer)])
+        fields = [time_term(offer.service), cell_term(offer)] \
+            if offer.v < 3 else []
+        self._dag.put(offer.offer_id, list(offer.thing.concepts) + fields)
         self._filed.add(offer.offer_id)
+        self._line[_line(offer)].add(offer.offer_id)
         for head in roles:
             self._with_role.setdefault(head, set()).add(offer.offer_id)
         return True
@@ -151,13 +160,14 @@ class DimensionIndex:
         roles, plain = self.ontology.split_roles(concepts)
         if roles is None:
             return set()
-        result = set(self._filed)
+        result = set(self._line[_line(want_offer)])
         if plain:
             result &= {item.name for item in self._dag.get(list(plain))}
         if not result:
             return set()
-        result &= {item.name for item in
-                   self._dag.get_overlapping(time_term(want_offer.service))}
+        if want_offer.v < 3:
+            result &= {item.name for item in
+                       self._dag.get_overlapping(time_term(want_offer.service))}
         for head, terms in roles.items():
             if not result:
                 break

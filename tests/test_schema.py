@@ -51,7 +51,9 @@ def test_version_dispatch_fails_closed():
     rec = o.to_record()
     assert rec["v"] == 2
     with pytest.raises(ValueError):
-        Offer.from_record(dict(rec, v=3))        # unknown future version
+        Offer.from_record(dict(rec, v=4))        # unknown future version
+    with pytest.raises(ValueError):
+        Offer.from_record(dict(rec, v=3))        # v3 defines no service/where
     with pytest.raises(ValueError):
         Offer.from_record({k: v for k, v in rec.items() if k != "v"})
     with pytest.raises(ValueError):

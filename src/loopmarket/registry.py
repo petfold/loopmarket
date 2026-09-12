@@ -264,11 +264,12 @@ def index_offers(store, offers: Iterable[Offer]) -> None:
         oid = offer.offer_id
         for concept in offer.thing.concepts:
             store.put(f"idx/c/{concept}/{oid}", 1)
-        for day in day_buckets(offer.service):
-            for bucket in bucket_chain(day):
-                store.put(f"idx/t/{bucket}/{oid}", 1)
-        for prefix in cell_chain(cell_for(offer.where)):
-            store.put(f"idx/g/{prefix}/{oid}", 1)
+        if offer.v < 3:  # the fields; v3 spacetime is in the conjunction
+            for day in day_buckets(offer.service):
+                for bucket in bucket_chain(day):
+                    store.put(f"idx/t/{bucket}/{oid}", 1)
+            for prefix in cell_chain(cell_for(offer.where)):
+                store.put(f"idx/g/{prefix}/{oid}", 1)
 
 
 # ------------------------------------------------------------------ Swarm wiring
