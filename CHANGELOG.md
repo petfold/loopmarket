@@ -9,6 +9,17 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.3.0] — 2026-09-12
+
+The day's design thread, `docs/plans/P1-spacetime-terms.md`: place and
+time leave the offer's fields for its conjunction (the v3 record), the
+catalogue declares which heads match by overlap, cells are the geo truth,
+and the address reaches the courier through the book.
+The record that will carry composed-want parts, per-fill quantities and
+D9 rationals — called "v3" in 0.2.0's notes — is now **v4**.
+
 ### Added
 
 - **Sealed handoffs and `watch`** (`docs/plans/P1-spacetime-terms.md` §4,

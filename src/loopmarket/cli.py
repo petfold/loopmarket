@@ -1249,7 +1249,7 @@ def cmd_discard(args, session, out):
 def render_composed(maker: str, parts: list[Part], price, valid: TimeWindow,
                     pins: dict) -> str:
     """The approval block of a composed want: every part, one price. When
-    the v3 record lands this is what `show` prints for one (gate G4)."""
+    the v4 record lands this is what `show` prints for one (gate G4)."""
     # the headline names the parts by their bare categories; the terms that
     # place each part in space and time follow under it
     heads = f" {PART_SEP} ".join(" ".join(_bare_key(p.thing.concepts)) for p in parts)
@@ -1267,22 +1267,22 @@ def render_composed(maker: str, parts: list[Part], price, valid: TimeWindow,
         f"           local {_span(valid, _local)}",
         f"  pins     catalogue {pins['ontology_root'][:16] or '-'}  "
         f"registry {pins['registry_version'] or '-'}  "
-        f"contract {pins['contract_version'] or '-'}  v3 (pending)",
+        f"contract {pins['contract_version'] or '-'}  v4 (pending)",
         "  terms    bond 0  oracle countersign  arbitrator -",
-        "  offer_id (none: a composed want is not encodable before the v3 "
+        "  offer_id (none: a composed want is not encodable before the v4 "
         "record)",
     ]
     return "\n".join(lines)
 
 
 _COMPOSE_REFUSAL = (
-    "a composed want is not encodable until the v3 record lets `wants` carry "
+    "a composed want is not encodable until the v4 record lets `wants` carry "
     "parts (docs/plans/cli.md §13, docs/plans/P2-loop-selection.md §10); "
     "nothing was published")
 
 
 def _offer_composed(session: Session, parts: list[Part], price, out) -> int:
-    """Render the composed want and — until the v3 record — refuse to
+    """Render the composed want and — until the v4 record — refuse to
     publish it, the G6 pattern: the grammar is accepted, the encoding is
     not there yet, and the person sees exactly what would have been said."""
     if len(parts) < 2:
@@ -1369,7 +1369,7 @@ def cmd_offer(args, session, out):
 def offer_from_line(line: str, session: "Session | None" = None) -> Offer:
     """`"want 10kg apple where(home) 100"` → the resolved `Offer`, under the
     session's settings (maker, defaults, catalogue), not published. A
-    composed line raises with the v3 refusal."""
+    composed line raises with the v4 refusal."""
     session = session or Session()
     toks = shlex.split(line)
     if not toks or toks[0] not in _VERBS:
@@ -1927,7 +1927,7 @@ to(), depart(), arrive() are heads the catalogue declares under service-role
 CLI interprets is valid(DURATION|A..B|A..) — how long the offer stands
 (A.. is until withdrawn). Relative time and LAT,LON,R are input spellings.
 A composed want (`+` between parts, one price last) renders and is refused
-until the v3 record carries parts (docs/plans/cli.md §13).
+until the v4 record carries parts (docs/plans/cli.md §13).
 Time: now, today, tomorrow, +90d, -2h, ISO dates, A..B.
 
   loop give 10kg apple 100

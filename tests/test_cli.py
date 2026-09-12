@@ -709,7 +709,7 @@ def test_drafts_named_numbered_canonical_and_never_in_the_book(stage):
     assert code == 0 and err.strip() == "2 discarded" and stage("drafts")[0] == 1
 
 
-def test_plus_between_drafts_composes_and_offer_refuses_until_v3(stage, monkeypatch):
+def test_plus_between_drafts_composes_and_offer_refuses_until_v4(stage, monkeypatch):
     stage.ok("draft", "ticket", "want", *TICKET)
     stage.ok("draft", "ride", "want", *RIDE)
     out = stage.ok("draft", "evening", "ticket", "+", "ride")
@@ -726,7 +726,7 @@ def test_plus_between_drafts_composes_and_offer_refuses_until_v3(stage, monkeypa
     # offering the composed draft renders every part, then refuses
     code, out, err = stage("offer", "night", "60")
     assert code == 1
-    assert "not encodable until the v3 record" in err and "cli.md §13" in err
+    assert "not encodable until the v4 record" in err and "cli.md §13" in err
     assert out.startswith("want     hamlet theatre-ticket + ")
     assert "  part 1   hamlet theatre-ticket" in out and "  part 3   person transport" in out
     assert "price    60 (the lot, on amara's scale; split across the parts" in out
@@ -771,7 +771,7 @@ def test_offer_publishes_a_simple_draft_and_removes_it(stage):
 
 def test_one_line_composed_want_is_the_same_block(stage):
     code, out, err = stage("want", *TICKET, "+", *RIDE, "60")
-    assert code == 1 and "not encodable until the v3 record" in err
+    assert code == 1 and "not encodable until the v4 record" in err
     assert out.startswith("want     hamlet theatre-ticket + ")
     assert "  part 2   from(" in out and "price    60" in out
     assert stage("drafts")[0] == 1                       # the line staged nothing
@@ -803,5 +803,5 @@ def test_offer_line_is_pythons_offer_literal(loop):
     assert loop.ok("mine", "--raw") == ""                # a literal publishes nothing
     with pytest.raises(ValueError, match="starts with give or want"):
         cli.offer_from_line("apple 5", loop.session)
-    with pytest.raises(ValueError, match="not encodable until the v3"):
+    with pytest.raises(ValueError, match="not encodable until the v4"):
         cli.offer_from_line("want apple where(home) + apple where(home) 9", loop.session)

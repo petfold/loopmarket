@@ -785,10 +785,10 @@ constraint language: the ride arriving before curtain is you spelling the
 two windows. Draft names are your working memory, never vocabulary; they
 cannot appear in an offer. Today `offer` on a composed draft, like the
 one-line form, renders the whole composed block and then **refuses**: the
-record cannot carry parts until the v3 bump (`docs/plans/cli.md` §13).
+record cannot carry parts until the v4 bump (`docs/plans/cli.md` §13).
 Simple drafts publish now. Composition is want-side only. A kit that
 ships in one box is one indivisible give; a class that only runs if eight
-enrol is a *minimum fill* on one give, also v3; and "sirloin to one
+enrol is a *minimum fill* on one give, also v4; and "sirloin to one
 buyer, mince to another, only if the whole animal sells" is the door the
 design keeps shut — that is a butcher's job.
 

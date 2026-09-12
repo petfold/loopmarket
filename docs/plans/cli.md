@@ -4,7 +4,7 @@ Status: **built 2026-09-12** — `src/loopmarket/cli.py`, gates G1–G6 in
 `tests/test_cli.py`, the triangle as `examples/triangle.loop` (§12 records
 what landed, the two rulings Peter made that day, and the decisions the
 build forced; §13, the same evening, adds drafts and composed wants — `draft`, `+`,
-`offer` — built up to the v3 record's step, and renames `clear` to
+`offer` — built up to the v4 record's step, and renames `clear` to
 `clearing`). Designed 2026-09-11 in discussion with Peter. Decided here: the CLI lives *in the package* as `loop`, a sibling
 of ontodag's `odag`, lifted from it where the code is generic; its grammar
 is ontodag's grammar with exactly two loopmarket-only conventions (a bare
@@ -19,7 +19,7 @@ concept** — it is a settlement norm per leg and category, and the rule
 "declare in the direction you know" replaces any tolerance parameter;
 nothing is published before the fully resolved offer is displayed and
 approved. Open here: the binary's name, the confirmation rule in batch
-mode, the upstream asks in §11, and everything the v3 record bump owns.
+mode, the upstream asks in §11, and everything the v4 record bump owns.
 
 This document is the design CLAUDE.md's roadmap now points at for the
 command line; it is *tooling*, not protocol — no invariant changes, and no
@@ -307,7 +307,7 @@ with the cleared amount a point in the intersection chosen by clearing
 
 Integer granularity (1,000 apples by the apple; 2 of 3 bicycles) is the
 one quantity question that is a record question; it is owned by
-`P2-loop-selection.md` ("DECISION REQUIRED before the v3 record bump")
+`P2-loop-selection.md` ("DECISION REQUIRED before the v4 record bump")
 and not re-decided here.
 
 ## 7. Nothing publishes unseen
@@ -437,7 +437,7 @@ blocks `loop` shipping, each removes a loopmarket-only behaviour.
   fires on a constructed collision.
 - **G6 — bands refuse.** Every band spelling in §6's table is accepted by
   the parser and refused at publish with the point fallback named, until
-  the v3 bump flips the table.
+  the v4 bump flips the table.
 
 ## 12. Built (2026-09-12)
 
@@ -574,7 +574,7 @@ name the unnamed.
   the third loopmarket-only convention, want side only; it reserves a
   token, not a word, so no category is shadowed.
 
-**Until the v3 record.** Everything above is built (2026-09-12, evening)
+**Until the v4 record.** Everything above is built (2026-09-12, evening)
 except the last step for a *composed* want: `offer` on a composed draft
 and the one-line form resolve every part, render the composed block —
 one part block each, one price, the notes — and then **refuse** with
@@ -586,7 +586,7 @@ takes, so the canonical line re-parses to the same cell (the day odag
 accepts `geo(LAT,LON,R)`, §11.1, this maps onto it); and a name in a role
 term takes its *most specific* value — a place hangs under its own cell
 and, by computed containment, under every coarser cell, and ancestors
-come as a set. The v3 bump also brings fills that name every give
+come as a set. The v4 bump also brings fills that name every give
 consumed, so `show` can list which gives satisfied which part.
 
 **`clearing`, not `clear`.** The clearing-house command was `clear`;
@@ -629,7 +629,7 @@ run, the crowdfunding threshold, the cow that cannot be half slaughtered
 of §10's six lifters: a **minimum fill on one give**, same category,
 quantities adding, a lower bound on one flow edge, which §6's table
 already spells as the minimum order quantity (`30seat..` on a give)
-and which lands with the v3 bump. Different things to different takers
+and which lands with the v4 bump. Different things to different takers
 all-or-none (sirloin here, mince there, only if the whole animal sells)
 is the tying door §10 keeps shut; the reseller is the route.
 
@@ -682,7 +682,7 @@ is a predicate for scripts. Design and the harvesting argument:
   template need is not served by a program printing lines into `loop`.
 - **Numeric normalization in the schema.** `1` and `1.0` are different
   records (§12); the CLI keeps the typed form, but the fix belongs to the
-  v3 bump's D9 (rationals) so every writer agrees.
+  v4 bump's D9 (rationals) so every writer agrees.
 
 ## What this document does not promise
 

@@ -340,7 +340,7 @@ one give of "up to 12" (or "up to 60") is split across the fills at the
 per-leg clearing prices `P2-clearing-pricing.md` already defines — 3 and 9
 here; whatever the six asks and the equal log-surplus split produce there.
 No new record on the buyer's side: partial fills of a divisible give are
-the qty-as-flow-capacity mechanism of §2, and the settled-quantities v3
+the qty-as-flow-capacity mechanism of §2, and the settled-quantities v4
 record (`P2-clearing-pricing.md` §8) already has to grow per-fill
 quantities for it.
 
@@ -426,12 +426,12 @@ slaughtered — is the **mirror of aggregation**: one give carrying a
 *minimum fill*, same category, quantities adding, a lower bound on one
 edge of the flow (Hoffman's condition decides feasibility), which
 `cli.md` §6 already spells as the minimum order quantity `30seat..` and
-which rides the v3 bump with the integer-granularity decision below;
+which rides the v4 bump with the integer-granularity decision below;
 (iii) one maker, many takers, *different* things, all or none — sirloin
 to one buyer and mince to another only if the whole animal sells — is
 the tying door this document keeps shut, and the reseller who buys the
 cow and sells cuts is the market's route. So composition stays
-want-side only; the v3 bump carries want parts, fills naming gives with
+want-side only; the v4 bump carries want parts, fills naming gives with
 per-give quantities, the give-side minimum, and the integer-granularity
 decision (open problems).
 
@@ -571,7 +571,7 @@ node, bounded offers as edges, and hyper-legs here.
 **Consequences for records and vocabulary.** `loop/` records name a
 cycle of legs and `loop_id` is the content address of that cycle
 (`graph.py`); the general object is a *multiset of legs with quantities*
-conserved at every node — the settled-quantities v3 record
+conserved at every node — the settled-quantities v4 record
 (`P2-clearing-pricing.md` §8) and §10's multi-give fills already push in
 this direction, and the id should become the content address of the leg
 multiset, of which a cycle is the special case (ids of today's loops are
@@ -585,7 +585,7 @@ can hold; *circulation* is the technical name when the theory is being
 invoked; *leg* and *hyper-leg* are the parts. Renaming the identifiers
 now would make code promise what it cannot yet deliver, and `loop/` is a
 persisted keyspace whose rename is a record-format bump (U2). When the
-v3 record lets a `Loop` hold a leg multiset, the class simply grows into
+v4 record lets a `Loop` hold a leg multiset, the class simply grows into
 its name. `P2-clearing-pricing.md` §10 records the
 potentials view from the pricing side.
 
@@ -662,8 +662,10 @@ rule is decided, the residual gap unquantified. Work package:
 `P2-clearing-pricing.md`; named here because compression is this
 document's mechanism.
 
-**Integer granularity of a give — DECISION REQUIRED before the v3 record
-bump** (raised 2026-09-10). `Thing.divisible` is a boolean: off means
+**Integer granularity of a give — DECISION REQUIRED before the v4 record
+bump** (raised 2026-09-10). (This bump was called "v3" until 2026-09-12, when v3
+shipped as the spacetime record, `P1-spacetime-terms.md`; the parts,
+per-fill-quantity and rationals record is v4.) `Thing.divisible` is a boolean: off means
 all-or-nothing, on means continuously divisible, and nothing in between
 is representable. That leaves out the common case of one maker with a
 large whole-unit quantity — 1,000 apples sold by the apple, grain in
@@ -674,8 +676,8 @@ n-offers cost but keep the continuity; §10's aggregation puts
 integrality on the *want* (fill-or-kill ≥ 6) and still uses one offer
 per unit on the give side; the capacity/slot schedules below are far
 roadmap and about distinct slots, not fungible whole units. No document
-specifies a step. The question cannot be deferred past the v3 bump:
-under U2 a new record field changes every offer id, and v3 is already
+specifies a step. The question cannot be deferred past the v4 bump:
+under U2 a new record field changes every offer id, and v4 is already
 scheduled to carry per-fill quantities (`P2-clearing-pricing.md` §8) and
 U9's rational amounts, so the step must ride the same bump or wait for
 another.
@@ -709,10 +711,10 @@ another.
   the natural default for large steps relative to the quantity, (b) for
   small ones (whole apples out of 1,000); a threshold between them is a
   parameter nobody has chosen. Decide: representation (1 vs 2 vs 3),
-  clearing regime ((a), (b), or a threshold), and whether the v3 bump
+  clearing regime ((a), (b), or a threshold), and whether the v4 bump
   waits for it. Owner: P2 kickoff, alongside the U9 migration; the
   matching change is one line in `check_match`, the record change rides
-  v3, the clearing change is this document's §2.
+  v4, the clearing change is this document's §2.
 
 - **Price and capacity schedules in offers** (far roadmap — owner-added
   2026-08-21;

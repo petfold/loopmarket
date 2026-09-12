@@ -608,11 +608,11 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `handoff ID TEXT...` | what my offer's cleared counterparty may read (replaces the place text for this offer); kept in `$LOOP_HOME/handoffs`, sealed by `watch` once filled |
 | | `watch [--once]` | poll the fold every `interval`: report my fills, seal pending handoffs to the counterparty's key (from the signature on their offer), open incoming ones with `bee_signer`; `--once` is one pass, exit 1 when nothing new |
 | | `handoffs` | every handoff sealed to me, opened (exit 1: none) |
-| | `want PART + PART... PRICE` | a composed want on one line: resolves every part, renders the composed block, **refuses** until the v3 record carries parts (exit 1, nothing published) |
+| | `want PART + PART... PRICE` | a composed want on one line: resolves every part, renders the composed block, **refuses** until the v4 record carries parts (exit 1, nothing published) |
 | | `draft [NAME] want\|give ...` | stage one resolved offer (price optional) or part in `$LOOP_HOME/drafts` (a file, never the book; no id); re-drafting a name replaces it; numbers name the unnamed |
 | | `draft [NAME] A + B ...` | compose drafts (want side only, flattening, a priced part refused); a single name copies |
 | | `drafts` | every draft in canonical spelling — the line `offer` will speak — with the typed spelling and notes beneath (exit 1: none) |
-| | `offer NAME [PRICE]` | a draft becomes an offer: its own price, the given one, or the price memory; block, question, publish, draft removed; a composed draft renders and refuses until v3 |
+| | `offer NAME [PRICE]` | a draft becomes an offer: its own price, the given one, or the price memory; block, question, publish, draft removed; a composed draft renders and refuses until v4 |
 | | `discard [NAME\|N ...]` | drop drafts; alone, empty the list |
 | reader | `offers [CATEGORY...]` | open offers in the fold, filtered through `satisfies` |
 | | `show ID` | one offer as the approval block, plus `state` |
@@ -627,7 +627,7 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 
 Not yet at the command line: `propose`, `fold`, `audit` (after the
 federation demo). Composed wants (`docs/plans/cli.md` §13) draft, compose,
-resolve and render today; publishing one waits for the v3 record (`wants`
+resolve and render today; publishing one waits for the v4 record (`wants`
 carrying parts, fills naming every give consumed).
 
 ### The approval block
