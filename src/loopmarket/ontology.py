@@ -15,6 +15,12 @@ exists) instead of containment. The relation is a property of the head,
 declared in the catalogue and so pinned by its root, never of the
 dimension: `made_in(greece)` is a `geo` term that matches by containment
 like any category, `from(u2e4x)` is a `geo` term that matches by overlap.
+The overlap itself is ontodag's (`OntoDAG.overlaps`/`meet`, issue #16,
+2026-09-12): values decide by arithmetic and *nodes* by the graph, so a
+role term may name a place under a cell, a region above cells or a floor
+under a building (`from(my_home)`, `where(ljubljana)`, `where(my_home_4th)`
+— role heads take the base dimension's nodes as parameters, issue #15) and
+region∩region needs no enumeration here.
 **The marker is the only name this module knows** (Peter, 2026-09-12): it
 is the maker's job to put the spacetime terms they want into the
 conjunction, and the seed catalogue's job to declare which heads are
@@ -209,7 +215,18 @@ class Ontology:
         on the offered side, which only narrows the offer and so may be
         ignored, an ignored service term would silently widen it to
         "anywhere". Same-head terms that are provably disjoint make the
-        conjunction empty and match nothing.
+        conjunction empty and match nothing; same-head terms whose meet no
+        single term can name (a place and a cell it is not known to lie
+        in, ontodag DIMENSIONS.md §14) fail closed the same way — the
+        maker names a conjunction the catalogue can decide, or none.
+
+        The overlap is `OntoDAG.overlaps` (>= the release after 0.24.0):
+        cells by prefix arithmetic, windows by interval arithmetic, and
+        nodes by the graph — a give to a region serves a want at a place
+        the region is known to cover, a give to a building serves a want
+        on its fourth floor (the floor is below the building), two floors
+        of one building never match each other (two places under one cell
+        are two places). Units come from the store, as for `is_below`.
         """
         offered_roles, offered_plain = self.split_roles(offered)
         wanted_roles, wanted_plain = self.split_roles(wanted)
@@ -230,10 +247,9 @@ class Ontology:
             if offered_meet is None:
                 continue
             try:
-                if _dims.intersect(offered_meet, wanted_meet,
-                                   self.head_kind(head)) is None:
+                if not self.dag.overlaps(offered_meet, wanted_meet):
                     return False
-            except ValueError:
+            except ValueError:  # heads differ, or a value the grammar refuses
                 return False
         return True
 
@@ -255,17 +271,24 @@ class Ontology:
         return roles, plain
 
     def meet(self, head: str, terms: list[str]) -> str | None:
-        """The intersection of same-head terms as one canonical term, or
-        None when it is provably empty (ValueError for a malformed value). Within a dimension meets are exact
-        (ontodag DIMENSIONS.md §8); a conjunction *is* the meet of its
-        terms, so two `from(...)` on one offer mean their intersection."""
-        kind = self.head_kind(head)
+        """The intersection of same-head terms as one term, or None when it
+        is provably empty. Within a dimension meets are exact (ontodag
+        DIMENSIONS.md §8); a conjunction *is* the meet of its terms, so
+        two `from(...)` on one offer mean their intersection. `OntoDAG.meet`
+        (issue #16) does the arithmetic with the store's declared units,
+        and takes nodes: a place inside a cell meets it as the place. It
+        raises ValueError for a malformed value *and* when no single term
+        names the meet (a place and a cell it is not known to lie in) —
+        callers fail closed on both, as `satisfies` does. A single term is
+        returned as spelled: ontodag orders `from(my_home)` by the graph,
+        and there is nothing to canonicalize a name to."""
+        del head  # the terms carry it; kept for the call sites' clarity
         meet = terms[0]
         for term in terms[1:]:
-            meet = _dims.intersect(meet, term, kind)
+            meet = self.dag.meet(meet, term)
             if meet is None:
                 return None
-        return _dims.canonicalize(meet, kind)
+        return meet
 
     # -- persistence -----------------------------------------------------------
 
