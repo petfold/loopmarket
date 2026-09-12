@@ -11,7 +11,13 @@ day; the record change (step 5) has not. Later the same day Peter
 added two more: **no discs anywhere after v3** (§4) and **`when`/`where`
 are optional at publication** (§2, §3) — an internet service has no
 sensible place, and an offer with no time stands for any time until
-withdrawn, dangerous but sometimes exactly what is meant.
+withdrawn, dangerous but sometimes exactly what is meant. And two that
+sharpen the package (Peter, 2026-09-12, evening): **`valid` may be
+open-ended** — an offer stands until its tombstone (§2); and **loopmarket
+names no heads** — not even optionally: the maker puts whatever spacetime
+terms they want into the conjunction as ontodag categories, and the one
+thing the core knows is the `service-role` marker that says which heads
+match by overlap (§3).
 
 Where it sits: this is the implementation package for
 `ontodag-coupling.md` §2 ("spacetime becomes dimension terms, lands with
@@ -97,7 +103,7 @@ skipped (§3), and the two rulings followed.
 | `Thing.concepts` | `Thing.concepts`, now carrying `when(...)`, `where(...)`/`from(...)`/`to(...)` and any descriptive spacetime term | one conjunction, one match walk |
 | `service: TimeWindow` | *gone*; `when(a..b)` in the conjunction, **optional** — absent means any time (Peter 2026-09-12: dangerous, but sometimes meant: the offer stands until withdrawn) | §3, §4 |
 | `where: GeoDisc` | *gone*; `where(cell)` or a route's `from(cell) to(cell)`, **optional** — an internet service has no sensible place (Peter 2026-09-12) | §3, §4 |
-| `valid: TimeWindow` | **stays** | a property of the *record* (while the offer stands), read by the book against `now`, never by the catalogue against another offer; it also bounds every generated horizon (recurrence, §7 of the coupling plan) |
+| `valid: TimeWindow` | **stays**, and at v3 **may have no end** (Peter 2026-09-12: valid until withdrawn; `TimeWindow` gains a half-bounded form, `is_open_at` follows; lifecycle is the tombstone and, on Swarm, the postage batch) | a property of the *record* (while the offer stands), read by the book against `now`, never by the catalogue against another offer; it also bounds every generated horizon (recurrence, §7 of the coupling plan) |
 | `qty`, `unit`, `divisible` | **stay** for this package | quantities as unit-family terms are `ontodag-coupling.md` §3's own package (U9); widening this one to it would couple two record bumps |
 | pins, `bond`, `oracle`, `arbitrator`, `nonce`, `maker`, `Tokens` | unchanged | — |
 
@@ -163,6 +169,24 @@ the kind ontodag orders it by) and under the marker; it adopts ontodag's
 prelude if the bases are missing, the same merge `odag prelude` performs.
 This is a catalogue write: on a persistent catalogue it moves the root and
 belongs with the seed declarations, before offers pin it.
+
+**loopmarket names no heads** (Peter, 2026-09-12, evening: *it is the
+maker's job to specify an ontodag category that includes them if they
+want them; loopmarket does not need to worry about when and where*).
+Correct, with the one caveat above: the core must know the *relation*,
+and that is exactly one catalogue name, `service-role`. So the four-head
+table `SERVICE_ROLES` and the defaults of `declare_service_roles` that
+landed in step 2 are seed vocabulary in the wrong place — they move to
+the example catalogues and the CLI's convenience, and the core takes the
+marker and nothing else (step 4). A maker or a vertical declares its own
+roles with `odag put from geo service-role`. Consequences downstream:
+the CLI interprets no head but `valid` after v3; there is no
+"anywhere / any time" rendering, because printing it would need the CLI
+to know which heads are place and time — the approval block shows the
+terms the offer carries and nothing more; `set where` becomes at most a
+generic "terms appended to every offer" setting, or goes; the candidate
+index files a give under whatever role terms it carries and asks overlap
+for each role head the want names, no head hardcoded.
 
 **Guaranteed and possible.** Containment in either direction is the
 coupling plan's *guaranteed* match; mere overlap is *possible* — a
@@ -268,8 +292,11 @@ the record.
      linear head with declared units would fail closed).
 
 4. **The shared catalogue carries the roles; the index files them.**
-   `declare_service_roles()` joins the seed declarations (the example
-   catalogues, `catalogue-bootstrap.md`'s release pipeline).
+   The four-head table leaves the core: `declare_service_roles` takes the
+   roles as a required argument (or goes, in favour of plain `put`s), and
+   `when`/`where`/`from`/`to` are declared in the example catalogues and by
+   the CLI's convenience layer (`catalogue-bootstrap.md`'s release
+   pipeline for the shared seed).
    `DimensionIndex.file` puts a give under its `when`/place terms directly
    — no more private `service-time`/`service-cell` heads — and
    `candidates` gains the place term, becoming one `get(...,
@@ -331,15 +358,13 @@ the record.
   dangerous, and sometimes exactly what is meant. Neither the CLI nor U8
   admission requires them; the CLI's "no place" refusal goes at v3 (a
   configured `set where` default still fills in when present). The
-  approval block should say "any time" / "anywhere" in so many words
-  when a role is absent, so the danger is seen before `yes`.
-- **Open-ended validity?** Peter's remark "the offer is always valid …
-  until withdrawn" reads most naturally as the absent-`when` case above.
-  If it also means `valid` itself may have no end — an offer standing
-  until its tombstone — `TimeWindow` must allow a half-bounded window
-  (today `end > start` is enforced) and `is_open_at` follows; a one-line
-  change, but a record-visible one, so it belongs in the same v3 bump.
-  To confirm with Peter before step 5.
+  approval block shows the terms the offer carries; it cannot say "any
+  time" / "anywhere", since the core names no heads (§3).
+- ~~**Open-ended validity?**~~ **Decided 2026-09-12 (Peter):** `valid`
+  may have no end; the offer stands until withdrawn. `TimeWindow` gains
+  a half-bounded form at v3 (record-visible, so in the same bump), the
+  CLI accepts `valid(2026-09-12..)`, and the approval block shows the
+  open end plainly.
 - **The marker's name.** `service-role` is provisional until v3 freezes it
   into published roots; `handover-role` was the alternative.
 - **Region nodes as service parameters** — upstream (b). Until then the
