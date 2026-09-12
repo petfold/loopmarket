@@ -267,6 +267,23 @@ the record.
   not match unless the covering includes the neighbour cell — and the maker
   who wanted that says so with one more cell, or a coarser one. The disc
   made the same kind of claim with a circle nobody meant.
+- *The third coordinate is a node, not a number* (Peter's question,
+  2026-09-12: delivery on the fourth floor). Not an elevation dimension:
+  nobody delivers to 12.5 m, one building's fourth floor is another's
+  height, and ground / mezzanine / P3 have no metric value — an invented
+  magnitude would enter identity and lie (the ordinal tripwire in
+  `ontodag-coupling.md` §7). A floor is a **sub-place node**:
+  `my_home_4th ⊑ my_home ⊑ geo(u24mc)` by a plain edge under the
+  building, names local to the building (numbering differs by country;
+  P3 is one car park's convention); "floors 1–4" is a region node above
+  four floor nodes, the same device as a region above cells. Matching
+  needs nothing new — a give to the whole building serves a fourth-floor
+  want by overlap, a ground-floor-only courier and a fourth-floor want are
+  siblings and never match. Metric elevation stays available as a plain
+  linear term where it is real (`elevation(400m..600m)` on a vineyard).
+  The dependency is ontodag #15 (role heads accepting place nodes): until
+  then the CLI's value substitution flattens `where(my_home_4th)` to the
+  building's cell and the floor is lost — evidence added to the issue.
 - *Time was exact already.* `when(a..b)` over fixed ISO-8601 UTC seconds;
   calendar values are inclusive, `TimeWindow` is half-open, so the
   encoding rule is `[start, end-1]` — `dimensions.time_term`'s convention,
