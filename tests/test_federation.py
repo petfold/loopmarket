@@ -85,10 +85,10 @@ def test_convergence_gate():
     assert (m_a.provenance_root, m_a.index_root, m_a.announcement_root) == \
            (m_b.provenance_root, m_b.index_root, m_b.announcement_root)
 
-    # the derived index exists at the aggregator (maker books carry none)
-    idx = OfferRegistry(RecordStore(blobs, root=m_a.index_root))
-    assert list(idx.ids_by_index("idx/c/piano-lesson/"))
-    assert not list(books["amara"].store.keys("idx/"))
+    # no index anywhere: the idx/{c,t,g} prefixes retired 2026-09-12 and
+    # `index_root` is reserved for published cone summaries (P1 §2)
+    assert m_a.index_root == ""
+    assert not any(k.startswith("idx/") for k in books["amara"].store.keys())
 
     # clearing is its own writer: it bases its own book on the fold by
     # re-asserting it — and canonical addressing proves the base is

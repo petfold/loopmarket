@@ -1,9 +1,6 @@
-"""Bucket/cell names: containment chains an OntoDAG can host."""
+"""Geohash cells: the containment hierarchy ontodag's prefix kind orders."""
 
-from loopmarket.schema import GeoDisc, TimeWindow
-from loopmarket.spacetime import (
-    bucket_chain, cell_chain, cell_for, day_buckets, geohash,
-)
+from loopmarket.spacetime import cell_bounds, cell_for_coords, geohash
 
 
 def test_geohash_known_value():
@@ -12,15 +9,8 @@ def test_geohash_known_value():
 
 
 def test_cell_prefix_is_containment():
-    cell = cell_for(GeoDisc(46.05, 14.50, 2_000))
-    chain = cell_chain(cell)
-    assert chain[-1] == cell
-    for coarser, finer in zip(chain, chain[1:]):
-        assert finer.startswith(coarser)  # fits-within, spelled as a prefix
-
-
-def test_day_buckets_and_chain():
-    w = TimeWindow.from_iso("2026-08-14T06:00+00:00", "2026-08-16T01:00+00:00")
-    days = day_buckets(w)
-    assert days == ["2026-08-14", "2026-08-15", "2026-08-16"]
-    assert bucket_chain("2026-08-14") == ["2026", "2026-08", "2026-08-14"]
+    fine = cell_for_coords(46.05, 14.50, 200)
+    coarse = cell_for_coords(46.05, 14.50, 20_000)
+    assert fine.startswith(coarse) and len(fine) > len(coarse)
+    lat_lo, lat_hi, lon_lo, lon_hi = cell_bounds(fine)
+    assert lat_lo <= 46.05 <= lat_hi and lon_lo <= 14.50 <= lon_hi

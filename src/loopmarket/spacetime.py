@@ -1,25 +1,23 @@
-"""Discretised space and time as fits-within hierarchies.
+"""Geohash cells: the spelling of a place.
 
-Time buckets ("2026" ⊐ "2026-08" ⊐ "2026-08-14") and geohash cells (each
-longer prefix is contained in every shorter prefix) are containment
-hierarchies — exactly the shape OntoDAG stores. These helpers produce the
-bucket/cell *names* under which offers are indexed, both as recordstore key
-prefixes (`registry.py`) and, on the roadmap, as generated category nodes in
-the shared OntoDAG itself, so that one `dag.get({...})` intersects concept,
-place and time in a single query.
+A geohash is a fits-within hierarchy — each longer prefix is contained in
+every shorter one — and ontodag's prefix kind orders cells by exactly that,
+so a cell is a catalogue term (`geo(u2e4x)`) and containment on it is
+computed from the name. Since the v3 record (2026-09-12) a place *is* the
+finest cell containing the radius the maker names (`cell_for_coords`), or
+a region node above cells; the offer stores the name and matching is a
+function of stored names. The degree-per-metre approximation below is
+input vocabulary only: it never enters the order.
 
-Candidate generation from these names is deliberately approximate (a disc
-near a cell boundary also touches neighbouring cells; a window touches many
-buckets). Matching correctness never depends on it: `matching.py` refines
-every candidate with exact interval and disc geometry from `schema.py`.
+The day-bucket and cell-prefix *chains* this module produced until
+2026-09-12 (`idx/t/`, `idx/g/` key prefixes for a recordstore index) are
+gone with that index (registry.py): ontodag computes the containment
+they spelled out.
 """
 
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
-
-from .schema import GeoDisc, TimeWindow
 
 _BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz"
 
@@ -88,9 +86,10 @@ def cell_for_coords(lat: float, lon: float, radius_m: float,
     not centred: a point near a cell edge names the coarser cell that
     covers what the maker meant, so a want across the edge still meets it.
     The price is coarseness near edges — the exact covering is a region
-    node above the few cells that matter, once role heads accept nodes
-    (ontodag #15). Input vocabulary only: the cell is the stored name, and
-    the degree-per-metre approximation here never enters the order."""
+    node above the few cells that matter (role heads take nodes since
+    ontodag #15, 2026-09-12; the CLI has no verb for regions yet). Input
+    vocabulary only: the cell is the stored name, and the degree-per-metre
+    approximation here never enters the order."""
     d_lat = radius_m / 111_320.0
     d_lon = radius_m / max(111_320.0 * math.cos(math.radians(lat)), 1e-9)
     for precision in range(max_precision, 0, -1):
@@ -100,32 +99,3 @@ def cell_for_coords(lat: float, lon: float, radius_m: float,
                 and lon_lo <= lon - d_lon and lon + d_lon <= lon_hi:
             return cell
     return geohash(lat, lon, 1)
-
-
-def cell_for(disc: GeoDisc, max_precision: int = 6) -> str:
-    """The cell containing a v1/v2 disc, an index hint only: for a disc the
-    exact check stays `GeoDisc.intersects` (two discs in sibling cells can
-    still touch), so this never prunes — it files."""
-    return cell_for_coords(disc.lat, disc.lon, disc.radius_m, max_precision)
-
-
-def cell_chain(cell: str) -> list[str]:
-    """All prefixes of a cell, coarsest first — its fits-within ancestors."""
-    return [cell[: i + 1] for i in range(len(cell))]
-
-
-def day_buckets(window: TimeWindow, max_buckets: int = 400) -> list[str]:
-    """The UTC day names a window touches, e.g. ['2026-08-14', ...]."""
-    out: list[str] = []
-    t = window.start - (window.start % 86_400)
-    while t < window.end and len(out) < max_buckets:
-        out.append(
-            datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%d")
-        )
-        t += 86_400
-    return out
-
-
-def bucket_chain(day: str) -> list[str]:
-    """['2026', '2026-08', '2026-08-14'] — the day's fits-within ancestors."""
-    return [day[:4], day[:7], day]

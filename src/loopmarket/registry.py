@@ -1,4 +1,4 @@
-"""The distributed offer book: a RecordStore keyspace with index prefixes.
+"""The distributed offer book: a RecordStore keyspace.
 
 Layout (one book = one RecordStore, one root reference per version):
 
@@ -8,15 +8,16 @@ Layout (one book = one RecordStore, one root reference per version):
     withdraw/<offer_id>              -> 1  (monotone tombstone: offer closed)
     fill/<offer_id>                  -> {"loop": <loop_id>}
     loop/<loop_id>                   -> the cleared loop record
-    idx/c/<concept>/<offer_id>       -> 1     (per thing concept)
-    idx/t/<day>/<offer_id>           -> 1     (per touched service day)
-    idx/g/<cell-prefix>/<offer_id>   -> 1     (per geohash prefix of the cell)
 
-The `idx/` keys are *derived* state and live only in an aggregator's
-derived-index store (P1, 2026-08-21) — maker books never write them: they
-were read by nothing at the source, each publish would pay ~10+ chunk
-writes of postage waste on Swarm, and derived values never merge (they
-are re-derived after every fold instead — `index_offers`).
+There is no index in the book. The `idx/{c,t,g}` prefixes (per concept,
+per touched day bucket, per geohash prefix) were written by maker books
+until 2026-08-21, then only by aggregators as derived state, and read by
+nothing throughout; they retired 2026-09-12 when ontodag #14 made the
+`DimensionIndex` one query — ontodag is the one intersection engine, and
+a second index of the same three dimensions never gets a query path
+(`docs/plans/ontodag-coupling.md` §5). Derived query structures, when
+they are published at all, are the manifest's `index_root` (cone
+summaries, `P1-federated-book.md` §2), never book keys.
 
 Everything the marketplace knows at a moment is one root reference:
 `snapshot()` returns `(root, frozen_reader)`, and solvers work against that
@@ -42,7 +43,6 @@ from __future__ import annotations
 from typing import Iterable, Iterator
 
 from .schema import Offer
-from .spacetime import bucket_chain, cell_chain, cell_for, day_buckets
 
 OFFER = "offer/"
 SIG = "sig/"
@@ -275,35 +275,6 @@ class OfferRegistry:
             if now is not None and not offer.valid.is_open_at(now):
                 continue
             yield offer
-
-    def ids_by_index(self, prefix: str) -> Iterator[str]:
-        """Offer ids under an index prefix, e.g. 'idx/c/produce/'.
-
-        Meaningful only on a store carrying a derived index (an
-        aggregator's, built by `index_offers`) — maker books hold none.
-        """
-        for key in self.store.keys(prefix):
-            yield key.rsplit("/", 1)[-1]
-
-
-def index_offers(store, offers: Iterable[Offer]) -> None:
-    """File offers under the idx/{c,t,g} prefixes of a *derived* store.
-
-    Hints, never truth (cells index disc centres only; exact geometry is
-    `check_match`'s): regenerable from any book root, so an aggregator
-    rebuilds this store after every fold and nothing ever merges it —
-    the derived-values-never-merge rule ontodag learned from counts.
-    """
-    for offer in offers:
-        oid = offer.offer_id
-        for concept in offer.thing.concepts:
-            store.put(f"idx/c/{concept}/{oid}", 1)
-        if offer.v < 3:  # the fields; v3 spacetime is in the conjunction
-            for day in day_buckets(offer.service):
-                for bucket in bucket_chain(day):
-                    store.put(f"idx/t/{bucket}/{oid}", 1)
-            for prefix in cell_chain(cell_for(offer.where)):
-                store.put(f"idx/g/{prefix}/{oid}", 1)
 
 
 # ------------------------------------------------------------------ Swarm wiring

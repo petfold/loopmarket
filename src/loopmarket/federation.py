@@ -6,8 +6,8 @@ publishes `offer/`, `sig/` and `withdraw/` keys under their own feed and
 signer, clearing publishes `fill/` and `loop/` under its own — and
 conflicts exist only at the fold. An **aggregator** folds announced books
 with three-way merge under the loop-aware resolver, applies the U8 fold
-rules per offer, records its decisions as attributed provenance, rebuilds
-the derived index, and publishes the **manifest tuple**
+rules per offer, records its decisions as attributed provenance, and
+publishes the **manifest tuple**
 `{book_root, provenance_root, index_root, announcement_root}`
 (docs/plans/P1-federated-book.md §2).
 
@@ -34,7 +34,7 @@ from recordstore import RecordStore
 
 from .registry import (
     HANDOFF,
-    FILL, LOOP, OFFER, SIG, WITHDRAW, OfferRegistry, index_offers,
+    FILL, LOOP, OFFER, SIG, WITHDRAW, OfferRegistry,
     or_set_resolver,
 )
 from .schema import Offer
@@ -52,8 +52,9 @@ class Manifest:
 
     `book_root` is the pure fold (byte-identical across honest aggregators
     with the same inputs); `provenance_root` holds the aggregator's
-    attributed speech acts (`origin/`, `reject/`); `index_root` is derived
-    and regenerable (never merged); `announcement_root` commits to the
+    attributed speech acts (`origin/`, `reject/`); `index_root` is reserved
+    for derived, regenerable query structures (never merged) — empty since
+    the `idx/{c,t,g}` index retired 2026-09-12; `announcement_root` commits to the
     exact input set this fold consumed — the completeness handle (T14).
     """
 
@@ -133,17 +134,18 @@ class Aggregator:
                                  resolver=or_set_resolver)
         book_root = book_root or ""
 
-        index = self._new_store()
         if book_root:
             folded = OfferRegistry(store_type.at(book_root, blobs))
             folded.verify_loop_atomicity()   # U11, on every fold
-            index_offers(index, folded.offers())
 
         return Manifest(
             aggregator=self.id,
             book_root=book_root,
             provenance_root=provenance.commit() or "",
-            index_root=index.commit() or "",
+            # nothing derived is published yet: the idx/{c,t,g} prefix
+            # index retired 2026-09-12 (registry.py); cone summaries, the
+            # DimensionIndex's published sibling, are P1-federated-book §2
+            index_root="",
             announcement_root=announcement.commit() or "",
         )
 

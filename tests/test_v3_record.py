@@ -16,7 +16,6 @@ from loopmarket import (
 )
 from loopmarket.dimensions import candidate_matches_indexed
 from loopmarket.matching import candidate_matches, check_match
-from loopmarket.registry import index_offers
 
 NOW = 5_000
 ROLES = {"when": "time", "where": "geo", "from": "geo", "to": "geo"}
@@ -183,7 +182,7 @@ def test_index_is_recall_exact_on_a_mixed_version_book():
     assert total > 20
 
 
-def test_registry_files_and_indexes_v3_offers():
+def test_registry_files_v3_offers_and_nothing_else():
     store = RecordStore(MemoryBytesStore())
     book = OfferRegistry(store)
     o = give("a", Thing(("ride", "where(u2e4)")), 5, valid=TimeWindow(100))
@@ -191,12 +190,8 @@ def test_registry_files_and_indexes_v3_offers():
     book.commit()
     assert [x.offer_id for x in book.offers(now=10**9)] == [o.offer_id]
     assert list(book.offers(now=50)) == []
-    derived = RecordStore(MemoryBytesStore())
-    index_offers(derived, [o, give("b", Thing(("ride",)), 5, **FIELDS)])
-    keys = list(derived.keys()) if hasattr(derived, "keys") else None
-    if keys is not None:
-        assert any(k.startswith("idx/c/ride/") for k in keys)
-        assert sum(k.startswith("idx/t/") for k in keys) > 0     # the v2 offer only
+    # no index in the book: the idx/{c,t,g} prefixes retired 2026-09-12
+    assert list(store.keys()) == [f"offer/{o.offer_id}"]
 
 
 # ------------------------------------------------------------------ the loop
