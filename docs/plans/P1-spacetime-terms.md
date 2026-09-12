@@ -188,6 +188,32 @@ generic "terms appended to every offer" setting, or goes; the candidate
 index files a give under whatever role terms it carries and asks overlap
 for each role head the want names, no head hardcoded.
 
+**Roles are heads: one head, one value space** (Peter's question,
+2026-09-12 evening: *should transport's `from()`/`to()` be geo, or general?*).
+Ontodag settles the mechanics (`ontodag/docs/plans/BINDING.md` §1, the
+London→Rome example): roles are distinguishable category heads, declared
+as prefix-kind heads over geo so role hierarchies compute; a head holds
+exactly one kind and one value space, so a `from` over `geo` refuses
+`from(2026-03)` at `put`; nested `transport(from(..), to(..))` is rejected
+by the grammar and is at most `elaborate()` sugar. So `from`/`to` **are
+geo roles** — not an assumption that loses generality, because the other
+dimensions never needed a pair: time carries both ends in one interval
+(`when(2026-03..2026-06)` is storage "from March to June"), and
+denomination's from and to are the offer's own two sides (a bridge gives
+one currency; the next leg carries the other). A vertical wanting two
+individually matched time ends declares its own heads (`since`, `until`).
+"Transport has from and to" is one catalogue line, `put("from", ["geo",
+"service-role"])`, stating value space and relation at once, in the
+shared seed — not a loopmarket rule; requiring both on a `transport` is
+not needed for correctness (a give with `from(A)` and no `to` says "to
+anywhere") and as a recommendation is tooling: a `roles` hint in the
+category's node metadata the CLI reads generically. Two-leg routes stay a
+solver join (one filler per role per item; composition at the query
+layer, `P2-loop-selection.md` §10). One naming ambiguity for the seed:
+"amphora from Greece" is provenance — `made_in`/`origin`, never `from`,
+which is the handover origin; the CLI can flag role terms generically in
+the approval block by reading the marker.
+
 **Guaranteed and possible.** Containment in either direction is the
 coupling plan's *guaranteed* match; mere overlap is *possible* — a
 handover point exists, and which one is the makers' business (or, once
