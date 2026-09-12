@@ -235,7 +235,7 @@ Needs ontodag's `get(terms, overlapping=[...], items_only=True)` (issue
 | member | meaning |
 |---|---|
 | `time_term(window)` | (v1/v2 records) the window as one inclusive `service-time(a..b)` value |
-| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted); declares a record-line marker per line and a whole-space value per service role the catalogue declares (`from(loopmarket:anywhere:geo)`: a region above the one-character cells; the full calendar for time roles) |
+| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted); declares a record-line marker per line and a whole-space value per service role the catalogue declares (a private region above the 62 one-character prefixes for prefix roles, the full ISO range for time roles; `from(geo)` itself is ontodag #17) |
 | `.file(offer) -> bool` | index a give under its concepts, its line marker, its v2 window, and the whole space of every role head it is silent on; `False` for non-gives, unknown vocabulary (U7's outcome) and a same-head conjunction that is empty or undecidable |
 | `.candidates(want) -> set[str]` | one `get`: the want's line marker and plain concepts as containment cones, its v2 window and each named role head's meet as overlap terms, `items_only`. Role terms prune by the graph — cells, places, regions, floors |
 | `candidate_matches_indexed(offers, ontology, *, now, index=None)` | drop-in for `candidate_matches` |
@@ -243,10 +243,10 @@ Needs ontodag's `get(terms, overlapping=[...], items_only=True)` (issue
 The v2 `where` disc stays with the exact check (a disc is not a cell) and
 is not filed; place *role terms* prune exactly, since cells and the graph
 are the truth for them (`docs/plans/P1-spacetime-terms.md` §4–5). Cost
-note: an overlap decision that meets a whole-space region walks its
+note: an overlap decision that meets the whole-space region walks its
 covering, so books with many named places file and query in seconds —
-fine behind the not-yet-flipped solver switch, and the reason for the
-"unconstrained role" ask in `ontodag-coupling.md` §7.
+fine behind the not-yet-flipped solver switch (ontodag #17 and #18,
+`ontodag-coupling.md` §7).
 
 ---
 
@@ -358,11 +358,11 @@ keys: ephemeral key, ECDH, HKDF-SHA256, AES-256-GCM. Needs the `sig` extra
 
 Constants: `MAKER = "maker"`, `CLEARING = "clearing"` (book roles).
 
-### `Manifest(aggregator, book_root, provenance_root, index_root, announcement_root)` — frozen
+### `Manifest(aggregator, book_root, provenance_root, announcement_root)` — frozen
 What an aggregator publishes. `book_root` is the pure fold;
-`provenance_root` its attributed decisions; `index_root` derived and
-regenerable; `announcement_root` the input-set commitment (completeness
-handle, threat T14).
+`provenance_root` its attributed decisions; `announcement_root` the
+input-set commitment (completeness handle, threat T14). No derived root
+since 2026-09-12 (the `idx/` index it named is gone).
 
 ### `Aggregator(store_factory, *, aggregator_id="agg-0")`
 `store_factory() -> store` must return fresh writable stores over the
@@ -373,7 +373,7 @@ handle, threat T14).
 |---|---|
 | `.announce(owner, store, *, role=MAKER)` | register "owner's book is store"; one per owner; re-announce replaces; `ValueError` on unknown role |
 | `.retract(owner)` | admission-by-reference's teeth: stop folding an owner |
-| `.fold() -> Manifest` | sanitize every announced book, merge under `or_set_resolver`, U11-check, rebuild the derived index, commit all four roots. Deterministic in the announced (owner, root) set: same inputs ⇒ byte-identical manifest, any order |
+| `.fold() -> Manifest` | sanitize every announced book, merge under `or_set_resolver`, U11-check, commit all three roots. Deterministic in the announced (owner, root) set: same inputs ⇒ byte-identical manifest, any order |
 
 Admission rules per record (fail closed; every rejection is an
 attributed `reject/` record):
@@ -420,8 +420,7 @@ announce/<owner>        {"role", "root"}         (announcement store)
 
 Maker books write `offer/`, `sig/`, `withdraw/` only; clearing books
 add `fill/` and `loop/`; there is no index in any book (the `idx/{c,t,g}`
-prefixes retired 2026-09-12; the manifest's `index_root` is empty until
-cone summaries are published);
+prefixes retired 2026-09-12, and the manifest's `index_root` with them);
 `origin/`, `reject/`, `announce/` only in an aggregator's provenance and
 announcement stores.
 

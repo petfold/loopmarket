@@ -103,7 +103,7 @@ atomic (the gated `tests/test_swarm_book.py`). Since 2026-08-21 the
 federation layer runs too — in memory *and* live (the gated
 `tests/test_swarm_federation.py`, 96.5s on a Bee 2.8.1 node): per-maker
 books under their own feeds and signers, an `Aggregator` folding them
-under the U8 admission rules into a four-root manifest published on its
+under the U8 admission rules into a three-root manifest published on its
 own feed, withdrawal tombstones, and a scorched-earth follower
 reconstructing the cleared world from (address, topic) alone. Since
 2026-09-04 the federation demo adopts ontodag's `core` pack as the

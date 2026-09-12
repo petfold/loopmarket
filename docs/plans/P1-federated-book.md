@@ -87,8 +87,10 @@ still read by nothing. It gets no query path; it is dropped from the
 aggregator too once spacetime terms enter the shared catalogue (ontodag
 #14 lands the one-query generator), and `index_root` carries the
 `DimensionIndex`'s published sibling instead. **Retired 2026-09-12**
-(#14 landed; `index_offers` and `ids_by_index` deleted; `index_root` is
-published empty until cone summaries exist).
+(#14 landed; `index_offers` and `ids_by_index` deleted, and the
+manifest's `index_root` field with them — Peter, same night: a field that
+names nothing does not stay; the manifest is three roots until cone
+summaries exist and earn one).
 
 ## 2. The aggregator and the manifest tuple
 

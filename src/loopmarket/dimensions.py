@@ -34,16 +34,20 @@ What the one query says:
   **Absent = unconstrained** is `Ontology.satisfies`' rule — a give that
   names no `from(...)` serves a want anywhere — and an overlap term cannot
   see a give filed under no value of its head. So the index files every
-  give under a *whole-space* value for each role head it is silent on:
-  `from(loopmarket:anywhere:geo)`, a region node in the base dimension
-  above the one-character cells (every prefix value begins with one, so
-  by ontodag's §14 rule the region overlaps every cell, place and region;
-  one region per base head, shared by every role over it, so the role
-  stars stay small — a region under each role head cost twenty times
-  more per put), or the full calendar range for a time role. Index-
-  private vocabulary in a derived copy; nothing of it is ever shared. The
-  cleaner spelling — an item under the bare role head means
-  "unconstrained" — is the next upstream ask (`ontodag-coupling.md` §7);
+  give under a *whole-space* value for each role head it is silent on. No
+  value spells the whole space of a prefix dimension, so the index
+  declares one: a region node in the base dimension above every
+  one-character prefix (`from(loopmarket:anywhere:geo)`; every prefix
+  value begins with one of them, so by ontodag's §14 rule the region
+  overlaps every cell, place and region the grammar admits) — one region
+  per base head, shared by the roles over it; a time role's whole space is
+  the full ISO range. Index-private vocabulary in a derived copy; nothing
+  of it is ever shared. The natural spelling — the base head itself as the
+  parameter, `from(geo)` — is what `overlaps` already accepts, but `get`'s
+  overlap planner reads it as a region covering only the values that
+  happen to be present (a lower bound: it misses when no `geo(...)` value
+  meets the want), so it is asked for upstream rather than relied on
+  (`ontodag-coupling.md` §7);
 - v1/v2 fields: ``service-time(a..b)`` over the offer's `service` window
   as one more overlap term — *exact* for the window-overlap gate, because
   the filed value IS the offer's window. The `where` disc stays with the
@@ -67,6 +71,12 @@ exactly ONE value per dimension (an item sits in the INTERSECTION of its
 parents — two same-head role terms on one give are their meet, and ontodag
 refuses provably disjoint ones); a give whose same-head terms have no
 nameable meet is not filed, as `satisfies` matches it against nothing.
+
+Cost note (2026-09-12): an overlap decision that meets the whole-space
+region walks its covering, and ontodag re-derives each head's dimension
+per star member uncached, so a names-heavy book of eighty offers files and
+queries in seconds (`ontodag-coupling.md` §7). Fine while the baseline
+generator is the solver's default.
 """
 
 from __future__ import annotations
@@ -85,6 +95,7 @@ TIME_DIMENSION = "service-time"
 
 #: Index-private marker categories: which record line a filed give is on.
 _LINE = {2: "loopmarket:record-line-2", 3: "loopmarket:record-line-3"}
+
 
 #: The whole calendar as one inclusive range — what a time role is silent
 #: about. ISO 8601 has four-digit years; every want window lies inside.
@@ -144,7 +155,7 @@ class DimensionIndex:
             if name not in self._dag.nodes:
                 self._dag.put(name, supers)
         for head in self._role_heads():
-            self._anywhere[head] = self._declare_anywhere(head)
+            self._anywhere[head] = self._whole_space(head)
 
     def _role_heads(self) -> list[str]:
         """The service-role heads the catalogue declares (the marker's
@@ -165,13 +176,13 @@ class DimensionIndex:
                 return item.name
         raise ValueError(f"{head!r} has no base dimension head")
 
-    def _declare_anywhere(self, head: str) -> str:
-        """The whole-space value of a role head, filed once in the derived
-        copy: a region node in the base dimension covering every
-        one-character prefix (prefix kinds) or the full calendar (calendar
-        kinds). Loud for a kind without a whole-space spelling — silently
-        dropping recall for gives silent on such a role would break the
-        recall-exactness guard."""
+    def _whole_space(self, head: str) -> str:
+        """The term a give silent on `head` is filed under: for a prefix
+        kind a region node in the base dimension covering every
+        one-character prefix, declared once per base head; for a calendar
+        kind the full ISO range. Loud for a kind without a whole-space
+        spelling — silently dropping recall for gives silent on such a
+        role would break the recall-exactness guard."""
         kind = self.ontology.head_kind(head)
         if kind == _dims.KIND_PREFIX:
             base = self._base_of(head)
@@ -187,7 +198,7 @@ class DimensionIndex:
         raise NotImplementedError(
             f"service role {head!r} is a {kind}: the index has no "
             f"whole-space value to file gives silent on it under "
-            f"(docs/plans/ontodag-coupling.md §7, the unconstrained-role ask)")
+            f"(docs/plans/ontodag-coupling.md §7, the whole-space ask)")
 
     def file(self, offer: Offer) -> bool:
         """Index a GIVE. Returns False (not filed) when its vocabulary is
@@ -228,8 +239,8 @@ class DimensionIndex:
         wanted plain cone, on the want's record line, service windows
         overlapping (v1/v2), and for each role head the want names,
         overlapping its meet — gives silent on the head are filed under its
-        whole space, so they are in. One `get`; recall-exact for those
-        gates; every candidate still faces `check_match`."""
+        whole space, so they are in. One `get`; recall-exact
+        for those gates; every candidate still faces `check_match`."""
         concepts = want_offer.thing.concepts
         if not all(self.ontology.known(c) for c in concepts):
             return set()          # unknown wanted vocabulary matches nothing

@@ -231,15 +231,24 @@ named role head's meet as overlap terms — and loopmarket does no set
 arithmetic on the answer. The one device this needed on our side: the
 "absent = unconstrained" rule (a give naming no `from(...)` serves a want
 anywhere) is invisible to an overlap term, so the index files every give
-under a *whole-space* value for each role it is silent on — a region node
-in the base dimension above the one-character cells, or the full calendar
-— index-private, exact, and the reason for the follow-up ask in
-`ontodag-coupling.md` §7 (an item under the bare role head should mean
-unconstrained). With the one-query generator in place the redundant
+under a *whole-space* value for each role it is silent on — for a prefix
+role a private region node in the base dimension above the 62
+one-character prefixes (exact: every prefix value begins with one, so
+#15's rule makes it overlap every cell, place and region), for a time
+role the full ISO range. The natural spelling, the base head as the
+parameter (`from(geo)` — Peter's `*`-shaped question found it), is what
+`overlaps` already accepts, but `get`'s planner reads the head as a
+region covering only the values present, so it is asked for upstream
+([ontodag #17](https://github.com/petfold/ontodag/issues/17)) rather
+than relied on; the cost of the region device, and the uncached
+`_dimension_of` walk under it, is
+[ontodag #18](https://github.com/petfold/ontodag/issues/18). With the one-query generator in place the redundant
 `idx/{c,t,g}` recordstore index **retired** as committed 2026-09-07:
 `index_offers`, `ids_by_index` and the bucket/cell chains are gone,
-maker and clearing books hold no index, and the manifest's `index_root`
-is empty until cone summaries are published (`P1-federated-book.md` §2).
+maker and clearing books hold no index, and the manifest lost its
+`index_root` (Peter: a field that names nothing does not stay) — three
+roots now; cone summaries add their own root if they ever come
+(`P1-federated-book.md` §2).
 Truth untouched throughout: `check_match` and the recall-exactness guard
 are what changed hands, not what they decide.
 
@@ -363,9 +372,10 @@ real network; it is the write-authority shape that does not survive
 multi-writer production. With federation come the decided mechanics
 (`docs/plans/P1-federated-book.md`): maker→aggregator announcement over
 GSOC with a Gnosis registry-event fallback; the aggregator (a full Bee
-node) publishing a manifest tuple {book_root, provenance_root, index_root,
-announcement_root} (fourth element 2026-08-21: the folded input-set
-commitment that makes aggregator completeness provable — T14)
+node) publishing a manifest tuple {book_root, provenance_root,
+announcement_root} (the announcement element 2026-08-21: the folded
+input-set commitment that makes aggregator completeness provable — T14;
+the `index_root` element dropped 2026-09-12 with the `idx/` index)
 as the one solver-speed read path (feed lookups cost seconds — polling
 per-maker feeds does not scale); withdrawal as signed tombstones under
 grow-only merge; and two merge-discipline fixes found by code review
@@ -383,7 +393,7 @@ on neighbourhood replication); feed batches are mutable, and postage expiry
 is silent data loss, so stamp TTL is treated as a *hard offer-lifetime
 bound* with a TTL monitor. **In-memory landing, 2026-08-21:** withdrawal
 tombstones, the aggregator fold with the U8 admission rules and a U11
-check inside every fold, and the four-root manifest are code
+check inside every fold, and the manifest (three roots since 2026-09-12) are code
 (`federation.py`), with memory-backed convergence, follower and
 withdrawal gate tests green; the feed, announcement and durability
 halves remain the live-Bee work.
