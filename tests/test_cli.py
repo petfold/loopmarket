@@ -28,12 +28,11 @@ TRIANGLE_OD = os.path.join(ROOT, "examples", "triangle.od")
 TRIANGLE_LOOP = os.path.join(ROOT, "examples", "triangle.loop")
 
 # The catalogue the tests speak: ontodag's prelude (so `geo`/`time` exist),
-# `when`/`where` as service roles (the v3 record's spacetime — the CLI knows
-# no head, the catalogue declares them), and the triangle's trades.
+# `when`/`where` as roles of time and geo (the v3 record's spacetime — the
+# CLI knows no head, the catalogue declares them), and the triangle's trades.
 CATALOGUE = {
     **{name: list(parents) for name, parents in PRELUDE_DECLARATIONS},
-    "service-role": [],
-    "when": ["time", "service-role"], "where": ["geo", "service-role"],
+    "when": ["time"], "where": ["geo"],
     "service": [], "lesson": ["service"], "music-lesson": ["lesson"],
     "piano-lesson": ["music-lesson"], "repair": ["service"],
     "bicycle-repair": ["repair"], "food": [], "produce": ["food"],
@@ -418,13 +417,12 @@ def test_place_under_a_pinned_rs_catalogue_gets_its_cell_edge(env, tmp_path,
 
 
 def _od_with_prelude(path, extra_puts):
-    """The prelude, the `when`/`where` service roles (the v3 record's
+    """The prelude, `when`/`where` as roles of time and geo (the v3 record's
     spacetime — catalogue vocabulary, not the CLI's), then `extra_puts`."""
     dag = OntoDAG()
     apply_prelude(dag)
-    dag.put("service-role", [])
-    dag.put("when", ["time", "service-role"])
-    dag.put("where", ["geo", "service-role"])
+    dag.put("when", ["time"])
+    dag.put("where", ["geo"])
     for name, parents in extra_puts:
         dag.put(name, parents)
     lines = [" ".join([n, *[p.name for p in i.parents if p.name != "*"]])
@@ -444,8 +442,7 @@ def test_role_terms_carry_the_name_and_match_by_the_graph(
     # role head reads a parameter as a node; a bare prefix head would
     # read `my_home` as the literal cell "my_home"
     _od_with_prelude(tmp_path / "roles.od",
-                     [("from", ["geo", "service-role"]), ("to", ["geo", "service-role"]),
-                      ("ride", [])])
+                     [("from", ["geo"]), ("to", ["geo"]), ("ride", [])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "roles.od"))
     monkeypatch.setenv("ONTODAG_STORE", str(tmp_path / "roles.od"))
     run = Runner()
@@ -479,8 +476,8 @@ def test_role_terms_carry_the_name_and_match_by_the_graph(
 def test_regions_and_floors_are_names_in_role_terms(env, tmp_path, monkeypatch):
     """A region above cells and a floor under a building (ontodag #15's
     two shapes beyond a place) are catalogue nodes a role term names as
-    spelled; matching decides them by the graph (#16): a give to the
-    region serves a want on the fourth floor of a building it covers."""
+    spelled; matching is containment by the graph: a give on the fourth
+    floor of a building fits a want for the region covering its cell."""
     _od_with_prelude(tmp_path / "city.od",
                      [("delivery", []),
                       ("my_home", ["geo(u2e4x)"]), ("my_home_4th", ["my_home"]),
@@ -488,18 +485,24 @@ def test_regions_and_floors_are_names_in_role_terms(env, tmp_path, monkeypatch):
                       ("geo(u2e5)", ["ljubljana"])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "city.od"))
     run = Runner()
-    out = run.ok("give", "delivery", "where(ljubljana)", "5")
-    assert "give     delivery where(ljubljana)" in out
+    out = run.ok("give", "delivery", "where(my_home_4th)", "5")
+    assert "give     delivery where(my_home_4th)" in out
     monkeypatch.setenv("LOOP_MAKER", "bruno")
-    out = run.ok("want", "delivery", "where(my_home_4th)", "6")
-    assert "want     delivery where(my_home_4th)" in out
+    out = run.ok("want", "delivery", "where(ljubljana)", "6")
+    assert "want     delivery where(ljubljana)" in out
     code, out, err = run("matches")
-    assert code == 0 and "amara gives delivery where(ljubljana) to bruno" in out
-    # a region's covering is a lower bound: a want beyond it does not match
+    assert code == 0 and "amara gives delivery where(my_home_4th) to bruno" in out
+    # the give is the narrower cone: a want at the floor is not served by a
+    # give to the whole region, and a want elsewhere by neither
     monkeypatch.setenv("LOOP_MAKER", "chen")
+    run.ok("give", "delivery", "where(ljubljana)", "5")
     run.ok("want", "delivery", "where(u2f)", "6")
-    assert "chen" not in run.ok("matches")
-    assert len(run.ok("offers", "where(u2e4)", "--raw").splitlines()) == 2
+    matches = run.ok("matches")
+    assert "to chen" not in matches                         # nothing at u2f
+    assert "chen gives delivery where(ljubljana) to bruno" in matches   # equal
+    assert "chen gives delivery where(ljubljana) to amara" not in matches
+    # `offers where(u2e4)`: what fits within that cell — the floor, not the region
+    assert len(run.ok("offers", "where(u2e4)", "--raw").splitlines()) == 1
 
 
 def test_time_names_need_nothing_from_loopmarket(env, tmp_path, monkeypatch):

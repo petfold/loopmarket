@@ -1949,8 +1949,9 @@ shell; a bare number FIRST is the quantity (10kg = up to 10 kg divisible,
 3 = three indivisible), a bare number LAST is the price. An omitted price
 is your last unit price for the same thing, scaled, and marked.
 Every term is the catalogue's: where(PLACE|LAT,LON,R), when(WINDOW), from(),
-to(), depart(), arrive() are heads the catalogue declares under service-role
-(overlap) — omit them and the offer is anywhere, any time. The one head the
+to(), depart(), arrive() are heads the catalogue declares under time and geo
+— a give must fit within the want's; omit them on a want and it does not
+care, omit them on a give and it says nothing. The one head the
 CLI interprets is valid(DURATION|A..B|A..) — how long the offer stands
 (A.. is until withdrawn). Relative time and LAT,LON,R are input spellings.
 A composed want (`+` between parts, one price last) renders and is refused

@@ -6,27 +6,22 @@ names; the offered thing satisfies the want iff every wanted category is
 covered by some offered concept — equal to it, or an ancestor of it in the
 DAG (the offered concept fits within the wanted one).
 
-Since 2026-09-12 a conjunction may also carry *service-role* terms —
-heads that hang under the marker node `service-role`, such as a route's
-`from(...)`/`to(...)` or a transport's `depart(...)`/`arrive(...)`. They
-describe where and when the handover happens rather than what the thing
-is, and they match by **overlap** (a delivery instant, a handover point
-exists) instead of containment. The relation is a property of the head,
-declared in the catalogue and so pinned by its root, never of the
-dimension: `made_in(greece)` is a `geo` term that matches by containment
-like any category, `from(u2e4x)` is a `geo` term that matches by overlap.
-The overlap itself is ontodag's (`OntoDAG.overlaps`/`meet`, issue #16,
-2026-09-12): values decide by arithmetic and *nodes* by the graph, so a
-role term may name a place under a cell, a region above cells or a floor
-under a building (`from(my_home)`, `where(ljubljana)`, `where(my_home_4th)`
-— role heads take the base dimension's nodes as parameters, issue #15) and
-region∩region needs no enumeration here.
-**The marker is the only name this module knows** (Peter, 2026-09-12): it
-is the maker's job to put the spacetime terms they want into the
-conjunction, and the seed catalogue's job to declare which heads are
-roles — loopmarket names no head, requires none, and renders none
-specially. This is the mechanism that lets the offer's `service` window
-and `where` disc leave the record (`docs/plans/P1-spacetime-terms.md`).
+Since 2026-09-12 a conjunction also carries where and when a thing changes
+hands — `where(u2e4x)`, `when(2026-10-05T19:00:00Z..)`, a route's
+`from(...)`/`to(...)` — as terms of heads the catalogue declares under its
+`geo` and `time` dimensions (roles of a dimension, ontodag #15: a role's
+parameter may be a value or a node filed in the dimension — a place under
+a cell, a region above cells, a floor under a building). They match
+exactly like every other term, by **containment**: the want is the wider
+cone, the give the narrower (Peter, 2026-09-12 — the toothbrush wanted
+within five metres of the reception desk within thirty minutes is a
+narrow want, and the give that fits within it is what matches). A head the
+want does not name constrains nothing; a head the give does not name puts
+it in no cone of that head. There is no second relation: an overlap rule
+for "service roles" under a marker node was built on 2026-09-12 and
+withdrawn the same night, with ontodag's overlap query mode
+(`docs/plans/P1-spacetime-terms.md` §3, superseded). Ontodag is
+intersection; so is matching.
 
 Offers pin the catalogue version they were written against
 (`Offer.ontology_root`): persistence through `EagerOntoDAG` over a
@@ -50,17 +45,6 @@ try:  # persistence is optional: the core must work in memory (boundary B1)
     from ontodag import EagerOntoDAG
 except Exception:  # pragma: no cover
     EagerOntoDAG = None  # type: ignore[assignment]
-
-
-#: The marker node: a dimension head below it is a *service role*, and its
-#: terms match by overlap. A plain node, so it merges, versions and pins
-#: like any other vocabulary — a fork of this code cannot change the match
-#: relation of a pinned catalogue (U3/U4). The name is provisional until
-#: the v3 record freezes it into published roots. It is the one name the
-#: core knows: which heads are roles is seed vocabulary (a head has one
-#: value space, so `from`/`to` over `geo` and `depart`/`arrive` over `time`
-#: are four declarations, not a table here).
-SERVICE_ROLE = "service-role"
 
 
 class Ontology:
@@ -101,17 +85,17 @@ class Ontology:
                 raise ValueError(f"unresolvable supercategories in {sorted(pending)}")
         return self
 
-    def declare_service_roles(self, roles: Mapping[str, str]) -> None:
-        """Declare role heads whose terms match by overlap: {head: base}.
+    def declare_roles(self, roles: Mapping[str, str]) -> None:
+        """Declare role heads of a dimension: {head: base}.
 
-        Each `head` is put under its base dimension head (inheriting the
-        value grammar and the kind ontodag orders it by) *and* under the
-        `service-role` marker — the same two edges `odag put from geo
-        service-role` writes; this is a convenience for seeds and tests,
-        and deliberately has no default: the core names no heads. When a
-        base is a prelude head the catalogue has not adopted, ontodag's
-        prelude is merged in — idempotent and canonical, the step `odag
-        prelude` performs.
+        Each `head` is put under its base dimension head, inheriting the
+        value grammar and the kind ontodag orders it by — the one edge
+        `odag put from geo` writes. A role's parameter may then name the
+        base dimension's nodes (`from(my_home)`, ontodag #15). This is a
+        convenience for seeds and tests and deliberately has no default:
+        the core names no heads. When a base is a prelude head the
+        catalogue has not adopted, ontodag's prelude is merged in —
+        idempotent and canonical, the step `odag prelude` performs.
         Declaring this vocabulary is a catalogue write: on a persistent
         catalogue it moves the root, so it belongs with the other seed
         declarations, before offers pin the root.
@@ -122,12 +106,15 @@ class Ontology:
         for head, base in roles.items():
             if self._kind_of(base) is None:
                 raise ValueError(
-                    f"{base!r} is not a dimension head or kind: a service "
-                    f"role needs a value space to compute overlap in")
-        if SERVICE_ROLE not in self.dag.nodes:
-            self.dag.put(SERVICE_ROLE, [])
+                    f"{base!r} is not a dimension head or kind: a role "
+                    f"needs a value space to be ordered in")
         for head, base in roles.items():
-            self.dag.put(head, [base, SERVICE_ROLE])
+            self.dag.put(head, [base])
+
+    #: The 2026-09-12 name, kept one release: roles were "service roles"
+    #: while they matched by overlap under a marker node; they match by
+    #: containment like everything else now, and the marker is gone.
+    declare_service_roles = declare_roles
 
     # -- querying ---------------------------------------------------------------
 
@@ -174,11 +161,6 @@ class Ontology:
                 return kind
         return None
 
-    def is_service_role(self, head: str) -> bool:
-        """Does `head` hang under the `service-role` marker?"""
-        return (SERVICE_ROLE in self.dag.nodes and head in self.dag.nodes
-                and self.dag.is_below(head, SERVICE_ROLE))
-
     def covers(self, wanted: str, offered: str) -> bool:
         """True iff `offered` fits within `wanted` (equal, or a descendant).
 
@@ -196,99 +178,49 @@ class Ontology:
     def satisfies(self, offered: Iterable[str], wanted: Iterable[str]) -> bool:
         """Does the offered conjunction satisfy the wanted one?
 
-        Two relations, chosen per term by its head (2026-09-12):
-
-        - **containment** for categories and descriptive terms — every
-          wanted one is covered by some offered concept (the offered
-          thing is at least as specific as asked: a Corinthian amphora
-          for "Greek amphora", `made_in(u2e4x)` for `made_in(u2e)`);
-        - **overlap** for service-role terms — for each role head both
-          sides name, the meet of the offered terms and the meet of the
-          wanted terms intersect (a give from anywhere in `u2e` serves a
-          want at `u2e4x`, and the reverse; a delivery instant exists).
-          A head only one side names constrains nothing: the other side
-          said "anywhere", "anytime".
-
+        One relation, containment, for every term: each wanted term is
+        covered by some offered concept — the offered thing is at least as
+        specific as asked. A Corinthian amphora for "Greek amphora";
+        `made_in(u2e4x)` for `made_in(u2e)`; a give `where(my_home)` for a
+        want `where(u2e4)` (the place is under the cell); a give
+        `when(19:00..19:15)` for a want `when(18:00..20:00)`. A head the
+        want does not name constrains nothing. A head the give does not
+        name is a head it fits within no term of: a give that says nothing
+        about where it hands over does not satisfy a want that says where.
         Strict on vocabulary (U7): a wanted category nobody knows never
-        matches, and a service-role term the catalogue cannot interpret
-        fails closed on *either* side — unlike an extra unknown category
-        on the offered side, which only narrows the offer and so may be
-        ignored, an ignored service term would silently widen it to
-        "anywhere". Same-head terms that are provably disjoint make the
-        conjunction empty and match nothing; same-head terms whose meet no
-        single term can name (a place and a cell it is not known to lie
-        in, ontodag DIMENSIONS.md §14) fail closed the same way — the
-        maker names a conjunction the catalogue can decide, or none.
+        matches; an extra unknown category on the offered side only
+        narrows the offer and is ignored.
 
-        The overlap is `OntoDAG.overlaps` (>= the release after 0.24.0):
-        cells by prefix arithmetic, windows by interval arithmetic, and
-        nodes by the graph — a give to a region serves a want at a place
-        the region is known to cover, a give to a building serves a want
-        on its fourth floor (the floor is below the building), two floors
-        of one building never match each other (two places under one cell
-        are two places). Units come from the store, as for `is_below`.
+        This is exactly ontodag's `get(wanted)` membership test for the
+        give, term by term — `DimensionIndex.candidates` asks that one
+        query and this is its pairwise face (Peter, 2026-09-12: ontodag is
+        intersection; a want is the wider cone, a give the narrower).
         """
-        offered_roles, offered_plain = self.split_roles(offered)
-        wanted_roles, wanted_plain = self.split_roles(wanted)
-        if offered_roles is None or wanted_roles is None:
+        offered = list(offered)
+        if not self._consistent(offered):
             return False
-        if not all(any(self.covers(w, o) for o in offered_plain)
-                   for w in wanted_plain):
-            return False
-        try:
-            offered_meets = {h: self.meet(h, ts) for h, ts in offered_roles.items()}
-            wanted_meets = {h: self.meet(h, ts) for h, ts in wanted_roles.items()}
-        except ValueError:  # a value the head's grammar refuses
-            return False
-        if None in offered_meets.values() or None in wanted_meets.values():
-            return False
-        for head, wanted_meet in wanted_meets.items():
-            offered_meet = offered_meets.get(head)
-            if offered_meet is None:
-                continue
-            try:
-                if not self.dag.overlaps(offered_meet, wanted_meet):
-                    return False
-            except ValueError:  # heads differ, or a value the grammar refuses
-                return False
-        return True
+        return all(any(self.covers(w, o) for o in offered) for w in wanted)
 
-    def split_roles(self, concepts: Iterable[str]):
-        """Partition a conjunction into ({role head: [terms]}, [the rest]).
-        Returns (None, rest) when a service-role term is not interpretable
-        vocabulary — the caller fails closed. Public so candidate generators
-        (`dimensions.DimensionIndex`) split exactly as the exact check does."""
-        roles: dict[str, list[str]] = {}
-        plain: list[str] = []
+    def _consistent(self, concepts) -> bool:
+        """Can the conjunction be held at all? Two same-head parametric
+        terms with a provably empty meet (`from(u2e4)` and `from(u2e5)`)
+        describe nothing — ontodag refuses to file such an item, so the
+        index never holds it, and the exact check agrees by matching it
+        against nothing (recall-exactness both ways)."""
+        by_head: dict[str, list[str]] = {}
         for c in concepts:
             split = _dims.split_term(c)
-            if split is None or not self.is_service_role(split[0]):
-                plain.append(c)
-                continue
-            if self.head_kind(split[0]) is None or not self.known(c):
-                return None, plain
-            roles.setdefault(split[0], []).append(c)
-        return roles, plain
-
-    def meet(self, head: str, terms: list[str]) -> str | None:
-        """The intersection of same-head terms as one term, or None when it
-        is provably empty. Within a dimension meets are exact (ontodag
-        DIMENSIONS.md §8); a conjunction *is* the meet of its terms, so
-        two `from(...)` on one offer mean their intersection. `OntoDAG.meet`
-        (issue #16) does the arithmetic with the store's declared units,
-        and takes nodes: a place inside a cell meets it as the place. It
-        raises ValueError for a malformed value *and* when no single term
-        names the meet (a place and a cell it is not known to lie in) —
-        callers fail closed on both, as `satisfies` does. A single term is
-        returned as spelled: ontodag orders `from(my_home)` by the graph,
-        and there is nothing to canonicalize a name to."""
-        del head  # the terms carry it; kept for the call sites' clarity
-        meet = terms[0]
-        for term in terms[1:]:
-            meet = self.dag.meet(meet, term)
-            if meet is None:
-                return None
-        return meet
+            if split is not None and self.head_kind(split[0]) is not None:
+                by_head.setdefault(split[0], []).append(c)
+        for terms in by_head.values():
+            for i, a in enumerate(terms):
+                for b in terms[i + 1:]:
+                    try:
+                        if self.dag.meet(a, b) is None:
+                            return False
+                    except ValueError:
+                        return False
+        return True
 
     # -- persistence -----------------------------------------------------------
 

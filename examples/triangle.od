@@ -19,15 +19,15 @@ count count-dimension
 time calendar-dimension
 geo prefix-dimension
 size dominance-dimension
-# service roles (docs/plans/P1-spacetime-terms.md §3): heads under service-role
-# match by overlap — a route's places, a transport's windows; one value space each
-service-role
-when time service-role
-where geo service-role
-from geo service-role
-to geo service-role
-depart time service-role
-arrive time service-role
+# roles of time and geo (docs/plans/P1-spacetime-terms.md §3): the handover,
+# a route's places, a transport's windows — terms like any other, matched by
+# containment; one value space each
+when time
+where geo
+from geo
+to geo
+depart time
+arrive time
 # the triangle's trades
 service
 lesson service

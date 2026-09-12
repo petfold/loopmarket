@@ -134,11 +134,9 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 | `.load({sub: [supers, ...]})` | bulk, order-independent declaration; returns self |
 | `.known(concept)` | vocabulary membership: a node, or a parametric term of a declared head the DAG can order — incl. a role term naming a place, region or floor node (ontodag #15); a name outside the head's dimension fails closed |
 | `.covers(wanted, offered)` | `offered` fits within `wanted` (equal or descendant); **False for unknown names** (U7) |
-| `.satisfies(offered, wanted)` | containment for every wanted plain concept; **overlap** per service-role head both sides name (`OntoDAG.overlaps` on the two same-head meets, ontodag #16 — values by arithmetic, nodes by the graph); a head only one side names constrains nothing; an uninterpretable or undecidable role term fails closed on either side |
-| `.declare_service_roles({head: base})` | seed convenience: put each head under its base dimension head and the `service-role` marker (a catalogue write) |
-| `.is_service_role(head)` / `.head_kind(head)` | does the head hang under `service-role`; the registry kind it orders values by |
-| `.split_roles(concepts)` | `({role head: [terms]}, [plain])`; `(None, plain)` when a role term is not interpretable |
-| `.meet(head, terms)` | the same-head terms' intersection as one term (`OntoDAG.meet`), `None` when provably empty; `ValueError` when malformed or when no single term names it (a place and a cell it is not known to lie in) |
+| `.satisfies(offered, wanted)` | every wanted term covered by some offered concept — containment, term by term, place and time included (the want is the wider cone, the give the narrower); a head the want does not name constrains nothing; a give with provably disjoint same-head terms satisfies nothing |
+| `.declare_roles({head: base})` | seed convenience: put each head under its base dimension head — a role of that dimension, whose parameters may name its nodes (ontodag #15); a catalogue write. `declare_service_roles` is the 0.3.0 name, kept one release |
+| `.head_kind(head)` | the registry kind a declared head orders values by, else `None` |
 | `.root` | canonical root of the last committed state, `''` if in-memory/uncommitted |
 | `.pins` | `{"ontology_root", "registry_version", "contract_version"}` — splat into `give`/`want` (U10) |
 | `Ontology.persistent(record_store)` | classmethod; an `EagerOntoDAG`-backed catalogue with committable roots |
@@ -211,8 +209,8 @@ Exact, self-contained, re-runnable by clearing. Gates, in order:
 
 1. kinds: give is `GIVE`, want is `WANT`, distinct makers
 2. validity: both offers open at `now`
-3. time: service windows intersect (v1/v2 records; role terms since v3)
-4. space: service discs intersect (v1/v2 records; role terms since v3)
+3. time: service windows intersect (v1/v2 records; a `when(...)` term since v3)
+4. space: service discs intersect (v1/v2 records; a `where(...)` term since v3)
 5. quantity: `want.qty <= give.qty`; equal unless both divisible; equal units
 6. **pins**: if the verifying catalogue is pinned (`ontology.root`), both
    offers must carry all three pins; mixed pinning (one side declares,
@@ -228,23 +226,21 @@ The exact check over the full give × want product. The recall baseline.
 
 ## 6. `loopmarket.dimensions` — indexed candidate generation
 
-Needs ontodag's `get(terms, overlapping=[...], items_only=True)` (issue
-#14, on ontodag main after 0.24.0). Recall-exact against the baseline
-(enforced by test); **one `get` per want**, no set arithmetic on the answer.
+Needs ontodag's `items_only` (issue #14, on ontodag main after 0.24.0).
+Recall-exact against the baseline (enforced by test); **one `get` per
+want**, the want's own conjunction as the query, no set arithmetic on the
+answer.
 
 | member | meaning |
 |---|---|
-| `time_term(window)` | (v1/v2 records) the window as one inclusive `service-time(a..b)` value |
-| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted); declares a record-line marker per line; a give silent on a service role is filed under nothing for it (ontodag's planner lets it pass, #17) |
-| `.file(offer) -> bool` | index a give under its concepts, its line marker, its v2 window, and the whole space of every role head it is silent on; `False` for non-gives, unknown vocabulary (U7's outcome) and a same-head conjunction that is empty or undecidable |
-| `.candidates(want) -> set[str]` | one `get`: the want's line marker and plain concepts as containment cones, its v2 window and each named role head's meet as overlap terms, `items_only`. Role terms prune by the graph — cells, places, regions, floors |
+| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) under exactly the terms they carry, plus a record-line marker |
+| `.file(offer) -> bool` | index a give under its concepts and its line marker; `False` for non-gives, unknown vocabulary (U7's outcome) and a conjunction ontodag refuses |
+| `.candidates(want) -> set[str]` | one `get([line marker, *want.concepts], items_only=True)`: the gives inside every wanted cone — place and time prune like categories |
 | `candidate_matches_indexed(offers, ontology, *, now, index=None)` | drop-in for `candidate_matches` |
 
-The v2 `where` disc stays with the exact check (a disc is not a cell) and
-is not filed; place *role terms* prune exactly, since cells and the graph
-are the truth for them (`docs/plans/P1-spacetime-terms.md` §4–5). Needs
-ontodag with #17/#18 (unconstrained passes unvisited; the dimension
-cache).
+The v1/v2 window and disc are fields the exact check gates, not terms;
+they are not filed. Needs ontodag with #15 (role parameters naming nodes)
+and #18 (the dimension cache).
 
 ---
 

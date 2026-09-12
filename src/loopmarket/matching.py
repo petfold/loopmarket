@@ -21,9 +21,9 @@ Conditions, in cheap-to-expensive order:
 6. quantity:   wanted quantity within given quantity (equal, unless
                divisible), identical units
 7. meaning:    the given conjunction satisfies the wanted one under the
-               pinned ontology — containment for what the thing is,
-               overlap for the service-role terms that say where and when
-               it changes hands (`Ontology.satisfies`)
+               pinned ontology — containment, term by term: what the thing
+               is and where and when it changes hands alike; the want is
+               the wider cone, the give the narrower (`Ontology.satisfies`)
 8. version:    pinned semantic ground must not move between the two sides:
                ontology roots must agree, registry/contract versions must
                not diverge on their major component (ontodag D10: minor
@@ -135,9 +135,9 @@ def candidate_matches(offers: Iterable[Offer], ontology: Ontology, *,
     Prototype strategy: exact check over the give x want product, with the
     cheap constant-time conditions doing the pruning. This is
     O(gives*wants) and entirely adequate for books that fit in memory; the
-    scaling path is `dimensions.candidate_matches_indexed` (concept cones
-    and exact window overlap through the catalogue), refined by this same
-    exact check.
+    scaling path is `dimensions.candidate_matches_indexed` (the want's
+    conjunction as one catalogue query), refined by this same exact
+    check.
     """
     gives = [o for o in offers if o.kind == GIVE]
     wants = [o for o in offers if o.kind == WANT]

@@ -36,40 +36,40 @@ def test_known_accepts_terms_ontodag_can_interpret_and_nothing_else():
     assert not ont.satisfies(["ride", "from(u2e4x)"], ["ride", "to(u2e)"])
 
 
-# ---------------------------------------------------------------- service roles
-# Two relations in one conjunction (docs/plans/P1-spacetime-terms.md §3):
-# containment for what the thing is, overlap for where and when it changes
-# hands. The head decides, and the head's role is catalogue vocabulary.
+# ---------------------------------------------------------------- roles
+# One relation for every term (Peter, 2026-09-12): the want is the wider
+# cone, the give the narrower. `from`/`to`/`when`/`where` are roles of the
+# geo and time dimensions — heads under heads, so their parameters may be
+# places — and they match by containment like any category. The overlap
+# relation for "service roles" under a marker node lived one day.
 
-# Seed vocabulary, not core: the four roles the tests speak. A head has one
-# value space, so a route's places and a transport's times are separate heads.
 ROLES = {"when": "time", "where": "geo", "from": "geo", "to": "geo"}
 
 
 def _roles_catalogue():
     from ontodag import OntoDAG
     ont = Ontology(OntoDAG())
-    ont.declare_service_roles(ROLES)
+    ont.declare_roles(ROLES)
     ont.load({"amphora": [], "ride": []})
-    ont.dag.put("made_in", ["geo"])             # descriptive: same kind, no role
+    ont.dag.put("made_in", ["geo"])             # descriptive: the same shape
     ont.dag.put("made", ["time"])
     return ont
 
 
-def test_declare_service_roles_adopts_the_prelude_and_pins_kinds():
+def test_declare_roles_adopts_the_prelude_and_pins_kinds():
     ont = _roles_catalogue()
     assert ont.head_kind("when") == "calendar-dimension"
     assert ont.head_kind("from") == ont.head_kind("made_in") == "prefix-dimension"
-    assert ont.is_service_role("when") and ont.is_service_role("to")
-    assert not ont.is_service_role("geo") and not ont.is_service_role("made_in")
     assert ont.head_kind("geo") and ont.head_kind("prefix-dimension") is None
-    ont.declare_service_roles(ROLES)            # idempotent, like the prelude
+    assert "service-role" not in ont.dag.nodes
+    ont.declare_roles(ROLES)                    # idempotent, like the prelude
+    ont.declare_service_roles(ROLES)            # the 2026-09-12 name, one release
     import pytest
     with pytest.raises(ValueError):
-        ont.declare_service_roles({"at": "amphora"})   # not a value space
+        ont.declare_roles({"at": "amphora"})    # not a value space
 
 
-def test_descriptive_terms_keep_containment_the_amphora():
+def test_descriptive_terms_the_amphora():
     """`made_in`/`made` are geo/time terms describing the thing: the
     offered one must be at least as specific as the wanted one, exactly
     like a category — and not the other way round."""
@@ -81,46 +81,43 @@ def test_descriptive_terms_keep_containment_the_amphora():
     assert not ont.satisfies(["amphora", "made_in(u2e5)"], ["amphora", "made_in(u2e4)"])
 
 
-def test_service_roles_match_by_overlap_the_ride():
-    """`from` is the same geo kind, but a *role*: a give from anywhere in
-    `u2e` serves a want at `u2e4x`, and a give at `u2e4x` serves a want
-    from anywhere in `u2e`. Siblings share no point and refuse; roles are
-    never confused with each other."""
+def test_handover_terms_are_the_same_shape_the_ride():
+    """A give from `u2e4x` fits within a want from anywhere in `u2e`; a
+    give from anywhere in `u2e` does not fit a want at `u2e4x` (the give
+    is the narrower cone). Siblings refuse; roles are never confused."""
     ont = _roles_catalogue()
-    assert ont.satisfies(["ride", "from(u2e)"], ["ride", "from(u2e4x)"])
     assert ont.satisfies(["ride", "from(u2e4x)"], ["ride", "from(u2e)"])
+    assert not ont.satisfies(["ride", "from(u2e)"], ["ride", "from(u2e4x)"])
     assert not ont.satisfies(["ride", "from(u2e4)"], ["ride", "from(u2e5)"])
     # roles are never confused: the give's `to` is what answers a `to`
     assert not ont.satisfies(["ride", "from(u2e4x)", "to(u2e5)"], ["ride", "to(u2e4x)"])
-    # a route: both places must overlap, independently
-    give = ["ride", "from(u2e4)", "to(u2e5)"]
-    assert ont.satisfies(give, ["ride", "from(u2e4x)", "to(u2e5m)"])
-    assert not ont.satisfies(give, ["ride", "from(u2e4x)", "to(u2e4x)"])
+    # a route: both places, independently
+    give = ["ride", "from(u2e4x)", "to(u2e5m)"]
+    assert ont.satisfies(give, ["ride", "from(u2e4)", "to(u2e5)"])
+    assert not ont.satisfies(give, ["ride", "from(u2e4)", "to(u2e4)"])
 
 
-def test_absent_service_term_is_unconstrained_uninterpretable_fails_closed():
+def test_silence_and_vocabulary():
     ont = _roles_catalogue()
-    assert ont.satisfies(["ride"], ["ride", "from(u2e4x)"])     # from anywhere
-    assert ont.satisfies(["ride", "from(u2e)"], ["ride"])       # don't care
+    assert ont.satisfies(["ride", "from(u2e)"], ["ride"])       # want: don't care
+    assert not ont.satisfies(["ride"], ["ride", "from(u2e4x)"])  # give: says nothing
     # an extra unknown *category* only narrows the give: ignorable ...
     assert ont.satisfies(["ride", "mystery"], ["ride"])
-    # ... an uninterpretable *service term* would widen it: never ignored
-    assert not ont.satisfies(["ride", "when(garbage)"], ["ride"])
+    # ... a term the want names that nobody can interpret never matches
     assert not ont.satisfies(["ride"], ["ride", "when(garbage)"])
     assert not ont.satisfies(["ride", "at(u2e)"], ["ride", "at(u2e)"])  # no head
-    # provably disjoint same-head terms: an empty conjunction matches nothing
+    # provably disjoint same-head terms describe nothing, on either side
     assert not ont.satisfies(["ride", "from(u2e4)", "from(u2e5)"], ["ride"])
-    assert not ont.satisfies(["ride"], ["ride", "from(u2e4)", "from(u2e5)"])
+    assert not ont.satisfies(["ride", "from(u2e4x)"], ["ride", "from(u2e4)", "from(u2e5)"])
     # two same-head terms that do meet are their intersection
-    assert ont.satisfies(["ride", "from(u2e)", "from(u2e4)"], ["ride", "from(u2e4x)"])
-    assert not ont.satisfies(["ride", "from(u2e)", "from(u2e4)"], ["ride", "from(u2e5)"])
+    assert ont.satisfies(["ride", "from(u2e4x)"], ["ride", "from(u2e)", "from(u2e4)"])
+    assert not ont.satisfies(["ride", "from(u2e5)"], ["ride", "from(u2e)", "from(u2e4)"])
 
 
-def test_when_role_equals_the_service_window_gate():
-    """The equivalence step 2 of the elimination promises: `when(a..b)` under
-    overlap decides exactly what `TimeWindow.overlaps` decides today, over
-    random windows — inclusive calendar values encode the half-open second
-    window as [start, end-1], the `dimensions.time_term` convention."""
+def test_when_term_is_window_containment():
+    """`when(a..b)` on a give fits within `when(c..d)` on a want exactly
+    when the give's half-open window lies inside the want's — inclusive
+    calendar values encode [start, end-1]."""
     import random
     from datetime import datetime, timezone
     from loopmarket import TimeWindow
@@ -134,17 +131,15 @@ def test_when_role_equals_the_service_window_gate():
     ont = _roles_catalogue()
     rng = random.Random(2026_09_12)
     base = 1_800_000_000
-    agree = disagree = 0
+    inside = outside = 0
     for _ in range(300):
-        a = TimeWindow(base + rng.randrange(0, 3600), base + rng.randrange(3601, 7200))
-        b = TimeWindow(base + rng.randrange(0, 3600), base + rng.randrange(3601, 7200))
-        # narrow the second so boundary cases (touching ends) occur often
-        if rng.random() < 0.5:
-            b = TimeWindow(a.end, a.end + 60) if rng.random() < 0.5 else \
-                TimeWindow(a.end - 1, a.end + 60)
-        expect = a.overlaps(b)
-        got = ont.satisfies(["ride", when(a)], ["ride", when(b)])
-        assert got == expect, (a, b)
-        agree += expect
-        disagree += not expect
-    assert agree and disagree           # both outcomes exercised
+        want = TimeWindow(base + rng.randrange(0, 3600), base + rng.randrange(3601, 7200))
+        give = TimeWindow(base + rng.randrange(0, 3600), base + rng.randrange(3601, 7200))
+        if rng.random() < 0.5:                    # boundary cases often
+            give = TimeWindow(want.start, want.end) if rng.random() < 0.5 else \
+                TimeWindow(want.start, want.end + 1)
+        expect = want.start <= give.start and give.end <= want.end
+        assert ont.satisfies(["ride", when(give)], ["ride", when(want)]) == expect, (give, want)
+        inside += expect
+        outside += not expect
+    assert inside and outside

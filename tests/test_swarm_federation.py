@@ -70,7 +70,7 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
         catalogue = Ontology.persistent(
             swarm_store(f"{topic}-catalogue", signer=BEE_SIGNER, **swarm))
         catalogue.load(CATALOGUE)
-        catalogue.declare_service_roles({"when": "time", "where": "geo"})
+        catalogue.declare_roles({"when": "time", "where": "geo"})
         self.assertTrue(catalogue.commit())
         pins = catalogue.pins
 

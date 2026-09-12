@@ -80,13 +80,12 @@ one-screen version; the design record with its reasons is
 [`docs/plans/cli.md`](docs/plans/cli.md).
 
 Candidate generation can also run through ontodag's **parametric
-dimensions**: `DimensionIndex` files gives under their service-role terms
-(`where(u24)`, `where(ljubljana)`, `when(...)`, `from(my_home)` — cells,
-places, regions and floors, matched by overlap through the graph; and, for
-v2 records, under their window), and `candidate_matches_indexed` asks
-**one** ontodag `get` per want — concept cones and overlap terms in one
-plan, items only (ontodag #14/#15/#16, landed 2026-09-12) — provably the
-same matches as the exhaustive baseline
+dimensions**: `DimensionIndex` files gives under exactly the terms they
+carry (`where(u24)`, `where(ljubljana)`, `when(...)`, `from(my_home)` —
+cells, places, regions and floors, ordered by the graph), and
+`candidate_matches_indexed` asks **one** ontodag `get` per want — the
+want's own conjunction as the query, items only — provably the same
+matches as the exhaustive baseline
 (the recall test enforces set-equality), with far fewer exact checks. The
 index is a derived, per-solver copy; the shared catalogue and its pinned
 roots never move because of it. Swap the in-memory store for
@@ -139,7 +138,7 @@ And two more: **clearing** is the atomic commit that fixes obligations; **settle
 | Document | One line |
 |---|---|
 | [`P1-federated-book.md`](docs/plans/P1-federated-book.md) | Per-maker books under own feeds/signers; announcement, aggregation, merge discipline, lifecycle, postage economics, spam floors. |
-| [`P1-spacetime-terms.md`](docs/plans/P1-spacetime-terms.md) | Place and time leave the offer's fields for its conjunction (decided 2026-09-12): the role-head rule — containment for what a thing is, overlap for where/when it changes hands, declared in the catalogue as `service-role`; cells and region nodes as the exact geo truth, the disc retires; the path to the v3 record. Step 2 (`satisfies` over mixed terms) landed the same day. |
+| [`P1-spacetime-terms.md`](docs/plans/P1-spacetime-terms.md) | Place and time leave the offer's fields for its conjunction (decided 2026-09-12): one relation, containment, for every term — where/when a thing changes hands are terms like its categories (the overlap rule of the same morning, superseded that night); cells and region nodes as the exact geo truth, the disc retires; the path to the v3 record. Step 2 (`satisfies` over mixed terms) landed the same day. |
 | [`P2-batch-auction.md`](docs/plans/P2-batch-auction.md) | The beat: sealed proposals, numeraire-free scoring, the fairness floor, capped solver rewards, collusion resistance, fees. |
 | [`P2-clearing-pricing.md`](docs/plans/P2-clearing-pricing.md) | Turning a winning loop's surplus into per-leg prices: equal log-surplus split under uniform directional clearing; clearing prices as node potentials (§10). |
 | [`P2-loop-selection.md`](docs/plans/P2-loop-selection.md) | Clearing as optimization: flow LP vs packing ILP, chains, failure-aware objective, pre-commit compression; composition on the want side (§10); the cleared object is a circulation, clearing prices its node potentials (§11). |

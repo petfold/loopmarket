@@ -415,7 +415,8 @@ blocks `loop` shipping, each removes a loopmarket-only behaviour.
 4. ~~**The whole space of a role**~~ — filed and **resolved the other
    way** as [ontodag #17](https://github.com/petfold/ontodag/issues/17)
    the same night (2026-09-12): a give silent on a role files nothing and
-   passes the overlap term unvisited; `from(geo)` is refused.
+   passes — then, the same night, the overlap relation itself withdrawn:
+   every term matches by containment; `from(geo)` stays refused.
 5. **(Optional) a shell-safe term spelling**, e.g. `head=param` as an
    input-only alias of `head(param)`, canonical rendering unchanged.
    Only if odag wants it for itself; loopmarket adds no spelling alone

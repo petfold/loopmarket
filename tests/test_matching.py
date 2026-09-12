@@ -98,40 +98,33 @@ def test_pinned_catalogue_refuses_unpinned_offers():
     assert check_match(pinned_a, pinned_b, cat, now=NOW) is not None
 
 
-def test_service_role_terms_reach_matching_without_a_record_change():
-    """A give from anywhere in `u2e` serves a want at `u2e4x` when `from`
-    is a declared service role (overlap); the same pair under a catalogue
-    that declares `from` as a plain geo head is refused (containment) —
-    the relation is the catalogue's, pinned by its root, not this code's.
-    The offer's `where` disc still gates alongside until the v3 record."""
+def test_handover_terms_match_by_containment():
+    """A give at `u2e4x` serves a want from anywhere in `u2e`; a give from
+    anywhere in `u2e` does not serve a want at `u2e4x` — the give is the
+    narrower cone (Peter, 2026-09-12). `from` is a role of `geo` (a head
+    under a head, so it may name places); nothing else is declared."""
     from ontodag import OntoDAG
-    roles = Ontology(OntoDAG())
-    roles.declare_service_roles({"from": "geo"})   # seed line, not core
-    roles.load({"ride": []})
-    from ontodag.prelude import apply as apply_prelude
-    plain = Ontology(OntoDAG())
-    apply_prelude(plain.dag)                 # `geo`, but no role marker
-    plain.dag.put("from", ["geo"])
-    plain.load({"ride": []})
-    a = give("bruno", Thing(("ride", "from(u2e)")), 5, **W)
-    b = want("amara", Thing(("ride", "from(u2e4x)")), 6, **W)
-    assert check_match(a, b, roles, now=NOW) is not None
-    assert check_match(a, b, plain, now=NOW) is None
-    assert check_match(give("bruno", Thing(("ride", "from(u2e4x)")), 5, **W),
-                       want("amara", Thing(("ride", "from(u2e)")), 6, **W),
-                       plain, now=NOW) is not None
+    cat = Ontology(OntoDAG())
+    cat.declare_roles({"from": "geo"})
+    cat.load({"ride": []})
+    narrow = give("bruno", Thing(("ride", "from(u2e4x)")), 5, **W)
+    wide = give("bruno", Thing(("ride", "from(u2e)")), 5, **W)
+    assert check_match(narrow, want("amara", Thing(("ride", "from(u2e)")), 6, **W),
+                       cat, now=NOW) is not None
+    assert check_match(wide, want("amara", Thing(("ride", "from(u2e4x)")), 6, **W),
+                       cat, now=NOW) is None
 
 
 def test_places_regions_and_floors_match_through_the_graph():
-    """ontodag #15/#16 (2026-09-12): a role term may name a *node* of the
-    base dimension — a place under a cell, a region above cells, a floor
-    under a building — and `satisfies` decides overlap by the graph. A
-    give to the region serves a want at a place it covers; a give to the
-    building serves its fourth floor; two floors never serve each other;
-    a conjunction the catalogue cannot decide fails closed."""
+    """ontodag #15 (2026-09-12): a role term may name a *node* of the base
+    dimension — a place under a cell, a region above cells, a floor under
+    a building — and containment is the graph's. A give at the place fits
+    a want for the region that covers its cell; a give on the fourth floor
+    fits a want for the building; never the other way round, and two
+    floors never fit each other."""
     from ontodag import OntoDAG
     cat = Ontology(OntoDAG())
-    cat.declare_service_roles({"where": "geo"})
+    cat.declare_roles({"where": "geo"})
     cat.load({"ride": [], "delivery": []})
     cat.dag.put("my_home", ["geo(u2e4x)"])
     cat.dag.put("my_home_4th", ["my_home"])
@@ -146,26 +139,20 @@ def test_places_regions_and_floors_match_through_the_graph():
         b = want("amara", Thing(("delivery", *want_terms)), 6, **V)
         return check_match(a, b, cat, now=NOW) is not None
 
-    assert pair(["where(ljubljana)"], ["where(my_home)"])       # region ⊒ place
-    assert pair(["where(my_home)"], ["where(ljubljana)"])       # and the reverse
-    assert pair(["where(my_home)"], ["where(my_home_4th)"])     # building ⊒ floor
-    assert pair(["where(my_home_4th)"], ["where(my_home)"])
+    assert pair(["where(my_home)"], ["where(ljubljana)"])       # place ⊑ region
+    assert not pair(["where(ljubljana)"], ["where(my_home)"])   # the region is wider
+    assert pair(["where(my_home_4th)"], ["where(my_home)"])     # floor ⊑ building
+    assert not pair(["where(my_home)"], ["where(my_home_4th)"])
     assert not pair(["where(my_home_ground)"], ["where(my_home_4th)"])  # siblings
-    assert not pair(["where(ljubljana)"], ["where(u2f)"])       # covering: lower bound
-    assert pair(["where(u2)"], ["where(ljubljana)"])            # a cell above the covering
+    assert pair(["where(my_home_4th)"], ["where(u2e)"])         # up through the cell
+    assert not pair(["where(ljubljana)"], ["where(u2)"])        # covering: lower bound
+    assert not pair(["where(my_home)"], ["where(u2f)"])
     # the stored spelling is the name; ontodag orders it (`known` passes)
     assert cat.known("where(my_home_4th)") and cat.known("where(ljubljana)")
     # a name outside the dimension is refused, never read as a literal cell
     assert not cat.known("where(ride)")
-    assert not pair(["where(ride)"], ["where(my_home)"])
-    # same-head terms: a place inside a cell meets it as the place; a
-    # place and a cell it is provably outside is empty; a meet no single
-    # term names fails closed (the maker names a decidable conjunction)
-    assert cat.meet("where", ["where(my_home)", "where(u2e)"]) == "where(my_home)"
-    assert cat.meet("where", ["where(my_home)", "where(u2f)"]) is None
-    assert pair(["where(my_home)", "where(u2e)"], ["where(my_home_4th)"])
-    assert not pair(["where(my_home)", "where(u2f)"], ["where(my_home_4th)"])
-    # a region and a cell above part of its covering: the covering is a
-    # lower bound, so neither contains the other and no term names the
-    # meet — ontodag raises, the check fails closed (say `where(ljubljana)`)
-    assert not pair(["where(ljubljana)", "where(u2)"], ["where(my_home)"])
+    assert not pair(["where(ride)"], ["where(u2e)"])
+    # a give with two same-head terms sits in their meet; a provably empty
+    # meet describes nothing
+    assert pair(["where(my_home)", "where(u2e)"], ["where(u2e4)"])
+    assert not pair(["where(my_home)", "where(u2f)"], ["where(u2e4)"])

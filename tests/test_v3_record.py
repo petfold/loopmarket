@@ -37,7 +37,7 @@ SEASON = when(1_000, 100_000)
 
 def catalogue():
     ont = Ontology(OntoDAG())
-    ont.declare_service_roles(ROLES)
+    ont.declare_roles(ROLES)
     ont.load({
         "service": [], "lesson": ["service"], "music-lesson": ["lesson"],
         "piano-lesson": ["music-lesson"], "repair": ["service"],
@@ -95,28 +95,33 @@ def test_open_ended_valid_is_a_v3_form():
 # ------------------------------------------------------------------- matching
 
 def test_v3_matches_through_the_conjunction():
+    """Place and time are terms: the give must fit within the want's
+    (the want is the wider cone, the give the narrower)."""
     ont = catalogue()
     broad = give("bruno", Thing(("ride", "where(u2e)", SEASON)), 5, **V)
     near = want("amara", Thing(("ride", "where(u2e4x)", SEASON)), 6, **V)
-    assert check_match(broad, near, ont, now=NOW) is not None
+    assert check_match(broad, near, ont, now=NOW) is None      # the give is wider
     assert check_match(give("bruno", Thing(("ride", "where(u2e4x)", SEASON)), 5, **V),
                        want("amara", Thing(("ride", "where(u2e)", SEASON)), 6, **V),
-                       ont, now=NOW) is not None
-    assert check_match(broad, want("amara", Thing(("ride", "where(u2e5)", SEASON)), 6, **V),
-                       ont, now=NOW) is not None           # u2e5 lies inside u2e
+                       ont, now=NOW) is not None               # u2e4x lies inside u2e
     sibling = want("amara", Thing(("ride", "where(u2e5)", SEASON)), 6, **V)
     assert check_match(give("bruno", Thing(("ride", "where(u2e4)", SEASON)), 5, **V),
-                       sibling, ont, now=NOW) is None        # siblings share no cell
+                       sibling, ont, now=NOW) is None          # siblings share no cell
+    at_cell = give("bruno", Thing(("ride", "where(u2e4x)", SEASON)), 5, **V)
     late = want("amara", Thing(("ride", "where(u2e4x)", when(200_000, 300_000))), 6, **V)
-    assert check_match(broad, late, ont, now=NOW) is None
-    anywhere_anytime = give("bruno", Thing(("ride",)), 5, **V)
-    assert check_match(anywhere_anytime, near, ont, now=NOW) is not None
+    assert check_match(at_cell, late, ont, now=NOW) is None    # the season is not inside
+    slot = give("bruno", Thing(("ride", "where(u2e4x)", when(2_000, 3_000))), 5, **V)
+    assert check_match(slot, near, ont, now=NOW) is not None   # a slot inside the season
+    silent = give("bruno", Thing(("ride",)), 5, **V)
+    assert check_match(silent, near, ont, now=NOW) is None     # says nothing about where/when
+    dont_care = want("amara", Thing(("ride",)), 6, **V)
+    assert check_match(at_cell, dont_care, ont, now=NOW) is not None
     expired = want("amara", Thing(("ride",)), 6, valid=TimeWindow(0, 100))
-    assert check_match(anywhere_anytime, expired, ont, now=NOW) is None
+    assert check_match(silent, expired, ont, now=NOW) is None
     standing = want("amara", Thing(("ride",)), 6, valid=TimeWindow(0))
     forever = give("bruno", Thing(("ride",)), 5, valid=TimeWindow(0))
     assert check_match(forever, standing, ont, now=10**10) is not None
-    assert check_match(anywhere_anytime, standing, ont, now=10**10) is None  # give expired
+    assert check_match(silent, standing, ont, now=10**10) is None  # give expired
 
 
 def test_pairs_across_the_v2_v3_line_are_refused():
@@ -202,14 +207,16 @@ def test_the_v3_triangle_clears():
     ont = catalogue()
     registry = OfferRegistry(RecordStore(MemoryBytesStore()))
     town = dict(valid=TimeWindow(0))
-    flat, farm, shop = "where(u2e4x)", "where(u2e4)", "where(u2e4x)"
+    # each give hands over inside the cell the receiving want names: the
+    # want is the wider cone (bruno takes his repair anywhere in u2e4)
+    flat, shop, area = "where(u2e4x)", "where(u2e4x)", "where(u2e4)"
     offers = [
         give("amara", Thing(("piano-lesson", flat, SEASON), unit="course"), 100, **town),
         want("amara", Thing(("produce", "local", "weekly", flat, SEASON), unit="course"), 104, **town),
-        give("bruno", Thing(("vegetable-box", farm, SEASON), unit="course"), 50, **town),
-        want("bruno", Thing(("bicycle-repair", farm, SEASON), unit="course"), 52, **town),
+        give("bruno", Thing(("vegetable-box", flat, SEASON), unit="course"), 50, **town),
+        want("bruno", Thing(("bicycle-repair", area, SEASON), unit="course"), 52, **town),
         give("chen", Thing(("bicycle-repair", shop, SEASON), unit="course"), 80, **town),
-        want("chen", Thing(("music-lesson", shop, SEASON), unit="course"), 83, **town),
+        want("chen", Thing(("music-lesson", flat, SEASON), unit="course"), 83, **town),
     ]
     assert all(o.v == 3 for o in offers)
     registry.publish_many(offers)

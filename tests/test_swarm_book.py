@@ -64,7 +64,7 @@ class TestTriangleOnLiveSwarmBook(unittest.TestCase):
         catalogue = Ontology.persistent(
             swarm_store(f"{topic}-catalogue", **swarm))
         catalogue.load(CATALOGUE)
-        catalogue.declare_service_roles({"when": "time", "where": "geo"})
+        catalogue.declare_roles({"when": "time", "where": "geo"})
         ontology_root = catalogue.commit()
         self.assertTrue(ontology_root)
 

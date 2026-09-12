@@ -13,6 +13,32 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 that carries issues #14, #15 and #16 (on ontodag `main` after 0.24.0 at
 the time of writing) — tag ontodag first.
 
+### Changed
+
+- **One relation: containment, for every term** (Peter, 2026-09-12 night:
+  "an overlap of everything with A is just A"; "a want is a wider cone and
+  a give is a narrower cone" — the toothbrush wanted within five metres of
+  the reception desk within thirty minutes is a narrow want, and the give
+  that fits within it matches). Where and when a thing changes hands are
+  terms like its categories: `Ontology.satisfies` is `is_below` term by
+  term, a want's place and window are query terms, and a give must fit
+  within them. The 0.3.0 overlap relation for "service roles" — heads
+  under a `service-role` marker matched by "a handover point exists" — is
+  gone with the marker: `declare_roles({head: base})` declares a role of a
+  dimension (one edge, `odag put from geo`; `declare_service_roles` stays
+  one release as an alias), and `is_service_role`/`split_roles`/`meet`
+  left the facade. A give that says nothing about where it hands over does
+  not satisfy a want that says where; a want that says nothing does not
+  care. The example catalogues and `triangle.od` drop the marker.
+- **`DimensionIndex.candidates` is one `get` of the want's own conjunction**
+  (`get([line marker, *want.concepts], items_only=True)`): place and time
+  prune like categories because they are terms like categories. No
+  overlap queries, no set arithmetic on the answer, nothing filed but what
+  a give says (the v1/v2 window and disc are fields the exact check gates).
+  The day's detours — three queries intersected in Python, ontodag #14's
+  `overlapping=` planner argument, a whole-space value for silence — are
+  withdrawn with ontodag's overlap query mode. Suite 54 s → 11 s.
+
 ### Added
 
 - **Names stand in role terms** (ontodag #15, 2026-09-12). A role head
@@ -24,21 +50,6 @@ the time of writing) — tag ontodag first.
   pinned root cannot carry): it publishes as its cell and the name stays
   private; a private region or floor is refused. A name outside the
   dimension is refused in ontodag's words, never read as a literal cell.
-- **`Ontology.satisfies` decides overlap with `OntoDAG.overlaps`, and
-  `Ontology.meet` is `OntoDAG.meet`** (ontodag #16): values by arithmetic,
-  nodes by the graph, units from the store. A give to a region serves a
-  want at a place it covers; a give to a building serves its fourth floor;
-  two floors never serve each other; a same-head conjunction no single
-  term names fails closed.
-- **`DimensionIndex.candidates` is one `get`** (ontodag #14):
-  `get([line marker, *plain], overlapping=[window, role meets],
-  items_only=True)` — no `get_overlapping`, no set arithmetic on the
-  answer. A give silent on a role head is filed under nothing for it:
-  ontodag's planner (#17, resolved on Peter's rule the same night) lets a
-  candidate that states nothing under a head pass its overlap term
-  unvisited, so "absent = unconstrained" costs no edge and no walk.
-  Recall-exact against the baseline, with names in the random books.
-
 ### Removed
 
 - **The `idx/{c,t,g}` recordstore index** (`index_offers`,

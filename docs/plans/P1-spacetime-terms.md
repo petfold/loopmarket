@@ -118,6 +118,21 @@ its native version, so old ids never move. The v3 constructor refuses
 
 ## 3. Two relations, one conjunction: the role-head rule
 
+> **Superseded the same night (2026-09-12).** This section reads a give's
+> place and time as flexible ranges and matches them by overlap ("a
+> handover point exists"). Peter: *a want is a wider cone and a give is a
+> narrower cone* — the toothbrush wanted within five metres of the
+> reception desk within thirty minutes is a narrow want, and the give that
+> fits within it matches; no home has a five-kilometre radius; *why is
+> overlap relevant at all? Ontodag is based on intersection.* So there is
+> **one relation**, containment, for every term: `where`/`when`/`from`/`to`
+> are roles of the geo and time dimensions (heads under heads, so their
+> parameters may name places — §5.3b, ontodag #15), declared with
+> `declare_roles({head: base})` and matched exactly like categories. The
+> `service-role` marker, `Ontology`'s overlap half, ontodag's overlap
+> query mode (#14, built and withdrawn that day) and the whole-space
+> device are gone. The text below is kept as the record of the error.
+
 **The decision the note skipped.** Today the match relation is encoded in
 the *field*: concepts match by containment (the offered thing fits within
 the wanted description), the service window and disc match by overlap (a

@@ -11,10 +11,8 @@ import random
 import pytest
 
 from loopmarket import GeoDisc, Ontology, Thing, TimeWindow, give, want
-from loopmarket.dimensions import (
-    DimensionIndex, candidate_matches_indexed, time_term,
-)
-from loopmarket.matching import candidate_matches
+from loopmarket.dimensions import DimensionIndex, candidate_matches_indexed
+from loopmarket.matching import candidate_matches, check_match
 
 NOW = 5_000
 CATALOGUE = {
@@ -38,12 +36,6 @@ def wide(**kw):
     return base
 
 
-class TestTimeTerm:
-    def test_half_open_to_inclusive(self):
-        term = time_term(TimeWindow(0, 86_400))
-        assert term == "service-time(1970-01-01T00:00:00Z..1970-01-01T23:59:59Z)"
-
-
 class TestCandidates:
     def test_courier_style_pruning(self):
         ontology = fresh_ontology()
@@ -59,7 +51,9 @@ class TestCandidates:
         cands = index.candidates(b)
         assert a1.offer_id in cands
         assert a2.offer_id not in cands          # wrong concept cone
-        assert a3.offer_id not in cands          # disjoint service window
+        # a v1/v2 window is a field, not a term: the exact check gates it
+        assert a3.offer_id in cands
+        assert check_match(a3, b, ontology, now=NOW) is None
 
     def test_unknown_vocabulary_not_filed(self):
         index = DimensionIndex(fresh_ontology())
@@ -124,10 +118,10 @@ class TestRecallAgainstBaseline:
             "the index is not pruning against the full product"
 
 
-# ------------------------------------------------------------- service roles
-# Step 4 of docs/plans/P1-spacetime-terms.md: the index files a give under
-# whatever role terms it carries and asks overlap per role head the want
-# names — so place prunes, through cells, the truth for role terms.
+# ------------------------------------------------------------- role terms
+# Place and time are query terms like categories (Peter, 2026-09-12): the
+# index files a give under whatever terms it carries and a want's candidates
+# are the gives inside every wanted cone — one `get`, no set arithmetic.
 
 ROLES = {"from": "geo", "to": "geo", "depart": "time"}
 CELLS = ["u2e", "u2e4", "u2e4x", "u2e4xq", "u2e5", "u2f"]
@@ -138,7 +132,7 @@ PLACES = ["my_home", "my_home_4th", "ljubljana"]
 
 def roles_ontology():
     ont = fresh_ontology()
-    ont.declare_service_roles(ROLES)
+    ont.declare_roles(ROLES)
     ont.dag.put("made_in", ["geo"])           # descriptive: containment
     ont.dag.put("my_home", ["geo(u2e4x)"])
     ont.dag.put("my_home_4th", ["my_home"])
@@ -207,73 +201,69 @@ class TestRoleTerms:
         assert any("my_home" in c or "ljubljana" in c for m in baseline
                    for c in m.give.thing.concepts + m.want.thing.concepts)
 
-    def test_place_prunes_and_silence_is_unconstrained(self):
+    def test_place_prunes_by_containment(self):
         ontology = roles_ontology()
-        near = give("bruno", Thing(("vegetable-box", "from(u2e4)")), 50, **wide())
-        far = give("chiara", Thing(("vegetable-box", "from(u2f)")), 50, **wide())
-        anywhere = give("dora", Thing(("vegetable-box",)), 50, **wide())
-        b = want("amara", Thing(("produce", "from(u2e4x)")), 104, **wide())
+        inside = give("bruno", Thing(("vegetable-box", "from(u2e4x)")), 50, **wide())
+        wider = give("chiara", Thing(("vegetable-box", "from(u2e)")), 50, **wide())
+        far = give("dora", Thing(("vegetable-box", "from(u2f)")), 50, **wide())
+        silent = give("erin", Thing(("vegetable-box",)), 50, **wide())
         index = DimensionIndex(ontology)
-        for a in (near, far, anywhere):
+        for a in (inside, wider, far, silent):
             assert index.file(a)
-        cands = index.candidates(b)
-        assert near.offer_id in cands and anywhere.offer_id in cands
-        assert far.offer_id not in cands            # sibling cell: pruned
+        b = want("amara", Thing(("produce", "from(u2e4)")), 104, **wide())
+        assert index.candidates(b) == {inside.offer_id}    # the narrower give
         # a want silent on `from` takes every give
         assert len(index.candidates(
-            want("amara", Thing(("produce",)), 104, **wide()))) == 3
+            want("amara", Thing(("produce",)), 104, **wide()))) == 4
         # a provably empty want, or an uninterpretable one, matches nothing
         assert index.candidates(want("amara", Thing(
             ("produce", "from(u2e4)", "from(u2e5)")), 104, **wide())) == set()
         assert index.candidates(want("amara", Thing(
             ("produce", "depart(garbage)")), 104, **wide())) == set()
         assert not index.file(give("e", Thing(("produce", "depart(garbage)")), 1, **wide()))
+        assert not index.file(give("f", Thing(("produce", "from(u2e4)", "from(u2e5)")), 1, **wide()))
 
-    def test_silence_is_per_head(self):
-        """A give silent on `to` but naming `from` is filed under `to`'s
-        whole space and `from`'s cell: it meets a want on both heads iff
-        its `from` overlaps — the per-head rule, in one query."""
+    def test_every_wanted_head_must_be_answered(self):
+        """A give silent on `to` is in no `to` cone: a want naming `to`
+        does not see it, however well its `from` fits."""
         ontology = roles_ontology()
-        half = give("bruno", Thing(("vegetable-box", "from(u2e4)")), 50, **wide())
-        both = give("chiara", Thing(("vegetable-box", "from(u2e4)", "to(u2e)")), 50, **wide())
-        wrong = give("dora", Thing(("vegetable-box", "from(u2f)")), 50, **wide())
+        half = give("bruno", Thing(("vegetable-box", "from(u2e4x)")), 50, **wide())
+        both = give("chiara", Thing(("vegetable-box", "from(u2e4x)", "to(u2f1)")), 50, **wide())
         index = DimensionIndex(ontology)
-        for a in (half, both, wrong):
+        for a in (half, both):
             assert index.file(a)
-        b = want("amara", Thing(("produce", "from(u2e4x)", "to(u2f)")), 104, **wide())
-        assert index.candidates(b) == {half.offer_id}   # `both` goes to u2e, not u2f
-        b = want("amara", Thing(("produce", "from(u2e4x)", "to(u2e5)")), 104, **wide())
+        b = want("amara", Thing(("produce", "from(u2e4)", "to(u2f)")), 104, **wide())
+        assert index.candidates(b) == {both.offer_id}
+        b = want("amara", Thing(("produce", "from(u2e4)")), 104, **wide())
         assert index.candidates(b) == {half.offer_id, both.offer_id}
 
     def test_names_in_role_terms_prune_through_the_graph(self):
-        """ontodag #15/#16: `from(my_home)`, `from(ljubljana)` are filed as
-        spelled and the overlap query decides them by the graph."""
+        """ontodag #15: `from(my_home_4th)`, `from(ljubljana)` are filed as
+        spelled and the cone query decides them by the graph."""
         ontology = roles_ontology()
-        region = give("bruno", Thing(("vegetable-box", "from(ljubljana)")), 50, **wide())
         floor = give("chiara", Thing(("vegetable-box", "from(my_home_4th)")), 50, **wide())
+        region = give("bruno", Thing(("vegetable-box", "from(ljubljana)")), 50, **wide())
         far = give("dora", Thing(("vegetable-box", "from(u2f)")), 50, **wide())
         index = DimensionIndex(ontology)
-        for a in (region, floor, far):
+        for a in (floor, region, far):
             assert index.file(a)
-        home = want("amara", Thing(("produce", "from(my_home)")), 104, **wide())
-        assert index.candidates(home) == {region.offer_id, floor.offer_id}
-        cell = want("amara", Thing(("produce", "from(u2e5)")), 104, **wide())
-        assert index.candidates(cell) == {region.offer_id}
-        # a want whose same-head meet no term names matches nothing, like
-        # `satisfies`; a give in that shape is not filed
-        assert index.candidates(want("amara", Thing(
-            ("produce", "from(ljubljana)", "from(u2)")), 104, **wide())) == set()
-        assert not index.file(give("e", Thing(
-            ("produce", "from(ljubljana)", "from(u2)")), 1, **wide()))
+        for wanted in ("from(my_home)", "from(u2e4)", "from(u2e)", "from(ljubljana)"):
+            cands = index.candidates(want("amara", Thing(("produce", wanted)), 104, **wide()))
+            assert floor.offer_id in cands and far.offer_id not in cands, wanted
+        # the region is wider than a cell inside it, and its covering is a
+        # lower bound: it fits within nothing but itself
+        assert region.offer_id in index.candidates(
+            want("amara", Thing(("produce", "from(ljubljana)")), 104, **wide()))
+        assert region.offer_id not in index.candidates(
+            want("amara", Thing(("produce", "from(u2)")), 104, **wide()))
 
     def test_candidates_is_exactly_one_get(self, monkeypatch):
-        """The consumer commitment on ontodag #14: one `get` per want with
-        the overlap terms in the plan, `items_only`, and no set arithmetic
-        on the answer — no `get_overlapping`, no `&`."""
+        """One `get` per want, the want's own terms as the query, `items_only`,
+        no set arithmetic on the answer."""
         ontology = roles_ontology()
         index = DimensionIndex(ontology)
-        v3 = dict(valid=TimeWindow(0, 1_000_000))     # no fields: no time term
-        for a in (give("bruno", Thing(("vegetable-box", "from(u2e4)")), 50, **v3),
+        v3 = dict(valid=TimeWindow(0, 1_000_000))
+        for a in (give("bruno", Thing(("vegetable-box", "from(u2e4x)")), 50, **v3),
                   give("dora", Thing(("vegetable-box",)), 50, **v3)):
             assert index.file(a)
         calls = []
@@ -282,15 +272,12 @@ class TestRoleTerms:
                             lambda *a, **kw: calls.append((a, kw)) or real_get(*a, **kw))
         monkeypatch.setattr(index._dag, "get_overlapping",
                             lambda *a, **kw: pytest.fail("get_overlapping called"))
-        b = want("amara", Thing(("produce", "from(u2e4x)", "from(u2e)",
-                                 "depart(2027-01-01T00:00:00Z..2027-01-02T00:00:00Z)")),
-                 104, **v3)
-        assert len(index.candidates(b)) == 2
+        b = want("amara", Thing(("produce", "from(u2e4)", "from(u2e)")), 104, **v3)
+        assert len(index.candidates(b)) == 1
         assert len(calls) == 1
         (terms,), kw = calls[0]
-        assert "produce" in terms and kw["items_only"] is True
-        assert sorted(kw["overlapping"]) == [           # the same-head meet
-            "depart(2027-01-01T00:00:00Z..2027-01-02T00:00:00Z)", "from(u2e4x)"]
+        assert {"produce", "from(u2e4)", "from(u2e)"} <= set(terms)
+        assert kw == {"items_only": True}
 
 
 def _iso(t):

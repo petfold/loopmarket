@@ -1,52 +1,36 @@
 """Candidate generation through ontodag parametric dimensions — one query.
 
-The 2026-07-30 upgrade of the P1 candidate-generation plan (ARCHITECTURE.md
-§3), completed 2026-09-12 when ontodag #14/#15/#16 landed: gives are filed
-under *exact* parametric terms in a derived catalogue copy, and a want's
-candidates are **one** ``dag.get(terms, overlapping=[...], items_only=True)``
-— ontodag's planner orders every cone (concept cones, the record-line
-marker, each service-role overlap term) smallest-first, walks or probes
-from the exact running result and stops on empty, so a category offered in
-few places or windows cuts the search short across dimensions. loopmarket
-does no set arithmetic on the answer (`docs/plans/ontodag-coupling.md` §5,
-"one intersection engine"): it iterates the items ontodag returns and runs
-the exact pairwise `check_match` on each.
+The want's conjunction IS the query (Peter, 2026-09-12: ontodag is
+intersection; a want is the wider cone, a give the narrower). Gives are
+filed in a derived catalogue copy under exactly the terms they carry —
+categories, descriptive terms, and the place and time terms of the roles
+the catalogue declares (`where(u2e4x)`, `from(my_home)`, `when(...)`) —
+plus a private record-line marker; a want's candidates are one
+``dag.get([line marker, *want.concepts], items_only=True)``: the gives
+inside every wanted cone, ontodag's planner ordering the cones smallest
+first, walking or probing from the exact running result and stopping on
+empty. Place and time prune like categories, because they are terms like
+categories. loopmarket does no set arithmetic on the answer
+(`docs/plans/ontodag-coupling.md` §5, "one intersection engine"): it
+iterates the items ontodag returns and runs the exact pairwise
+`check_match` on each — whose meaning half, `Ontology.satisfies`, is the
+same containment test term by term.
 
-What the one query says:
+Why the marker: `check_match` refuses pairs across the v2/v3 record line
+(a disc is not a cell), so v1/v2 gives and v3 gives are filed under two
+private marker categories and a want names its own. The marker is also
+what makes `items_only` return offers and nothing else: a childless
+*category* in the wanted cone (`fruit-box` when nobody offers one) is an
+item to ontodag, but it is not under the marker.
 
-- meaning: the wanted plain concepts — exact-necessary: a give whose
-  concepts satisfy the want is, by fits-within, inside every wanted cone.
-  Descriptive spacetime terms (`made_in(u2e)`) are plain concepts here: a
-  virtual query term whose cone computed containment fills;
-- the record line: v1/v2 gives and v3 gives are filed under two private
-  marker categories, and a want names its own — `check_match` refuses
-  pairs across the line (a disc is not a cell), so a want only ever sees
-  gives of its own record line. The marker is also what makes
-  `items_only` return offers and nothing else: a childless *category* in
-  the wanted cone (`fruit-box` when nobody offers one) is an item to
-  ontodag, but it is not under the marker;
-- service roles (`docs/plans/P1-spacetime-terms.md` §5.4): for each role
-  head the want names — `from(...)`, `depart(...)`, whatever the catalogue
-  hangs under `service-role` — the meet of its terms as an *overlap* term.
-  Role terms may name nodes (a place, a region, a floor — ontodag #15) and
-  the graph decides their overlap (#16), so place prunes exactly: a give
-  `from(u2f)` never reaches the exact check for a want `from(my_home)`.
-  **Absent = unconstrained** is `Ontology.satisfies`' rule — a give that
-  names no `from(...)` serves a want anywhere — and since 2026-09-12 night
-  it is ontodag's planner rule too: an overlap term constrains only the
-  candidates that *state* a value of its head, and a candidate stating
-  nothing passes by the other terms, unvisited (Peter: what is
-  unconstrained is not walked; the other constraints give the result). So
-  a give silent on a role is filed under nothing for it — no whole-space
-  value, no region scaffold — and the overlap term is one asserted climb
-  per surviving candidate, never a walk of the term's cone or of the
-  graph;
-- v1/v2 fields: ``service-time(a..b)`` over the offer's `service` window
-  as one more overlap term — *exact* for the window-overlap gate, because
-  the filed value IS the offer's window. The `where` disc stays with the
-  exact check (``GeoDisc.intersects``): a disc is not a cell, so it is not
-  filed at all (the 2026-07-30 centre-cell index fact was read by nothing
-  and went with the one-query rewrite).
+Nothing else is filed. A give silent on a head is in no cone of that
+head, which is the containment reading of silence; the v1/v2 window and
+disc are fields the exact check gates, not terms (an index fact for them
+would be a second machine). There was, for one day, an overlap mode —
+role terms matched by "a handover point exists", three queries intersected
+in Python, then ontodag #14's `overlapping=` planner argument, then a
+whole-space value for silence — all withdrawn 2026-09-12 night when the
+question was asked properly (`docs/plans/P1-spacetime-terms.md` §3).
 
 The generator is recall-exact against the baseline give x want product —
 and clearing re-verification never depends on it either way (invariant U3).
@@ -61,43 +45,21 @@ terms enter *shared* state, e.g. published region nodes in the catalogue.)
 
 One ontodag adoption rule is load-bearing here: an offer is filed under
 exactly ONE value per dimension (an item sits in the INTERSECTION of its
-parents — two same-head role terms on one give are their meet, and ontodag
-refuses provably disjoint ones); a give whose same-head terms have no
-nameable meet is not filed, as `satisfies` matches it against nothing.
-
+parents — two same-head terms on one give are their meet, and ontodag
+refuses provably disjoint ones).
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Iterable, Iterator
-
-from ontodag import dimensions as _dims
 
 from .matching import Match, check_match
 from .ontology import Ontology
-from .schema import GIVE, WANT, Offer, TimeWindow
-
-TIME_DIMENSION = "service-time"
+from .schema import GIVE, WANT, Offer
 
 #: Index-private marker categories: which record line a filed give is on.
 _LINE = {2: "loopmarket:record-line-2", 3: "loopmarket:record-line-3"}
 
-
-
-def _iso(t: int) -> str:
-    return datetime.fromtimestamp(t, tz=timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ")
-
-
-def time_term(window: TimeWindow) -> str:
-    """The window as one inclusive parametric value.
-
-    `TimeWindow` is half-open [start, end) in whole seconds; dimension
-    ranges are inclusive, so [start, end-1] represents exactly the same
-    set of service seconds — overlap is preserved exactly.
-    """
-    return f"{TIME_DIMENSION}({_iso(window.start)}..{_iso(window.end - 1)})"
 
 
 def _line(offer: Offer) -> int:
@@ -119,74 +81,43 @@ class DimensionIndex:
         self._declare()
 
     def _declare(self) -> None:
-        for name, supers in [
-            (_dims.DIMENSION_ROOT, []),
-            (_dims.KIND_LINEAR, [_dims.DIMENSION_ROOT]),
-            (TIME_DIMENSION, [_dims.KIND_LINEAR]),
-            *((marker, []) for marker in _LINE.values()),
-        ]:
-            if name not in self._dag.nodes:
-                self._dag.put(name, supers)
+        for marker in _LINE.values():
+            if marker not in self._dag.nodes:
+                self._dag.put(marker, [])
 
     def file(self, offer: Offer) -> bool:
-        """Index a GIVE under its concepts, its record-line marker and (v1/v2)
-        its window — and under nothing for a role it is silent on. Returns
-        False (not filed) when its vocabulary is unknown to the catalogue —
-        the same fail-closed outcome the exact check would reach (invariant
-        U7): a role term ontodag cannot interpret is unknown vocabulary
-        too, and so is a same-head conjunction it cannot decide."""
+        """Index a GIVE under its concepts and its record-line marker.
+        Returns False (not filed) when its vocabulary is unknown to the
+        catalogue — the same fail-closed outcome the exact check would
+        reach (invariant U7) — or when ontodag refuses the conjunction
+        (provably disjoint same-head terms: it matches nothing)."""
         if offer.kind != GIVE:
             return False
         if offer.offer_id in self._filed:
             return True
         if not all(self.ontology.known(c) for c in offer.thing.concepts):
             return False
-        roles, _ = self.ontology.split_roles(offer.thing.concepts)
-        if roles is None:  # pragma: no cover - `known` above already refused
+        try:
+            self._dag.put(offer.offer_id,
+                          [*offer.thing.concepts, _LINE[_line(offer)]])
+        except ValueError:
             return False
-        for head, terms in roles.items():
-            try:
-                empty = self.ontology.meet(head, terms) is None
-            except ValueError:   # no single term names the meet
-                return False
-            if empty:
-                # provably disjoint same-head terms: the conjunction is
-                # empty, `satisfies` matches it against nothing, and
-                # ontodag's disjoint-parents lint would refuse the put
-                return False
-        parents = [*offer.thing.concepts, _LINE[_line(offer)]]
-        if offer.v < 3:
-            parents.append(time_term(offer.service))
-        self._dag.put(offer.offer_id, parents)   # silent roles: nothing
         self._filed.add(offer.offer_id)
         return True
 
     def candidates(self, want_offer: Offer) -> set[str]:
-        """Give offer-ids that can possibly match `want_offer`: inside every
-        wanted plain cone, on the want's record line, service windows
-        overlapping (v1/v2), and for each role head the want names,
-        overlapping its meet — gives silent on the head pass it unvisited
-        (ontodag's rule since 2026-09-12 night). One `get`; recall-exact
-        for those gates; every candidate still faces `check_match`."""
+        """Give offer-ids inside every wanted cone, on the want's record
+        line: one `get`. Recall-exact for the meaning gate; every candidate
+        still faces `check_match` (rates, quantities, pins, the v1/v2 field
+        gates)."""
         concepts = want_offer.thing.concepts
         if not all(self.ontology.known(c) for c in concepts):
             return set()          # unknown wanted vocabulary matches nothing
-        roles, plain = self.ontology.split_roles(concepts)
-        if roles is None:
+        try:
+            items = self._dag.get([_LINE[_line(want_offer)], *concepts],
+                                  items_only=True)
+        except ValueError:        # a conjunction ontodag cannot order
             return set()
-        overlapping = []
-        if want_offer.v < 3:
-            overlapping.append(time_term(want_offer.service))
-        for head, terms in roles.items():
-            try:
-                meet = self.ontology.meet(head, terms)
-            except ValueError:    # an undecidable want matches nothing
-                return set()
-            if meet is None:      # a provably empty want matches nothing
-                return set()
-            overlapping.append(meet)
-        items = self._dag.get([_LINE[_line(want_offer)], *plain],
-                              overlapping=overlapping, items_only=True)
         return {item.name for item in items}
 
 

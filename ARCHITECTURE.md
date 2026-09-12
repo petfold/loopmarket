@@ -206,52 +206,37 @@ the want names, plus the gives silent on that head — so place prunes at
 last, through cells, the truth for role terms; the v2 disc keeps its exact
 check until v3.
 
-**Update 2026-09-12 (night) — the three asks landed upstream, and this
-section's plan is complete.** ontodag closed #15, #16 and #14 on its main
-branch (after 0.24.0) the same day. (i) *Role heads take nodes* (#15): a
+**Update 2026-09-12 (night) — one relation.** ontodag closed #15, #16 and
+#14 on its main branch the same day, and consuming them exposed the error
+in this section's premise. (i) *Role heads take nodes* (#15) stands: a
 head declared under a head (`from` under `geo`) reads a parameter that
 names a node of the base dimension — a place under a cell, a region above
 cells, a floor under a building — stored as spelled and ordered by the
-graph (`from(my_home) ⊑ from(u2e4)` iff `my_home ⊑ geo(u2e4)`); a name
-outside the dimension is refused, never read as a literal cell. So a
-catalogue name in a role term now *stands* in the offer (`where(ljubljana)`,
-`where(my_home_4th)`), the exact covering of a place is a region node, and
-the third coordinate is a sub-place node — the CLI's value substitution
-survives only for *private* places (a name the pinned root does not hold
-publishes as its cell; `cli.md` §12). (ii) *The Boolean overlap face*
-(#16): `Ontology.satisfies` decides each role head with `OntoDAG.overlaps`
-on the two same-head meets and `Ontology.meet` is `OntoDAG.meet` — values
-by arithmetic, nodes by the graph, units from the store; `dimensions.
-intersect`/`canonicalize` left loopmarket. A same-head conjunction no
-single term names (a place and a cell it is not known to lie in) fails
-closed. (iii) *Overlap terms in the planner and `items_only`* (#14):
-`DimensionIndex.candidates` is **one `get`** — the want's plain concepts
-and a record-line marker as containment cones, its v2 window and each
-named role head's meet as overlap terms — and loopmarket does no set
-arithmetic on the answer. The one device this needed on our side: the
-"absent = unconstrained" rule (a give naming no `from(...)` serves a want
-anywhere) was invisible to an overlap term as first shipped, and for a
-few hours the index filed every silent give under a whole-space value
-(first a private region over the one-character cells, then `from(geo)`).
-Peter's rule ended that the same night — *when something is
-unconstrained, it should not be visited at all; the other constraints
-give the result; we cannot walk the whole DAG when it gets really big* —
-and [ontodag #17](https://github.com/petfold/ontodag/issues/17) was
-resolved accordingly: an overlap term in `get` is a constraint applied by
-one asserted climb per candidate the containment cones produced, a
-candidate stating nothing under the head passes unvisited, and `from(geo)`
-is refused (the overlap of everything with A is A);
-[ontodag #18](https://github.com/petfold/ontodag/issues/18) cached the
-dimension walk. So a silent role files nothing, and the suite runs in 15 s
-where it ran in 54 s. With the one-query generator in place the redundant
-`idx/{c,t,g}` recordstore index **retired** as committed 2026-09-07:
-`index_offers`, `ids_by_index` and the bucket/cell chains are gone,
-maker and clearing books hold no index, and the manifest lost its
-`index_root` (Peter: a field that names nothing does not stay) — three
-roots now; cone summaries add their own root if they ever come
-(`P1-federated-book.md` §2).
+graph; a name outside the dimension is refused. So a catalogue name in a
+role term stands in the offer (`where(ljubljana)`, `where(my_home_4th)`),
+and the CLI's value substitution survives only for *private* places
+(`cli.md` §12). (ii) *Overlap was a modelling error, not a missing
+operator.* Peter, after three revisions of an overlap query mode in one
+day: *why is overlap relevant at all? Ontodag is based on intersection.*
+And the correction: *a want is a wider cone and a give is a narrower cone*
+— the toothbrush wanted within five metres of the reception desk within
+thirty minutes is a narrow want, and the give that fits within it is the
+match; no home has a five-kilometre radius. This section's "a handover
+point exists" read both sides as flexible ranges. It is withdrawn: every
+term of an offer, place and time included, matches by containment — the
+give fits within the want — so `Ontology.satisfies` is `is_below` term by
+term, the `service-role` marker is gone (`declare_roles` puts a role under
+its base head, one edge), ontodag's `get(overlapping=...)`, built that
+afternoon, is removed, and `DimensionIndex.candidates` is one
+`get([line marker, *want.concepts], items_only=True)`: the want's
+conjunction is the query, and place and time prune like categories. (iii)
+With the one-query generator in place the redundant `idx/{c,t,g}`
+recordstore index **retired** as committed 2026-09-07 and the manifest
+lost its `index_root`. ontodag #18 (a cache on the dimension walk) stays.
 Truth untouched throughout: `check_match` and the recall-exactness guard
-are what changed hands, not what they decide.
+are what changed hands, not what they decide — except that a give which
+says nothing about where it hands over no longer satisfies a want that
+says where, which is the containment reading and the right one.
 
 ## 4. The catalogue (ontology.py)
 
@@ -262,10 +247,11 @@ vocabulary fails closed. Since 2026-07-31 the per-pair coverage test runs on
 ontodag's Boolean `is_below` (>= 0.7.0): an upward walk from the offered
 concept with early exit, bounded by its shallow ancestor cone — never by
 enumerating the wanted category's descendants. Division of labor with §6:
-*queries* (`get`/`get_overlapping`, the DimensionIndex) generate candidates
-one-to-many; the *Boolean* answers the pairwise truth that settlement
-re-verifies — same fits-within relation, set-valued for discovery,
-point-valued for proof.
+*queries* (`get`, the DimensionIndex) generate candidates one-to-many; the
+*Boolean* answers the pairwise truth that clearing re-verifies — same
+fits-within relation, set-valued for discovery, point-valued for proof.
+Since 2026-09-12 night this is the whole story: where and when a thing
+changes hands are terms, and they match by the same relation.
 
 Persistence goes through `EagerOntoDAG` over a duck-typed RecordStore;
 `commit()` yields a canonical root. Offers pin the root they were written

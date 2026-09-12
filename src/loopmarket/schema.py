@@ -23,9 +23,9 @@ Time and place. The v1/v2 records carried them as fields — a `service`
 window and a `where` disc beside the concepts, matched by interval overlap
 and disc intersection here. The v3 record (2026-09-12, decided in
 `docs/plans/P1-spacetime-terms.md`) carries them *in the conjunction*, as
-terms of role heads the catalogue declares under `service-role`
-(`when(a..b)`, `where(cell)`, a route's `from(cell)`/`to(cell)`, a
-transport's `depart`/`arrive`), matched by overlap through the catalogue;
+terms of role heads the catalogue declares under its time and geo
+dimensions (`when(a..b)`, `where(cell)`, a route's `from(cell)`/`to(cell)`,
+a transport's `depart`/`arrive`), matched by containment like every term;
 cells and region nodes are the exact truth, and no v3 record holds a disc.
 `GeoDisc` and the haversine survive only to read and match v1/v2 records
 among themselves; nothing creates a new one. Only `valid` — a property of
