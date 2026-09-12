@@ -63,12 +63,16 @@ market gardener and a bicycle mechanic, no pair of whom can trade — and
 `loops && clear` finds, verifies and clears the triangle at a 12% surplus:
 fifteen lines of `set maker`, `give piano-lesson where(amara_flat) 100`,
 `want produce local weekly ...`. It runs unchanged with the book on Swarm
-(`loop -f swarm:TOPIC ...`, about two minutes on a light node). The
-federation demo runs per-maker books, two aggregators folding to
-byte-identical manifests, a forged offer dying at the fold, a tombstoned
-offer staying closed, clearing provably based on the fold, and a follower
-reading it all back — in memory by default, live against a Bee node when
-`BEE_API` and `BEE_BATCH` are set. New here? Start with the
+(`loop -f swarm:TOPIC ...`; 0.3.0 live-checked 2026-09-12 on a Bee 2.8.2
+light node: published, solved and cleared in 1m51s with the same `loop_id`
+the in-memory run gives, a fresh session reading the six fills back in
+11s). The federation demo runs per-maker books on their own feeds, two
+aggregators folding to byte-identical manifests, a censoring aggregator
+convicted by absence proofs, a forged offer dying at the fold, a
+tombstoned offer staying closed, clearing provably based on the fold, and
+a follower reading it all back — in memory by default, live against a Bee
+node when `BEE_API` and `BEE_BATCH` are set (0.3.0 live, with ontodag's
+core pack: 4m25s, every check true). New here? Start with the
 **[User Guide](docs/USER-GUIDE.md)** (a tutorial at the command line,
 with the API alongside), then the **[Reference Manual](docs/REFERENCE.md)**
 (commands, settings, API, record formats, invariants). `loop help` is the
