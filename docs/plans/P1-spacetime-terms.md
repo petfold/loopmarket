@@ -85,6 +85,10 @@ consequences were decided that day and built the next
   different roots, so a private name resolves to its *public value* before
   encoding — `from(my_home)` is published as `from(u2e4x)` (Peter,
   2026-09-12: ontodag interprets the name; the CLI only carries the value).
+  *Narrowed the same night, when ontodag #15 landed:* a name the pinned
+  catalogue holds stands as spelled (`where(ljubljana)`), ontodag orders
+  the node; only a name the root does not carry — a place in the
+  personal layer — publishes as its cell.
 
 **The two-place offer** was the motivating example and the requirement:
 `want ride from(my_home) to(my_supermarket)` has an origin and a
@@ -263,7 +267,10 @@ the record.
   **finest cell that contains the whole radius**, not the cell at the
   radius' precision — a point near a cell edge names the coarser cell
   that covers what the maker meant (the triangle's three places all say
-  `u24`), and the exact covering is a region node once ontodag #15 lands. A want five metres across a cell edge from a give's covering does
+  `u24`), and the exact covering is a region node (ontodag #15, landed
+  2026-09-12: `where(ljubljana)` stands in the offer and the region's
+  covering is a lower bound — `from(ljubljana) ⊑ from(u2)` is False until
+  the region is filed under `geo(u2)`, CONTRACT G2). A want five metres across a cell edge from a give's covering does
   not match unless the covering includes the neighbour cell — and the maker
   who wanted that says so with one more cell, or a coarser one. The disc
   made the same kind of claim with a circle nobody meant.
@@ -281,9 +288,12 @@ the record.
   want by overlap, a ground-floor-only courier and a fourth-floor want are
   siblings and never match. Metric elevation stays available as a plain
   linear term where it is real (`elevation(400m..600m)` on a vineyard).
-  The dependency is ontodag #15 (role heads accepting place nodes): until
-  then the CLI's value substitution flattens `where(my_home_4th)` to the
-  building's cell and the floor is lost — evidence added to the issue.
+  The dependency was ontodag #15 (role heads accepting place nodes) —
+  **landed 2026-09-12**: `where(my_home_4th)` stands as a stored term, the
+  floor is below the building, two floors are siblings, and
+  `tests/test_matching.py` and `tests/test_cli.py` carry the building
+  (`test_places_regions_and_floors_match_through_the_graph`,
+  `test_regions_and_floors_are_names_in_role_terms`).
 - *A postal address is settlement data, not vocabulary* (Peter,
   2026-09-12: geo primary, the address secondary, but a delivery needs
   one). It rides as free text in the place node's metadata — where the
@@ -389,7 +399,14 @@ the record.
    - (a) coordinate input for `geo` — filed 2026-09-11; deletes `loop
      place`;
    - (b) **role heads accepting a place node as parameter** — filed as
-     [ontodag #15](https://github.com/petfold/ontodag/issues/15). Probe
+     [ontodag #15](https://github.com/petfold/ontodag/issues/15);
+     **landed 2026-09-12** (ontodag main, `DIMENSIONS.md` §14: stored as
+     spelled, ordered by the graph, a name outside the dimension refused;
+     the covering-as-a-value refinement deferred to the anonymity
+     tripwire). Consumed the same night: `Ontology.known` accepts the
+     terms, the CLI keeps a catalogue name as spelled and substitutes a
+     cell only for a private place (`cli.md` §12), `DimensionIndex` files
+     names as spelled. Probe
      2026-09-12: with `from` declared under `geo`, `from(ljubljana)` is
      accepted and silently read as a literal cell named "ljubljana" — the
      footgun the CLI's `_value_of` exists to guard. Ask: a head declared
@@ -406,7 +423,11 @@ the record.
      publishes anonymous region nodes named by content instead;
    - (c) **a Boolean overlap face**, `overlaps(a, b)` — filed as
      [ontodag #16](https://github.com/petfold/ontodag/issues/16), which also
-     carries (d) — the mirror of
+     carries (d); **landed 2026-09-12** (`OntoDAG.overlaps` and
+     `OntoDAG.meet`, units from the store; consumed: `satisfies`' overlap
+     half is one `overlaps` per head, `Ontology.meet` folds with
+     `OntoDAG.meet`, `dimensions.intersect`/`canonicalize` left
+     loopmarket) — the mirror of
      `is_below` for `get_overlapping` — region nodes included on both
      sides, so region∩region needs no enumeration in loopmarket;
    - (d) graph-declared units reaching `intersect` through public API
@@ -426,7 +447,11 @@ the record.
    — no more private `service-time`/`service-cell` heads — and
    `candidates` gains the place term, becoming one `get(...,
    overlapping=[...])` call when ontodag #14 lands (`ontodag-coupling.md`
-   §5). The CLI cannot flip yet: it publishes v2 and must keep mapping
+   §5). **Done 2026-09-12 night** (#14 landed): `candidates` is exactly one
+   `get([line marker, *plain], overlapping=[v2 window, role meets],
+   items_only=True)`; gives silent on a role are filed under its
+   whole-space value (the one loopmarket-side device; §7's follow-up
+   ask); the `idx/{c,t,g}` index retired with it. The CLI cannot flip yet: it publishes v2 and must keep mapping
    `when`/`where` onto fields until the record changes.
 
 5. **The v3 record — done 2026-09-12.** `service` and `where` leave `to_record`/`from_record`
@@ -519,6 +544,9 @@ courier will be there. The overlap relation reports that a handover point
 (P2), never matching. Nothing here changes the arithmetic of loops, the
 uniform offer form (U1), the pins (U4/U10), or clearing's trust-nothing
 shape (U3); it moves two gates from geometry into the pinned catalogue and
-removes two fields. The upstream asks are asks: every "meanwhile" above —
+removes two fields. The upstream asks were asks: every "meanwhile" above —
 cell values in role terms, the CLI's value substitution, region∩region by
-enumeration — must stay livable if ontodag never builds them.
+enumeration — had to stay livable if ontodag never built them. It did,
+2026-09-12 (#15, #16, #14, in that order); the one "meanwhile" that
+survives is the private-place substitution, and it survives for the
+same-root reason, not for want of a grammar.

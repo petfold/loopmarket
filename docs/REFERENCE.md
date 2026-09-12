@@ -110,17 +110,17 @@ Order-book synonyms, kept indefinitely: `ask = give`, `bid = want`
 
 ---
 
-## 2. `loopmarket.spacetime` — discretised space and time
+## 2. `loopmarket.spacetime` — geohash cells
 
-Index-name helpers; hints only, never a correctness dependency.
+The spelling of a place: input vocabulary only, the cell is the stored
+name and ontodag's prefix kind orders it. (The day-bucket and cell-prefix
+chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 
 | function | meaning |
 |---|---|
 | `geohash(lat, lon, precision=6)` | plain geohash, no dependencies |
-| `cell_for(disc, max_precision=6)` | finest cell not smaller than the disc (centre only — boundary discs touch neighbours) |
-| `cell_chain(cell)` | all prefixes, coarsest first |
-| `day_buckets(window, max_buckets=400)` | UTC day names the window touches |
-| `bucket_chain(day)` | `['2026', '2026-08', '2026-08-14']` |
+| `cell_bounds(cell)` | `(lat_lo, lat_hi, lon_lo, lon_hi)` — the bit interleaving run backwards |
+| `cell_for_coords(lat, lon, radius_m, max_precision=6)` | the finest cell that **contains** the whole radius — what `where(LAT,LON,R)` becomes |
 
 ---
 
@@ -132,9 +132,13 @@ Index-name helpers; hints only, never a correctness dependency.
 |---|---|
 | `.assert_edge(sub, supers, *, bond=0.0)` | assert fits-within; missing supers created under the root; `bond` recorded intent (P3) |
 | `.load({sub: [supers, ...]})` | bulk, order-independent declaration; returns self |
-| `.known(concept)` | vocabulary membership |
+| `.known(concept)` | vocabulary membership: a node, or a parametric term of a declared head the DAG can order — incl. a role term naming a place, region or floor node (ontodag #15); a name outside the head's dimension fails closed |
 | `.covers(wanted, offered)` | `offered` fits within `wanted` (equal or descendant); **False for unknown names** (U7) |
-| `.satisfies(offered, wanted)` | every wanted category covered by some offered concept |
+| `.satisfies(offered, wanted)` | containment for every wanted plain concept; **overlap** per service-role head both sides name (`OntoDAG.overlaps` on the two same-head meets, ontodag #16 — values by arithmetic, nodes by the graph); a head only one side names constrains nothing; an uninterpretable or undecidable role term fails closed on either side |
+| `.declare_service_roles({head: base})` | seed convenience: put each head under its base dimension head and the `service-role` marker (a catalogue write) |
+| `.is_service_role(head)` / `.head_kind(head)` | does the head hang under `service-role`; the registry kind it orders values by |
+| `.split_roles(concepts)` | `({role head: [terms]}, [plain])`; `(None, plain)` when a role term is not interpretable |
+| `.meet(head, terms)` | the same-head terms' intersection as one term (`OntoDAG.meet`), `None` when provably empty; `ValueError` when malformed or when no single term names it (a place and a cell it is not known to lie in) |
 | `.root` | canonical root of the last committed state, `''` if in-memory/uncommitted |
 | `.pins` | `{"ontology_root", "registry_version", "contract_version"}` — splat into `give`/`want` (U10) |
 | `Ontology.persistent(record_store)` | classmethod; an `EagerOntoDAG`-backed catalogue with committable roots |
@@ -153,7 +157,7 @@ Writing:
 
 | member | meaning |
 |---|---|
-| `.publish(offer) -> offer_id` | store the offer record (nothing else — `idx/` is aggregator-derived) |
+| `.publish(offer) -> offer_id` | store the offer record (nothing else — there is no index in the book) |
 | `.publish_many(offers) -> [ids]` | |
 | `.withdraw(offer_id)` | monotone tombstone; survives merges; `KeyError` if the offer isn't in this book; re-publishing identical content does not un-withdraw |
 | `.absorb(other)` | re-assert another book's entire content as this writer's base; canonical addressing makes the re-commit reproduce the source root (clone verification). O(book) |
@@ -173,7 +177,6 @@ Reading:
 | `.attach_handoff(loop_id, offer_id, record, *, fold=None)` | store a sealed handoff (`handoff.seal` + `from`/`to`) beside my *filled* offer, `handoff/<loop_id>/<offer_id>`; the fill is checked against `fold` (the clearing book) when given; `ValueError` otherwise |
 | `.handoff(loop_id, offer_id) -> dict | None`, `.handoffs()` | read the sidecars |
 | `.offers(*, now=None, include_filled=False)` | active offers: fills and tombstones filtered, expiry filtered when `now` given; `include_filled=True` disables all filtering (full-book scan) |
-| `.ids_by_index(prefix)` | offer ids under an `idx/` prefix — meaningful only on an aggregator's derived-index store |
 | `.verify_loop_atomicity()` | raises `PartialLoopError` unless every `loop/` record holds all its fills and every fill points at a present loop (U11) |
 
 ### `or_set_resolver(key, base, ours, theirs)`
@@ -185,10 +188,6 @@ policy — `verify_loop_atomicity` is the guard (see its docstring).
 ### `PartialLoopError(RuntimeError)`
 A book holds a loop missing some of its fills. Raised, never repaired —
 evicting a cleared loop would be a finality rollback.
-
-### `index_offers(store, offers)`
-File offers under `idx/c/<concept>/`, `idx/t/<bucket>/`,
-`idx/g/<cell-prefix>/` in a *derived* store. Regenerable; never merged.
 
 ### `swarm_offer_book(topic, *, signer=None, owner=None, **kw) -> OfferRegistry`
 A book on Swarm: `recordstore.swarm_store` underneath (Bee blobs, signed
@@ -212,8 +211,8 @@ Exact, self-contained, re-runnable by clearing. Gates, in order:
 
 1. kinds: give is `GIVE`, want is `WANT`, distinct makers
 2. validity: both offers open at `now`
-3. time: service windows intersect
-4. space: service discs intersect
+3. time: service windows intersect (v1/v2 records; role terms since v3)
+4. space: service discs intersect (v1/v2 records; role terms since v3)
 5. quantity: `want.qty <= give.qty`; equal unless both divisible; equal units
 6. **pins**: if the verifying catalogue is pinned (`ontology.root`), both
    offers must carry all three pins; mixed pinning (one side declares,
@@ -229,22 +228,25 @@ The exact check over the full give × want product. The recall baseline.
 
 ## 6. `loopmarket.dimensions` — indexed candidate generation
 
-Needs ontodag ≥ 0.4.0 parametric dimensions. Recall-exact against the
-baseline (enforced by test).
+Needs ontodag's `get(terms, overlapping=[...], items_only=True)` (issue
+#14, on ontodag main after 0.24.0). Recall-exact against the baseline
+(enforced by test); **one `get` per want**, no set arithmetic on the answer.
 
 | member | meaning |
 |---|---|
 | `time_term(window)` | (v1/v2 records) the window as one inclusive `service-time(a..b)` value |
-| `cell_term(offer)` | (v1/v2 records) the centre cell as one `service-cell(...)` prefix value |
-| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) |
-| `.file(offer) -> bool` | index a give; `False` for non-gives and unknown vocabulary (U7's outcome) |
-| `.candidates(want) -> set[str]` | give ids inside every wanted plain cone, with overlapping service windows, and — per service-role head the want names (`from(...)`, `depart(...)`) — overlapping that head's meet or silent on it (absent = unconstrained). Role terms prune by cell; a give with provably disjoint same-head terms is not filed (it matches nothing) |
+| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted); declares a record-line marker per line and a whole-space value per service role the catalogue declares (`from(loopmarket:anywhere:geo)`: a region above the one-character cells; the full calendar for time roles) |
+| `.file(offer) -> bool` | index a give under its concepts, its line marker, its v2 window, and the whole space of every role head it is silent on; `False` for non-gives, unknown vocabulary (U7's outcome) and a same-head conjunction that is empty or undecidable |
+| `.candidates(want) -> set[str]` | one `get`: the want's line marker and plain concepts as containment cones, its v2 window and each named role head's meet as overlap terms, `items_only`. Role terms prune by the graph — cells, places, regions, floors |
 | `candidate_matches_indexed(offers, ontology, *, now, index=None)` | drop-in for `candidate_matches` |
 
-The v2 `where` disc stays with the exact check (a disc is not a cell; its
-centre cell is an index fact only); place *role terms* prune exactly, since
-cells are the truth for them (`docs/plans/P1-spacetime-terms.md` §4–5).
-The private `service-time`/`service-cell` heads retire with the v3 record.
+The v2 `where` disc stays with the exact check (a disc is not a cell) and
+is not filed; place *role terms* prune exactly, since cells and the graph
+are the truth for them (`docs/plans/P1-spacetime-terms.md` §4–5). Cost
+note: an overlap decision that meets a whole-space region walks its
+covering, so books with many named places file and query in seconds —
+fine behind the not-yet-flipped solver switch, and the reason for the
+"unconstrained role" ask in `ontodag-coupling.md` §7.
 
 ---
 
@@ -411,16 +413,15 @@ withdraw/<offer_id>     1 — monotone tombstone: the offer is closed
 fill/<offer_id>         {"loop": <loop_id>} — pure function of the decision
 loop/<loop_id>          the cleared proposal record
 handoff/<loop_id>/<offer_id>  sealed settlement text, the place-owner's own filled offer (maker books; folded only for the owner)
-idx/c/<concept>/<id>    1 — aggregator-derived only
-idx/t/<bucket>/<id>     1 —      "
-idx/g/<prefix>/<id>     1 —      "
 origin/<offer_id>       {"owner", "root"}        (provenance store)
 reject/<owner>/<key>    {"owner", "reason"}      (provenance store)
 announce/<owner>        {"role", "root"}         (announcement store)
 ```
 
 Maker books write `offer/`, `sig/`, `withdraw/` only; clearing books
-add `fill/` and `loop/`; `idx/` exists only in derived index stores;
+add `fill/` and `loop/`; there is no index in any book (the `idx/{c,t,g}`
+prefixes retired 2026-09-12; the manifest's `index_root` is empty until
+cone summaries are published);
 `origin/`, `reject/`, `announce/` only in an aggregator's provenance and
 announcement stores.
 

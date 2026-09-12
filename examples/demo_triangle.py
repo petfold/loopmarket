@@ -65,8 +65,9 @@ now = int(time.time())
 # The season is one inclusive `when(a..b)`; a place is the cell containing
 # the radius the maker names — all three here sit within their radius of a
 # cell edge, so each honestly names the coarser cell `u24` (the exact
-# covering is a region node above the few cells that matter, once role
-# heads accept nodes: ontodag #15). Offers stand until withdrawn.
+# covering would be a region node above the few cells that matter — role
+# heads take nodes since ontodag #15 landed 2026-09-12; this demo keeps
+# the plain cells). Offers stand until withdrawn.
 season = f"when({iso(now)}..{iso(now + 120 * 86_400 - 1)})"   # four months
 standing = TimeWindow(now - 3_600)                          # until withdrawn
 

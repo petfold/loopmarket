@@ -195,8 +195,8 @@ fail-closed, and `my_home` is a bare word like any other.
   the name.* When §2 of the coupling plan lands the field goes and the
   offer references the node. **Done 2026-09-12 (v3):** the field is gone,
   the offer carries `where(cell)` — the finest cell containing the radius
-  — and the place node carries no disc; region nodes as parameters wait
-  on ontodag #15.
+  — and the place node carries no disc; region nodes as parameters landed
+  with ontodag #15 the same night (§12, "names stand").
 
 **The same-root constraint.** `check_match` refuses offers pinned to
 different catalogue roots, so a name that *appears in an offer* must be
@@ -412,7 +412,12 @@ blocks `loop` shipping, each removes a loopmarket-only behaviour.
 3. **A public opener for store specs.** `ontodag.open(spec)` or similar
    over `.od` / `rs:` / `swarm:` so loopmarket's `catalogue` setting
    resolves through public API rather than a copy of `_load_native`.
-4. **(Optional) a shell-safe term spelling**, e.g. `head=param` as an
+4. **An unconstrained role spelling** (added 2026-09-12 night, from the
+   one-query generator): an item filed directly under a role head, with
+   no value, should denote the head's whole space — so a give silent on
+   `from` is "from anywhere" by one edge, and `DimensionIndex`'s
+   whole-space region scaffold goes (`ontodag-coupling.md` §7).
+5. **(Optional) a shell-safe term spelling**, e.g. `head=param` as an
    input-only alias of `head(param)`, canonical rendering unchanged.
    Only if odag wants it for itself; loopmarket adds no spelling alone
    (§2). Peter, 2026-09-11: syntax changes upstream are possible now
@@ -473,20 +478,26 @@ decide something the design left implicit.
   unit `kg`, divisible; a bare count (`3`) is indivisible, unit `unit`.
   The good-vs-capacity-service wording is not attempted: it changes no
   encoding today and its kind node is `catalogue-bootstrap.md`'s.
-- **Role terms carry a name's public value** (Peter's correction the
-  same day: "ontodag should interpret `my_home`"). A term `head(param)`
-  of a declared *prefix* or *dominance* head — `from(...)`, `to(...)`,
-  `geo(...)`, `size(...)` — passes through into the conjunction. If
-  `param` is a catalogue name, ontodag interprets *the name*: the CLI
-  reads the parameter of the term it hangs under in a dimension of the
-  same kind (`my_home` under `geo(u2e4x)` gives `u2e4x`), substitutes it
-  (`from(my_home)` → `from(u2e4x)`) and prints the substitution as a note
-  in the approval block. The published offer holds only public
-  vocabulary; matching is ontodag's computed containment
-  (`from(u2e4x) ⊑ from(u2e)`), the London→Rome pattern of ontodag's
-  guide §5.12. A name with no value in that dimension is refused, never
-  read as a literal that happens to spell the same; a literal that is no
-  name passes unchanged; an undeclared head is an unknown category (U7).
+- **Role terms carry a name — as spelled when the catalogue holds it,
+  as its cell when only the maker does.** Peter's correction the same
+  day: "ontodag should interpret `my_home`" — and since ontodag #15 landed
+  that night, it does: a role head takes the base dimension's nodes as
+  parameters, so a term `head(param)` whose `param` is a node of the
+  *pinned catalogue* — a place under a cell, a region above cells, a
+  floor under a building — is published as spelled (`where(ljubljana)`,
+  `where(my_home_4th)`, `from(my_home)` when the personal store is the
+  catalogue) and ontodag orders it by the graph. The one substitution
+  left is the same-root constraint's: a name only the personal layer
+  holds cannot be interpreted under the root the offer pins, so a
+  *private place* publishes as the cell it hangs under
+  (`from(my_home)` → `from(u2e4x)`, printed as a note) and the name stays
+  private; a private region or floor has no single value and is refused
+  (publish it to the catalogue, or name a cell). A name outside the
+  dimension is refused in ontodag's own words, never read as a literal
+  that happens to spell the same; a literal that is no name passes
+  unchanged; an undeclared head is an unknown category (U7). Matching is
+  ontodag's: computed containment for cells (`from(u2e4x) ⊑ from(u2e)`,
+  the London→Rome pattern of the guide §5.12), the graph for names.
   To make this matchable at all, `Ontology.known` now accepts a term the
   DAG can interpret (it orders the term against itself) — the one
   facade change, anticipated by `ontodag-coupling.md` §2, tested in

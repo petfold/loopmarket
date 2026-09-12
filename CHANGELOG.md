@@ -9,6 +9,47 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+**Release blocker:** this code needs ontodag's issues #14, #15 and #16,
+shipped on ontodag `main` after 0.24.0 and not yet released — bump the
+`ontodag>=` floor in `pyproject.toml` to the release that carries them
+before tagging.
+
+### Added
+
+- **Names stand in role terms** (ontodag #15, 2026-09-12). A role head
+  takes the base dimension's nodes as parameters, so a catalogue name in
+  a role term is published as spelled — `where(ljubljana)` (a region above
+  cells), `where(my_home_4th)` (a floor under a building), `from(my_home)`
+  — and ontodag orders it by the graph. The CLI substitutes a value only
+  for a *private* place (a name only the personal store holds, which the
+  pinned root cannot carry): it publishes as its cell and the name stays
+  private; a private region or floor is refused. A name outside the
+  dimension is refused in ontodag's words, never read as a literal cell.
+- **`Ontology.satisfies` decides overlap with `OntoDAG.overlaps`, and
+  `Ontology.meet` is `OntoDAG.meet`** (ontodag #16): values by arithmetic,
+  nodes by the graph, units from the store. A give to a region serves a
+  want at a place it covers; a give to a building serves its fourth floor;
+  two floors never serve each other; a same-head conjunction no single
+  term names fails closed.
+- **`DimensionIndex.candidates` is one `get`** (ontodag #14):
+  `get([line marker, *plain], overlapping=[window, role meets],
+  items_only=True)` — no `get_overlapping`, no set arithmetic on the
+  answer. Gives silent on a role head are filed under that head's
+  *whole-space* value (a region above the one-character cells; the full
+  calendar), so "absent = unconstrained" survives inside the one plan.
+  Recall-exact against the baseline, with names in the random books.
+
+### Removed
+
+- **The `idx/{c,t,g}` recordstore index** (`index_offers`,
+  `OfferRegistry.ids_by_index`, `spacetime.cell_for`/`cell_chain`/
+  `day_buckets`/`bucket_chain`, the `service-cell` index head): read by
+  nothing since 2026-08-21, retired as decided 2026-09-07 now that the
+  one-query generator exists. Aggregators publish an empty `index_root`
+  until cone summaries land (`P1-federated-book.md` §2).
+
+### Changed
+
 - Live-checked 0.3.0 on the Bee 2.8.2 light node right after release:
   `loop -f swarm:TOPIC --catalogue examples/triangle.od < examples/triangle.loop`
   published six v3 offers, found and cleared the triangle (`loop_id`

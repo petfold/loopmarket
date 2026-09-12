@@ -86,7 +86,9 @@ dimensions the `DimensionIndex` already hands to ontodag's planner, and
 still read by nothing. It gets no query path; it is dropped from the
 aggregator too once spacetime terms enter the shared catalogue (ontodag
 #14 lands the one-query generator), and `index_root` carries the
-`DimensionIndex`'s published sibling instead.
+`DimensionIndex`'s published sibling instead. **Retired 2026-09-12**
+(#14 landed; `index_offers` and `ids_by_index` deleted; `index_root` is
+published empty until cone summaries exist).
 
 ## 2. The aggregator and the manifest tuple
 

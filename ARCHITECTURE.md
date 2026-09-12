@@ -19,7 +19,8 @@ rationale; `CLAUDE.md` records the working rules derived from it.
    makers                             ▼
   ┌───────┐  publish   ┌───────────────────────────────┐   snapshot(root)
   │ offer │──────────▶ │   offer book (recordstore)     │◀───────────────┐
-  └───────┘            │  offer/ fill/ loop/ idx/{c,t,g}│                │
+  └───────┘            │  offer/ sig/ withdraw/ fill/   │                │
+                       │  loop/ handoff/                │                │
        ▲               │  canonical roots, snapshots,   │        ┌──────┴──────┐
        │ fills land    │  reconcile-merge, Swarm blobs  │        │ solver agent │
        │ atomically    └──────────────┬────────────────┘        │ (any number, │
@@ -118,13 +119,11 @@ containment:
 - space: geohash prefixes, where every longer cell fits within every shorter
   prefix of itself
 
-These names serve today as recordstore index prefixes (`idx/t/`, `idx/g/`),
-and on the P1 roadmap become *generated category nodes in the shared
-OntoDAG*, so that candidate generation is one native query — the
-intersection of descendant cones of {concept, cell, bucket} — with exact
-geometry as the refinement. Cells index disc centres only (boundary-crossing
-discs also touch neighbours), which is safe because cells are hints:
-`matching.py` re-checks everything exactly.
+These names served as recordstore index prefixes (`idx/t/`, `idx/g/`)
+until 2026-09-12, when that index retired (see the 2026-09-12 update at
+the end of this section); the plan below — candidate generation as one
+native query with exact geometry as the refinement — is what landed, with
+ontodag's parametric terms in place of generated bucket nodes.
 
 The full catalogue contract — the completion of this migration, unit
 families for quantities and personal tokens, the match-degree ladder, and
@@ -207,6 +206,43 @@ the want names, plus the gives silent on that head — so place prunes at
 last, through cells, the truth for role terms; the v2 disc keeps its exact
 check until v3.
 
+**Update 2026-09-12 (night) — the three asks landed upstream, and this
+section's plan is complete.** ontodag closed #15, #16 and #14 on its main
+branch (after 0.24.0) the same day. (i) *Role heads take nodes* (#15): a
+head declared under a head (`from` under `geo`) reads a parameter that
+names a node of the base dimension — a place under a cell, a region above
+cells, a floor under a building — stored as spelled and ordered by the
+graph (`from(my_home) ⊑ from(u2e4)` iff `my_home ⊑ geo(u2e4)`); a name
+outside the dimension is refused, never read as a literal cell. So a
+catalogue name in a role term now *stands* in the offer (`where(ljubljana)`,
+`where(my_home_4th)`), the exact covering of a place is a region node, and
+the third coordinate is a sub-place node — the CLI's value substitution
+survives only for *private* places (a name the pinned root does not hold
+publishes as its cell; `cli.md` §12). (ii) *The Boolean overlap face*
+(#16): `Ontology.satisfies` decides each role head with `OntoDAG.overlaps`
+on the two same-head meets and `Ontology.meet` is `OntoDAG.meet` — values
+by arithmetic, nodes by the graph, units from the store; `dimensions.
+intersect`/`canonicalize` left loopmarket. A same-head conjunction no
+single term names (a place and a cell it is not known to lie in) fails
+closed. (iii) *Overlap terms in the planner and `items_only`* (#14):
+`DimensionIndex.candidates` is **one `get`** — the want's plain concepts
+and a record-line marker as containment cones, its v2 window and each
+named role head's meet as overlap terms — and loopmarket does no set
+arithmetic on the answer. The one device this needed on our side: the
+"absent = unconstrained" rule (a give naming no `from(...)` serves a want
+anywhere) is invisible to an overlap term, so the index files every give
+under a *whole-space* value for each role it is silent on — a region node
+in the base dimension above the one-character cells, or the full calendar
+— index-private, exact, and the reason for the follow-up ask in
+`ontodag-coupling.md` §7 (an item under the bare role head should mean
+unconstrained). With the one-query generator in place the redundant
+`idx/{c,t,g}` recordstore index **retired** as committed 2026-09-07:
+`index_offers`, `ids_by_index` and the bucket/cell chains are gone,
+maker and clearing books hold no index, and the manifest's `index_root`
+is empty until cone summaries are published (`P1-federated-book.md` §2).
+Truth untouched throughout: `check_match` and the recall-exactness guard
+are what changed hands, not what they decide.
+
 ## 4. The catalogue (ontology.py)
 
 `Ontology` wraps an `OntoDAG` with the one primitive matching needs:
@@ -277,12 +313,15 @@ One book = one recordstore keyspace = one root reference per version:
 
 ```
 offer/<offer_id>                the immutable offer record
+sig/<offer_id>                  detached maker signature (U8)
+withdraw/<offer_id>             1 — monotone tombstone
 fill/<offer_id>                 {"loop": <loop_id>}
-loop/<loop_id>                  the settled loop record
-idx/c/<concept>/<offer_id>      per thing concept
-idx/t/<bucket>/<offer_id>       per touched day + its month/year chain
-idx/g/<cell-prefix>/<offer_id>  per geohash prefix of the service cell
+loop/<loop_id>                  the cleared loop record
+handoff/<loop_id>/<offer_id>    sealed settlement text (handoff.py)
 ```
+
+(No index: the `idx/{c,t,g}` prefixes retired 2026-09-12 — ontodag is
+the one intersection engine, §3.)
 
 recordstore supplies exactly the properties the book needs:
 

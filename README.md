@@ -81,11 +81,12 @@ one-screen version; the design record with its reasons is
 
 Candidate generation can also run through ontodag's **parametric
 dimensions**: `DimensionIndex` files gives under their service-role terms
-(`where(u24)`, `when(...)`, `from(...)`, matched by overlap; place prunes
-through cells since 2026-09-12 — and, for v2 records, under their window
-and centre cell), and
-`candidate_matches_indexed` prunes by concept cones
-and window overlap — provably the same matches as the exhaustive baseline
+(`where(u24)`, `where(ljubljana)`, `when(...)`, `from(my_home)` — cells,
+places, regions and floors, matched by overlap through the graph; and, for
+v2 records, under their window), and `candidate_matches_indexed` asks
+**one** ontodag `get` per want — concept cones and overlap terms in one
+plan, items only (ontodag #14/#15/#16, landed 2026-09-12) — provably the
+same matches as the exhaustive baseline
 (the recall test enforces set-equality), with far fewer exact checks. The
 index is a derived, per-solver copy; the shared catalogue and its pinned
 roots never move because of it. Swap the in-memory store for
