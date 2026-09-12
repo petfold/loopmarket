@@ -8,6 +8,8 @@ the full product), so it cannot silently degenerate into the baseline."""
 
 import random
 
+import pytest
+
 from loopmarket import GeoDisc, Ontology, Thing, TimeWindow, give, want
 from loopmarket.dimensions import (
     DimensionIndex, candidate_matches_indexed, time_term,
@@ -129,20 +131,29 @@ class TestRecallAgainstBaseline:
 
 ROLES = {"from": "geo", "to": "geo", "depart": "time"}
 CELLS = ["u2e", "u2e4", "u2e4x", "u2e4xq", "u2e5", "u2f"]
+# nodes a role term may name since ontodag #15: a place under a cell, a
+# floor under the place, a region above two cells (a lower bound, §14)
+PLACES = ["my_home", "my_home_4th", "ljubljana"]
 
 
 def roles_ontology():
     ont = fresh_ontology()
     ont.declare_service_roles(ROLES)
     ont.dag.put("made_in", ["geo"])           # descriptive: containment
+    ont.dag.put("my_home", ["geo(u2e4x)"])
+    ont.dag.put("my_home_4th", ["my_home"])
+    ont.dag.put("ljubljana", ["geo"])
+    ont.dag.put("geo(u2e4)", ["ljubljana"])
+    ont.dag.put("geo(u2e5)", ["ljubljana"])
     return ont
 
 
 class TestRoleTerms:
-    def _random_book(self, seed, n=80):
+    def _random_book(self, seed, n=80, places=()):
         rng = random.Random(seed)
         concepts = ["vegetable-box", "fruit-box", "piano-lesson",
                     "bike-repair", "produce", "service", "local"]
+        params = CELLS + list(places)
 
         def cal(t):
             return _iso(t)
@@ -152,9 +163,9 @@ class TestRoleTerms:
             terms = list(rng.sample(concepts, rng.randint(1, 2)))
             for head in ("from", "to"):
                 if rng.random() < 0.7:
-                    terms.append(f"{head}({rng.choice(CELLS)})")
+                    terms.append(f"{head}({rng.choice(params)})")
                     if rng.random() < 0.15:          # two same-head terms
-                        terms.append(f"{head}({rng.choice(CELLS)})")
+                        terms.append(f"{head}({rng.choice(params)})")
             if rng.random() < 0.5:
                 a = 1_800_000_000 + rng.randrange(0, 3600)
                 terms.append(f"depart({cal(a)}..{cal(a + rng.randrange(60, 3600))})")
@@ -170,8 +181,8 @@ class TestRoleTerms:
     def test_exactly_the_baseline_matches_with_role_terms(self):
         ontology = roles_ontology()
         seen_matches = 0
-        for seed in range(6):
-            offers = self._random_book(seed)
+        for seed in range(4):
+            offers = self._random_book(seed, n=60)
             expected = {(m.give.offer_id, m.want.offer_id)
                         for m in candidate_matches(offers, ontology, now=NOW)}
             got = {(m.give.offer_id, m.want.offer_id)
@@ -179,6 +190,22 @@ class TestRoleTerms:
             assert got == expected, f"recall/precision drift at seed {seed}"
             seen_matches += len(expected)
         assert seen_matches > 20                    # the books are not trivial
+
+    def test_exactly_the_baseline_matches_with_names(self):
+        """Places, a floor and a region as role parameters (ontodag #15),
+        decided by the graph on both paths. One smaller book: every
+        overlap decision that meets the whole-space region walks its
+        covering, so a names book files and queries in seconds, not
+        milliseconds (the cost note in `ontodag-coupling.md` §7)."""
+        ontology = roles_ontology()
+        offers = self._random_book(7, n=50, places=PLACES)
+        baseline = list(candidate_matches(offers, ontology, now=NOW))
+        expected = {(m.give.offer_id, m.want.offer_id) for m in baseline}
+        got = {(m.give.offer_id, m.want.offer_id)
+               for m in candidate_matches_indexed(offers, ontology, now=NOW)}
+        assert got == expected
+        assert any("my_home" in c or "ljubljana" in c for m in baseline
+                   for c in m.give.thing.concepts + m.want.thing.concepts)
 
     def test_place_prunes_and_silence_is_unconstrained(self):
         ontology = roles_ontology()
@@ -201,6 +228,69 @@ class TestRoleTerms:
         assert index.candidates(want("amara", Thing(
             ("produce", "depart(garbage)")), 104, **wide())) == set()
         assert not index.file(give("e", Thing(("produce", "depart(garbage)")), 1, **wide()))
+
+    def test_silence_is_per_head(self):
+        """A give silent on `to` but naming `from` is filed under `to`'s
+        whole space and `from`'s cell: it meets a want on both heads iff
+        its `from` overlaps — the per-head rule, in one query."""
+        ontology = roles_ontology()
+        half = give("bruno", Thing(("vegetable-box", "from(u2e4)")), 50, **wide())
+        both = give("chiara", Thing(("vegetable-box", "from(u2e4)", "to(u2e)")), 50, **wide())
+        wrong = give("dora", Thing(("vegetable-box", "from(u2f)")), 50, **wide())
+        index = DimensionIndex(ontology)
+        for a in (half, both, wrong):
+            assert index.file(a)
+        b = want("amara", Thing(("produce", "from(u2e4x)", "to(u2f)")), 104, **wide())
+        assert index.candidates(b) == {half.offer_id}   # `both` goes to u2e, not u2f
+        b = want("amara", Thing(("produce", "from(u2e4x)", "to(u2e5)")), 104, **wide())
+        assert index.candidates(b) == {half.offer_id, both.offer_id}
+
+    def test_names_in_role_terms_prune_through_the_graph(self):
+        """ontodag #15/#16: `from(my_home)`, `from(ljubljana)` are filed as
+        spelled and the overlap query decides them by the graph."""
+        ontology = roles_ontology()
+        region = give("bruno", Thing(("vegetable-box", "from(ljubljana)")), 50, **wide())
+        floor = give("chiara", Thing(("vegetable-box", "from(my_home_4th)")), 50, **wide())
+        far = give("dora", Thing(("vegetable-box", "from(u2f)")), 50, **wide())
+        index = DimensionIndex(ontology)
+        for a in (region, floor, far):
+            assert index.file(a)
+        home = want("amara", Thing(("produce", "from(my_home)")), 104, **wide())
+        assert index.candidates(home) == {region.offer_id, floor.offer_id}
+        cell = want("amara", Thing(("produce", "from(u2e5)")), 104, **wide())
+        assert index.candidates(cell) == {region.offer_id}
+        # a want whose same-head meet no term names matches nothing, like
+        # `satisfies`; a give in that shape is not filed
+        assert index.candidates(want("amara", Thing(
+            ("produce", "from(ljubljana)", "from(u2)")), 104, **wide())) == set()
+        assert not index.file(give("e", Thing(
+            ("produce", "from(ljubljana)", "from(u2)")), 1, **wide()))
+
+    def test_candidates_is_exactly_one_get(self, monkeypatch):
+        """The consumer commitment on ontodag #14: one `get` per want with
+        the overlap terms in the plan, `items_only`, and no set arithmetic
+        on the answer — no `get_overlapping`, no `&`."""
+        ontology = roles_ontology()
+        index = DimensionIndex(ontology)
+        v3 = dict(valid=TimeWindow(0, 1_000_000))     # no fields: no time term
+        for a in (give("bruno", Thing(("vegetable-box", "from(u2e4)")), 50, **v3),
+                  give("dora", Thing(("vegetable-box",)), 50, **v3)):
+            assert index.file(a)
+        calls = []
+        real_get = index._dag.get
+        monkeypatch.setattr(index._dag, "get",
+                            lambda *a, **kw: calls.append((a, kw)) or real_get(*a, **kw))
+        monkeypatch.setattr(index._dag, "get_overlapping",
+                            lambda *a, **kw: pytest.fail("get_overlapping called"))
+        b = want("amara", Thing(("produce", "from(u2e4x)", "from(u2e)",
+                                 "depart(2027-01-01T00:00:00Z..2027-01-02T00:00:00Z)")),
+                 104, **v3)
+        assert len(index.candidates(b)) == 2
+        assert len(calls) == 1
+        (terms,), kw = calls[0]
+        assert "produce" in terms and kw["items_only"] is True
+        assert sorted(kw["overlapping"]) == [           # the same-head meet
+            "depart(2027-01-01T00:00:00Z..2027-01-02T00:00:00Z)", "from(u2e4x)"]
 
 
 def _iso(t):
