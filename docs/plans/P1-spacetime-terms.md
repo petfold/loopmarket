@@ -284,6 +284,22 @@ the record.
   The dependency is ontodag #15 (role heads accepting place nodes): until
   then the CLI's value substitution flattens `where(my_home_4th)` to the
   building's cell and the floor is lost — evidence added to the issue.
+- *A postal address is settlement data, not vocabulary* (Peter,
+  2026-09-12: geo primary, the address secondary, but a delivery needs
+  one). It rides as free text in the place node's metadata — where the
+  disc used to — so no canonicalisation is ever needed: two envelopes
+  spelling it differently describe one node, and the floor is in the
+  text unless the maker makes it a sub-place node. It never enters the
+  record, identity or the catalogue's order; matching runs on the cell
+  (the node, after ontodag #15). It moves once, after clearing, to the
+  one party who needs it — the delivery leg's counterparty — over P3's
+  settlement channel (`P3-guarantee-coupling.md`), which is P4's Tier 1
+  by construction: cell public, name private, address disclosed to a
+  counterparty only. A shop or venue may instead publish its node with
+  the address in the shared catalogue. Not a gazetteer hierarchy of
+  country/city/street: a bootstrap problem the cell already answers.
+  Tooling to follow on Peter's word: `place NAME LAT,LON,R [ADDRESS]`
+  storing the text on the node, `show` printing it for one's own offers.
 - *Time was exact already.* `when(a..b)` over fixed ISO-8601 UTC seconds;
   calendar values are inclusive, `TimeWindow` is half-open, so the
   encoding rule is `[start, end-1]` — `dimensions.time_term`'s convention,
