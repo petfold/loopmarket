@@ -9,9 +9,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
-**Release order:** `pyproject.toml` pins `ontodag>=0.25.0`, the release
-that carries issues #14, #15 and #16 (on ontodag `main` after 0.24.0 at
-the time of writing) — tag ontodag first.
+## [0.4.0] — 2026-09-13
+
+Needs ontodag 0.25.0 (role parameters naming nodes, `items_only`, the
+dimension cache; released the same day). The night's design thread: one
+relation, containment, for every term — the overlap rule of 0.3.0 was a
+modelling error (Peter: a want is the wider cone, a give the narrower).
 
 ### Changed
 

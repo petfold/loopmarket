@@ -29,7 +29,7 @@ from .graph import ExchangeGraph, Loop
 from .clearing import LoopProposal, MockClearing, Receipt, Clearing
 from .solver.agent import SolverAgent
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "GIVE", "WANT", "ASK", "BID", "GeoDisc", "Offer", "Thing", "TimeWindow",
