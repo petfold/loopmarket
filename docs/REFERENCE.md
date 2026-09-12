@@ -423,8 +423,9 @@ announcement stores.
 **Offer, v3** (2026-09-12, `docs/plans/P1-spacetime-terms.md`): no
 `service`/`where` — where and when the thing changes hands are role terms
 in `concepts` (`when(...)`, `where(cell)`, `from`/`to`, `depart`/`arrive`;
-heads the catalogue declares under `service-role`, matched by overlap;
-absent = anywhere / any time); `valid` may have a `null` end (stands until
+roles of the time and geo dimensions the catalogue declares, matched by
+containment like every term — a give must fit within the want's; a want
+that names none does not care); `valid` may have a `null` end (stands until
 withdrawn). A v3 record carrying `service` or `where` is refused on read.
 v2 and v3 offers never match each other (`check_match`):
 
@@ -562,10 +563,11 @@ Whole numbers encode as integers, decimals as floats (canonical JSON tells
 offer's `valid` window (`A..` stands until withdrawn). A startup check
 refuses a catalogue that declares `valid` as a dimension head. Everything
 else is a catalogue term — since the v3 record (2026-09-12) `when(...)`
-and `where(...)` included: role heads the seed catalogue declares under
-`service-role`, matched by overlap; omit them and the offer is anywhere,
-any time. The `terms` setting adds default terms to every line that does
-not name their head.
+and `where(...)` included: roles of time and geo the seed catalogue
+declares, matched by containment like every term — omit them on a want and
+it does not care, omit them on a give and it says nothing about where or
+when. The `terms` setting adds default terms to every line that does not
+name their head.
 
 **Terms** pass into the description, elaborated by *kind*, never by head
 (the CLI names no head): if the parameter is a catalogue *name*, the
