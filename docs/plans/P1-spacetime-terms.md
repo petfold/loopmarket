@@ -320,6 +320,25 @@ the record.
   settlement channel (`P3-guarantee-coupling.md`), P4 Tier 1 by
   construction; ontodag's deterministic encrypted store is the later seam
   for a whole private place layer. To build on Peter's word.
+- *Whose job, when, where; and how anyone learns they cleared* (Peter,
+  2026-09-12). A smart contract cannot keep a secret — everything it holds
+  is public — so "encrypt to the contract, it re-encrypts to the courier"
+  needs a threshold committee or an enclave: possible, heavy, not first.
+  What the contract does is name the courier unambiguously. The
+  responsibility is the place-owner's *client*, into its *own book*,
+  triggered by the fill: on seeing `fill/<my offer>` it reads the loop,
+  recovers the counterparty's key and writes `handoff/…`; nothing goes
+  anywhere else. Timing is a settlement obligation: readable before the
+  service window opens, else the leg fails on the recipient's side (a
+  recipient never online between clearing and delivery cannot take
+  delivery either). The CLI gets this as `watch`: poll the fold, report
+  fills, publish handoffs. **Notification** is the fill record itself; the
+  question is only cost: today a poll of the book (on Swarm one feed-head
+  lookup per clearing book; a maker checks only its own offer ids); push
+  with GSOC (per-maker topic from the address — the same mechanism the P1
+  announcement channel wants, `P1-federated-book.md`); the P2 contract's
+  clearing event as a third signal. The book stays the authority a client
+  verifies against.
 - *Time was exact already.* `when(a..b)` over fixed ISO-8601 UTC seconds;
   calendar values are inclusive, `TimeWindow` is half-open, so the
   encoding rule is `[start, end-1]` — `dimensions.time_term`'s convention,
