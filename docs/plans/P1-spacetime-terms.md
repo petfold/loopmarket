@@ -196,15 +196,22 @@ as prefix-kind heads over geo so role hierarchies compute; a head holds
 exactly one kind and one value space, so a `from` over `geo` refuses
 `from(2026-03)` at `put`; nested `transport(from(..), to(..))` is rejected
 by the grammar and is at most `elaborate()` sugar. So `from`/`to` **are
-geo roles** — not an assumption that loses generality, because the other
-dimensions never needed a pair: time carries both ends in one interval
-(`when(2026-03..2026-06)` is storage "from March to June"), and
-denomination's from and to are the offer's own two sides (a bridge gives
-one currency; the next leg carries the other). A vertical wanting two
-individually matched time ends declares its own heads (`since`, `until`).
-"Transport has from and to" is one catalogue line, `put("from", ["geo",
-"service-role"])`, stating value space and relation at once, in the
-shared seed — not a loopmarket rule; requiring both on a `transport` is
+geo roles**, and a pair in another dimension is another pair of heads.
+Time: one handover has one interval (`when(2026-03..2026-06)` is storage
+"from March to June"), but a transport has a departure window *and* an
+arrival window (Peter, 2026-09-12), two separately matched intervals —
+so `depart(a..b)` and `arrive(a..b)` are two calendar-kind roles under
+`time` and `service-role`, each matched by overlap on its own, the mirror
+of `from`/`to`; `when` stays the generic single-handover time. What the
+catalogue cannot state is that arrival follows departure — a constraint
+across two terms, the maker's business, like the absence of cross-part
+constraints in composed wants. Denomination needs no pair: a bridge's
+from and to are the offer's own two sides (it gives one currency; the
+next leg carries the other).
+"Transport has from, to, depart and arrive" is four catalogue lines of
+the form `put("from", ["geo", "service-role"])`, each stating value
+space and relation at once, in the shared seed — not a loopmarket rule;
+requiring them on a `transport` is
 not needed for correctness (a give with `from(A)` and no `to` says "to
 anywhere") and as a recommendation is tooling: a `roles` hint in the
 category's node metadata the CLI reads generically. Two-leg routes stay a
