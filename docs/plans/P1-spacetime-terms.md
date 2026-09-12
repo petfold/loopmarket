@@ -7,7 +7,11 @@ that note's argument is §1 here. Two rulings by Peter on 2026-09-12 fix
 the design: **cells and region nodes are the exact truth and the disc
 retires** (§4), and **a term's match relation is declared in the
 catalogue, not in code** (§3). Step 2 of the path (§5) landed the same
-day; the record change (step 5) has not.
+day; the record change (step 5) has not. Later the same day Peter
+added two more: **no discs anywhere after v3** (§4) and **`when`/`where`
+are optional at publication** (§2, §3) — an internet service has no
+sensible place, and an offer with no time stands for any time until
+withdrawn, dangerous but sometimes exactly what is meant.
 
 Where it sits: this is the implementation package for
 `ontodag-coupling.md` §2 ("spacetime becomes dimension terms, lands with
@@ -91,8 +95,8 @@ skipped (§3), and the two rulings followed.
 | Today (v2) | Target (v3) | Why |
 |---|---|---|
 | `Thing.concepts` | `Thing.concepts`, now carrying `when(...)`, `where(...)`/`from(...)`/`to(...)` and any descriptive spacetime term | one conjunction, one match walk |
-| `service: TimeWindow` | *gone*; `when(a..b)` in the conjunction | §3, §4 |
-| `where: GeoDisc` | *gone*; `where(cell)` or a route's `from(cell) to(cell)` | §3, §4 |
+| `service: TimeWindow` | *gone*; `when(a..b)` in the conjunction, **optional** — absent means any time (Peter 2026-09-12: dangerous, but sometimes meant: the offer stands until withdrawn) | §3, §4 |
+| `where: GeoDisc` | *gone*; `where(cell)` or a route's `from(cell) to(cell)`, **optional** — an internet service has no sensible place (Peter 2026-09-12) | §3, §4 |
 | `valid: TimeWindow` | **stays** | a property of the *record* (while the offer stands), read by the book against `now`, never by the catalogue against another offer; it also bounds every generated horizon (recurrence, §7 of the coupling plan) |
 | `qty`, `unit`, `divisible` | **stay** for this package | quantities as unit-family terms are `ontodag-coupling.md` §3's own package (U9); widening this one to it would couple two record bumps |
 | pins, `bond`, `oracle`, `arbitrator`, `nonce`, `maker`, `Tokens` | unchanged | — |
@@ -208,11 +212,15 @@ the record.
   `tests/test_ontology.py`. Time zones elaborate at entry; recurrence stays
   the cyclic tripwire (`ontodag-coupling.md` §7) — `when(saturdays)` as a
   node over asserted day terms works today within an asserted horizon.
-- *Input spellings survive as spellings.* `where(LAT,LON,R)` at the prompt
-  and `loop place NAME LAT,LON,R` keep working; both canonicalise to a cell
-  (or, later, a covering) instead of a disc. `GeoDisc`, `haversine_m` and
-  `spacetime.cell_for` remain as input-side helpers; nothing in matching
-  imports them after the flip.
+- *Input spellings survive as spellings; discs do not survive at all*
+  (Peter, 2026-09-12, afternoon). `where(LAT,LON,R)` at the prompt and
+  `loop place NAME LAT,LON,R` keep working; both canonicalise to a cell
+  (or, later, a covering) instead of a disc, through a plain function of
+  latitude, longitude and radius. `GeoDisc` and `haversine_m` are
+  **deleted** at v3, not kept as helpers; `spacetime.py` keeps only the
+  geohash encoder and the radius→precision table, and loses those too
+  when ontodag accepts `geo(lat,lon,r)`. The place node's `disc` metadata
+  is written only while the CLI still publishes v2.
 - *Region nodes as service parameters* (`from(ljubljana)`) wait on
   upstream (§5, step 3b); until then role terms carry cell values, as the
   CLI already publishes them.
@@ -240,7 +248,8 @@ the record.
 3. **Upstream asks** (rows in `ontodag-coupling.md` §7):
    - (a) coordinate input for `geo` — filed 2026-09-11; deletes `loop
      place`;
-   - (b) **role heads accepting a place node as parameter.** Probe
+   - (b) **role heads accepting a place node as parameter** — filed as
+     [ontodag #15](https://github.com/petfold/ontodag/issues/15). Probe
      2026-09-12: with `from` declared under `geo`, `from(ljubljana)` is
      accepted and silently read as a literal cell named "ljubljana" — the
      footgun the CLI's `_value_of` exists to guard. Ask: a head declared
@@ -248,7 +257,9 @@ the record.
      denotes their value (or their covering, for a region node), so
      `from(ljubljana)` stands as a stored term and `from(my_home) ⊑
      from(ljubljana)` computes. Deletes the CLI's value substitution;
-   - (c) **a Boolean overlap face**, `overlaps(a, b)`, the mirror of
+   - (c) **a Boolean overlap face**, `overlaps(a, b)` — filed as
+     [ontodag #16](https://github.com/petfold/ontodag/issues/16), which also
+     carries (d) — the mirror of
      `is_below` for `get_overlapping` — region nodes included on both
      sides, so region∩region needs no enumeration in loopmarket;
    - (d) graph-declared units reaching `intersect` through public API
@@ -271,7 +282,9 @@ the record.
    v3 pairs and relies on `satisfies`; `MockClearing` is untouched (it
    calls `check_match`); `idx/{t,g}` retire (decided 2026-09-07). The CLI
    in the same release: `_INTERPRETED_HEADS` shrinks to `("valid",)`,
-   `when`/`where` pass through as terms, the mapping code and the
+   `when`/`where` pass through as terms and are **optional** — the
+   "no place" refusal and the `where` default's obligation go (a `set
+   where` default still applies when set), the mapping code and the
    disjointness check for them are deleted, `place` writes a region node
    (or a cell via (a)), the drafts' `Part` record carries terms, the
    approval renderer shows them. `examples/triangle.loop` is byte-identical
@@ -311,11 +324,22 @@ the record.
   pairs — validity windows are short, and `loop` can repost; the honest
   reading of U2 is that an offer means what its record version defines.
   Peter's call before step 5.
-- **Publishing policy.** Conjunction semantics make `when`/`where`
-  optional (absent = unconstrained). Whether a *published* give must name
-  them is policy, not matching: the CLI requires a place today (`set
-  where` or `where(...)`), and U8 admission could require both at the
-  fold. Decide with `P1-federated-book.md`'s admission rules.
+- ~~**Publishing policy.**~~ **Decided 2026-09-12 (Peter):** `when` and
+  `where` are optional at publication too, not only in matching. An
+  internet service has no sensible place; an offer with no `when` serves
+  at any time and stands until withdrawn or its `valid` window ends —
+  dangerous, and sometimes exactly what is meant. Neither the CLI nor U8
+  admission requires them; the CLI's "no place" refusal goes at v3 (a
+  configured `set where` default still fills in when present). The
+  approval block should say "any time" / "anywhere" in so many words
+  when a role is absent, so the danger is seen before `yes`.
+- **Open-ended validity?** Peter's remark "the offer is always valid …
+  until withdrawn" reads most naturally as the absent-`when` case above.
+  If it also means `valid` itself may have no end — an offer standing
+  until its tombstone — `TimeWindow` must allow a half-bounded window
+  (today `end > start` is enforced) and `is_open_at` follows; a one-line
+  change, but a record-visible one, so it belongs in the same v3 bump.
+  To confirm with Peter before step 5.
 - **The marker's name.** `service-role` is provisional until v3 freezes it
   into published roots; `handover-role` was the alternative.
 - **Region nodes as service parameters** — upstream (b). Until then the
