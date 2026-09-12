@@ -1,0 +1,23 @@
+# The smallest nontrivial loop, as text (examples/demo_triangle.py in
+# twelve lines). Run it in a scratch home so `set` does not touch yours:
+#
+#   LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop
+#
+# `set` is durable, as odag's is — this is the shared dev/demo book, not the
+# federated one-book-per-maker shape (docs/plans/cli.md §8).
+set confirm off
+set now 2026-09-12T00:00:00Z
+place amara_flat 46.05,14.50,5km
+place bruno_farm 46.10,14.55,15km
+place chen_shop 46.06,14.51,4km
+set maker amara
+give piano-lesson where(amara_flat) 100
+want produce local weekly where(amara_flat) 104
+set maker bruno
+give vegetable-box where(bruno_farm) 50
+want bicycle-repair where(bruno_farm) 52
+set maker chen
+give bicycle-repair where(chen_shop) 80
+want music-lesson where(chen_shop) 83
+loops
+clear

@@ -18,6 +18,7 @@ def test_b1_core_imports_offline():
         "socket.socket.connect = deny\n"
         "import loopmarket\n"
         "from loopmarket import Offer, Ontology, OfferRegistry, SolverAgent\n"
+        "import loopmarket.cli\n"   # the command line is core too (cli.md G3)
         "print('ok')\n"
     )
     out = subprocess.run(
@@ -31,6 +32,7 @@ def test_b2_no_bee_modules_at_import():
     code = (
         "import sys\n"
         "import loopmarket\n"
+        "import loopmarket.cli\n"
         "loaded = [m for m in sys.modules if 'requests' in m or 'swarm_bee' in m]\n"
         "print('LOADED:' + ','.join(loaded))\n"
     )

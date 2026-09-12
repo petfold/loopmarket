@@ -1,7 +1,9 @@
 # loopmarket — the command line (P1 tooling)
 
-Status: design, 2026-09-11 (settled in discussion with Peter; nothing
-built). Decided here: the CLI lives *in the package* as `loop`, a sibling
+Status: **built 2026-09-12** — `src/loopmarket/cli.py`, gates G1–G6 in
+`tests/test_cli.py`, the triangle as `examples/triangle.loop` (§12 records
+what landed, the two rulings Peter made that day, and the decisions the
+build forced). Designed 2026-09-11 in discussion with Peter. Decided here: the CLI lives *in the package* as `loop`, a sibling
 of ontodag's `odag`, lifted from it where the code is generic; its grammar
 is ontodag's grammar with exactly two loopmarket-only conventions (a bare
 number first is the quantity, a bare number last is the price); every
@@ -427,16 +429,91 @@ blocks `loop` shipping, each removes a loopmarket-only behaviour.
   the parser and refused at publish with the point fallback named, until
   the v3 bump flips the table.
 
+## 12. Built (2026-09-12)
+
+What landed, against the sections above, and where the build had to
+decide something the design left implicit.
+
+- **Peter's two rulings.** The binary is **`loop`** (`loopmarket` the long
+  alias; no collision on the development machine, distribution audit
+  still informal). In a batch under `confirm auto`, a **reused price
+  refuses the line**: the block is printed, nothing is published, the
+  error names the way out (type the price, or `set confirm off`). `on`
+  asks on `/dev/tty` when stdin is the script; `off` is for scripts that
+  mean it.
+- **Private names never enter the pinned catalogue.** `place` writes to
+  odag's *active* store (the personal layer) and names resolve through
+  the composed view — catalogue + personal store + odag's overlays,
+  exactly odag's `Session.view()` — while matching runs against the
+  `catalogue` store alone and only its root is pinned. When `catalogue`
+  is unset the two coincide (the dev/demo case) and a `place` moves the
+  root, so places precede offers there; `examples/triangle.loop` does.
+- **Numbers keep their typed form.** `100` encodes as an integer, `12.5`
+  as a float, and an omitted quantity is the schema's own default
+  (`1.0`), because canonical JSON tells `1` from `1.0` and G1 demands
+  the same record bytes as the API demo. This exposed a latent U2 wart
+  — the schema has no numeric normalization; D9 (rationals) is where it
+  is fixed — recorded, not fixed here.
+- **G1 needs a fixed clock.** `loop_id` hashes offer ids, which carry
+  nonces and windows; the gate compares against an API-built triangle
+  under the same `now`. The nonce under any clock is `now` in
+  milliseconds plus the maker's offer count in the book, so two
+  identical lines under a fixed clock still get distinct ids.
+- **Quantity → `Thing` fields.** A unit suffix (`10kg`) means qty 10,
+  unit `kg`, divisible; a bare count (`3`) is indivisible, unit `unit`.
+  The good-vs-capacity-service wording is not attempted: it changes no
+  encoding today and its kind node is `catalogue-bootstrap.md`'s.
+- **Role terms carry a name's public value** (Peter's correction the
+  same day: "ontodag should interpret `my_home`"). A term `head(param)`
+  of a declared *prefix* or *dominance* head — `from(...)`, `to(...)`,
+  `geo(...)`, `size(...)` — passes through into the conjunction. If
+  `param` is a catalogue name, ontodag interprets *the name*: the CLI
+  reads the parameter of the term it hangs under in a dimension of the
+  same kind (`my_home` under `geo(u2e4x)` gives `u2e4x`), substitutes it
+  (`from(my_home)` → `from(u2e4x)`) and prints the substitution as a note
+  in the approval block. The published offer holds only public
+  vocabulary; matching is ontodag's computed containment
+  (`from(u2e4x) ⊑ from(u2e)`), the London→Rome pattern of ontodag's
+  guide §5.12. A name with no value in that dimension is refused, never
+  read as a literal that happens to spell the same; a literal that is no
+  name passes unchanged; an undeclared head is an unknown category (U7).
+  To make this matchable at all, `Ontology.known` now accepts a term the
+  DAG can interpret (it orders the term against itself) — the one
+  facade change, anticipated by `ontodag-coupling.md` §2, tested in
+  `tests/test_ontology.py`. **Quantity and time terms** (linear, count,
+  calendar kinds) are still refused at publish, with the coupling plan
+  named: their values are offer fields today (`Thing.qty`, `service`)
+  and a term beside the field would be double bookkeeping (G6). `place`
+  adopts ontodag's prelude into a personal store that lacks it (by
+  merge, idempotent, said on stderr) so every place hangs under its
+  cell — that edge is what makes the name interpretable.
+- **`peers` is a trusted union.** The fold for `offers`/`matches`/
+  `loops`/`clear` is an OR-set union into memory plus the U11 check; the
+  U8 admission rules need each book's owner, which a store spec does not
+  carry — they arrive with `fold` and the announcement channel. `clear`
+  with peers re-bases my book on the fold first (P1 §1's clearing
+  pattern) and says so.
+- **Shipped commands:** `give`, `want`, `withdraw`, `mine`, `place`,
+  `offers`, `show`, `matches`, `loops`, `clear`, `status`, `set`,
+  `export`, `import`, `help`, `--version`. Not yet: `propose`, `fold`,
+  `audit` (after the federation demo), `swarm:` peers live.
+- **Live on Swarm, 2026-09-12.** `loop -f swarm:TOPIC --catalogue
+  examples/triangle.od < examples/triangle.loop` against a funded Bee
+  2.8.2 light node (Gnosis mainnet, depth-20 batch): six offer commits
+  and the clearing commit in 1m58s, the same `loop_id` as in memory
+  (`cdbcb7b2…`), and a fresh session on the same topic read back
+  `offers = 6 (filled 6)` under the same root. One commit per `give`
+  is the shape's cost — each is a feed update; a batch-level commit is
+  the obvious speed-up if scripts grow.
+- **The one private import** is `_open_catalogue` (odag's `Session`
+  over a store spec, plus pushing loopmarket's `--bee-*` flags into
+  odag's flag layer), isolated and dated; §11.3 deletes it.
+
 ## Open problems
 
-- **The binary's name.** `loop` proposed (short, reads as the sentence
-  "loop give apple 100"); collision audit against common distributions
-  not done; `lm` is opaque; `loopmarket` stays as the long alias either
-  way. Unconfirmed by Peter.
-- **Confirmation in batch mode with reused prices.** `auto` proceeds in a
-  batch; a script that omits prices therefore publishes numbers its
-  author never saw. Whether `auto` should mean *ask if any price was
-  reused* is undecided.
+- ~~The binary's name~~ — `loop`, confirmed by Peter 2026-09-12.
+- ~~Confirmation in batch mode with reused prices~~ — refuse the line
+  (Peter, 2026-09-12; §12).
 - **Private names under the same-root rule.** §4's value-resolution
   sidestep works for places (a disc value) and times (a term); a private
   *category* has no value to resolve to and simply cannot appear in an
@@ -451,8 +528,12 @@ blocks `loop` shipping, each removes a loopmarket-only behaviour.
   `anchor(...)` term, the approval block shows the transaction the wallet
   will sign, and the reused-price and direction readings appear on the
   device's typed-data display (EIP-712) rather than only on screen.
-- **Which commands ship first.** Maker + reader + `loops`/`clear` is the
-  minimum for G1; `fold`/`audit`/`propose` follow the federation demo.
+- ~~Which commands ship first~~ — the maker, reader, `loops`/`clear` and
+  plumbing set shipped (§12); `fold`/`audit`/`propose` follow the
+  federation demo.
+- **Numeric normalization in the schema.** `1` and `1.0` are different
+  records (§12); the CLI keeps the typed form, but the fix belongs to the
+  v3 bump's D9 (rationals) so every writer agrees.
 
 ## What this document does not promise
 

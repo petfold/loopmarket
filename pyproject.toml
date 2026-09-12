@@ -25,7 +25,8 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "ontodag>=0.13.0",        # catalogue: subsumption, dimensions, is_below
+    "ontodag>=0.23.0",        # catalogue: subsumption, dimensions, is_below; the CLI
+                             # leans on odag's store backends, prelude and surface
     "recordstore>=0.16.0",   # the book: canonical versioned KV, merge, snapshots,
                              # diff/merge_delta (O(divergence) folds), prove/verify_proof
 ]
@@ -39,6 +40,12 @@ swarm = ["recordstore[bee,feeds]>=0.16.0"]
 # identity that owns the maker's feed, recoverable without a node.
 sig = ["eth-keys", "eth-hash[pycryptodome]"]
 test = ["pytest"]
+
+[project.scripts]
+# `loop` reads as the sentence it starts (`loop give apple 100`); `loopmarket`
+# is the long alias. Name confirmed 2026-09-12 (docs/plans/cli.md).
+loop = "loopmarket.cli:main"
+loopmarket = "loopmarket.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1,0 +1,12 @@
+# ontodag store v1 — the triangle demo's catalogue (examples/demo_triangle.py)
+service
+lesson service
+music-lesson lesson
+piano-lesson music-lesson
+repair service
+bicycle-repair repair
+food
+produce food
+local
+weekly
+vegetable-box produce local weekly
