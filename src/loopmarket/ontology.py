@@ -70,7 +70,27 @@ class Ontology:
     # -- querying ---------------------------------------------------------------
 
     def known(self, concept: str) -> bool:
-        return concept in self.dag.nodes
+        """Is `concept` vocabulary of this catalogue?
+
+        A node is. So is a *parametric term of a declared dimension head*
+        — `from(u2e4x)`, `weight(..11kg)` — although no such node exists:
+        the head is pinned by the catalogue root, the value grammar by the
+        registry version, and ontodag orders these terms by computation
+        (prefix containment, interval arithmetic). Asking the DAG to order
+        the term against itself is the public test that it can interpret
+        it: an undeclared head answers False, a malformed value raises —
+        both fail closed (U7). Entered 2026-09-12 so role terms in offers
+        (`from(...)`, `to(...)`) match the way ontodag's own worked example
+        does; `docs/plans/ontodag-coupling.md` §2 anticipated the step.
+        """
+        if concept in self.dag.nodes:
+            return True
+        if "(" not in concept:
+            return False
+        try:
+            return bool(self.dag.is_below(concept, concept))
+        except ValueError:
+            return False
 
     def covers(self, wanted: str, offered: str) -> bool:
         """True iff `offered` fits within `wanted` (equal, or a descendant).
