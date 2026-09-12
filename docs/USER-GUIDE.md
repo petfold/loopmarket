@@ -708,6 +708,41 @@ $ loop --maker courier give parcel-run 'where(eastside)' 'when(+2h..+3h)'  8   #
 reposts between beats. Dynamic state quantizes to the beat; the book a
 solver sees is always static and pinned.
 
+### Bundles: a composed want
+
+A theatre ticket is worthless if you cannot get there, and the ride is
+worthless without the ticket. Neither the theatre nor the bus company
+cares; only you do, so the coupling lives in *your* want, as **parts**
+that clear together or not at all. Stage the parts, look at them, compose:
+
+```console
+$ loop draft want theatre-ticket hamlet 'when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z)' 'where(venue)'
+1  want hamlet theatre-ticket when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z) where(46.051,14.506,100m)
+$ loop draft want transport person 'from(home)' 'to(venue)' 'when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z)'
+2  want from(u24m) person to(u24mfp) transport when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z) where(46.05,14.5,5000m)
+$ loop drafts                # canonical lines, your spelling as notes beneath
+$ loop compose 60            # all drafts, one price for the lot; `compose 1 2 60` picks
+```
+
+Or on one line, for scripts and assistants — `+` between parts, one price
+last:
+
+```console
+$ loop want theatre-ticket hamlet 'when(...)' 'where(venue)' + transport person 'from(home)' 'to(venue)' 'when(...)' 60
+```
+
+Drafts live in a local file, never in the book: a draft is not an offer,
+has no price and no id, and nobody can match it. Parts carry no prices —
+you price the bundle once and clearing splits it across the gives — and
+there is no cross-part constraint language: the ride arriving before
+curtain is you spelling the two windows. Today `compose` and the `+` line
+render the whole composed block and then **refuse**: the record cannot
+carry parts until the v3 bump (`docs/plans/cli.md` §13). Composition is
+want-side only. A kit that ships in one box is one indivisible give; a
+class that only runs if eight enrol is a *minimum fill* on one give, also
+v3; and "sirloin to one buyer, mince to another, only if the whole animal
+sells" is the door the design keeps shut — that is a butcher's job.
+
 ### Where the sophistication lives (a design boundary)
 
 Notice what these patterns have in common: loopmarket provides the basic

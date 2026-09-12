@@ -28,7 +28,8 @@ $ loop loops && loop clear                  # hunt profitable loops; clear one
 
 `loop` is the command line (`pip install loopmarket`): ontodag's grammar
 plus two conventions — a bare number first is the quantity, last is the
-price — every name a catalogue node, an omitted price your last unit
+price — and `+` between the parts of a want that must clear together;
+every name a catalogue node, an omitted price your last unit
 price, and nothing published before the fully resolved offer is shown.
 Type `loop` alone for a prompt, pipe it a script for a batch. The same in
 Python:
@@ -51,7 +52,7 @@ agent.step()                          # snapshot → match → hunt loops → cl
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 92 tests (two need a live Bee node)
+python3 -m pytest tests/ -v           # 96 tests (two need a live Bee node)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower

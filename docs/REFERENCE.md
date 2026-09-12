@@ -513,13 +513,15 @@ A token after `give`/`want` is one of:
 | `head(param)` | an ontodag term in ontodag's spelling; quote the parentheses in a shell, bare at the prompt and in scripts |
 | bare number **first** (`10kg`, `3`, `2.5l`) | the quantity: a unit suffix ⇒ `qty`, `unit`, divisible; a bare count ⇒ indivisible, unit `unit`; omitted ⇒ the schema default |
 | bare number **last** (`100`, `12.5`) | the price, on the maker's scale; omitted ⇒ the maker's last unit price for the same side and bare categories, × quantity, marked in the block; no earlier offer ⇒ error |
+| `+` between parts (`want` only) | a **composed want**: each part reads as a want line without its price (a bare number first is that part's quantity, no `valid(...)`), the last bare number of the line prices the whole; refused in a `give` |
 
 Whole numbers encode as integers, decimals as floats (canonical JSON tells
 `1` from `1.0`; the API's own encoding is matched byte for byte).
 
 **Interpreted heads** (mapped onto offer fields until spacetime terms land,
 `ontodag-coupling.md` §2): `when(WINDOW)` → `service`; `where(NAME)` →
-`where` (the disc read from the place node); `valid(DURATION | WINDOW)` →
+`where` (the disc read from the place node; `where(LAT,LON,R)` is the
+literal, the spelling `place` takes); `valid(DURATION | WINDOW)` →
 `valid`. A startup check refuses a catalogue that declares one of these
 as a dimension head.
 
@@ -552,6 +554,11 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `withdraw ID` | tombstone one of my open offers (id or unique prefix); filled refuses |
 | | `mine` | my offers, all states |
 | | `place NAME LAT,LON,RADIUS` | a place node under its `geo(cell)` with `{"disc": [lat, lon, r]}` in metadata, written to odag's active store (temporary bridge; adopts the prelude there if absent) |
+| | `want PART + PART... PRICE` | a composed want on one line: resolves every part, renders the composed block, **refuses** until the v3 record carries parts (exit 1, nothing published) |
+| | `draft want [QTY] CAT\|TERM...` | stage one part, resolved now, stably numbered, in `$LOOP_HOME/drafts` (a file, never the book; no price, no id) |
+| | `drafts` | the staged parts in canonical one-line spelling, the typed spelling and notes beneath (exit 1: none) |
+| | `compose [N...] PRICE` | all drafts, or the numbered ones, as one want priced PRICE the lot; renders, then refuses until v3, drafts kept |
+| | `discard [N...]` | drop drafts; alone, empty the list |
 | reader | `offers [CATEGORY...]` | open offers in the fold, filtered through `satisfies` |
 | | `show ID` | one offer as the approval block, plus `state` |
 | | `matches` | every feasible handoff in the fold (exit 1: none) |
@@ -564,7 +571,9 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `help`, `--version` | |
 
 Not yet at the command line: `propose`, `fold`, `audit` (after the
-federation demo).
+federation demo). Composed wants (`docs/plans/cli.md` §13) parse, resolve
+and render today; publishing them waits for the v3 record (`wants`
+carrying parts, fills naming every give consumed).
 
 ### The approval block
 

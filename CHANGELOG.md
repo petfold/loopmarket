@@ -7,6 +7,33 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
+## [Unreleased]
+
+### Added
+
+- **Composed wants at the command line** (`docs/plans/cli.md` §13,
+  `P2-loop-selection.md` §10 "Declared parts", both decided 2026-09-12): a
+  theatre ticket with transport is one want with two parts, cleared
+  together or not at all. `draft want ...` stages a part (resolved now,
+  stably numbered, in a local file that is never the book), `drafts` lists
+  the parts in canonical one-line spelling with the typed spelling as
+  notes, `compose [N...] PRICE` composes all or a numbered subset, and the
+  same want reads on one line with `+` between parts and one price last
+  (the third loopmarket-only convention, want side only). `compose` and
+  the `+` line render the full composed block and then **refuse** until
+  the v3 record lets `wants` carry parts. Composition is want-side only:
+  the give side gets a minimum fill (the chartered bus, the cow), never
+  parts.
+- `where(LAT,LON,R)` as a literal place, the spelling `place` takes, so a
+  canonical part line re-parses to the same disc.
+
+### Fixed
+
+- A place name in a role term now takes its *most specific* cell: a place
+  hangs under its own cell and, by computed containment, under every
+  coarser one, and the first ancestor in set order was sometimes the
+  coarse one.
+
 ## [0.2.0] — 2026-09-12
 
 ### Added
