@@ -100,20 +100,20 @@ loop give piano-lesson 'valid(2h)'
 loop give apple                      # 1 unit, last apple price, all defaults
 ```
 
-**Heads the CLI interprets today.** Until `ontodag-coupling.md` §2 lands,
-`Offer` still has a `service` window and a `where` disc as fields, so
-three heads map onto fields rather than into the conjunction: `when(...)`
-→ `service`, `where(...)` → `where`, `valid(...)` → `valid`. Every other
-head passes through into `Thing.concepts` as a catalogue term. When §2
-lands, `when`/`where` become ordinary catalogue heads with the same names
-and the mapping code is deleted with nothing changing at the prompt.
-The package that does it is `P1-spacetime-terms.md` (2026-09-12): the
-role-head rule behind `when`/`where`/`from`/`to` — overlap, declared in
-the catalogue as `service-role` — landed in `Ontology.satisfies` that
-day; the field removal is its step 5, the v3 record.
-A startup test asserts the interpreted heads are disjoint from the
-dimension heads the loaded catalogue declares, so a future pack cannot
-silently shadow one.
+**The one head the CLI interprets** (since the v3 record, 2026-09-12 —
+`P1-spacetime-terms.md`) is `valid(...)`, the offer's own field: how long
+it stands, `valid(A..)` until withdrawn. `when(...)`/`where(...)` are
+ordinary catalogue terms, role heads the seed declares under
+`service-role` and matched by overlap; the mapping code that once put
+them into `service`/`where` fields is gone and nothing changed at the
+prompt — `examples/triangle.loop` is byte-identical across the flip. The
+CLI knows *kinds*, never heads: a prefix-kind parameter `LAT,LON,R`
+becomes the finest cell containing that radius, a calendar-kind parameter
+in relative spelling becomes fixed UTC, a name becomes its value. The
+startup test asserts `valid` is not a dimension head of the loaded
+catalogue, so a pack cannot silently shadow it. (Until that day three
+heads were interpreted onto fields; the design discussion is §1 of the
+spacetime package.)
 
 **Relative time is input vocabulary.** `valid(2h)`, `when(today..+90d)`
 elaborate to fixed ISO-8601 UTC at entry — the coupling plan's rule that
@@ -141,8 +141,7 @@ key lists everything; with a key shows it; unknown keys are errors
 | `catalogue` | the ontodag store spec offers pin (any odag spec) | odag's active store |
 | `peers` | read-only maker books / manifests folded into every answer | none |
 | `maker` | my identity; the signer's address when `sig` is installed | none — required to publish |
-| `where` | default place term (a catalogue node, §4) | none — required |
-| `when` | default service window (relative or absolute) | `..+90d` |
+| `terms` | terms added to every offer whose line does not name that head, e.g. `where(home) when(..+90d)` (since v3, 2026-09-12: where and when are optional — unset, an offer is anywhere, any time) | none |
 | `valid` | how long my offers stand | `30d` |
 | `now` | the clock, for reproducible runs and tests | wall clock |
 | `confirm` | `auto` / `on` / `off` (§7) | `auto` |
@@ -194,7 +193,10 @@ fail-closed, and `my_home` is a bare word like any other.
   edge; at publish time the CLI reads that value and encodes it into the
   offer's disc field. *The offer carries coordinates, ontodag carries
   the name.* When §2 of the coupling plan lands the field goes and the
-  offer references the node.
+  offer references the node. **Done 2026-09-12 (v3):** the field is gone,
+  the offer carries `where(cell)` — the finest cell containing the radius
+  — and the place node carries no disc; region nodes as parameters wait
+  on ontodag #15.
 
 **The same-root constraint.** `check_match` refuses offers pinned to
 different catalogue roots, so a name that *appears in an offer* must be
@@ -531,7 +533,7 @@ through `compose`/`publish` and ended here.
 
 **Drafts are values.** A draft is an unpublished offer or one part of a
 composed want: resolved *now*, exactly as a `want` line resolves —
-names to values, relative times to absolute UTC, the place to its disc,
+names to values, relative times to absolute UTC, coordinates to a cell,
 unknown vocabulary and quantity/time terms refused — and kept in
 `$LOOP_HOME/drafts`, a local file, never the book: no id, nobody can
 match it. A draft may carry a price; a *part* may not (§10 pays once).
@@ -580,7 +582,7 @@ this section and `P2-loop-selection.md` §10 named, the G6 pattern,
 until `wants` can carry parts; nothing enters the book and the drafts
 are kept. Simple drafts publish today. Two details the build fixed:
 `where(...)` accepts the coordinate literal `LAT,LON,R` that `place`
-takes, so the canonical line re-parses to the same disc (the day odag
+takes, so the canonical line re-parses to the same cell (the day odag
 accepts `geo(LAT,LON,R)`, §11.1, this maps onto it); and a name in a role
 term takes its *most specific* value — a place hangs under its own cell
 and, by computed containment, under every coarser cell, and ancestors

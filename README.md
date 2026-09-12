@@ -20,7 +20,7 @@ whole loop atomically.
 
 ```console
 $ odag put piano-lesson music-lesson        # the catalogue is ontodag's
-$ loop set maker amara; loop place home 46.05,14.50,5km; loop set where home
+$ loop set maker amara; loop place home 46.05,14.50,5km; loop set terms 'where(home)'
 $ loop give piano-lesson 100                # I give this, priced on my scale
 $ loop want produce local weekly 104        # I want this, priced on my scale
 $ loop loops && loop clearing               # hunt profitable loops; run the clearing house
@@ -76,9 +76,10 @@ one-screen version; the design record with its reasons is
 [`docs/plans/cli.md`](docs/plans/cli.md).
 
 Candidate generation can also run through ontodag's **parametric
-dimensions**: `DimensionIndex` files gives under their exact service window,
-their centre cell and their service-role terms (`from(u2e4)`, `depart(...)`,
-matched by overlap; place prunes through cells since 2026-09-12), and
+dimensions**: `DimensionIndex` files gives under their service-role terms
+(`where(u24)`, `when(...)`, `from(...)`, matched by overlap; place prunes
+through cells since 2026-09-12 — and, for v2 records, under their window
+and centre cell), and
 `candidate_matches_indexed` prunes by concept cones
 and window overlap — provably the same matches as the exhaustive baseline
 (the recall test enforces set-equality), with far fewer exact checks. The

@@ -18,7 +18,7 @@ import time
 import unittest
 
 from loopmarket import (
-    GeoDisc, MockClearing, Ontology, SolverAgent, Thing, TimeWindow,
+    MockClearing, Ontology, SolverAgent, Thing, TimeWindow,
     give, want,
 )
 from loopmarket.registry import swarm_offer_book
@@ -34,6 +34,17 @@ CATALOGUE = {
     "local": [], "weekly": [],
     "vegetable-box": ["produce", "local", "weekly"],
 }
+
+
+def _iso(t: int) -> str:
+    from datetime import datetime, timezone
+    return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _place(lat, lon, radius_m) -> str:
+    """v3: a place is the cell containing the radius (all three `u24`)."""
+    from loopmarket.spacetime import cell_for_coords
+    return f"where({cell_for_coords(lat, lon, radius_m)})"
 
 
 @unittest.skipUnless(
@@ -53,28 +64,27 @@ class TestTriangleOnLiveSwarmBook(unittest.TestCase):
         catalogue = Ontology.persistent(
             swarm_store(f"{topic}-catalogue", **swarm))
         catalogue.load(CATALOGUE)
+        catalogue.declare_service_roles({"when": "time", "where": "geo"})
         ontology_root = catalogue.commit()
         self.assertTrue(ontology_root)
 
         registry = swarm_offer_book(topic, **swarm)
         now = int(time.time())
-        town = dict(service=TimeWindow(now, now + 120 * 86_400),
-                    valid=TimeWindow(now - 3_600, now + 30 * 86_400),
+        # v3 offers: the season and the place are role terms in the
+        # conjunction; the offers stand a month
+        season = f"when({_iso(now)}..{_iso(now + 120 * 86_400 - 1)})"
+        town = dict(valid=TimeWindow(now - 3_600, now + 30 * 86_400),
                     **catalogue.pins)
+        flat, farm, shop = (_place(46.05, 14.50, 5_000), _place(46.10, 14.55, 15_000),
+                            _place(46.06, 14.51, 4_000))
         offers = [
-            give("amara", Thing(("piano-lesson",), unit="course"), 100,
-                where=GeoDisc(46.05, 14.50, 5_000), **town),
-            want("amara", Thing(("produce", "local", "weekly"),
-                               unit="course"), 104,
-                where=GeoDisc(46.05, 14.50, 5_000), **town),
-            give("bruno", Thing(("vegetable-box",), unit="course"), 50,
-                where=GeoDisc(46.10, 14.55, 15_000), **town),
-            want("bruno", Thing(("bicycle-repair",), unit="course"), 52,
-                where=GeoDisc(46.10, 14.55, 15_000), **town),
-            give("chen", Thing(("bicycle-repair",), unit="course"), 80,
-                where=GeoDisc(46.06, 14.51, 4_000), **town),
-            want("chen", Thing(("music-lesson",), unit="course"), 83,
-                where=GeoDisc(46.06, 14.51, 4_000), **town),
+            give("amara", Thing(("piano-lesson", flat, season), unit="course"), 100, **town),
+            want("amara", Thing(("produce", "local", "weekly", flat, season),
+                               unit="course"), 104, **town),
+            give("bruno", Thing(("vegetable-box", farm, season), unit="course"), 50, **town),
+            want("bruno", Thing(("bicycle-repair", farm, season), unit="course"), 52, **town),
+            give("chen", Thing(("bicycle-repair", shop, season), unit="course"), 80, **town),
+            want("chen", Thing(("music-lesson", shop, season), unit="course"), 83, **town),
         ]
         registry.publish_many(offers)
         book_root = registry.commit()

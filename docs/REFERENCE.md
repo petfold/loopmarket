@@ -33,7 +33,7 @@ Extras: `[swarm]` = `recordstore[bee,feeds]` (Bee blobs + signed feeds),
 
 ## 1. `loopmarket.schema` — the offer form
 
-### `TimeWindow(start: int, end: int)`
+### `TimeWindow(start: int, end: int | None = None)`
 Frozen. A half-open interval `[start, end)` in unix seconds (UTC).
 Raises `ValueError` unless `end > start`.
 
@@ -43,12 +43,15 @@ Raises `ValueError` unless `end > start`.
 | `.contains(other)` | fits-within: `other` entirely inside `self` |
 | `.overlaps(other)` | non-empty intersection |
 | `.intersection(other)` | `TimeWindow` or `None` |
-| `.is_open_at(t)` | `start <= t < end` |
-| `.to_record()` | `[start, end]` |
+| `.is_open_at(t)` | `start <= t < end`; `end=None` is open-ended — stands until withdrawn (v3 records only) |
+| `.to_record()` | `[start, end]` (`end` may be `null`) |
 
 ### `GeoDisc(lat: float, lon: float, radius_m: float)`
-Frozen. A disc on the sphere. Raises `ValueError` for out-of-range
-centre or negative radius.
+Frozen. A disc on the sphere — **v1/v2 records only**: since the v3 record
+(2026-09-12) a place is a cell or region term in the conjunction, and this
+class exists to read and match old records among themselves; nothing
+creates a new disc. Raises `ValueError` for out-of-range centre or
+negative radius.
 
 | member | meaning |
 |---|---|
@@ -227,8 +230,8 @@ baseline (enforced by test).
 
 | member | meaning |
 |---|---|
-| `time_term(window)` | the window as one inclusive `service-time(a..b)` value |
-| `cell_term(offer)` | the centre cell as one `service-cell(...)` prefix value |
+| `time_term(window)` | (v1/v2 records) the window as one inclusive `service-time(a..b)` value |
+| `cell_term(offer)` | (v1/v2 records) the centre cell as one `service-cell(...)` prefix value |
 | `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) |
 | `.file(offer) -> bool` | index a give; `False` for non-gives and unknown vocabulary (U7's outcome) |
 | `.candidates(want) -> set[str]` | give ids inside every wanted plain cone, with overlapping service windows, and — per service-role head the want names (`from(...)`, `depart(...)`) — overlapping that head's meet or silent on it (absent = unconstrained). Role terms prune by cell; a give with provably disjoint same-head terms is not filed (it matches nothing) |
@@ -383,7 +386,7 @@ clearing books (U11 covers them).
 One book = one recordstore keyspace = one root per version:
 
 ```
-offer/<offer_id>        the immutable offer record (v1 or v2)
+offer/<offer_id>        the immutable offer record (v1, v2 or v3)
 sig/<offer_id>          detached maker signature, hex (never in identity)
 withdraw/<offer_id>     1 — monotone tombstone: the offer is closed
 fill/<offer_id>         {"loop": <loop_id>} — pure function of the decision
@@ -403,8 +406,29 @@ announcement stores.
 
 ## 13. Record formats
 
-**Offer, v2** (v1 lacks `registry_version`/`contract_version` and says
-`"v": 1`; a v1 offer re-encodes as v1 forever — U2):
+**Offer, v3** (2026-09-12, `docs/plans/P1-spacetime-terms.md`): no
+`service`/`where` — where and when the thing changes hands are role terms
+in `concepts` (`when(...)`, `where(cell)`, `from`/`to`, `depart`/`arrive`;
+heads the catalogue declares under `service-role`, matched by overlap;
+absent = anywhere / any time); `valid` may have a `null` end (stands until
+withdrawn). A v3 record carrying `service` or `where` is refused on read.
+v2 and v3 offers never match each other (`check_match`):
+
+```json
+{"v": 3, "maker": "amara",
+ "gives": {"type": "thing",
+           "concepts": ["piano-lesson", "when(2026-10-01T00:00:00Z..2026-12-31T23:59:59Z)",
+                        "where(u24)"],
+           "qty": 1.0, "unit": "course", "divisible": false},
+ "wants": {"type": "tokens", "issuer": "amara", "amount": 100},
+ "valid": [1699999999, null],
+ "ontology_root": "…64 hex…", "registry_version": "4.1",
+ "contract_version": "0.1",
+ "bond": 0.0, "oracle": "countersign", "arbitrator": "", "nonce": 1}
+```
+
+**Offer, v2** (read and matched among v2 offers forever — U2; v1 lacks
+`registry_version`/`contract_version` and says `"v": 1`):
 
 ```json
 {"v": 2, "maker": "amara",
@@ -495,7 +519,7 @@ loop                                     a prompt on a terminal (quit/exit to le
 
 Global flags precede the command and are the flag layer of the settings
 table: `-f SPEC`, `--catalogue SPEC`, `--peer SPECS`, `--maker NAME`,
-`--where NAME`, `--when WINDOW`, `--valid DURATION`, `--now TIME`,
+`--terms 'TERM ...'`, `--valid DURATION`, `--now TIME`,
 `--confirm MODE`, `-n N`, `--raw`/`--render`, `--bee-api URL`,
 `--bee-batch ID`, `--bee-signer KEY`; `--version`, `--help`. Read commands
 also take `-o FILE` (the prompt has no shell redirect), `-n N` and
@@ -520,30 +544,35 @@ A token after `give`/`want` is one of:
 Whole numbers encode as integers, decimals as floats (canonical JSON tells
 `1` from `1.0`; the API's own encoding is matched byte for byte).
 
-**Interpreted heads** (mapped onto offer fields until spacetime terms land,
-`ontodag-coupling.md` §2): `when(WINDOW)` → `service`; `where(NAME)` →
-`where` (the disc read from the place node; `where(LAT,LON,R)` is the
-literal, the spelling `place` takes); `valid(DURATION | WINDOW)` →
-`valid`. A startup check refuses a catalogue that declares one of these
-as a dimension head.
+**The one interpreted head** is `valid(DURATION | A..B | A..)` → the
+offer's `valid` window (`A..` stands until withdrawn). A startup check
+refuses a catalogue that declares `valid` as a dimension head. Everything
+else is a catalogue term — since the v3 record (2026-09-12) `when(...)`
+and `where(...)` included: role heads the seed catalogue declares under
+`service-role`, matched by overlap; omit them and the offer is anywhere,
+any time. The `terms` setting adds default terms to every line that does
+not name their head.
 
-**Other terms** pass into the description. A term of a declared *prefix*
-or *dominance* head (`from(...)`, `to(...)`, `geo(...)`, `size(...)`) is
-kept and matched by ontodag's computed containment; if its parameter is a
-catalogue *name*, the name's value in that kind of dimension is
-substituted (`from(home)` → `from(u24m)`, from `home ⊑ geo(u24m)`) and
-printed as a note — a name with no such value is refused, never read as a
-literal. A term of a *linear*, *count* or *calendar* head
-(`weight(...)`, `count(...)`, `time(...)`) is accepted by the parser and
-**refused at publish** with the coupling plan named: quantities and time
-are fields today. Band spellings in quantity position (`9kg..11kg`,
+**Terms** pass into the description, elaborated by *kind*, never by head
+(the CLI names no head): if the parameter is a catalogue *name*, the
+name's value in that kind of dimension is substituted (`where(home)` →
+`where(u24)`, from `home ⊑ geo(u24)`; `when(autumn)` → the `time(...)`
+term `autumn` hangs under) and printed as a note — a name with no such
+value is refused, never read as a literal; a *prefix*-kind parameter
+`LAT,LON,R` becomes the finest cell containing that radius around the
+point (the spelling `place` takes; a place near a cell edge names the
+coarser cell); a *calendar*-kind parameter in relative spelling
+(`today..+7d`) is elaborated to fixed UTC. A term of a *linear* or
+*count* head (`weight(...)`, `count(...)`) is accepted by the parser and
+**refused at publish** with the coupling plan named: quantities are
+fields today. Band spellings in quantity position (`9kg..11kg`,
 `10kg..`, `..11kg`) likewise parse and refuse, naming the point spelling.
 
 **Time** (input vocabulary, stored absolute UTC): `now`, `today`,
 `tomorrow`, `+90d`/`-2h` (units `s m h d w`), any ontodag time literal
 (`2026-10`, `2026-10-01`, `2026-10-01T10:00:00Z`), and ranges `A..B`,
-`..B` (from now), `A..` (refused: a window needs an end). A name whose
-node hangs under a `time(...)` term is a window too (`when(evenings)`).
+`..B` (from now), `A..` (open-ended: for `valid`, until withdrawn). A name
+whose node hangs under a `time(...)` term is a window too (`when(evenings)`).
 Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 `500m`, bare metres.
 
@@ -610,8 +639,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `catalogue` | `LOOP_CATALOGUE` | odag's active store | the store offers pin (any odag spec: `.od` file, `rs:PATH`, `swarm:NAME`) |
 | `peers` | `LOOP_PEERS` | none | read-only books folded into every answer: `rs:PATH`, `swarm:TOPIC@OWNER`; comma-separated. A trusted OR-set union today (U8 admission needs owners: the `fold` command) |
 | `maker` | `LOOP_MAKER` | none | my identity; unset with `bee_signer` set and `[sig]` installed ⇒ the key's address, and offers get detached signatures |
-| `where` | `LOOP_WHERE` | none | default place (a node with coordinates) |
-| `when` | `LOOP_WHEN` | `..+90d` | default service window |
+| `terms` | `LOOP_TERMS` | none | terms added to every offer whose line does not name that head, e.g. `where(home) when(..+90d)`; unset ⇒ anywhere, any time |
 | `valid` | `LOOP_VALID` | `30d` | how long offers stand |
 | `now` | `LOOP_NOW` | wall clock | the clock: unix seconds or an ISO-8601 literal |
 | `confirm` | `LOOP_CONFIRM` | `auto` | `auto` / `on` / `off` |
@@ -633,7 +661,7 @@ one command with captured streams; `Session()` opens stores lazily;
 Python's literal:** `offer_from_line(line, session=None) -> Offer` resolves
 an offer line under the session's settings without publishing (a composed
 line raises until v3); `line_for(offer) -> str` renders an `Offer` to its
-canonical line, `want 2kg apple when(A..B) where(LAT,LON,Rm) valid(A..B) 9`,
+canonical line, `want 2kg apple when(A..B) where(CELL) valid(A..B) 9`,
 and the two round-trip. `parse_offer_tokens`, `parse_want_line`, `window`,
 `duration_s`, `radius_m`, `render_offer` are the pure pieces.
 Gates G1–G6 (`docs/plans/cli.md`) are `tests/test_cli.py`.

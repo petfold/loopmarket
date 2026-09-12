@@ -84,8 +84,8 @@ def _line(offer: Offer) -> int:
 
 
 def cell_term(offer: Offer) -> str:
-    """The offer's centre geohash cell as one prefix value (an index fact,
-    not a pruning gate — see the module docstring)."""
+    """A v1/v2 offer's disc as the cell containing it, one prefix value (an
+    index fact, not a pruning gate — see the module docstring)."""
     return f"{CELL_DIMENSION}({cell_for(offer.where)})"
 
 

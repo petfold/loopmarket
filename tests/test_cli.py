@@ -10,10 +10,12 @@ import re
 import pytest
 from ontodag import CONTRACT_VERSION, OntoDAG
 from ontodag.dimensions import REGISTRY_VERSION
+from ontodag.prelude import DECLARATIONS as PRELUDE_DECLARATIONS
 from ontodag.prelude import apply as apply_prelude
 from ontodag import surface
 from recordstore import MemoryBytesStore, RecordStore
 
+from loopmarket.spacetime import cell_for_coords
 from loopmarket import (
     GeoDisc, MockClearing, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
@@ -25,7 +27,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRIANGLE_OD = os.path.join(ROOT, "examples", "triangle.od")
 TRIANGLE_LOOP = os.path.join(ROOT, "examples", "triangle.loop")
 
+# The catalogue the tests speak: ontodag's prelude (so `geo`/`time` exist),
+# `when`/`where` as service roles (the v3 record's spacetime — the CLI knows
+# no head, the catalogue declares them), and the triangle's trades.
 CATALOGUE = {
+    **{name: list(parents) for name, parents in PRELUDE_DECLARATIONS},
+    "service-role": [],
+    "when": ["time", "service-role"], "where": ["geo", "service-role"],
     "service": [], "lesson": ["service"], "music-lesson": ["lesson"],
     "piano-lesson": ["music-lesson"], "repair": ["service"],
     "bicycle-repair": ["repair"], "food": [], "produce": ["food"],
@@ -100,19 +108,21 @@ def _api_triangle(nonces):
     ont = Ontology().load({k: v for k, v in CATALOGUE.items()})
     pins = dict(ontology_root="", registry_version=REGISTRY_VERSION,
                 contract_version=CONTRACT_VERSION)
-    W = dict(service=TimeWindow(NOW, NOW + 90 * 86_400),
-             valid=TimeWindow(NOW, NOW + 30 * 86_400), **pins)
-    flat, farm, shop = (GeoDisc(46.05, 14.50, 5_000), GeoDisc(46.10, 14.55, 15_000),
-                        GeoDisc(46.06, 14.51, 4_000))
+    W = dict(valid=TimeWindow(NOW, NOW + 30 * 86_400), **pins)
+    # v3: the place is a term — the cell containing each radius (all `u24`
+    # here, every place sits within its radius of a cell edge); no `when`
+    # on the triangle's lines, so the offers are any time
+    flat = f"where({cell_for_coords(46.05, 14.50, 5_000)})"
+    farm = f"where({cell_for_coords(46.10, 14.55, 15_000)})"
+    shop = f"where({cell_for_coords(46.06, 14.51, 4_000)})"
     t = lambda *c: Thing(tuple(c))  # noqa: E731
     offers = [
-        give("amara", t("piano-lesson"), 100, where=flat, nonce=nonces[0], **W),
-        want("amara", t("produce", "local", "weekly"), 104, where=flat,
-             nonce=nonces[1], **W),
-        give("bruno", t("vegetable-box"), 50, where=farm, nonce=nonces[0], **W),
-        want("bruno", t("bicycle-repair"), 52, where=farm, nonce=nonces[1], **W),
-        give("chen", t("bicycle-repair"), 80, where=shop, nonce=nonces[0], **W),
-        want("chen", t("music-lesson"), 83, where=shop, nonce=nonces[1], **W),
+        give("amara", t("piano-lesson", flat), 100, nonce=nonces[0], **W),
+        want("amara", t("produce", "local", "weekly", flat), 104, nonce=nonces[1], **W),
+        give("bruno", t("vegetable-box", farm), 50, nonce=nonces[0], **W),
+        want("bruno", t("bicycle-repair", farm), 52, nonce=nonces[1], **W),
+        give("chen", t("bicycle-repair", shop), 80, nonce=nonces[0], **W),
+        want("chen", t("music-lesson", shop), 83, nonce=nonces[1], **W),
     ]
     reg = OfferRegistry(RecordStore(MemoryBytesStore()))
     reg.publish_many(offers)
@@ -175,14 +185,16 @@ def test_g2_two_conventions_and_nothing_else():
     p = cli.parse_offer_tokens(["apple"])
     assert (p.qty, p.price, p.concepts) == (None, None, ("apple",))
     p = cli.parse_offer_tokens(["ride", "where(home)", "when(today..+7d)", "5"])
-    assert p.concepts == ("ride",)
-    assert p.heads == {"where": "home", "when": "today..+7d"}
+    assert p.concepts == ("ride", "where(home)", "when(today..+7d)")   # terms, all
+    assert p.heads == {}
+    p = cli.parse_offer_tokens(["ride", "valid(2h)", "5"])
+    assert p.concepts == ("ride",) and p.heads == {"valid": "2h"}     # the one field
     with pytest.raises(ValueError, match="name what is exchanged"):
         cli.parse_offer_tokens(["100"])
     with pytest.raises(ValueError, match="name what is exchanged"):
         cli.parse_offer_tokens(["3", "100"])
     with pytest.raises(ValueError, match="given twice"):
-        cli.parse_offer_tokens(["ride", "where(a)", "where(b)"])
+        cli.parse_offer_tokens(["ride", "valid(2h)", "valid(3h)"])
 
 
 def test_relative_time_elaborates_to_fixed_utc():
@@ -215,7 +227,7 @@ def test_g4_approval_block_is_the_show_renderer(loop):
     assert "state    open" in shown
     assert "up to 10 kg, divisible" in block
     assert "10/kg" in block
-    assert "place home" in out
+    assert "note     where(home) → where(" in out
 
 
 def test_want_reading_names_the_point(loop):
@@ -245,7 +257,7 @@ def test_g5_interpreted_head_declared_as_dimension_fires(env, tmp_path,
                                                         monkeypatch):
     dag = OntoDAG()
     apply_prelude(dag)
-    dag.put("when", ["calendar-dimension"])
+    dag.put("valid", ["calendar-dimension"])
     dag.put("apple", [])
     lines = []
     for name, item in dag.nodes.items():
@@ -257,7 +269,7 @@ def test_g5_interpreted_head_declared_as_dimension_fires(env, tmp_path,
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "shadow.od"))
     run = Runner()
     code, out, err = run("give", "apple", "1")
-    assert code == 1 and "declares `when` as a dimension" in err
+    assert code == 1 and "declares `valid` as a dimension" in err
 
 
 # ---------------------------------------------------------------- G6: bands refuse
@@ -282,11 +294,11 @@ def test_g6_dimension_terms_refuse_until_quantities_are_terms(env, tmp_path,
     (tmp_path / "dims.od").write_text("\n".join(lines) + "\n")
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "dims.od"))
     run = Runner()
-    run.ok("place", "home", "46.05,14.50,5km")
-    code, out, err = run("give", "apple", "weight(10kg..10.5kg)", "where(home)", "5")
-    assert code == 1 and "quantity or time term" in err and "ontodag-coupling.md" in err
-    code, out, err = run("give", "apple", "time(2026-10)", "where(home)", "5")
-    assert code == 1 and "quantity or time term" in err
+    code, out, err = run("give", "apple", "weight(10kg..10.5kg)", "5")
+    assert code == 1 and "quantity term" in err and "ontodag-coupling.md" in err
+    # a time term is a catalogue term like any other since the v3 record
+    out = run.ok("give", "apple", "time(2026-10)", "5")
+    assert "give     apple time(2026-10)" in out
 
 
 def test_unknown_category_fails_closed(loop):
@@ -343,15 +355,19 @@ def test_reused_price_refuses_in_a_batch_under_confirm_auto(loop, monkeypatch):
 
 def test_places_are_catalogue_nodes_with_coordinates(env, tmp_path):
     run = Runner()
-    code, out, err = run("give", "apple", "where(nowhere)", "5")
-    assert code == 1 and "unknown place: nowhere" in err and "loop place" in err
     run.ok("place", "home", "46.05,14.50,5km")
     dag = run.session.personal_session.dag
-    assert dag.nodes["home"].metadata["disc"] == [46.05, 14.5, 5000]
+    cell = cell_for_coords(46.05, 14.50, 5_000)
+    assert [p.name for p in dag.nodes["home"].parents] == [f"geo({cell})"]
+    assert not dag.nodes["home"].metadata            # no disc anywhere (v3)
     # the node persisted through the store (a fresh session reads it back)
     fresh = Runner()
     out = fresh.ok("give", "apple", "where(home)", "5")
-    assert "where    46.05,14.5 radius 5000m" in out
+    assert f"give     apple where({cell})" in out
+    assert f"note     where(home) → where({cell})" in out
+    # a place is optional: an offer with none is anywhere
+    out = fresh.ok("give", "apple", "5")
+    assert out.startswith("give     apple\n")
 
 
 def test_place_under_a_pinned_rs_catalogue_gets_its_cell_edge(env, tmp_path,
@@ -390,13 +406,18 @@ def test_place_under_a_pinned_rs_catalogue_gets_its_cell_edge(env, tmp_path,
     dag = run2.session.personal_session.dag
     assert any(p.name.startswith("geo(") for p in dag.nodes["shop"].parents)
     assert dag.store.root != root                     # a real commit
-    assert Runner().session.personal_session.dag.nodes["shop"].metadata["disc"] \
-        == [46.06, 14.51, 400]
+    shop = Runner().session.personal_session.dag.nodes["shop"]
+    assert [p.name for p in shop.parents] == [f"geo({cell_for_coords(46.06, 14.51, 400)})"]
 
 
 def _od_with_prelude(path, extra_puts):
+    """The prelude, the `when`/`where` service roles (the v3 record's
+    spacetime — catalogue vocabulary, not the CLI's), then `extra_puts`."""
     dag = OntoDAG()
     apply_prelude(dag)
+    dag.put("service-role", [])
+    dag.put("when", ["time", "service-role"])
+    dag.put("where", ["geo", "service-role"])
     for name, parents in extra_puts:
         dag.put(name, parents)
     lines = [" ".join([n, *[p.name for p in i.parents if p.name != "*"]])
@@ -410,7 +431,6 @@ def test_role_terms_take_the_name_value_and_match_by_containment(
     geo value into the term the person typed, and the published offer says
     `from(u2e4x)` — public vocabulary, matchable by prefix containment,
     exactly ontodag's London→Rome pattern."""
-    from loopmarket.spacetime import cell_for
     _od_with_prelude(tmp_path / "roles.od",
                      [("from", ["prefix-dimension"]), ("to", ["prefix-dimension"]),
                       ("ride", [])])
@@ -418,13 +438,13 @@ def test_role_terms_take_the_name_value_and_match_by_containment(
     run = Runner()
     code, out, err = run("place", "my_home", "46.05,14.50,500m")
     assert code == 0 and "adopted ontodag's prelude" in err
-    cell = cell_for(GeoDisc(46.05, 14.50, 500))
+    cell = cell_for_coords(46.05, 14.50, 500)
     out = run.ok("give", "ride", "from(my_home)", "where(my_home)", "5")
-    assert f"give     from({cell}) ride" in out
+    assert f"give     from({cell}) ride where({cell})" in out
     assert f"note     from(my_home) → from({cell})" in out
     oid = out.strip().splitlines()[-1]
     rec = run.session.book.store.get(f"offer/{oid}")
-    assert rec["gives"]["concepts"] == [f"from({cell})", "ride"]   # no private name
+    assert rec["gives"]["concepts"] == [f"from({cell})", "ride", f"where({cell})"]
     # a want anywhere in the parent cell matches by computed containment
     monkeypatch.setenv("LOOP_MAKER", "bruno")
     run.ok("want", "ride", f"from({cell[:2]})", "where(my_home)", "6")
@@ -445,21 +465,20 @@ def test_role_terms_take_the_name_value_and_match_by_containment(
 
 
 def test_time_names_need_nothing_from_loopmarket(env, tmp_path, monkeypatch):
-    """`odag put evenings 'time(...)'` then when(evenings): containment is
-    ontodag's; the CLI reads the window off the node's ancestors."""
-    dag = OntoDAG()
-    apply_prelude(dag)
-    dag.put("apple", [])
-    dag.put("autumn", ["time(2026-09-22..2026-12-20)"])
-    lines = [" ".join([n, *[p.name for p in i.parents if p.name != "*"]])
-             for n, i in dag.nodes.items() if n != "*"]
-    (tmp_path / "t.od").write_text("\n".join(lines) + "\n")
+    """`odag put autumn 'time(...)'` then when(autumn): the name's value is
+    the time term it hangs under, carried into the role the person typed
+    — the same device as a place's cell; containment is ontodag's."""
+    _od_with_prelude(tmp_path / "t.od",
+                     [("apple", []), ("autumn", ["time(2026-09-22..2026-12-20)"])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "t.od"))
     run = Runner()
-    run.ok("place", "home", "46.05,14.50,5km")
-    out = run.ok("give", "apple", "where(home)", "when(autumn)", "5")
-    assert "service  2026-09-22T00:00:00Z .. 2026-12-21T00:00:00Z" in out
-    assert "note     when autumn" in out
+    out = run.ok("give", "apple", "when(autumn)", "5")
+    autumn = "when(2026-09-22T00:00:00Z..2026-12-20T23:59:59Z)"   # ontodag's canonical value
+    assert f"give     apple {autumn}" in out
+    assert f"note     when(autumn) → {autumn}" in out
+    # relative spellings are input vocabulary, elaborated to fixed UTC
+    out = run.ok("give", "apple", "when(today..+1d)", "5")
+    assert "note     when(today..+1d) → when(" in out and "T00:00:00Z.." in out
 
 
 # ---------------------------------------------------------------- the rest of the surface
@@ -524,11 +543,11 @@ def test_set_is_durable_validated_and_fails_closed(env):
     code, out, err = run("set", "alias", "x")
     assert code == 1 and "unknown setting: alias" in err
     assert run("set", "confirm", "maybe")[0] == 1
-    assert run("set", "when", "yesterday-ish")[0] == 1
+    assert run("set", "terms", "yesterday-ish")[0] == 1        # not a term
     assert run("set", "book", "/plain/path")[0] == 1
     run.ok("set", "valid", "2h")
-    run.ok("set", "where", "home")
-    assert cli._read_config() == {"valid": "2h", "where": "home"}
+    run.ok("set", "terms", "where(home)")
+    assert cli._read_config() == {"valid": "2h", "terms": "where(home)"}
     assert oct(os.stat(cli._config_path()).st_mode)[-3:] == "600"
     assert run.ok("set", "valid").strip() == "valid = 2h"
     listing = run.ok("set")
@@ -639,7 +658,7 @@ def stage(env, tmp_path, monkeypatch):
                       ("theatre-ticket", []), ("hamlet", ["theatre-ticket"]),
                       ("transport", []), ("person", [])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "stage.od"))
-    monkeypatch.setenv("LOOP_WHERE", "home")
+    monkeypatch.setenv("LOOP_TERMS", "where(home)")     # the default place
     run = Runner()
     run.ok("place", "home", "46.05,14.50,5km")
     run.ok("place", "venue", "46.051,14.506,100m")
@@ -653,29 +672,28 @@ RIDE = ["transport", "person", "from(home)", "to(venue)",
 
 
 def test_drafts_named_numbered_canonical_and_never_in_the_book(stage):
-    from loopmarket.spacetime import cell_for
-    home = cell_for(GeoDisc(46.05, 14.50, 5000))
-    venue = cell_for(GeoDisc(46.051, 14.506, 100))
+    home = cell_for_coords(46.05, 14.50, 5000)
+    venue = cell_for_coords(46.051, 14.506, 100)
     out = stage.ok("draft", "ticket", "want", *TICKET)
     assert out.startswith("ticket  want hamlet theatre-ticket when(2026-10-05T19:00:00Z.."
-                          "2026-10-05T22:00:00Z) where(46.051,14.506,100m)")
+                          f"2026-10-05T22:00:00Z) where({venue})")
     stage.ok("draft", "ride", "want", *RIDE)
     stage.ok("draft", "want", "hamlet", "5")                # unnamed, priced
     listing = stage.ok("drafts")
     assert f"ride  want from({home}) person to({venue}) transport when(" in listing
     assert "   typed ride want transport person from(home) to(venue)" in listing
     assert f"   note  from(home) → from({home})" in listing
-    assert re.search(r"^3  want hamlet when\(.*\) 5$", listing, re.M)   # price last
+    assert re.search(r"^3  want hamlet where\(.*\) 5$", listing, re.M)  # price last
     assert stage.ok("mine", "--raw") == "" and stage.ok("offers", "--raw") == ""
     assert os.path.exists(os.path.join(os.environ["LOOP_HOME"], "drafts"))
     # the canonical line re-parses to the same window and place
     line = listing.splitlines()[0].split(" ", 3)[3].split()
     out = stage.ok("want", *line, "5")
-    assert "service  2026-10-05T19:00:00Z .. 2026-10-05T22:00:00Z" in out
-    assert "where    46.051,14.506 radius 100m" in out
+    assert ("want     hamlet theatre-ticket when(2026-10-05T19:00:00Z.."
+            f"2026-10-05T22:00:00Z) where({venue})") in out
     # re-drafting a name replaces it and keeps its number
     stage.ok("draft", "ticket", "want", "hamlet", "where(venue)")
-    assert stage.ok("drafts").startswith("ticket  want hamlet when(")
+    assert stage.ok("drafts").startswith(f"ticket  want hamlet where({venue})")
     # names: not `+`, not numbers (a leading verb starts an unnamed draft)
     for bad in ("+", "7"):
         assert "cannot name a draft" in stage("draft", bad, "want", "hamlet")[2]
@@ -758,10 +776,12 @@ def test_one_line_composed_want_is_the_same_block(stage):
     assert "  part 2   from(" in out and "price    60" in out
     assert stage("drafts")[0] == 1                       # the line staged nothing
     assert stage.ok("mine", "--raw") == ""
-    # a coordinate literal in where(...) is the spelling `place` takes
+    # a coordinate literal in where(...) is the spelling `place` takes: the
+    # cell containing that radius, and nothing else, is what the offer says
     out = stage.ok("want", "hamlet", "where(46.1,14.6,2km)", "5")
-    assert "where    46.1,14.6 radius 2000m" in out
-    assert "note     place" not in out
+    cell = cell_for_coords(46.1, 14.6, 2000)
+    assert f"want     hamlet where({cell})" in out
+    assert f"note     where(46.1,14.6,2km) → where({cell})" in out
 
 
 def test_clearing_is_the_verb_and_clear_its_alias(loop):
@@ -774,12 +794,12 @@ def test_offer_line_is_pythons_offer_literal(loop):
                             loop.session)
     assert o.kind == "want" and o.thing.qty == 2 and o.tokens.amount == 9
     line = cli.line_for(o)
-    assert line.startswith("want 2kg apple when(2026-10-01T00:00:00Z..2026-10-04T00:00:00Z) "
-                           "where(46.05,14.5,5000m) valid(")
+    home = cell_for_coords(46.05, 14.50, 5000)
+    assert line.startswith(f"want 2kg apple when(2026-10-01..2026-10-03) where({home}) valid(")
     assert line.endswith(" 9")
     again = cli.offer_from_line(line, loop.session)
     assert cli.line_for(again) == line
-    assert again.thing == o.thing and again.service == o.service and again.where == o.where
+    assert again.thing == o.thing and again.valid == o.valid and again.v == 3
     assert loop.ok("mine", "--raw") == ""                # a literal publishes nothing
     with pytest.raises(ValueError, match="starts with give or want"):
         cli.offer_from_line("apple 5", loop.session)

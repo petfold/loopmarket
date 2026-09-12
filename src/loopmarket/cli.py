@@ -63,9 +63,9 @@ from .graph import Loop
 from .matching import candidate_matches
 from .ontology import Ontology
 from .registry import OfferRegistry
-from .schema import GIVE, WANT, GeoDisc, Offer, Thing, TimeWindow, give, want
+from .schema import GIVE, WANT, Offer, Thing, TimeWindow, give, want
 from .solver.agent import SolverAgent
-from .spacetime import cell_for
+from .spacetime import cell_for_coords
 
 
 # --------------------------------------------------------------------------- #
@@ -91,12 +91,10 @@ _SETTINGS = {
         "LOOP_MAKER", "", "--maker NAME",
         "my identity; the signer's address when bee_signer is set and the "
         "sig extra is installed"),
-    "where": _Setting(
-        "LOOP_WHERE", "", "--where NAME",
-        "default place: a catalogue node carrying coordinates (`place`)"),
-    "when": _Setting(
-        "LOOP_WHEN", "..+90d", "--when WINDOW",
-        "default service window, relative or absolute"),
+    "terms": _Setting(
+        "LOOP_TERMS", "", "--terms 'TERM ...'",
+        "terms added to every offer whose line does not name that head, "
+        "e.g. 'where(home) when(..+90d)'; unset: anywhere, any time"),
     "valid": _Setting(
         "LOOP_VALID", "30d", "--valid DURATION",
         "how long my offers stand (a duration, or an absolute window)"),
@@ -344,7 +342,7 @@ def window(text: str, now: int) -> TimeWindow:
         lo_text, hi_text = text.split("..", 1)
         lo = _side_span(lo_text, now)[0] if lo_text else now
         if not hi_text:
-            raise ValueError(f"{text}: a window needs an end")
+            return TimeWindow(lo, None)        # open-ended: until withdrawn
         hi_span = _side_span(hi_text, now)
         hi = hi_span[1] if hi_span[0] != hi_span[1] else hi_span[0]
         return TimeWindow(lo, hi)
@@ -376,7 +374,8 @@ def _rational(text: str) -> Fraction:
 
 
 def validity(text: str, now: int) -> TimeWindow:
-    """`valid(30d)` stands from now; `valid(A..B)` is absolute."""
+    """`valid(30d)` stands from now; `valid(A..B)` is absolute; `valid(A..)`
+    stands until withdrawn (Peter, 2026-09-12; a v3 form)."""
     if ".." in text:
         return window(text, now)
     return TimeWindow(now, now + duration_s(text))
@@ -392,15 +391,20 @@ def radius_m(text: str) -> float:
     return int(value) if value.denominator == 1 else float(value)
 
 
-def parse_coords(text: str) -> GeoDisc:
-    """`LAT,LON,RADIUS` — the spelling `place` takes, and the literal
-    `where(...)` accepts so a canonical part line re-parses (cli.md §13);
-    the day odag accepts `geo(LAT,LON,R)` this maps onto it (§11.1)."""
+def parse_coords(text: str) -> tuple[float, float, float]:
+    """`LAT,LON,RADIUS` — the spelling `place` takes, and the literal any
+    geo-kind term accepts (`where(46.05,14.50,5km)`); both become the cell
+    of that radius around that point (`spacetime.cell_for_coords`), which
+    is what the offer says — no disc anywhere since the v3 record. The day
+    odag accepts `geo(LAT,LON,R)` this maps onto it (cli.md §11.1)."""
     parts = [p.strip() for p in text.split(",")]
     if len(parts) != 3:
         raise ValueError(
             f"{text!r}: coordinates are LAT,LON,RADIUS (e.g. 46.05,14.50,5km)")
-    return GeoDisc(float(parts[0]), float(parts[1]), radius_m(parts[2]))
+    lat, lon, radius = float(parts[0]), float(parts[1]), radius_m(parts[2])
+    if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0) or radius < 0:
+        raise ValueError(f"{text!r}: coordinates out of range")
+    return lat, lon, radius
 
 
 def parse_now(text: str) -> int:
@@ -415,7 +419,11 @@ def parse_now(text: str) -> int:
 # The session: book, catalogue, personal names layer, clock, identity
 # --------------------------------------------------------------------------- #
 
-_INTERPRETED_HEADS = ("when", "where", "valid")
+# The one head the CLI still interprets onto a field: `valid` is a property
+# of the record (while the offer stands), read by the book against the
+# clock, never by the catalogue against another offer. Since the v3 record
+# (2026-09-12) `when`/`where` are ordinary catalogue terms like any other.
+_INTERPRETED_HEADS = ("valid",)
 
 
 def _open_catalogue(spec: str | None):
@@ -550,18 +558,18 @@ class Session:
 
     @staticmethod
     def _check_heads(dag: OntoDAG) -> None:
-        """Gate G5's tripwire: the heads this CLI interprets onto fields must
-        not be dimension heads the loaded catalogue declares — a pack that
-        declared `when` as a calendar dimension would silently be shadowed."""
+        """Gate G5's tripwire: the head this CLI interprets onto a field
+        (`valid`) must not be a dimension head the loaded catalogue
+        declares — it would silently be shadowed."""
         if "dimension" not in dag.nodes:
             return
         for head in _INTERPRETED_HEADS:
             if head in dag.nodes and dag.is_below(head, "dimension"):
                 raise ValueError(
                     f"the catalogue declares `{head}` as a dimension, but "
-                    f"`loop` interprets {head}(...) onto an offer field until "
-                    f"spacetime terms land (docs/plans/ontodag-coupling.md "
-                    f"§2); refusing rather than shadowing it")
+                    f"`loop` interprets {head}(...) onto the offer's validity "
+                    f"field (docs/plans/P1-spacetime-terms.md §2); refusing "
+                    f"rather than shadowing it")
 
     # -- clock and identity --------------------------------------------------------
 
@@ -585,35 +593,6 @@ class Session:
         raise ValueError(
             "no maker identity: `loop set maker NAME` (or set bee_signer with "
             "the sig extra installed, and the key's address is your name)")
-
-    # -- names -----------------------------------------------------------------------
-
-    def place(self, name: str) -> GeoDisc:
-        node = self.view().nodes.get(name)
-        if node is None:
-            raise ValueError(
-                f"unknown place: {name} (it is a catalogue node — "
-                f"`loop place {name} LAT,LON,RADIUS` creates one)")
-        disc = node.metadata.get("disc")
-        if not disc:
-            raise ValueError(
-                f"{name} carries no coordinates: "
-                f"`loop place {name} LAT,LON,RADIUS`")
-        return GeoDisc(*disc)
-
-    def named_window(self, name: str) -> TimeWindow | None:
-        """A time name (`evenings`) is a node under a `time(...)` term — the
-        containment ontodag already computes; the CLI just reads it."""
-        view = self.view()
-        node = view.nodes.get(name)
-        if node is None:
-            return None
-        candidates = [node] + list(view.get_ancestors(node))
-        for item in candidates:
-            if item.name.startswith("time("):
-                lo, hi = _calendar_span(_TERM_RE.match(item.name).group(1))
-                return TimeWindow(lo, hi) if lo != hi else None
-        return None
 
 
 # --------------------------------------------------------------------------- #
@@ -733,13 +712,12 @@ def parse_offer_tokens(tokens: list[str]) -> Parsed:
 
 
 # Dimension kinds whose values are offer *fields* today: quantities live in
-# `Thing.qty` (linear, count) and time in `service`/`valid` (calendar). A
-# term of these kinds beside the field would be double bookkeeping, so it is
-# refused until ontodag-coupling.md §2-3 make the fields terms. Prefix and
-# dominance terms (`from`, `to`, `geo`, `size`) have no field: they pass
-# through and match by ontodag's computed containment.
-_FIELD_KINDS = frozenset({_dims.KIND_LINEAR, _dims.KIND_COUNT,
-                          _dims.KIND_CALENDAR})
+# `Thing.qty` (linear, count). A term of these kinds beside the field would
+# be double bookkeeping, so it is refused until ontodag-coupling.md §3 makes
+# quantities terms. Every other kind passes through into the conjunction:
+# prefix (places), calendar (times — relative spellings elaborated to fixed
+# UTC on the way), dominance.
+_FIELD_KINDS = frozenset({_dims.KIND_LINEAR, _dims.KIND_COUNT})
 
 
 def _head_kind(dag: OntoDAG, head: str) -> str | None:
@@ -776,9 +754,12 @@ def _value_of(view: OntoDAG, name: str, kind: str) -> str | None:
 
 
 def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
-    """Each `head(param)` of a declared head: refuse field kinds, resolve a
-    private name in parameter position to its public value, and check the
-    result is vocabulary. Returns (concepts, notes)."""
+    """Each `head(param)` of a declared head: refuse quantity kinds (the
+    field owns them), resolve a private name in parameter position to its
+    public value, turn coordinates into a cell and relative time into fixed
+    UTC (input vocabulary, cli.md §2), and check the result is vocabulary.
+    Head-agnostic on purpose — the CLI knows kinds, never heads (Peter,
+    2026-09-12). Returns (concepts, notes)."""
     dag = ontology.dag
     out, notes = [], []
     for c in concepts:
@@ -790,11 +771,10 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
         head, param = split
         if kind in _FIELD_KINDS:
             raise ValueError(
-                f"{c}: a quantity or time term is accepted by the grammar but "
-                f"not encodable until quantities and spacetime become catalogue "
-                f"terms (docs/plans/ontodag-coupling.md §2-3). Encodable "
-                f"today: a bare quantity first (`10kg`), when(...), "
-                f"where(...), valid(...)")
+                f"{c}: a quantity term is accepted by the grammar but not "
+                f"encodable until quantities become catalogue terms "
+                f"(docs/plans/ontodag-coupling.md §3). Encodable today: a "
+                f"bare quantity first (`10kg`)")
         view = session.view()
         value = _value_of(view, param, kind)
         if value is None and param in view.nodes:
@@ -805,8 +785,17 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
                 f"{c}: `{param}` is a catalogue name, but nothing places it "
                 f"in a {head}-kind dimension ({kind}) — `loop place {param} "
                 f"LAT,LON,RADIUS` gives a place its value")
-        if value is not None and value != param:
+        term = c
+        if value is not None:
             term = f"{head}({value})"
+        elif kind == _dims.KIND_PREFIX and "," in param:
+            lat, lon, radius = parse_coords(param)
+            term = f"{head}({cell_for_coords(lat, lon, radius)})"
+        elif kind == _dims.KIND_CALENDAR and not ontology.known(c):
+            w = window(param, session.now)
+            end = "" if w.end is None else _iso(w.end - 1)
+            term = f"{head}({_iso(w.start)}..{end})"
+        if term != c:
             notes.append(f"{c} → {term}")
             c = term
         if not ontology.known(c):
@@ -858,14 +847,8 @@ def render_offer(offer: Offer) -> str:
         f"  quantity {_num(t.qty)} {t.unit} — {reading(offer)}",
         f"  price    {_num(offer.tokens.amount)} "
         f"({_num(offer.unit_price)}/{t.unit}, on {offer.maker}'s scale)",
-        f"  service  {_iso(offer.service.start)} .. {_iso(offer.service.end)}",
-        f"           local {_local(offer.service.start)} .. "
-        f"{_local(offer.service.end)}",
-        f"  valid    {_iso(offer.valid.start)} .. {_iso(offer.valid.end)}",
-        f"           local {_local(offer.valid.start)} .. "
-        f"{_local(offer.valid.end)}",
-        f"  where    {offer.where.lat},{offer.where.lon} "
-        f"radius {_num(offer.where.radius_m)}m",
+        f"  valid    {_span(offer.valid)}",
+        f"           local {_span(offer.valid, _local)}",
         f"  pins     {pins}",
         f"  terms    bond {_num(offer.bond)}  oracle {offer.oracle}  "
         f"arbitrator {offer.arbitrator or '-'}",
@@ -873,6 +856,13 @@ def render_offer(offer: Offer) -> str:
         f"  offer_id {offer.offer_id}",
     ]
     return "\n".join(lines)
+
+
+def _span(w: TimeWindow, fmt=None) -> str:
+    """`A .. B`, or `A .. (until withdrawn)` for an open-ended window."""
+    fmt = fmt or _iso
+    end = "(until withdrawn)" if w.end is None else fmt(w.end)
+    return f"{fmt(w.start)} .. {end}"
 
 
 def _state(book: OfferRegistry, offer: Offer, now: int) -> str:
@@ -914,14 +904,29 @@ def _print_table(rows: list[list[str]], args, out) -> None:
 # Commands: maker
 # --------------------------------------------------------------------------- #
 
-Part = namedtuple("Part", "thing service where notes")
+Part = namedtuple("Part", "thing notes")
+
+
+def _default_terms(parsed: Parsed) -> list[str]:
+    """The `terms` setting's defaults whose head the line does not name
+    (cli.md §3): where and when are optional since the v3 record — unset,
+    an offer is anywhere, any time — and the CLI knows no head by name."""
+    named = {split[0] for split in map(_dims.split_term, parsed.concepts) if split}
+    out = []
+    for term in shlex.split(_configured("terms") or ""):
+        split = _dims.split_term(term)
+        if split is None:
+            raise ValueError(f"terms setting: {term!r} is not a term head(param)")
+        if split[0] not in named:
+            out.append(term)
+    return out
 
 
 def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology) -> Part:
-    """The thing, its window and its place — every default and shorthand
-    expanded, every name resolved to its value — plus the notes that carry
-    the surface spellings. Shared by a simple offer, a draft and each part
-    of a composed want. Refusals here are the loud kind."""
+    """The thing — every default and shorthand expanded, every name resolved
+    to its value — plus the notes that carry the surface spellings. Shared
+    by a simple offer, a draft and each part of a composed want. Refusals
+    here are the loud kind."""
     now = session.now
     notes: list[str] = []
     if parsed.band:
@@ -931,7 +936,11 @@ def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology) -> Part:
             f"not encodable until quantities become catalogue terms "
             f"(docs/plans/ontodag-coupling.md §3). Encodable today: the point "
             f"`{point}` — declare in the direction you know")
-    concepts, term_notes = _elaborate_terms(session, parsed.concepts, ontology)
+    defaults = _default_terms(parsed)
+    for term in defaults:
+        notes.append(f"default {term}")
+    concepts, term_notes = _elaborate_terms(
+        session, tuple(parsed.concepts) + tuple(defaults), ontology)
     notes.extend(term_notes)
     for c in concepts:
         if not ontology.known(c):
@@ -939,31 +948,13 @@ def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology) -> Part:
                 f"unknown category: {c} — vocabulary fails closed (U7); "
                 f"`odag put {c} PARENT` adds it to the catalogue")
 
-    place_text = parsed.heads.get("where") or _configured("where")
-    if not place_text:
-        raise ValueError(
-            "no place: where(NAME) on the line, or `loop set where NAME` "
-            "(NAME is a catalogue node — `loop place NAME LAT,LON,RADIUS`)")
-    if "," in place_text:
-        disc = parse_coords(place_text)      # the literal a canonical line uses
-    else:
-        disc = session.place(place_text)
-        notes.append(f"place {place_text}")
-
-    when_text = parsed.heads.get("when") or _configured("when")
-    service = session.named_window(when_text)
-    if service is None:
-        service = window(when_text, now)
-    else:
-        notes.append(f"when {when_text}")
-
     # An omitted quantity is the schema's own default, not a typed `1`:
     # canonical JSON tells 1 from 1.0, and `Thing(("x",))` from the API
     # must produce the same record bytes as `give x 100` (gate G1, U2).
     thing = Thing(concepts, unit=parsed.unit, divisible=parsed.divisible) \
         if parsed.qty is None else \
         Thing(concepts, parsed.qty, parsed.unit, parsed.divisible)
-    return Part(thing, service, disc, notes)
+    return Part(thing, notes)
 
 
 def part_line(part: Part) -> str:
@@ -977,9 +968,6 @@ def part_line(part: Part) -> str:
     elif t.qty != 1 or t.divisible:
         toks.append(_num(t.qty))
     toks.extend(t.concepts)
-    toks.append(f"when({_iso(part.service.start)}..{_iso(part.service.end)})")
-    w = part.where
-    toks.append(f"where({w.lat},{w.lon},{_num(w.radius_m)}m)")
     return " ".join(toks)
 
 
@@ -997,7 +985,7 @@ def _offer_from_part(session: Session, side: str, part: Part, price,
     """A resolved part plus a price (or the price memory) → one Offer with
     its notes; the step a `want` line and `offer NAME` share."""
     now = session.now
-    thing, service, disc = part.thing, part.service, part.where
+    thing = part.thing
     notes = list(part.notes)
     maker = session.maker
     valid = validity(valid_text or _configured("valid"), now)
@@ -1028,8 +1016,7 @@ def _offer_from_part(session: Session, side: str, part: Part, price,
     nonce = now * 1000 + sum(1 for o in session.book.offers(include_filled=True)
                              if o.maker == maker)
     make = give if side == GIVE else want
-    offer = make(maker, thing, price, service=service, where=disc,
-                 valid=valid, nonce=nonce, **ontology.pins)
+    offer = make(maker, thing, price, valid=valid, nonce=nonce, **ontology.pins)
     return offer, notes, reused
 
 
@@ -1126,14 +1113,12 @@ def _write_drafts(drafts: list[dict]) -> None:
 
 
 def _part_record(part: Part) -> dict:
-    return {"thing": part.thing.to_record(), "service": part.service.to_record(),
-            "where": part.where.to_record(), "notes": list(part.notes)}
+    return {"thing": part.thing.to_record(), "notes": list(part.notes)}
 
 
 def _part_from_record(rec: dict) -> Part:
     t = rec["thing"]
     return Part(Thing(tuple(t["concepts"]), t["qty"], t["unit"], t["divisible"]),
-                TimeWindow(*rec["service"]), GeoDisc(*rec["where"]),
                 list(rec["notes"]))
 
 
@@ -1255,22 +1240,21 @@ def render_composed(maker: str, parts: list[Part], price, valid: TimeWindow,
                     pins: dict) -> str:
     """The approval block of a composed want: every part, one price. When
     the v3 record lands this is what `show` prints for one (gate G4)."""
-    heads = f" {PART_SEP} ".join(" ".join(p.thing.concepts) for p in parts)
+    # the headline names the parts by their bare categories; the terms that
+    # place each part in space and time follow under it
+    heads = f" {PART_SEP} ".join(" ".join(_bare_key(p.thing.concepts)) for p in parts)
     lines = [f"want     {heads}", f"  maker    {maker}"]
     for i, p in enumerate(parts, 1):
         t = p.thing
         lines += [
             f"  part {i}   {' '.join(t.concepts)}",
             f"           quantity {_num(t.qty)} {t.unit} — {reading_for(t, WANT)}",
-            f"           service  {_iso(p.service.start)} .. {_iso(p.service.end)}",
-            f"           where    {p.where.lat},{p.where.lon} "
-            f"radius {_num(p.where.radius_m)}m",
         ]
     lines += [
         f"  price    {_num(price)} (the lot, on {maker}'s scale; split across "
         f"the parts at clearing)",
-        f"  valid    {_iso(valid.start)} .. {_iso(valid.end)}",
-        f"           local {_local(valid.start)} .. {_local(valid.end)}",
+        f"  valid    {_span(valid)}",
+        f"           local {_span(valid, _local)}",
         f"  pins     catalogue {pins['ontology_root'][:16] or '-'}  "
         f"registry {pins['registry_version'] or '-'}  "
         f"contract {pins['contract_version'] or '-'}  v3 (pending)",
@@ -1384,8 +1368,9 @@ def line_for(offer: Offer) -> str:
     """The canonical offer line of an `Offer`: everything the maker typed or
     defaulted, in re-parseable spelling; maker, nonce and pins come from
     the session that speaks it."""
-    part = Part(offer.thing, offer.service, offer.where, [])
-    valid = f"valid({_iso(offer.valid.start)}..{_iso(offer.valid.end)})"
+    part = Part(offer.thing, [])
+    end = "" if offer.valid.end is None else _iso(offer.valid.end)
+    valid = f"valid({_iso(offer.valid.start)}..{end})"
     return f"{offer.kind} {part_line(part)} {valid} {_num(offer.tokens.amount)}"
 
 
@@ -1446,11 +1431,11 @@ def cmd_mine(args, session, out):
 
 
 def cmd_place(args, session, out):
-    """The dated bridge (cli.md §4, §11.1): a place node with its disc as
-    metadata, written to the personal layer. Deleted the day odag accepts
-    `geo(LAT,LON,R)` as input vocabulary."""
-    disc = parse_coords(args.coords)
-    lat, lon = disc.lat, disc.lon
+    """The dated bridge (cli.md §4, §11.1): a place node under the cell of
+    that radius around that point, written to the personal layer — the
+    cell is the place (no disc anywhere since the v3 record). Deleted the
+    day odag accepts `geo(LAT,LON,R)` as input vocabulary."""
+    lat, lon, radius = parse_coords(args.coords)
     personal = session.personal_session
     dag = personal.dag
     if not ("geo" in dag.nodes and "prefix-dimension" in dag.nodes
@@ -1464,8 +1449,7 @@ def cmd_place(args, session, out):
         print("loop: adopted ontodag's prelude into the personal store "
               f"({personal.describe()}) so places hang under geo cells",
               file=_err())
-    dag.put(args.name, [f"geo({cell_for(disc)})"])
-    dag.nodes[args.name].metadata["disc"] = [lat, lon, disc.radius_m]
+    dag.put(args.name, [f"geo({cell_for_coords(lat, lon, radius)})"])
     personal.save()
     return 0
 
@@ -1530,7 +1514,7 @@ def cmd_status(args, session, out):
     print(f"catalogue root = {ontology.root or '(unpinned)'}", file=out)
     print(f"categories = {len(ontology.dag.nodes)}", file=out)
     print(f"peers = {', '.join(_peer_specs()) or '(none)'}", file=out)
-    for key in ("maker", "where", "when", "valid", "confirm"):
+    for key in ("maker", "terms", "valid", "confirm"):
         print(f"{key} = {_configured(key) or '(unset)'}", file=out)
     print(f"now = {_iso(session.now)}"
           + ("" if _configured("now") else " (wall clock)"), file=out)
@@ -1654,8 +1638,11 @@ def cmd_set(args, session, out):
         parse_now(value)
     if args.key == "valid":
         validity(value, 0)
-    if args.key == "when":
-        window(value, int(_time.time()))
+    if args.key == "terms":
+        for term in shlex.split(value):
+            if _dims.split_term(term) is None:
+                raise ValueError(f"{term!r} is not a term head(param) — "
+                                 f"terms are e.g. 'where(home) when(..+90d)'")
     if args.key == "limit":
         _want_limit(argparse.Namespace(limit=value), out)
     if args.key in ("book", "peers"):
@@ -1701,7 +1688,11 @@ term is head(param) in ontodag's spelling — quote the parentheses in a
 shell; a bare number FIRST is the quantity (10kg = up to 10 kg divisible,
 3 = three indivisible), a bare number LAST is the price. An omitted price
 is your last unit price for the same thing, scaled, and marked.
-Interpreted heads: when(WINDOW) where(PLACE|LAT,LON,R) valid(DURATION|WINDOW).
+Every term is the catalogue's: where(PLACE|LAT,LON,R), when(WINDOW), from(),
+to(), depart(), arrive() are heads the catalogue declares under service-role
+(overlap) — omit them and the offer is anywhere, any time. The one head the
+CLI interprets is valid(DURATION|A..B|A..) — how long the offer stands
+(A.. is until withdrawn). Relative time and LAT,LON,R are input spellings.
 A composed want (`+` between parts, one price last) renders and is refused
 until the v3 record carries parts (docs/plans/cli.md §13).
 Time: now, today, tomorrow, +90d, -2h, ISO dates, A..B.
@@ -1883,7 +1874,7 @@ def run_stream(session, stream, interactive: bool) -> int:
 _GLOBAL_FLAGS = {
     "-f": "book", "--book": "book", "--catalogue": "catalogue",
     "--peer": "peers", "--peers": "peers", "--maker": "maker",
-    "--where": "where", "--when": "when", "--valid": "valid",
+    "--terms": "terms", "--valid": "valid",
     "--now": "now", "--confirm": "confirm", "-n": "limit", "--limit": "limit",
     "--bee-api": "bee_api", "--bee-batch": "bee_batch",
     "--bee-signer": "bee_signer",

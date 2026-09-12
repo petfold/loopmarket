@@ -36,6 +36,17 @@ CATALOGUE = {
 }
 
 
+def _iso(t: int) -> str:
+    from datetime import datetime, timezone
+    return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _place(lat, lon, radius_m) -> str:
+    """v3: a place is the cell containing the radius (all three `u24`)."""
+    from loopmarket.spacetime import cell_for_coords
+    return f"where({cell_for_coords(lat, lon, radius_m)})"
+
+
 @unittest.skipUnless(
     BEE_API and BEE_BATCH and BEE_SIGNER,
     "set BEE_API, BEE_BATCH and BEE_SIGNER to run the live federation test",
@@ -45,7 +56,7 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
         from recordstore import BeeBytesStore, RecordStore, swarm_store
 
         from loopmarket import (
-            Aggregator, GeoDisc, MockClearing, OfferRegistry, Ontology,
+            Aggregator, MockClearing, OfferRegistry, Ontology,
             SolverAgent, Thing, TimeWindow, give, want, maker_address,
         )
         from loopmarket.federation import CLEARING
@@ -59,14 +70,15 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
         catalogue = Ontology.persistent(
             swarm_store(f"{topic}-catalogue", signer=BEE_SIGNER, **swarm))
         catalogue.load(CATALOGUE)
+        catalogue.declare_service_roles({"when": "time", "where": "geo"})
         self.assertTrue(catalogue.commit())
         pins = catalogue.pins
 
         now = int(time.time())
-        town = dict(service=TimeWindow(now, now + 120 * 86_400),
-                    valid=TimeWindow(now - 3_600, now + 30 * 86_400), **pins)
-        places = [GeoDisc(46.05, 14.50, 5_000), GeoDisc(46.10, 14.55, 15_000),
-                  GeoDisc(46.06, 14.51, 4_000)]
+        season = f"when({_iso(now)}..{_iso(now + 120 * 86_400 - 1)})"   # v3 terms
+        town = dict(valid=TimeWindow(now - 3_600, now + 30 * 86_400), **pins)
+        places = [_place(46.05, 14.50, 5_000), _place(46.10, 14.55, 15_000),
+                  _place(46.06, 14.51, 4_000)]
         gives_wants = [("piano-lesson", ("produce", "local", "weekly")),
                        ("vegetable-box", ("bicycle-repair",)),
                        ("bicycle-repair", ("music-lesson",))]
@@ -82,10 +94,10 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
             gives, wants = gives_wants[i]
             p_give, p_want = prices[i]
             reg.publish_many([
-                give(addr, Thing((gives,), unit="course"), p_give,
-                    where=places[i], **town),
-                want(addr, Thing(wants, unit="course"), p_want,
-                    where=places[i], **town),
+                give(addr, Thing((gives, places[i], season), unit="course"),
+                     p_give, **town),
+                want(addr, Thing((*wants, places[i], season), unit="course"),
+                     p_want, **town),
             ])
             self.assertTrue(reg.commit())
             books[addr] = (i, reg)

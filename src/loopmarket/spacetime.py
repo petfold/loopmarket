@@ -16,6 +16,7 @@ every candidate with exact interval and disc geometry from `schema.py`.
 
 from __future__ import annotations
 
+import math
 from datetime import datetime, timezone
 
 from .schema import GeoDisc, TimeWindow
@@ -58,23 +59,53 @@ def geohash(lat: float, lon: float, precision: int = 6) -> str:
     return "".join(out)
 
 
+def cell_bounds(cell: str) -> tuple[float, float, float, float]:
+    """(lat_lo, lat_hi, lon_lo, lon_hi) of a geohash cell — the bit
+    interleaving run backwards; exact on the same binary splits."""
+    lat_lo, lat_hi = -90.0, 90.0
+    lon_lo, lon_hi = -180.0, 180.0
+    even = True
+    for ch in cell:
+        bits = _BASE32.index(ch)
+        for shift in (4, 3, 2, 1, 0):
+            bit = (bits >> shift) & 1
+            if even:
+                mid = (lon_lo + lon_hi) / 2
+                lon_lo, lon_hi = (mid, lon_hi) if bit else (lon_lo, mid)
+            else:
+                mid = (lat_lo + lat_hi) / 2
+                lat_lo, lat_hi = (mid, lat_hi) if bit else (lat_lo, mid)
+            even = not even
+    return lat_lo, lat_hi, lon_lo, lon_hi
+
+
 def cell_for_coords(lat: float, lon: float, radius_m: float,
                     max_precision: int = 6) -> str:
-    """The finest geohash cell not smaller than a radius around a point —
-    the v3 spelling of a place: `where(LAT,LON,R)` at the prompt becomes
-    `where(cell)`, and the cell is what the offer says (the truth, since
-    2026-09-12 — `docs/plans/P1-spacetime-terms.md` §4). The maker who
-    wants a neighbour cell covered names a coarser one."""
+    """The finest geohash cell that *contains* the whole radius around the
+    point — the v3 spelling of a place: `where(LAT,LON,R)` at the prompt
+    becomes `where(cell)`, and the cell is what the offer says (the truth
+    since 2026-09-12, `docs/plans/P1-spacetime-terms.md` §4). Containing,
+    not centred: a point near a cell edge names the coarser cell that
+    covers what the maker meant, so a want across the edge still meets it.
+    The price is coarseness near edges — the exact covering is a region
+    node above the few cells that matter, once role heads accept nodes
+    (ontodag #15). Input vocabulary only: the cell is the stored name, and
+    the degree-per-metre approximation here never enters the order."""
+    d_lat = radius_m / 111_320.0
+    d_lon = radius_m / max(111_320.0 * math.cos(math.radians(lat)), 1e-9)
     for precision in range(max_precision, 0, -1):
-        if _CELL_M[precision] >= 2 * radius_m:
-            return geohash(lat, lon, precision)
+        cell = geohash(lat, lon, precision)
+        lat_lo, lat_hi, lon_lo, lon_hi = cell_bounds(cell)
+        if lat_lo <= lat - d_lat and lat + d_lat <= lat_hi \
+                and lon_lo <= lon - d_lon and lon + d_lon <= lon_hi:
+            return cell
     return geohash(lat, lon, 1)
 
 
 def cell_for(disc: GeoDisc, max_precision: int = 6) -> str:
-    """The centre cell of a v1/v2 disc, an index hint: boundary-crossing
-    discs also touch neighbour cells, which is why, for a disc, the exact
-    check stays `GeoDisc.intersects`."""
+    """The cell containing a v1/v2 disc, an index hint only: for a disc the
+    exact check stays `GeoDisc.intersects` (two discs in sibling cells can
+    still touch), so this never prunes — it files."""
     return cell_for_coords(disc.lat, disc.lon, disc.radius_m, max_precision)
 
 

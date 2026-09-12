@@ -7,7 +7,7 @@ that note's argument is §1 here. Two rulings by Peter on 2026-09-12 fix
 the design: **cells and region nodes are the exact truth and the disc
 retires** (§4), and **a term's match relation is declared in the
 catalogue, not in code** (§3). Step 2 of the path (§5) landed the same
-day; the record change (step 5) has not. Later the same day Peter
+day; the record change (step 5) landed that night. Later the same day Peter
 ruled that v2×v3 pairs are refused at matching (open problems), and
 added two more: **no discs anywhere after v3** (§4) and **`when`/`where`
 are optional at publication** (§2, §3) — an internet service has no
@@ -259,7 +259,11 @@ the record.
 **What it changes.**
 
 - *Precision is the maker's statement.* A give covers what it says it
-  covers. A want five metres across a cell edge from a give's covering does
+  covers. The input rule (built at step 5): `LAT,LON,R` becomes the
+  **finest cell that contains the whole radius**, not the cell at the
+  radius' precision — a point near a cell edge names the coarser cell
+  that covers what the maker meant (the triangle's three places all say
+  `u24`), and the exact covering is a region node once ontodag #15 lands. A want five metres across a cell edge from a give's covering does
   not match unless the covering includes the neighbour cell — and the maker
   who wanted that says so with one more cell, or a coarser one. The disc
   made the same kind of claim with a circle nobody meant.
@@ -340,8 +344,8 @@ the record.
    §5). The CLI cannot flip yet: it publishes v2 and must keep mapping
    `when`/`where` onto fields until the record changes.
 
-5. **The v3 record.** `service` and `where` leave `to_record`/`from_record`
-   for v3 (v1/v2 still read); `check_match` drops the two field gates for
+5. **The v3 record — done 2026-09-12.** `service` and `where` leave `to_record`/`from_record`
+   for v3 (v1/v2 still read; a v3 record carrying the keys is refused); `check_match` drops the two field gates for
    v3 pairs and relies on `satisfies`; `MockClearing` is untouched (it
    calls `check_match`); `idx/{t,g}` retire (decided 2026-09-07). The CLI
    in the same release: `_INTERPRETED_HEADS` shrinks to `("valid",)`,

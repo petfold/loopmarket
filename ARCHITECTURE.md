@@ -47,9 +47,13 @@ the repo front page (`README.md`).
 
 ## 2. The uniform offer (schema.py)
 
-Every offer exchanges a **Thing** (conjunction of catalogue categories +
-quantity + service `TimeWindow` + service `GeoDisc` + validity window)
-against **Tokens** of the maker's personal numéraire. Exactly one side is the
+Every offer exchanges a **Thing** (a conjunction of catalogue categories —
+since the v3 record, 2026-09-12, including the role terms that say where and
+when it changes hands, `where(u24)`, `when(a..b)`, a route's `from`/`to` —
+plus quantity) against **Tokens** of the maker's personal numéraire, while a
+validity window stands (open-ended since v3: until withdrawn). The v1/v2
+records carried a service `TimeWindow` and a service `GeoDisc` as fields;
+`docs/plans/P1-spacetime-terms.md` is the package that moved them. Exactly one side is the
 maker's own token — enforced in the constructor, not documented as a
 convention. This uniformity is what makes the entire marketplace one data
 structure: transport, storage, aggregation, compute and cabbages differ only
@@ -189,8 +193,13 @@ heads under the marker node `service-role` (`when`, `where`, `from`,
 `to`) match by overlap, all other terms by containment, so `made_in(...)`
 under `geo` is descriptive and `from(...)` under `geo` is a handover
 place. `Ontology.satisfies` implements the rule since the same day, with
-no record change yet: the field gates run beside it until v3. Step 4 of
-that package landed the same evening: the example seeds declare the roles
+Step 5 landed the same night: the v3 record — `service`/`where` gone,
+spacetime as role terms, `valid` may be open-ended, `check_match` refuses
+v2×v3 pairs and gates fields only for v1/v2, the CLI interprets only
+`valid`; a place typed as `LAT,LON,R` becomes the finest cell containing
+that radius, so places near a cell edge honestly name the coarser cell
+(the exact covering is a region node, ontodag #15). Step 4 landed the
+same evening: the example seeds declare the roles
 (`from`/`to` over `geo`, `depart`/`arrive` over `time`; `triangle.od`
 carries ontodag's prelude for the purpose), and `DimensionIndex` files a
 give under whatever role terms it carries and asks overlap per role head
@@ -351,8 +360,9 @@ live in `docs/plans/P1-federated-book.md`.
 ## 6. Matching (matching.py)
 
 `check_match(give, want, ontology, now)` is the exact, self-contained pairwise
-truth: kinds and distinct makers; both validity windows open; service windows
-overlap (a delivery instant exists); service discs intersect (a handover
+truth: kinds and distinct makers; both on one side of the v2/v3 line; both
+validity windows open; for v1/v2 records the service windows
+overlap (a delivery instant exists) and the service discs intersect (a handover
 point exists); quantity within capacity (equality unless divisible); same
 unit; agreeing ontology pins; and `satisfies` under the catalogue. Its
 self-containedness is a design requirement, not tidiness: settlement re-runs

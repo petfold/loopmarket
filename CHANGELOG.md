@@ -11,6 +11,19 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **The v3 offer record** (`docs/plans/P1-spacetime-terms.md` step 5,
+  decided with Peter 2026-09-12): no `service` window, no `where` disc —
+  where and when a thing changes hands are role terms in the conjunction
+  (`when(a..b)`, `where(cell)`, `from`/`to`, `depart`/`arrive`), matched by
+  overlap through the catalogue; cells and region nodes are the exact geo
+  truth, and no record holds a disc. `valid` may be open-ended (`[start,
+  null]`: the offer stands until withdrawn). v1/v2 records still read and
+  match among themselves, and the field form of `give`/`want` still
+  yields a v2 record; `check_match` refuses pairs across the v2/v3 line.
+  `spacetime.cell_for_coords` is the v3 spelling of `LAT,LON,R`: the
+  finest cell containing that radius. The triangle clears in v3 form
+  (`tests/test_v3_record.py`, both demos, `examples/triangle.loop`
+  unchanged).
 - **Service roles in the catalogue** (`docs/plans/P1-spacetime-terms.md`,
   decided with Peter 2026-09-12): `Ontology.satisfies` now walks one
   conjunction with two relations — containment for what a thing is,
@@ -65,6 +78,19 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   hangs under its own cell and, by computed containment, under every
   coarser one, and the first ancestor in set order was sometimes the
   coarse one.
+
+### Changed
+
+- **`loop` speaks only catalogue terms.** `when(...)` and `where(...)` pass
+  through as role terms (the seed declares them; `triangle.od` carries
+  ontodag's prelude for it); the one interpreted head is `valid(...)`,
+  now accepting `valid(A..)`; `time(...)` terms are accepted; a
+  `LAT,LON,R` parameter of any geo-kind head becomes the containing cell;
+  the approval block shows terms and validity only; `place` writes the
+  node under its cell and no disc metadata. The `where`/`when` settings
+  and `--where`/`--when` flags are replaced by one `terms` setting
+  (`--terms`): terms added to every offer whose line does not name that
+  head; unset, an offer is anywhere, any time (Peter's ruling: optional).
 
 ## [0.2.0] — 2026-09-12
 

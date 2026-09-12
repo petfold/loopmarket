@@ -30,11 +30,12 @@ Run live against a Bee node (feeds, real addresses, network blobs):
 import os
 import secrets
 import time
+from datetime import datetime, timezone
 
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Aggregator, GeoDisc, MockClearing, OfferRegistry, Ontology,
+    Aggregator, MockClearing, OfferRegistry, Ontology,
     SolverAgent, Thing, TimeWindow, audit_manifest, give, want,
 )
 from loopmarket.federation import CLEARING
@@ -93,6 +94,13 @@ def committed(writer, attempts=8, pause=20):
 print(f"\n=== the federated book — "
       f"{'LIVE on ' + BEE_API if LIVE else 'in memory'} ===\n")
 
+from loopmarket.spacetime import cell_for_coords
+
+
+def iso(t: int) -> str:
+    return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 # --- the shared catalogue (persistent, so offers can pin it) -----------------
 
 catalogue = Ontology.persistent(
@@ -130,7 +138,9 @@ else:
 # under the marker `service-role` match by overlap — a route's `from`/`to`
 # over geo cells, a transport's `depart`/`arrive` windows over time. Seed
 # vocabulary, one value space per head; the core knows only the marker.
-SERVICE_ROLES = {"from": "geo", "to": "geo", "depart": "time", "arrive": "time"}
+SERVICE_ROLES = {"when": "time", "where": "geo",           # the handover
+                 "from": "geo", "to": "geo",                # a route
+                 "depart": "time", "arrive": "time"}         # a transport
 catalogue.declare_service_roles(SERVICE_ROLES)
 t0 = time.time()
 committed(catalogue)
@@ -157,11 +167,14 @@ print(f"offers will pin it: registry v{pins['registry_version']}, "
 # --- three makers, three books (one feed each, when live) --------------------
 
 now = int(time.time())
-town = dict(service=TimeWindow(now, now + 120 * 86_400),
-            valid=TimeWindow(now - 3_600, now + 30 * 86_400), **pins)
-places = {"amara": GeoDisc(46.05, 14.50, 5_000),
-          "bruno": GeoDisc(46.10, 14.55, 15_000),
-          "chen": GeoDisc(46.06, 14.51, 4_000)}
+# v3 offers: the season and the place are terms in the conjunction (each
+# place is the cell containing its radius — here all `u24`, see
+# demo_triangle.py); offers stand a month.
+season = f"when({iso(now)}..{iso(now + 120 * 86_400 - 1)})"
+town = dict(valid=TimeWindow(now - 3_600, now + 30 * 86_400), **pins)
+places = {"amara": f"where({cell_for_coords(46.05, 14.50, 5_000)})",
+          "bruno": f"where({cell_for_coords(46.10, 14.55, 15_000)})",
+          "chen": f"where({cell_for_coords(46.06, 14.51, 4_000)})"}
 
 books, name_of = {}, {}
 for name in ("amara", "bruno", "chen"):
@@ -176,29 +189,22 @@ for name in ("amara", "bruno", "chen"):
 owners = {v: k for k, v in name_of.items()}
 a, b, c = owners["amara"], owners["bruno"], owners["chen"]
 books[a].publish_many([
-    give(a, Thing(("piano-lesson",), unit="course"), 100,
-        where=places["amara"], **town),
-    want(a, Thing(("produce", "local", "weekly"), unit="course"), 104,
-        where=places["amara"], **town),
+    give(a, Thing(("piano-lesson", places["amara"], season), unit="course"), 100, **town),
+    want(a, Thing(("produce", "local", "weekly", places["amara"], season), unit="course"), 104, **town),
 ])
 books[b].publish_many([
-    give(b, Thing(("vegetable-box",), unit="course"), 50,
-        where=places["bruno"], **town),
-    want(b, Thing(("bicycle-repair",), unit="course"), 52,
-        where=places["bruno"], **town),
+    give(b, Thing(("vegetable-box", places["bruno"], season), unit="course"), 50, **town),
+    want(b, Thing(("bicycle-repair", places["bruno"], season), unit="course"), 52, **town),
 ])
 books[c].publish_many([
-    give(c, Thing(("bicycle-repair",), unit="course"), 80,
-        where=places["chen"], **town),
-    want(c, Thing(("music-lesson",), unit="course"), 83,
-        where=places["chen"], **town),
+    give(c, Thing(("bicycle-repair", places["chen"], season), unit="course"), 80, **town),
+    want(c, Thing(("music-lesson", places["chen"], season), unit="course"), 83, **town),
 ])
 
 # Bruno posts a second box at a worse price, thinks better of it, and
 # withdraws: the exit is a monotone tombstone, an *add* that survives merges.
 regret = books[b].publish(
-    give(b, Thing(("vegetable-box",), unit="course"), 90,
-        where=places["bruno"], **town))
+    give(b, Thing(("vegetable-box", places["bruno"], season), unit="course"), 90, **town))
 books[b].withdraw(regret)
 
 for owner, book in books.items():
@@ -220,10 +226,8 @@ if LIVE:
 else:
     mallory_owner = "mallory"
     mallory = OfferRegistry(fresh_store())
-forged = give(a, Thing(("piano-lesson",), unit="course"), 1,
-             where=places["amara"], **town)     # "amara sells cheap" — Mallory
-honest = give(mallory_owner, Thing(("food",), unit="course"), 60,
-             where=places["bruno"], **town)
+forged = give(a, Thing(("piano-lesson", places["amara"], season), unit="course"), 1, **town)     # "amara sells cheap" — Mallory
+honest = give(mallory_owner, Thing(("food", places["bruno"], season), unit="course"), 60, **town)
 mallory.publish_many([forged, honest])
 committed(mallory)
 name_of[mallory_owner] = "mallory"

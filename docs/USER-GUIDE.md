@@ -127,6 +127,9 @@ catalogue = Ontology().load({
     "bicycle-repair": ["repair"], "food": [], "produce": ["food"],
     "local": [], "weekly": [], "vegetable-box": ["produce", "local", "weekly"],
 })
+# the two service roles every offer below speaks: heads under `service-role`
+# match by overlap (where and when the thing changes hands)
+catalogue.declare_service_roles({"when": "time", "where": "geo"})
 catalogue.covers("music-lesson", "piano-lesson")               # True
 catalogue.satisfies(("vegetable-box",), ("produce", "weekly"))  # True
 catalogue.satisfies(("mystery-goods",), ("mystery-goods",))     # False (U7)
@@ -147,11 +150,13 @@ and a radius, and named from then on:
 ```console
 $ loop set maker amara
 $ loop place home 46.05,14.50,5km
-$ loop set where home
+$ loop set terms 'where(home)'
 ```
 
 (`set` is durable: it writes `~/.loopmarket/config`. `loop set` alone
-lists every setting in force; `loop set where` shows one.) Now the offer.
+lists every setting in force; `loop set terms` shows one. `terms` are
+added to every offer whose line does not name that head — leave it unset
+and an offer is anywhere, any time.) Now the offer.
 There are exactly two verbs — **give** and **want** — and a bare number
 last is the price, on your own scale:
 
@@ -177,11 +182,12 @@ publish? [y/N] y
 
 **Nothing publishes unseen.** What you approved is the fully resolved
 offer — every default expanded, relative times made absolute in UTC *and*
-your local zone, the place's coordinates read back from the catalogue so
-a stale `home` is visible, the id it will receive — and `loop show ID`
-prints exactly this block later. The defaults it filled in are settings:
-`when` (the service window, `..+90d` = from now for ninety days), `valid`
-(how long the offer stands, `30d`), `where`. Say `y` and the id is printed:
+your local zone, the place's cell read back from the catalogue so a stale
+`home` is visible, the id it will receive — and `loop show ID` prints
+exactly this block later. The defaults it filled in are settings: `terms`
+(here `where(home)`; add `when(..+90d)` if you mean a window — without
+one the offer is any time) and `valid` (how long the offer stands, `30d`;
+`valid(2026-10-01..)` stands until withdrawn). Say `y` and the id is printed:
 publishing is a commitment, and the id is what `withdraw` needs.
 
 The second flavour:
@@ -208,26 +214,31 @@ Things to notice:
   parentheses in a shell); a bare number *first* is the quantity and a
   bare number *last* is the price. So `loop give 10kg apple 100` gives up
   to ten kilos, divisible, priced 100 the lot; `loop give 3 bicycle 900`
-  gives three indivisible bicycles. Three heads are interpreted onto the
-  offer's fields — `when(...)`, `where(...)`, `valid(...)` — and every
-  other term goes into the description:
+  gives three indivisible bicycles. Every term goes into the description.
+  `when(...)` and `where(...)` are *role heads* the catalogue declares
+  under `service-role`: they say where and when the thing changes hands
+  and match by overlap — a give from anywhere in a cell serves a want at
+  a point in it, and the reverse. Only `valid(...)` is the offer's own
+  field, how long it stands:
 
   ```console
   $ loop give piano-lesson 'when(2026-10-01..2026-12-20)' 'valid(2h)' 100
   $ odag pack prelude                        # the standard dimension heads
-  $ odag put from prefix-dimension           # a role, as ontodag's guide does
+  $ odag put from geo service-role           # a role: a place, matched by overlap
   $ odag put ride service
   $ loop want ride 'from(home)' 'when(today..+7d)' 5
-  want     from(u24m) ride
+  want     from(u24) ride when(2026-09-12T00:00:00Z..2026-09-19T23:59:59Z)
   ...
-    note     from(home) → from(u24m)
+    note     from(home) → from(u24)
+    note     when(today..+7d) → when(2026-09-12T00:00:00Z..2026-09-19T23:59:59Z)
   ```
 
-  In the last line ontodag interprets the *name*: `home` hangs under its
-  geo cell, so the published term is `from(u24m)` — public vocabulary
-  that matches by prefix containment (`from(u24m)` fits within
-  `from(u2)`), ontodag's London→Rome pattern — and the approval block
-  says so. Your private name never leaves your machine; its value does.
+  Ontodag interprets the *name*: `home` hangs under its geo cell, so the
+  published term is `from(u24)` — public vocabulary, ontodag's
+  London→Rome pattern — and the approval block says so. Your private name
+  never leaves your machine; its value does. (`home` was declared as 5 km
+  around a point that lies near a cell edge, so its cell is the coarser
+  one containing the whole radius: a cell is what the offer *says*.)
 - **An omitted price is your last unit price** for the same side and the
   same bare categories, scaled by quantity, read from your own book, and
   marked in the block (`note price 100 reused: unit price 100/unit from
@@ -241,17 +252,16 @@ Things to notice:
 *The same in Python:*
 
 ```python
-from loopmarket import Thing, TimeWindow, GeoDisc, give, want
+from loopmarket import Thing, TimeWindow, give, want
 
 NOW = 1_700_000_000                       # fix time; determinism is a feature
-season   = TimeWindow(NOW, NOW + 90 * 86_400)     # when the service happens
-standing = TimeWindow(NOW - 1, NOW + 30 * 86_400) # while the offer stands
-here     = GeoDisc(46.05, 14.50, 5_000)           # 5 km around a point
+season   = "when(2023-11-15..2024-02-12)"        # when the service happens
+here     = "where(u24)"                          # the cell containing 5 km around the flat
+standing = TimeWindow(NOW - 1)                   # the offer stands until withdrawn
 
-teach = give("amara", Thing(("piano-lesson",)), 100,
-            service=season, where=here, valid=standing)
-eat = want("amara", Thing(("produce", "local", "weekly")), 104,
-          service=season, where=here, valid=standing)
+teach = give("amara", Thing(("piano-lesson", here, season)), 100, valid=standing)
+eat = want("amara", Thing(("produce", "local", "weekly", here, season)), 104,
+          valid=standing)
 teach.offer_id, teach.kind, teach.unit_price      # '…64 hex…', 'give', 100.0
 ```
 
@@ -334,8 +344,9 @@ bruno gives vegetable-box to amara (wants local produce weekly) rate 2.08  04264
 ```
 
 Bruno's box is a `vegetable-box`; Amara wants `produce local weekly`; the
-catalogue says the first fits within all three, the discs intersect, the
-windows overlap, the units agree — a match, at rate 104/50 = 2.08 (the
+catalogue says the first fits within all three, the two `where` cells
+share a point and the two `when` windows overlap (role terms, matched by
+overlap through the same catalogue), the units agree — a match, at rate 104/50 = 2.08 (the
 want's unit price over the give's). `matches` exits 1 when there are
 none, so it reads as a predicate in scripts.
 
@@ -344,16 +355,15 @@ none, so it reads as a predicate in scripts.
 ```python
 from loopmarket import check_match, candidate_matches
 
-grow = give("bruno", Thing(("vegetable-box",)), 50,
-           service=season, where=GeoDisc(46.10, 14.55, 15_000), valid=standing)
+grow = give("bruno", Thing(("vegetable-box", "where(u24)", season)), 50, valid=standing)
 m = check_match(grow, eat, catalogue, now=NOW)
 m.rate, m.giver, m.receiver          # 2.08, 'bruno', 'amara'
 ```
 
 `check_match` is exact and self-contained — cheap to re-run, which is what
 lets clearing re-verify without trusting anyone. Its gates, in order:
-kinds and distinct makers → validity windows open at `now` → service
-windows intersect → service discs intersect (a handover point exists) →
+kinds and distinct makers → one side of the v2/v3 record line → validity
+windows open at `now` → (v1/v2 only) service windows and discs intersect →
 quantity/divisibility/unit → **version pins** (mixed pinning refuses;
 pinned catalogues refuse unpinned offers; major registry/contract skew
 refuses) → catalogue subsumption. `candidate_matches(offers, catalogue,
@@ -398,12 +408,9 @@ reads naturally.
 ```python
 from loopmarket import ExchangeGraph
 
-fix   = give("chen", Thing(("bicycle-repair",)), 80,
-            service=season, where=GeoDisc(46.06, 14.51, 4_000), valid=standing)
-learn = want("chen", Thing(("music-lesson",)), 83,
-            service=season, where=GeoDisc(46.06, 14.51, 4_000), valid=standing)
-wheels = want("bruno", Thing(("bicycle-repair",)), 52,
-             service=season, where=GeoDisc(46.10, 14.55, 15_000), valid=standing)
+fix   = give("chen", Thing(("bicycle-repair", "where(u24)", season)), 80, valid=standing)
+learn = want("chen", Thing(("music-lesson", "where(u24)", season)), 83, valid=standing)
+wheels = want("bruno", Thing(("bicycle-repair", "where(u24)", season)), 52, valid=standing)
 
 everyone = [teach, eat, grow, wheels, fix, learn]
 graph = ExchangeGraph.from_matches(candidate_matches(everyone, catalogue, now=NOW))
@@ -585,8 +592,8 @@ the forgery yourself:
 
 ```python
 mallory = OfferRegistry(RecordStore(blobs))
-mallory.publish(give("amara", Thing(("piano-lesson",)), 1,
-                    service=season, where=here, valid=standing))  # "amara", says mallory
+mallory.publish(give("amara", Thing(("piano-lesson", here, season)), 1,
+                    valid=standing))                       # "amara", says mallory
 mallory.commit()
 agg.announce("mallory", mallory.store)
 m2 = agg.fold()
@@ -609,7 +616,7 @@ from loopmarket import maker_address, sign_offer
 
 key = "11" * 32                          # throwaway private key
 me = maker_address(key)                  # use this as your maker identity
-offer = give(me, Thing(("food",)), 5, service=season, where=here, valid=standing)
+offer = give(me, Thing(("food", here, season)), 5, valid=standing)
 relay = OfferRegistry(RecordStore(blobs))
 relay.publish(offer)
 relay.attach_signature(offer.offer_id, sign_offer(offer, key))
@@ -721,9 +728,9 @@ is never the book.
 
 ```console
 $ loop draft ticket want theatre-ticket hamlet 'when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z)' 'where(venue)'
-ticket  want hamlet theatre-ticket when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z) where(46.051,14.506,100m)
+ticket  want hamlet theatre-ticket when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z) where(u24mfp)
 $ loop draft ride want transport person 'from(home)' 'to(venue)' 'when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z)'
-ride  want from(u24m) person to(u24mfp) transport when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z) where(46.05,14.5,5000m)
+ride  want from(u24) person to(u24mfp) transport when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z) where(u24)
 $ loop draft evening ticket + ride       # compose: the same + as on a one-line want
 $ loop drafts                             # canonical lines; what you typed as notes beneath
 $ loop offer evening 60                   # the draft becomes an offer, one price for the lot

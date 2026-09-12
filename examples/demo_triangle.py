@@ -13,15 +13,23 @@ against a Bee node with the book on Swarm.
 
 import logging
 import time
+from datetime import datetime, timezone
 
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    GeoDisc, MockClearing, OfferRegistry, Ontology, SolverAgent, Thing,
+    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")
+
+from loopmarket.spacetime import cell_for_coords
+
+
+def iso(t: int) -> str:
+    return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
 
 # --- the shared catalogue ----------------------------------------------------
 
@@ -43,7 +51,9 @@ ontology = Ontology().load({
 # under the marker `service-role` match by overlap — a route's `from`/`to`
 # over geo cells, a transport's `depart`/`arrive` windows over time. Seed
 # vocabulary, one value space per head; the core knows only the marker.
-SERVICE_ROLES = {"from": "geo", "to": "geo", "depart": "time", "arrive": "time"}
+SERVICE_ROLES = {"when": "time", "where": "geo",           # the handover
+                 "from": "geo", "to": "geo",                # a route
+                 "depart": "time", "arrive": "time"}         # a transport
 ontology.declare_service_roles(SERVICE_ROLES)
 
 # --- the book ------------------------------------------------------------------
@@ -51,30 +61,30 @@ ontology.declare_service_roles(SERVICE_ROLES)
 registry = OfferRegistry(RecordStore(MemoryBytesStore()))
 
 now = int(time.time())
-season = TimeWindow(now, now + 120 * 86_400)          # the next four months
-standing = TimeWindow(now - 3_600, now + 30 * 86_400)  # offers stand a month
+# The v3 record (2026-09-12): where and when are terms in the conjunction.
+# The season is one inclusive `when(a..b)`; a place is the cell containing
+# the radius the maker names — all three here sit within their radius of a
+# cell edge, so each honestly names the coarser cell `u24` (the exact
+# covering is a region node above the few cells that matter, once role
+# heads accept nodes: ontodag #15). Offers stand until withdrawn.
+season = f"when({iso(now)}..{iso(now + 120 * 86_400 - 1)})"   # four months
+standing = TimeWindow(now - 3_600)                          # until withdrawn
 
-town = dict(service=season, valid=standing)
-amara_flat = GeoDisc(46.05, 14.50, 5_000)
-bruno_farm = GeoDisc(46.10, 14.55, 15_000)   # delivery radius covers the town
-chen_shop = GeoDisc(46.06, 14.51, 4_000)
+town = dict(valid=standing)
+amara_flat = f"where({cell_for_coords(46.05, 14.50, 5_000)})"
+bruno_farm = f"where({cell_for_coords(46.10, 14.55, 15_000)})"  # covers the town
+chen_shop = f"where({cell_for_coords(46.06, 14.51, 4_000)})"
 
 offers = [
     # Amara: piano for amara-tokens; amara-tokens for a vegetable box
-    give("amara", Thing(("piano-lesson",), unit="course"), 100,
-        where=amara_flat, **town),
-    want("amara", Thing(("produce", "local", "weekly"), unit="course"), 104,
-        where=amara_flat, **town),
+    give("amara", Thing(("piano-lesson", amara_flat, season), unit="course"), 100, **town),
+    want("amara", Thing(("produce", "local", "weekly", amara_flat, season), unit="course"), 104, **town),
     # Bruno: vegetable boxes for bruno-tokens; bruno-tokens for bike repair
-    give("bruno", Thing(("vegetable-box",), unit="course"), 50,
-        where=bruno_farm, **town),
-    want("bruno", Thing(("bicycle-repair",), unit="course"), 52,
-        where=bruno_farm, **town),
+    give("bruno", Thing(("vegetable-box", bruno_farm, season), unit="course"), 50, **town),
+    want("bruno", Thing(("bicycle-repair", bruno_farm, season), unit="course"), 52, **town),
     # Chen: bicycle repair for chen-tokens; chen-tokens for piano lessons
-    give("chen", Thing(("bicycle-repair",), unit="course"), 80,
-        where=chen_shop, **town),
-    want("chen", Thing(("music-lesson",), unit="course"), 83,
-        where=chen_shop, **town),
+    give("chen", Thing(("bicycle-repair", chen_shop, season), unit="course"), 80, **town),
+    want("chen", Thing(("music-lesson", chen_shop, season), unit="course"), 83, **town),
 ]
 
 registry.publish_many(offers)
