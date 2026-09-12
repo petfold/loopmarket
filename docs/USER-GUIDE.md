@@ -390,7 +390,7 @@ prints; it never clears. Under the hood this is Bellman–Ford hunting
 negative cycles in −log(rate) weights, iterated in sorted order so **the
 same book yields the same loop on every replica** (invariant U6 —
 determinism is what later makes the baseline solver the auction's reserve
-bid). Exit code 1 means nothing profitable, so `loop loops && loop clear`
+bid). Exit code 1 means nothing profitable, so `loop loops && loop clearing`
 reads naturally.
 
 *The same in Python:*
@@ -418,10 +418,12 @@ proposal names the roots it was solved against; clearing re-derives
 every leg against the *current* book with its own catalogue, re-checks
 pins, oracles, fills, tombstones and the arithmetic, and only then
 commits — all fills and the loop record under one new root, atomically.
-`loop clear` runs that clearing house locally, over your book:
+`loop clearing` runs that clearing house locally, over your book (not
+`clear`: that means delete on every terminal, and publishing an offer does
+not clear it):
 
 ```console
-$ loop clear
+$ loop clearing
 cleared 62067f2d29397be8… surplus 12.22%
   amara gives piano-lesson to chen (rate 0.83)
   chen gives bicycle-repair to bruno (rate 0.65)
@@ -440,8 +442,8 @@ finds nothing; the filled legs are obligations now. Rejections print to
 stderr with their reason — unknown, filled or withdrawn offers, legs that
 fail re-verification, pins that don't equal clearing's own, oracle types
 it cannot verify (the mock verifies only `countersign`), surplus below
-threshold, indivisible legs without per-node surplus — and `clear` exits
-1 when nothing cleared.
+threshold, indivisible legs without per-node surplus — and `clearing`
+exits 1 when nothing cleared.
 
 *The same in Python:*
 
@@ -483,7 +485,7 @@ set maker chen
 give bicycle-repair where(chen_shop) 80
 want music-lesson where(chen_shop) 83
 loops
-clear
+clearing
 ```
 
 Two things about scripts. Parentheses need no quoting inside a `loop`
@@ -508,7 +510,7 @@ shares a book. Each maker has their own — on Swarm their own feed and
 signing key, so **feed ownership is the authenticity** of their offers —
 and readers **fold** the books they know about. At the command line that
 is the `peers` setting: `loop set peers rs:/path/to/bruno,swarm:chen-book@0x…`
-and every `offers`, `matches`, `loops` and `clear` answers over the union
+and every `offers`, `matches`, `loops` and `clearing` answers over the union
 of your book and theirs. (Today that union trusts its peers; the admission
 rules below arrive at the command line with the `fold` command, since
 they need each book's owner.) The federation proper is the API's, for
@@ -621,8 +623,8 @@ relay.commit()
 Clearing, too, owns a book (on Swarm: its own feed). It *bases* that
 book on a fold — and canonical addressing proves the base is honest,
 because re-committing the same content must reproduce the same root.
-`loop clear` with `peers` set does exactly this first ("book re-based on
-the fold"):
+`loop clearing` with `peers` set does exactly this first ("book re-based
+on the fold"):
 
 ```python
 folded = OfferRegistry(RecordStore.at(manifest.book_root, blobs))
@@ -708,20 +710,23 @@ $ loop --maker courier give parcel-run 'where(eastside)' 'when(+2h..+3h)'  8   #
 reposts between beats. Dynamic state quantizes to the beat; the book a
 solver sees is always static and pinned.
 
-### Bundles: a composed want
+### Bundles: drafts and a composed want
 
 A theatre ticket is worthless if you cannot get there, and the ride is
 worthless without the ticket. Neither the theatre nor the bus company
 cares; only you do, so the coupling lives in *your* want, as **parts**
-that clear together or not at all. Stage the parts, look at them, compose:
+that clear together or not at all. Drafts are the tool: a draft is a
+resolved but unpublished offer or part, named, kept in a local file that
+is never the book.
 
 ```console
-$ loop draft want theatre-ticket hamlet 'when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z)' 'where(venue)'
-1  want hamlet theatre-ticket when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z) where(46.051,14.506,100m)
-$ loop draft want transport person 'from(home)' 'to(venue)' 'when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z)'
-2  want from(u24m) person to(u24mfp) transport when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z) where(46.05,14.5,5000m)
-$ loop drafts                # canonical lines, your spelling as notes beneath
-$ loop compose 60            # all drafts, one price for the lot; `compose 1 2 60` picks
+$ loop draft ticket want theatre-ticket hamlet 'when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z)' 'where(venue)'
+ticket  want hamlet theatre-ticket when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z) where(46.051,14.506,100m)
+$ loop draft ride want transport person 'from(home)' 'to(venue)' 'when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z)'
+ride  want from(u24m) person to(u24mfp) transport when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z) where(46.05,14.5,5000m)
+$ loop draft evening ticket + ride       # compose: the same + as on a one-line want
+$ loop drafts                             # canonical lines; what you typed as notes beneath
+$ loop offer evening 60                   # the draft becomes an offer, one price for the lot
 ```
 
 Or on one line, for scripts and assistants — `+` between parts, one price
@@ -731,17 +736,27 @@ last:
 $ loop want theatre-ticket hamlet 'when(...)' 'where(venue)' + transport person 'from(home)' 'to(venue)' 'when(...)' 60
 ```
 
-Drafts live in a local file, never in the book: a draft is not an offer,
-has no price and no id, and nobody can match it. Parts carry no prices —
-you price the bundle once and clearing splits it across the gives — and
-there is no cross-part constraint language: the ride arriving before
-curtain is you spelling the two windows. Today `compose` and the `+` line
-render the whole composed block and then **refuse**: the record cannot
-carry parts until the v3 bump (`docs/plans/cli.md` §13). Composition is
-want-side only. A kit that ships in one box is one indivisible give; a
-class that only runs if eight enrol is a *minimum fill* on one give, also
-v3; and "sirloin to one buyer, mince to another, only if the whole animal
-sells" is the door the design keeps shut — that is a butcher's job.
+A draft may carry a price (`loop draft want apple 5`, then `loop offer 1`
+publishes it as is); a *part* may not — you price the bundle once and
+clearing splits it across the gives — and there is no cross-part
+constraint language: the ride arriving before curtain is you spelling the
+two windows. Draft names are your working memory, never vocabulary; they
+cannot appear in an offer. Today `offer` on a composed draft, like the
+one-line form, renders the whole composed block and then **refuses**: the
+record cannot carry parts until the v3 bump (`docs/plans/cli.md` §13).
+Simple drafts publish now. Composition is want-side only. A kit that
+ships in one box is one indivisible give; a class that only runs if eight
+enrol is a *minimum fill* on one give, also v3; and "sirloin to one
+buyer, mince to another, only if the whole animal sells" is the door the
+design keeps shut — that is a butcher's job.
+
+For anything a person would want to *compute* — one offer per slot for a
+month, a theatre visit parameterised by the evening — the language is
+Python, and the pipeline is the macro pass: a script prints offer lines,
+`loop` reads them as a batch, and `--confirm on` makes the batch ask on
+your terminal. `loopmarket.cli.offer_from_line` and `line_for` turn a line
+into an `Offer` and back, so a program can work in objects or in text and
+end at the same approval block either way.
 
 ### Where the sophistication lives (a design boundary)
 

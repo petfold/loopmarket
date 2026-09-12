@@ -498,7 +498,7 @@ table: `-f SPEC`, `--catalogue SPEC`, `--peer SPECS`, `--maker NAME`,
 `--bee-batch ID`, `--bee-signer KEY`; `--version`, `--help`. Read commands
 also take `-o FILE` (the prompt has no shell redirect), `-n N` and
 `--raw`/`--render` after the command. Exit codes: 0 success, 1 error or a
-false predicate (`loops`, `matches`, `clear` with nothing to report;
+false predicate (`loops`, `matches`, `clearing` with nothing to report;
 `give`/`want` not published), 2 usage. Errors go to stderr as
 `loop: ...`; commands are silent on success except `give`/`want`, which
 print the new id.
@@ -555,24 +555,25 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `mine` | my offers, all states |
 | | `place NAME LAT,LON,RADIUS` | a place node under its `geo(cell)` with `{"disc": [lat, lon, r]}` in metadata, written to odag's active store (temporary bridge; adopts the prelude there if absent) |
 | | `want PART + PART... PRICE` | a composed want on one line: resolves every part, renders the composed block, **refuses** until the v3 record carries parts (exit 1, nothing published) |
-| | `draft want [QTY] CAT\|TERM...` | stage one part, resolved now, stably numbered, in `$LOOP_HOME/drafts` (a file, never the book; no price, no id) |
-| | `drafts` | the staged parts in canonical one-line spelling, the typed spelling and notes beneath (exit 1: none) |
-| | `compose [N...] PRICE` | all drafts, or the numbered ones, as one want priced PRICE the lot; renders, then refuses until v3, drafts kept |
-| | `discard [N...]` | drop drafts; alone, empty the list |
+| | `draft [NAME] want\|give ...` | stage one resolved offer (price optional) or part in `$LOOP_HOME/drafts` (a file, never the book; no id); re-drafting a name replaces it; numbers name the unnamed |
+| | `draft [NAME] A + B ...` | compose drafts (want side only, flattening, a priced part refused); a single name copies |
+| | `drafts` | every draft in canonical spelling — the line `offer` will speak — with the typed spelling and notes beneath (exit 1: none) |
+| | `offer NAME [PRICE]` | a draft becomes an offer: its own price, the given one, or the price memory; block, question, publish, draft removed; a composed draft renders and refuses until v3 |
+| | `discard [NAME\|N ...]` | drop drafts; alone, empty the list |
 | reader | `offers [CATEGORY...]` | open offers in the fold, filtered through `satisfies` |
 | | `show ID` | one offer as the approval block, plus `state` |
 | | `matches` | every feasible handoff in the fold (exit 1: none) |
 | | `status` | book and catalogue specs and roots, counts, settings in force |
 | solver | `loops` | profitable loops on a pinned snapshot; prints, never clears (exit 1: none) |
-| clearing | `clear` | `MockClearing` over the fold; with `peers`, my book first absorbs the fold; fills committed to my book (exit 1: nothing cleared) |
+| clearing | `clearing` | `MockClearing` over the fold; with `peers`, my book first absorbs the fold; fills committed to my book (exit 1: nothing cleared). `clear` is a one-release alias |
 | plumbing | `set [KEY [VALUE]]` | list / show / durably change a setting; unknown keys are errors; values validated at set time |
 | | `export` | every offer of my book as JSON lines of canonical records |
 | | `import [FILE]` | publish records from FILE or stdin; ids survive |
 | | `help`, `--version` | |
 
 Not yet at the command line: `propose`, `fold`, `audit` (after the
-federation demo). Composed wants (`docs/plans/cli.md` §13) parse, resolve
-and render today; publishing them waits for the v3 record (`wants`
+federation demo). Composed wants (`docs/plans/cli.md` §13) draft, compose,
+resolve and render today; publishing one waits for the v3 record (`wants`
 carrying parts, fills naming every give consumed).
 
 ### The approval block
@@ -626,6 +627,11 @@ it.
 
 `loopmarket.cli.dispatch(argv, session, out=None, err=None) -> int` runs
 one command with captured streams; `Session()` opens stores lazily;
-`run_stream(session, stream, interactive)` runs a batch; `parse_offer_tokens`,
-`window`, `duration_s`, `radius_m`, `render_offer` are the pure pieces.
+`run_stream(session, stream, interactive)` runs a batch. **The line as
+Python's literal:** `offer_from_line(line, session=None) -> Offer` resolves
+an offer line under the session's settings without publishing (a composed
+line raises until v3); `line_for(offer) -> str` renders an `Offer` to its
+canonical line, `want 2kg apple when(A..B) where(LAT,LON,Rm) valid(A..B) 9`,
+and the two round-trip. `parse_offer_tokens`, `parse_want_line`, `window`,
+`duration_s`, `radius_m`, `render_offer` are the pure pieces.
 Gates G1–G6 (`docs/plans/cli.md`) are `tests/test_cli.py`.

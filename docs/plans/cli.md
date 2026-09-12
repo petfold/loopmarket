@@ -3,8 +3,9 @@
 Status: **built 2026-09-12** — `src/loopmarket/cli.py`, gates G1–G6 in
 `tests/test_cli.py`, the triangle as `examples/triangle.loop` (§12 records
 what landed, the two rulings Peter made that day, and the decisions the
-build forced; §13, the same evening, specifies composed wants — `draft`,
-`drafts`, `compose` — for the v3 record). Designed 2026-09-11 in discussion with Peter. Decided here: the CLI lives *in the package* as `loop`, a sibling
+build forced; §13, the same evening, adds drafts and composed wants — `draft`, `+`,
+`offer` — built up to the v3 record's step, and renames `clear` to
+`clearing`). Designed 2026-09-11 in discussion with Peter. Decided here: the CLI lives *in the package* as `loop`, a sibling
 of ontodag's `odag`, lifted from it where the code is generic; its grammar
 is ontodag's grammar with exactly two loopmarket-only conventions (a bare
 number first is the quantity, a bare number last is the price); every
@@ -365,10 +366,10 @@ shell redirect.
 
 | role | commands |
 |---|---|
-| maker | `give`, `want`, `withdraw ID`, `mine`, `place NAME LAT,LON,R` (temporary, §4); `draft want ...`, `drafts`, `compose [N...] PRICE`, `discard [N...]` (§13; `compose` publishes with the v3 record) |
+| maker | `give`, `want`, `withdraw ID`, `mine`, `place NAME LAT,LON,R` (temporary, §4); `draft [NAME] want\|give ...`, `draft [NAME] A + B`, `drafts`, `offer NAME [PRICE]`, `discard [NAME...]` (§13; a composed draft offers with the v3 record) |
 | anyone reading | `offers [CATEGORY...]` (filtered through `satisfies`), `show ID`, `matches`, `status` (roots, counts, settings in force) |
 | solver | `loops` (find on a pinned snapshot, print, never clear), `propose` |
-| clearing / aggregator | `clear` (local `MockClearing` over the fold — "you are running the clearing house"), `fold` (write a manifest), `audit MANIFEST` (T14 absence proofs) |
+| clearing / aggregator | `clearing` (local `MockClearing` over the fold — "you are running the clearing house"; `clear` is a one-release alias, §13), `fold` (write a manifest), `audit MANIFEST` (T14 absence proofs) |
 | plumbing | `set`, `export`, `import`, `help`, `--version` |
 
 One binary for all roles keeps P0 runnable end to end from one machine;
@@ -512,77 +513,103 @@ decide something the design left implicit.
   over a store spec, plus pushing loopmarket's `--bee-*` flags into
   odag's flag layer), isolated and dated; §11.3 deletes it.
 
-## 13. Composed wants: draft, drafts, compose (decided 2026-09-12)
+## 13. Drafts and composed wants: draft, `+`, offer (decided 2026-09-12)
 
 A theatre ticket with transport to the theatre: you do not want the
 ticket if you cannot get there, nor the transport without the ticket.
 The protocol answer is `P2-loop-selection.md` §10 — composition on the
 want side, the parts *declared* by the buyer, one offer, one fill
 decision, one price, the split clearing's. This section is the CLI's
-half, settled with Peter the same day.
+half, settled with Peter over the day and evening; the verbs went
+through `compose`/`publish` and ended here.
 
-- **`draft want [QTY] CATEGORY|TERM...`** stages one part. It is
-  resolved exactly as `want` resolves a thing — names to values, relative
-  times to absolute UTC, the place to its disc, unknown vocabulary and
-  quantity/time terms refused *now* — and given a stable number. Drafts
-  live in `$LOOP_HOME/drafts`, a local file, never the book: a draft is
-  not an offer, has no price and no id, and nobody can match it. They
-  persist across sessions until composed or discarded, so a person can
-  assemble an evening over days.
-- **`drafts`** lists them, numbered, each in its **canonical one-line
-  spelling** — the resolved part as `compose` will encode it,
-  `from(u24m)`, absolute windows — with the surface spelling the person
-  typed as a note beneath (`from(home)`, `when(today..+7d)`): the same
-  two layers as the approval block (Peter: "drafts show the canonical
-  form, the surface form in the notes").
-- **`compose [N...] PRICE`** composes all drafts, or the numbered
-  subset, into one want priced PRICE the lot: one approval block (every
-  part, one price, one nonce, one id, the notes), one question, one
-  offer published, the composed drafts removed and the rest kept.
-  Grammar: the last bare number is the price, every bare number before
-  it selects a draft — `compose 60` composes everything, `compose 1 3
-  60` composes drafts 1 and 3. Fewer than two parts is an error naming
-  `want`. There are **no prices on parts** (§10 pays once) and no
-  cross-part constraints: transport arriving before curtain is the
-  buyer's spelling of the two windows, §6's rule.
-- **`discard [N...]`** removes drafts; alone, it empties the list and
+**Drafts are values.** A draft is an unpublished offer or one part of a
+composed want: resolved *now*, exactly as a `want` line resolves —
+names to values, relative times to absolute UTC, the place to its disc,
+unknown vocabulary and quantity/time terms refused — and kept in
+`$LOOP_HOME/drafts`, a local file, never the book: no id, nobody can
+match it. A draft may carry a price; a *part* may not (§10 pays once).
+Draft names are working memory, never vocabulary — they cannot appear
+in an offer, because composition expands them — which is why they are
+**not** `set` keys: settings are a closed table on purpose (an unknown
+key is an error), and a typo must not quietly become a draft. Numbers
+name the unnamed.
+
+- **`draft [NAME] want|give ...`** stages one resolved offer (with or
+  without a price) or part. Re-drafting a name replaces it and keeps its
+  number. A draft has no validity of its own: the `valid` setting applies
+  when it is offered.
+- **`draft [NAME] A + B ...`** composes drafts with the same `+` the
+  one-line want uses — one operator, not a verb (Peter: "why not use `+`
+  instead of compose?"). Want side only; a priced draft is refused as a
+  part rather than having its number silently dropped; composition
+  flattens, so a composed draft composes further; a single name copies.
+- **`drafts`** lists every draft, named or numbered, in its **canonical
+  spelling** — the offer line `offer` will speak, `from(u24m)`, absolute
+  windows, the coordinate literal for the place, the price last if any —
+  with the typed spelling and the name→value notes beneath (Peter:
+  "drafts show the canonical form, the surface form in the notes").
+- **`offer NAME [PRICE]`** turns a draft into an offer (Peter: "how
+  about offer instead of publish?" — the act, not the mechanism, and
+  neutral between the sides). The draft's own price if it has one, the
+  given price otherwise or over it, the price memory for a simple draft
+  with neither; the same block, question and id as `want`/`give`; the
+  draft is removed once published. A composed draft renders every part
+  under the one price.
+- **`discard [NAME|N ...]`** drops drafts; alone, it empties the list and
   says how many went.
-- **Reading back.** `show ID` renders a composed want with its parts, one
-  block per part under the one price; `mine`/`offers` join the parts
-  with ` + ` in the thing column.
+- **The one-line form** `want PART + PART ... PRICE` is the same composed
+  want without drafts, for scripts and assistants: each part reads as a
+  want line without its price (a bare number first is that part's
+  quantity, no `valid(...)`), and the last bare number prices the whole.
+  A `give` with `+` is refused: a kit is one give of one thing. This is
+  the third loopmarket-only convention, want side only; it reserves a
+  token, not a word, so no category is shadowed.
 
-**One line, no drafts (confirmed by Peter 2026-09-12).** Scripts and
-assistants should not need a staging file, so the same composed want has
-a one-line spelling with `+` between parts:
+**Until the v3 record.** Everything above is built (2026-09-12, evening)
+except the last step for a *composed* want: `offer` on a composed draft
+and the one-line form resolve every part, render the composed block —
+one part block each, one price, the notes — and then **refuse** with
+this section and `P2-loop-selection.md` §10 named, the G6 pattern,
+until `wants` can carry parts; nothing enters the book and the drafts
+are kept. Simple drafts publish today. Two details the build fixed:
+`where(...)` accepts the coordinate literal `LAT,LON,R` that `place`
+takes, so the canonical line re-parses to the same disc (the day odag
+accepts `geo(LAT,LON,R)`, §11.1, this maps onto it); and a name in a role
+term takes its *most specific* value — a place hangs under its own cell
+and, by computed containment, under every coarser cell, and ancestors
+come as a set. The v3 bump also brings fills that name every give
+consumed, so `show` can list which gives satisfied which part.
 
-```
-want theatre-ticket hamlet 'when(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z)' 'where(venue)' \
-   + transport person 'from(home)' 'to(venue)' 'when(2026-10-05T17:00:00Z..2026-10-05T19:00:00Z)' 60
-```
+**`clearing`, not `clear`.** The clearing-house command was `clear`;
+`clear` means delete on every terminal, and publishing an offer does not
+clear it (Peter, 2026-09-12). It is `clearing` now, the corpus's own
+noun; `clear` stays a silent alias for one release.
 
-Each part reads as a `want` line without its price — a bare number first
-in a part is that part's quantity — and the last bare number of the line
-is the price of the whole. `drafts` prints exactly this spelling, so the
-canonical listing *is* the one-liner, and `compose` is that line
-assembled. This is a **third loopmarket-only convention**, want side
-only; it reserves a token, not a word — no category is shadowed, and
-`+2h` inside `when(...)` is unaffected — and odag has nothing to say
-about wants, so the one-grammar rule is not strained. Give side: none.
+**The line as Python's literal.** `loopmarket.cli.offer_from_line(line,
+session)` resolves an offer line to an `Offer` under a session's settings
+without publishing; `line_for(offer)` renders an `Offer` back to its
+canonical line (`want 2kg apple when(...) where(...) valid(...) 9`), and
+the two round-trip. One grammar for the shell, the API and the
+assistant: a program builds offers as objects or as lines, and both end
+at the same approval block.
 
-**Built the same evening (2026-09-12).** `draft want ...`, `drafts`,
-`compose [N...] PRICE`, `discard [N...]` and the `+` line are in
-`cli.py`; `compose` and the `+` form resolve every part, render the
-composed block (one part block each, one price, the notes) and then
-*refuse* with this section and `P2-loop-selection.md` §10 named — the G6
-pattern — until `wants` can carry parts; nothing enters the book and the
-drafts are kept. Two details the build fixed: a part's `where(...)` may
-be the coordinate literal `LAT,LON,R` that `place` takes, so the canonical
-line `drafts` prints re-parses to the same disc (the day odag accepts
-`geo(LAT,LON,R)`, §11.1, this maps onto it); and a name in a role term
-takes its *most specific* value — a place hangs under its own cell and,
-by computed containment, under every coarser cell, and ancestors come as
-a set. The v3 bump also brings fills that name every give consumed, so
-`show` can list which gives satisfied which part.
+**Not a language (Peter's question, 2026-09-12).** With named drafts and
+`+`, the lines look like a language. They are a *data* language, and stay
+one: offers are facts, the catalogue the type lattice, matching
+subsumption, a loop a derivation the solver finds and clearing checks —
+the solver is the prover, clearing the checker, U3 the de Bruijn
+criterion. Variables that substitute, loops that generate and conditions
+that fire would make the text you read no longer the offer you get, and
+the approval block is the one invariant. So: named drafts and `+`, and
+nothing else. Repetition (one offer per slot) is the shell's `for` or a
+maker agent in Python; reaction (repost when filled) is an agent; macros
+(a theatre visit parameterised by the evening) are a program printing
+lines into `loop`, the preprocessor in a pipeline, with `confirm on`
+making the batch ask on the terminal. **Parked:** an `at` setting
+anchoring relative service-time spellings (`when(-2h..)`) so that a
+`.loop` file is itself a one-parameter template — a tripwire, not a
+feature, until a real template need arrives that Python does not cover.
 
 **The give side gets a floor, not parts.** Asked the same day whether a
 composed *give* is ever needed ("something strongly packed up in a
@@ -620,6 +647,14 @@ is the tying door §10 keeps shut; the reseller is the route.
 - ~~Which commands ship first~~ — the maker, reader, `loops`/`clear` and
   plumbing set shipped (§12); `fold`/`audit`/`propose` follow the
   federation demo.
+- **Browsing offers through ontodag** (Peter, 2026-09-12; parked): `offers`
+  assumes a short list. For a thick book, gives are already filed under
+  concept, window and cell terms in the per-solver `DimensionIndex`, so
+  `offers CATEGORY...` could answer from that index and odag's browse
+  could walk it. An idea for the future; not now.
+- **An `at` anchor for relative service times** (parked, §13): would make a
+  `.loop` file a one-parameter template. Revisit only when a real
+  template need is not served by a program printing lines into `loop`.
 - **Numeric normalization in the schema.** `1` and `1.0` are different
   records (§12); the CLI keeps the typed form, but the fix belongs to the
   v3 bump's D9 (rationals) so every writer agrees.

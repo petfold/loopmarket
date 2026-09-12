@@ -23,7 +23,7 @@ $ odag put piano-lesson music-lesson        # the catalogue is ontodag's
 $ loop set maker amara; loop place home 46.05,14.50,5km; loop set where home
 $ loop give piano-lesson 100                # I give this, priced on my scale
 $ loop want produce local weekly 104        # I want this, priced on my scale
-$ loop loops && loop clear                  # hunt profitable loops; clear one
+$ loop loops && loop clearing               # hunt profitable loops; run the clearing house
 ```
 
 `loop` is the command line (`pip install loopmarket`): ontodag's grammar
@@ -52,7 +52,7 @@ agent.step()                          # snapshot → match → hunt loops → cl
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 96 tests (two need a live Bee node)
+python3 -m pytest tests/ -v           # 99 tests (two need a live Bee node)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
