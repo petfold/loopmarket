@@ -131,6 +131,7 @@ And two more: **clearing** is the atomic commit that fixes obligations; **settle
 | Document | One line |
 |---|---|
 | [`P1-federated-book.md`](docs/plans/P1-federated-book.md) | Per-maker books under own feeds/signers; announcement, aggregation, merge discipline, lifecycle, postage economics, spam floors. |
+| [`P1-spacetime-terms.md`](docs/plans/P1-spacetime-terms.md) | Place and time leave the offer's fields for its conjunction (decided 2026-09-12): the role-head rule — containment for what a thing is, overlap for where/when it changes hands, declared in the catalogue as `service-role`; cells and region nodes as the exact geo truth, the disc retires; the path to the v3 record. Step 2 (`satisfies` over mixed terms) landed the same day. |
 | [`P2-batch-auction.md`](docs/plans/P2-batch-auction.md) | The beat: sealed proposals, numeraire-free scoring, the fairness floor, capped solver rewards, collusion resistance, fees. |
 | [`P2-clearing-pricing.md`](docs/plans/P2-clearing-pricing.md) | Turning a winning loop's surplus into per-leg prices: equal log-surplus split under uniform directional clearing; clearing prices as node potentials (§10). |
 | [`P2-loop-selection.md`](docs/plans/P2-loop-selection.md) | Clearing as optimization: flow LP vs packing ILP, chains, failure-aware objective, pre-commit compression; composition on the want side (§10); the cleared object is a circulation, clearing prices its node potentials (§11). |

@@ -1,0 +1,348 @@
+# Spacetime as catalogue terms: `service` and `where` leave the offer
+
+Status: work package, written 2026-09-12 from the CLI design discussion of
+2026-09-11 and its continuation on 2026-09-12 (Peter and Claude). It
+supersedes the session note `where-elimination.md` of the same morning;
+that note's argument is §1 here. Two rulings by Peter on 2026-09-12 fix
+the design: **cells and region nodes are the exact truth and the disc
+retires** (§4), and **a term's match relation is declared in the
+catalogue, not in code** (§3). Step 2 of the path (§5) landed the same
+day; the record change (step 5) has not.
+
+Where it sits: this is the implementation package for
+`ontodag-coupling.md` §2 ("spacetime becomes dimension terms, lands with
+P1") plus the schema consequence that document left implicit — the offer's
+`service` window and `where` disc are *fields of the P0 shape*, not
+concepts of the model, and they go. `cli.md` §2 and §4 already speak the
+target grammar; `P2-loop-selection.md` §10 (composition along a dimension)
+consumes the coordinates this package puts into the conjunction.
+
+## 0. One-line version
+
+An offer's place and time are terms in its conjunction like everything
+else; a term's head says whether it matches by containment (what the thing
+is) or by overlap (where and when it changes hands); the catalogue declares
+which; the exact geo truth is cell containment; so `service` and `where`
+leave the record at the v3 bump and nobody retypes an offer.
+
+## 1. History: how the separation arose, and the 2026-09-11 thread
+
+**The P0 shape.** `Offer` carries `Thing.concepts` (a conjunction of
+catalogue names), `service: TimeWindow`, `where: GeoDisc` and `valid`.
+Meaning matched through the catalogue; time and place matched through
+exact geometry in `schema.py` — interval overlap, haversine disc
+intersection. `ARCHITECTURE.md` §3 called them "catalogue dimensions" from
+the start, but ontodag had no parametric dimensions in the P0 weeks, so
+they lived beside the taxonomy as fields with their own gates in
+`check_match`. The split is historic: it records what the catalogue could
+not yet do.
+
+**2026-07-30.** ontodag shipped dimension lattices (parametric terms with
+computed containment, `get_overlapping`). `ontodag-coupling.md` §2
+decided the completed shape — time windows as exact interval terms, cells
+as prefix terms, regions as nodes above their cells — and `dimensions.py`
+rehearsed it in a derived index, recall-exact against the baseline. The
+truth stayed in the fields.
+
+**2026-09-11, the CLI design.** The first proposals treated the three
+non-thing fields as settings or trailing keywords — `when`, `where`,
+`valid`. Peter's objection, in substance: *the `where` may be unnecessary
+as it is just another ontodag concept; the place / time / description
+distinction in loopmarket is too strict and probably historic — we started
+out that way. I'd prefer `set my_home 46.0553356,14.5053221,10m`, and
+`loop ride from(my_home) to(my_supermarket)` is more doable.* Four
+consequences were decided that day and built the next
+(`cli.md` §2, §4, §12):
+
+- a bare word is a category (`my_home` included); `head(param)` is a term
+  in ontodag's spelling (`from(my_home)`, `when(...)`); the only
+  loopmarket-only conventions are quantity-first and price-last. Nothing
+  bare is reserved, so `where` cannot collide with a category;
+- `where(...)`, `when(...)` and `valid(...)` survive only as *heads the
+  CLI interprets onto fields*, with a startup check that they are disjoint
+  from the dimension heads the loaded catalogue declares — so that when the
+  fields go, the heads become ordinary catalogue heads with the same names
+  and nothing changes at the prompt;
+- "Why is it not ontodag's job to know where my_home is?" It is. A place
+  is vocabulary, vocabulary has a store, overlays, history and pinned
+  roots, and a names table in a config file would be a second, weaker
+  knowledge store. Time names need nothing from loopmarket (`odag put
+  evenings 'time(...)'` works today). Places need one thing upstream, a
+  coordinate input spelling for `geo`; meanwhile `loop place NAME
+  LAT,LON,R` writes the node with its disc as metadata, the dated bridge;
+- the same-root constraint: `check_match` refuses offers pinned to
+  different roots, so a private name resolves to its *public value* before
+  encoding — `from(my_home)` is published as `from(u2e4x)` (Peter,
+  2026-09-12: ontodag interprets the name; the CLI only carries the value).
+
+**The two-place offer** was the motivating example and the requirement:
+`want ride from(my_home) to(my_supermarket)` has an origin and a
+destination, and one `where` disc cannot hold two places. The grammar
+expresses it today; the field is what stops it from *matching* correctly.
+
+**2026-09-12.** Peter widened the goal from `where` to the separation
+itself: *"ancient Greek amphora" is a concept that is a combination of
+location, time and description; ontodag can handle all of them together.*
+That example turned out to name the one design decision the note had
+skipped (§3), and the two rulings followed.
+
+## 2. The target record
+
+| Today (v2) | Target (v3) | Why |
+|---|---|---|
+| `Thing.concepts` | `Thing.concepts`, now carrying `when(...)`, `where(...)`/`from(...)`/`to(...)` and any descriptive spacetime term | one conjunction, one match walk |
+| `service: TimeWindow` | *gone*; `when(a..b)` in the conjunction | §3, §4 |
+| `where: GeoDisc` | *gone*; `where(cell)` or a route's `from(cell) to(cell)` | §3, §4 |
+| `valid: TimeWindow` | **stays** | a property of the *record* (while the offer stands), read by the book against `now`, never by the catalogue against another offer; it also bounds every generated horizon (recurrence, §7 of the coupling plan) |
+| `qty`, `unit`, `divisible` | **stay** for this package | quantities as unit-family terms are `ontodag-coupling.md` §3's own package (U9); widening this one to it would couple two record bumps |
+| pins, `bond`, `oracle`, `arbitrator`, `nonce`, `maker`, `Tokens` | unchanged | — |
+
+`from_record` keeps reading v1 and v2 (U2); `to_record` re-encodes each in
+its native version, so old ids never move. The v3 constructor refuses
+`service`/`where`.
+
+## 3. Two relations, one conjunction: the role-head rule
+
+**The decision the note skipped.** Today the match relation is encoded in
+the *field*: concepts match by containment (the offered thing fits within
+the wanted description), the service window and disc match by overlap (a
+delivery instant, a handover point exists). Fold everything into one
+conjunction and the relation can no longer come from the field. The
+amphora shows it cannot come from the *dimension* either:
+
+- `amphora made_in(corinth) made(time(-550))` against a want for
+  `amphora made_in(greece) made(-800..-100)`: **containment**. The same
+  geo and time kinds as the service fields, but *descriptive* — they say
+  what the thing is, and the offered thing must be at least as specific as
+  asked, exactly like a category.
+- `ride from(my_home) when(evenings)` against a give `ride from(ljubljana)
+  when(2026-09..)`: **overlap**. A large give region serves a small want
+  place, so the direction even flips relative to concepts; what must hold
+  is that the two denotations share a point.
+
+So the relation is a property of the **role head**, not of the dimension.
+`made_in` and `made` are plain heads under `geo` and `time`; `when`,
+`where`, `from`, `to` are *service roles*.
+
+**The rule, as landed in `Ontology.satisfies` (2026-09-12):**
+
+1. Partition each side's conjunction into service-role terms (grouped by
+   head) and the rest.
+2. *Containment* for the rest: every wanted term is covered by some
+   offered term (`is_below`), unchanged from P0.
+3. *Overlap* for the roles: for each head **both** sides name, the meet
+   of the offered terms and the meet of the wanted terms intersect
+   (`ontodag.dimensions.intersect` is not None). A head only one side
+   names constrains nothing — the other side said "anywhere", "anytime".
+4. Same-head terms on one side are their meet (a conjunction *is* the
+   intersection of its terms; ontodag's disjoint-parents lint refuses to
+   file the empty case, and `satisfies` matches it against nothing).
+5. Fail closed, with one deliberate asymmetry: a wanted category nobody
+   knows never matches (U7, as before); an *extra unknown category on the
+   offered side* is ignorable, because it can only narrow the offer; an
+   *uninterpretable service-role term* on **either** side refuses, because
+   ignoring it would silently widen the offer to "anywhere" — the
+   spacetime analogue of U2's rule that a record you cannot fully read must
+   not be matched.
+
+**Why the catalogue declares the role, not the code.** Peter's ruling
+2026-09-12. The marker is a plain node, `service-role`; a head below it is
+a service role. Consequences: the relation is pinned with the root, so
+clearing re-verifies under the same semantics the solver used (U3, U4); a
+fork of loopmarket cannot change how a pinned catalogue matches; "names
+live in the catalogue" applies to the names' *behaviour* too; and a
+vertical can declare its own roles (`pickup`, `dropoff`, `valid_at`) with
+no loopmarket release. `Ontology.declare_service_roles()` writes the four
+roles the `loop` grammar speaks — `when` under `time`, `where`/`from`/`to`
+under `geo` — each under its base head (inheriting the value grammar and
+the kind ontodag orders it by) and under the marker; it adopts ontodag's
+prelude if the bases are missing, the same merge `odag prelude` performs.
+This is a catalogue write: on a persistent catalogue it moves the root and
+belongs with the seed declarations, before offers pin it.
+
+**Guaranteed and possible.** Containment in either direction is the
+coupling plan's *guaranteed* match; mere overlap is *possible* — a
+handover point exists, and which one is the makers' business (or, once
+composition lands, the solver's: `P2-loop-selection.md` §10's transport
+operator moves exactly this coordinate). For P0 the match stays Boolean;
+the degree ladder remains advisory (`ontodag-coupling.md` §4).
+
+## 4. Cells are the truth; the disc retires
+
+**The ruling** (Peter, 2026-09-12), closing the one open question the
+session note flagged: the exact geo truth becomes containment on cells and
+region nodes; `GeoDisc.intersects` leaves `check_match` and the disc leaves
+the record.
+
+**The argument.**
+
+1. A disc was never anyone's real service area. It was a modelling
+   convenience for the P0 weeks. A cell covering with adaptive precision
+   (`ontodag/docs/DIMENSIONS.md` §9: any shape, holes, disconnected
+   regions, coarse interior cells beside fine boundary cells) is a *better*
+   description of a real region, and ontodag already computes containment
+   on it.
+2. It removes the only floats in offer identity other than quantity and
+   price: `[lat, lon, radius_m]` in the canonical bytes was a latent
+   canonical-JSON hazard across implementations (D9's rational question
+   for the remaining two is `ontodag-coupling.md` §3's).
+3. The exact check becomes `dimensions.intersect` on stored names —
+   deterministic, a function of the pinned catalogue, re-verifiable by
+   clearing with no geometry library (U3 gets simpler, not weaker).
+4. The planar tangent-plane upgrade (`ontodag-coupling.md` §2) stops being
+   a correctness path. "Within 10 km" becomes *input* convenience:
+   `geo(lat,lon,r)` canonicalising to a cell, or a covering region node
+   generated at publication.
+
+**What it changes.**
+
+- *Precision is the maker's statement.* A give covers what it says it
+  covers. A want five metres across a cell edge from a give's covering does
+  not match unless the covering includes the neighbour cell — and the maker
+  who wanted that says so with one more cell, or a coarser one. The disc
+  made the same kind of claim with a circle nobody meant.
+- *Time was exact already.* `when(a..b)` over fixed ISO-8601 UTC seconds;
+  calendar values are inclusive, `TimeWindow` is half-open, so the
+  encoding rule is `[start, end-1]` — `dimensions.time_term`'s convention,
+  proven equivalent to `TimeWindow.overlaps` over random windows in
+  `tests/test_ontology.py`. Time zones elaborate at entry; recurrence stays
+  the cyclic tripwire (`ontodag-coupling.md` §7) — `when(saturdays)` as a
+  node over asserted day terms works today within an asserted horizon.
+- *Input spellings survive as spellings.* `where(LAT,LON,R)` at the prompt
+  and `loop place NAME LAT,LON,R` keep working; both canonicalise to a cell
+  (or, later, a covering) instead of a disc. `GeoDisc`, `haversine_m` and
+  `spacetime.cell_for` remain as input-side helpers; nothing in matching
+  imports them after the flip.
+- *Region nodes as service parameters* (`from(ljubljana)`) wait on
+  upstream (§5, step 3b); until then role terms carry cell values, as the
+  CLI already publishes them.
+
+## 5. The path
+
+1. **The grammar — done 2026-09-11/12** (`cli.md` §12). `where` is neither
+   keyword nor alias; `where(...)`/`when(...)`/`valid(...)` are interpreted
+   heads with the disjointness check; names are catalogue nodes; `place` is
+   the dated bridge; role terms carry the public cell value;
+   `Ontology.known` accepts interpretable terms.
+
+2. **`Ontology.satisfies` over mixed terms — landed 2026-09-12.**
+   `SERVICE_ROLE`, `SERVICE_ROLES`, `declare_service_roles`, `head_kind`,
+   `is_service_role`, and the five-point rule of §3. No record change: the
+   field gates in `check_match` still run beside it, and a catalogue that
+   declares no roles behaves exactly as before. Tests: the amphora
+   (containment, directional), the ride (overlap, both directions,
+   siblings refuse, a two-place route), absent-is-unconstrained and the
+   fail-closed asymmetry, same-head meets, the 300-window equivalence with
+   `TimeWindow.overlaps`, and `check_match` accepting the
+   broad-give/narrow-want pair under a role-declaring catalogue while a
+   plain-`geo` catalogue refuses it (`tests/test_matching.py`).
+
+3. **Upstream asks** (rows in `ontodag-coupling.md` §7):
+   - (a) coordinate input for `geo` — filed 2026-09-11; deletes `loop
+     place`;
+   - (b) **role heads accepting a place node as parameter.** Probe
+     2026-09-12: with `from` declared under `geo`, `from(ljubljana)` is
+     accepted and silently read as a literal cell named "ljubljana" — the
+     footgun the CLI's `_value_of` exists to guard. Ask: a head declared
+     under another head accepts that head's nodes as parameters and
+     denotes their value (or their covering, for a region node), so
+     `from(ljubljana)` stands as a stored term and `from(my_home) ⊑
+     from(ljubljana)` computes. Deletes the CLI's value substitution;
+   - (c) **a Boolean overlap face**, `overlaps(a, b)`, the mirror of
+     `is_below` for `get_overlapping` — region nodes included on both
+     sides, so region∩region needs no enumeration in loopmarket;
+   - (d) graph-declared units reaching `intersect` through public API
+     (today `satisfies` calls `dimensions.intersect` without the store's
+     unit declarations, which time and geo do not need; a role over a
+     linear head with declared units would fail closed).
+
+4. **The shared catalogue carries the roles; the index files them.**
+   `declare_service_roles()` joins the seed declarations (the example
+   catalogues, `catalogue-bootstrap.md`'s release pipeline).
+   `DimensionIndex.file` puts a give under its `when`/place terms directly
+   — no more private `service-time`/`service-cell` heads — and
+   `candidates` gains the place term, becoming one `get(...,
+   overlapping=[...])` call when ontodag #14 lands (`ontodag-coupling.md`
+   §5). The CLI cannot flip yet: it publishes v2 and must keep mapping
+   `when`/`where` onto fields until the record changes.
+
+5. **The v3 record.** `service` and `where` leave `to_record`/`from_record`
+   for v3 (v1/v2 still read); `check_match` drops the two field gates for
+   v3 pairs and relies on `satisfies`; `MockClearing` is untouched (it
+   calls `check_match`); `idx/{t,g}` retire (decided 2026-09-07). The CLI
+   in the same release: `_INTERPRETED_HEADS` shrinks to `("valid",)`,
+   `when`/`where` pass through as terms, the mapping code and the
+   disjointness check for them are deleted, `place` writes a region node
+   (or a cell via (a)), the drafts' `Part` record carries terms, the
+   approval renderer shows them. `examples/triangle.loop` is byte-identical
+   across the flip — that was the whole point of step 1.
+
+## Gates
+
+- **G1 — relation equivalence.** Time: `when` under overlap decides
+  exactly what `TimeWindow.overlaps` decides over random windows
+  (**landed**). Geo: the cell rule's cases — same cell, nesting either way,
+  siblings refuse, a route's two places independent (**landed**). At the
+  v3 flip the triangle clears the same three legs from terms as it did
+  from fields.
+- **G2 — the catalogue decides.** The broad-give/narrow-want pair matches
+  under a catalogue declaring `from` a service role and is refused under
+  one declaring it a plain `geo` head, through `check_match` (**landed**).
+- **G3 — fail closed.** An uninterpretable service-role term refuses on
+  either side; a provably empty same-head conjunction matches nothing
+  (**landed**).
+- **G4 — id stability across the bump (U2).** Every v1/v2 record in the
+  test corpus reads back to its original id; a v3 constructor refuses
+  `service`/`where`; `from_record` raises on v4.
+- **G5 — the prompt does not move.** `examples/triangle.loop` and every
+  line in `tests/test_cli.py` parse and publish identically before and
+  after the flip; the interpreted-head disjointness check fires only for
+  `valid`.
+- **G6 — one-query generation stays exact.** `DimensionIndex` filing
+  gives under role terms is recall-exact against the baseline product
+  (the existing `tests/test_dimensions.py` pattern), with place now
+  pruning too.
+
+## Open problems
+
+- **Cross-version pairs.** A v2 offer's truth is its disc; a v3 offer's is
+  its cell. Matching them needs a view of the disc as a cell (lossy: the
+  maker never said a cell) or a refusal. Recommendation: **refuse** v2×v3
+  pairs — validity windows are short, and `loop` can repost; the honest
+  reading of U2 is that an offer means what its record version defines.
+  Peter's call before step 5.
+- **Publishing policy.** Conjunction semantics make `when`/`where`
+  optional (absent = unconstrained). Whether a *published* give must name
+  them is policy, not matching: the CLI requires a place today (`set
+  where` or `where(...)`), and U8 admission could require both at the
+  fold. Decide with `P1-federated-book.md`'s admission rules.
+- **The marker's name.** `service-role` is provisional until v3 freezes it
+  into published roots; `handover-role` was the alternative.
+- **Region nodes as service parameters** — upstream (b). Until then the
+  offer names cells and a place's covering is one cell at the radius'
+  precision.
+- **Composition needs these coordinates.** `P2-loop-selection.md` §10's
+  operator form (`transport(u2ed→u2ef, ...)`) shifts exactly the `from`/`to`
+  coordinate; the role terms are the coordinates it reads. Whether the
+  operator itself is a catalogue term is the ask recorded in ontodag's
+  `DIMENSIONS.md` §8.
+- **Named places and privacy.** Publishing `my_home` as a public region
+  node is a naming leak on top of the existing plaintext one
+  (`P4-privacy.md`); role terms carrying cell values leak the cell either
+  way, and the cell's precision is the maker's coarse-first disclosure
+  knob — Tier 1 needs nothing new.
+- **Recurrence.** `when(saturdays)` works within an asserted horizon; fine
+  recurrence × long validity is the cyclic-kind tripwire.
+
+## What this document does not promise
+
+The catalogue certifies asserted structure, never world-truth: `from(u2e)`
+matching `from(u2e4x)` says the two names share a cell, not that the
+courier will be there. The overlap relation reports that a handover point
+*exists*, not which one — choosing it is settlement (P3) or composition
+(P2), never matching. Nothing here changes the arithmetic of loops, the
+uniform offer form (U1), the pins (U4/U10), or clearing's trust-nothing
+shape (U3); it moves two gates from geometry into the pinned catalogue and
+removes two fields. The upstream asks are asks: every "meanwhile" above —
+cell values in role terms, the CLI's value substitution, region∩region by
+enumeration — must stay livable if ontodag never builds them.

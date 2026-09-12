@@ -176,6 +176,21 @@ cost change, never a truth change: recall-exactness against the baseline
 and `check_match` stay the guards. Plan home: `docs/plans/ontodag-coupling.md`
 §5 and the §7 tripwire row.
 
+**Update 2026-09-12 — the fields go; the head decides the relation.**
+The separation this section describes is historic: `service` and `where`
+are what the P0 catalogue could not yet hold, not concepts of the model
+("ancient Greek amphora" is one concept combining place, time and
+description — Peter). Work package `docs/plans/P1-spacetime-terms.md`.
+Two rulings: the exact geo truth becomes cell/region containment and the
+disc leaves the record at v3 (a disc was never anyone's real service
+area; floats leave identity; the check becomes a function of stored
+names); and a term's match relation is declared in the catalogue —
+heads under the marker node `service-role` (`when`, `where`, `from`,
+`to`) match by overlap, all other terms by containment, so `made_in(...)`
+under `geo` is descriptive and `from(...)` under `geo` is a handover
+place. `Ontology.satisfies` implements the rule since the same day, with
+no record change yet: the field gates run beside it until v3.
+
 ## 4. The catalogue (ontology.py)
 
 `Ontology` wraps an `OntoDAG` with the one primitive matching needs:

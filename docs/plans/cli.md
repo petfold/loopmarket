@@ -107,6 +107,10 @@ three heads map onto fields rather than into the conjunction: `when(...)`
 head passes through into `Thing.concepts` as a catalogue term. When §2
 lands, `when`/`where` become ordinary catalogue heads with the same names
 and the mapping code is deleted with nothing changing at the prompt.
+The package that does it is `P1-spacetime-terms.md` (2026-09-12): the
+role-head rule behind `when`/`where`/`from`/`to` — overlap, declared in
+the catalogue as `service-role` — landed in `Ontology.satisfies` that
+day; the field removal is its step 5, the v3 record.
 A startup test asserts the interpreted heads are disjoint from the
 dimension heads the loaded catalogue declares, so a future pack cannot
 silently shadow one.
