@@ -300,6 +300,26 @@ the record.
   country/city/street: a bootstrap problem the cell already answers.
   Tooling to follow on Peter's word: `place NAME LAT,LON,R [ADDRESS]`
   storing the text on the node, `show` printing it for one's own offers.
+- *How the address reaches the courier — an encrypted sidecar, not a
+  message* (Peter, 2026-09-12: no side channel; an adversary may offer
+  courier service only to harvest addresses). Makers already hold
+  secp256k1 keys (the `sig` extra; a feed owner's public key is
+  recoverable from the feed's chunk signatures, a signer's from any
+  `sig/` record), so no key registry: after a loop clears, the maker whose
+  place it is writes `handoff/<loop_id>/<offer_id>` into their own book —
+  the address (and gate codes, "ring twice") ECIES-encrypted to the leg
+  counterparty's public key — a sidecar beside `sig/`, never in identity,
+  OR-set-merged, carried by aggregators unread; the courier reads the fold
+  they already follow and decrypts. Against harvesting: disclosure follows
+  *obligation* (the record exists only for a cleared leg, under P3 only
+  after the courier's bond is escrowed, so each address costs a bonded,
+  slashable obligation); *timing* (write it when the service window is
+  near, not at clearing); and *no address at all* (`oracle="locker"` or a
+  public pickup node — the `oracle` field is where the maker names the
+  settlement mode; coarse-first disclosure is the maker's dial). Home: P3's
+  settlement channel (`P3-guarantee-coupling.md`), P4 Tier 1 by
+  construction; ontodag's deterministic encrypted store is the later seam
+  for a whole private place layer. To build on Peter's word.
 - *Time was exact already.* `when(a..b)` over fixed ISO-8601 UTC seconds;
   calendar values are inclusive, `TimeWindow` is half-open, so the
   encoding rule is `[start, end-1]` — `dimensions.time_term`'s convention,
