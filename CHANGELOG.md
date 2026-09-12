@@ -4,12 +4,65 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
-Started 2026-09-11. Nothing has been released yet: `pyproject` says 0.1.0 and
-the distribution builds cleanly, but the name is **not yet on PyPI** — the
-upload has been blocked since 2026-09-10 by PyPI's `429 Too many new projects
-created` limiter. There are no release tags either.
+Started 2026-09-11. Releases are tag-driven (`v*` tags run
+`.github/workflows/publish.yml`, PyPI trusted publishing).
 
-## [Unreleased] — 0.1.0 pending
+## [0.2.0] — 2026-09-12
+
+### Added
+
+- **The command line, `loop`** (`src/loopmarket/cli.py`, `python -m
+  loopmarket`; design record `docs/plans/cli.md`). Ontodag's grammar plus
+  two conventions — a bare number first is the quantity, last is the price
+  — every name a catalogue node (places via `loop place NAME LAT,LON,R`, a
+  dated bridge), an omitted price the maker's last unit price for the same
+  thing, the fully resolved offer shown and approved before anything is
+  published, and `show ID` printing that same block later. Commands for
+  the maker (`give`, `want`, `withdraw`, `mine`, `place`), the reader
+  (`offers`, `show`, `matches`, `status`), the solver (`loops`) and the
+  clearing house (`clear`), plus `set`, `export`, `import`. Settings share
+  odag's format and precedence rule and inherit its Bee configuration; a
+  bare `loop` at a terminal is a prompt, a pipe is a batch. Live-checked
+  with the book on a Swarm feed the same day.
+- **Role terms match.** `Ontology.known` accepts a parametric term of a
+  declared dimension head (it asks the DAG to order the term against
+  itself), so `from(u24m)` in an offer fits within `from(u2)` by ontodag's
+  computed containment. At the command line a catalogue *name* in a term's
+  parameter takes its public value (`from(home)` → `from(u24m)`), printed
+  as a note; the published offer holds public vocabulary only.
+- `examples/triangle.loop` + `examples/triangle.od`: the triangle demo as
+  a fifteen-line script; `tests/test_cli.py` (gates G1–G6 and the rules
+  around them).
+
+### Changed
+
+- The user guide is a command-line tutorial with the API alongside; the
+  README leads with `loop`; the reference manual gains §17 (grammar,
+  commands, settings) and the `LOOP_*` environment.
+- Dependency floor: `ontodag>=0.23.0` (the CLI uses its store backends,
+  prelude and surface layer).
+
+### Rulings recorded (Peter, 2026-09-12)
+
+- The binary is `loop`; `loopmarket` is the long alias.
+- In a batch under `confirm auto`, a line whose price was *reused* refuses
+  rather than publishing a number nobody saw.
+- Ontodag interprets the *name* in `from(my_home)`; the CLI carries its
+  value into the term.
+
+### Known
+
+- Quantity and time terms (`weight(...)`, `time(...)`) are accepted by the
+  grammar and refused at publish until quantities and spacetime become
+  catalogue terms (`ontodag-coupling.md` §2–3). `peers` is a trusted
+  union; U8 admission arrives with the `fold` command. The schema has no
+  numeric normalization (`1` ≠ `1.0` as records) — the CLI keeps the typed
+  form; the fix is D9's in the v3 bump.
+
+## [0.1.0] — 2026-09-11
+
+First release on PyPI (the tag workflow succeeded on its third run, after
+the `[sig]` extra gained its hashing backend).
 
 A universal combinatorial marketplace: uniform offers over an OntoDAG
 catalogue, a versioned offer book on recordstore/Swarm, and solver agents

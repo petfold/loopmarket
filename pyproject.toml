@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "loopmarket"
-version = "0.1.0"
+version = "0.2.0"
 description = "Universal combinatorial marketplace: uniform offers over an OntoDAG catalogue, a versioned offer book on recordstore/Swarm, and solver agents hunting profitable loops"
 readme = "README.md"
 license = { text = "BSD-3-Clause" }
