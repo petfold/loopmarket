@@ -9,7 +9,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
-Nothing yet.
+- Live-checked 0.3.0 on the Bee 2.8.2 light node right after release:
+  `loop -f swarm:TOPIC --catalogue examples/triangle.od < examples/triangle.loop`
+  published six v3 offers, found and cleared the triangle (`loop_id`
+  `2eab00cd3c84c475…`, the same id the in-memory G1 test produces — a
+  fixed `now` makes the live book byte-reproducible) in 1m51s; a fresh
+  session read the book root and six filled offers back in 11s.
 
 ## [0.3.0] — 2026-09-12
 
