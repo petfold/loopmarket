@@ -5,7 +5,7 @@ Tutorial: [USER-GUIDE.md](USER-GUIDE.md). Rationale:
 [ARCHITECTURE.md](../ARCHITECTURE.md). Working rules and roadmap:
 [CLAUDE.md](../CLAUDE.md).*
 
-Floors: Python ≥ 3.11, `ontodag` ≥ 0.13.0, `recordstore` ≥ 0.16.0.
+Floors: Python ≥ 3.11, `ontodag` ≥ 0.23.0, `recordstore` ≥ 0.16.0.
 Extras: `[swarm]` = `recordstore[bee,feeds]` (Bee blobs + signed feeds),
 `[sig]` = `eth-keys` (detached signatures), `[test]` = pytest.
 
@@ -457,6 +457,9 @@ matching half are already running (§11, §5).
 | `BEE_BATCH` | " | a purchased postage batch id (never auto-buys; prefer mutable for feed-heavy work) |
 | `BEE_SIGNER` | gated tests | throwaway 32-byte hex key for the shared-catalogue/book feeds |
 | `LOOP_CORE` | `demo_federation.py` | `0` skips adopting ontodag's `core` pack (needs ontodag>=0.19) and uses the eleven-category toy catalogue |
+| `LOOP_HOME` | `loop` | the CLI's home (`~/.loopmarket`): `config`, the default book `book/` |
+| `LOOP_BOOK`, `LOOP_CATALOGUE`, `LOOP_PEERS`, `LOOP_MAKER`, `LOOP_WHERE`, `LOOP_WHEN`, `LOOP_VALID`, `LOOP_NOW`, `LOOP_CONFIRM`, `LOOP_RENDER`, `LOOP_LIMIT` | `loop` | the environment layer of the settings table (§17); `BEE_*` is shared with odag |
+| `ONTODAG_HOME`, `ONTODAG_STORE` | `loop`, via odag | where the inherited odag config and active store (the default catalogue and the personal names layer) live |
 
 Live test suites: `tests/test_swarm_book.py` (the P0 triangle on a live
 book), `tests/test_swarm_federation.py` (per-maker feeds, two
@@ -472,3 +475,148 @@ variables; both use timestamped topics so reruns inherit nothing.
 | `PartialLoopError` | `verify_loop_atomicity` (reconciled commits, folds) | a merge stranded a partially-filled loop (U11) |
 | `RuntimeError` | `sigs.*` without `[sig]`; `Ontology.persistent` without `EagerOntoDAG` | missing optional machinery |
 | `TypeError` | `Ontology.commit` on in-memory catalogues | nothing to commit to |
+
+## 17. `loopmarket.cli` — the `loop` command line
+
+Console scripts `loop` and `loopmarket` (alias); `python -m loopmarket`
+without installing. Design record: `docs/plans/cli.md`. Tooling, not
+protocol: it encodes only what the schema holds, refuses the rest loudly,
+and never scales, rounds or tolerates a quantity.
+
+### Invocation
+
+```
+loop [GLOBAL-FLAGS] COMMAND [ARGS]     one command
+loop [GLOBAL-FLAGS] < script            a batch: one command per line, # comments
+loop                                     a prompt on a terminal (quit/exit to leave)
+```
+
+Global flags precede the command and are the flag layer of the settings
+table: `-f SPEC`, `--catalogue SPEC`, `--peer SPECS`, `--maker NAME`,
+`--where NAME`, `--when WINDOW`, `--valid DURATION`, `--now TIME`,
+`--confirm MODE`, `-n N`, `--raw`/`--render`, `--bee-api URL`,
+`--bee-batch ID`, `--bee-signer KEY`; `--version`, `--help`. Read commands
+also take `-o FILE` (the prompt has no shell redirect), `-n N` and
+`--raw`/`--render` after the command. Exit codes: 0 success, 1 error or a
+false predicate (`loops`, `matches`, `clear` with nothing to report;
+`give`/`want` not published), 2 usage. Errors go to stderr as
+`loop: ...`; commands are silent on success except `give`/`want`, which
+print the new id.
+
+### Grammar (ontodag's, plus two conventions)
+
+A token after `give`/`want` is one of:
+
+| token | meaning |
+|---|---|
+| bare word | a category (nothing bare is reserved; unknown fails closed, U7) |
+| `head(param)` | an ontodag term in ontodag's spelling; quote the parentheses in a shell, bare at the prompt and in scripts |
+| bare number **first** (`10kg`, `3`, `2.5l`) | the quantity: a unit suffix ⇒ `qty`, `unit`, divisible; a bare count ⇒ indivisible, unit `unit`; omitted ⇒ the schema default |
+| bare number **last** (`100`, `12.5`) | the price, on the maker's scale; omitted ⇒ the maker's last unit price for the same side and bare categories, × quantity, marked in the block; no earlier offer ⇒ error |
+
+Whole numbers encode as integers, decimals as floats (canonical JSON tells
+`1` from `1.0`; the API's own encoding is matched byte for byte).
+
+**Interpreted heads** (mapped onto offer fields until spacetime terms land,
+`ontodag-coupling.md` §2): `when(WINDOW)` → `service`; `where(NAME)` →
+`where` (the disc read from the place node); `valid(DURATION | WINDOW)` →
+`valid`. A startup check refuses a catalogue that declares one of these
+as a dimension head.
+
+**Other terms** pass into the description. A term of a declared *prefix*
+or *dominance* head (`from(...)`, `to(...)`, `geo(...)`, `size(...)`) is
+kept and matched by ontodag's computed containment; if its parameter is a
+catalogue *name*, the name's value in that kind of dimension is
+substituted (`from(home)` → `from(u24m)`, from `home ⊑ geo(u24m)`) and
+printed as a note — a name with no such value is refused, never read as a
+literal. A term of a *linear*, *count* or *calendar* head
+(`weight(...)`, `count(...)`, `time(...)`) is accepted by the parser and
+**refused at publish** with the coupling plan named: quantities and time
+are fields today. Band spellings in quantity position (`9kg..11kg`,
+`10kg..`, `..11kg`) likewise parse and refuse, naming the point spelling.
+
+**Time** (input vocabulary, stored absolute UTC): `now`, `today`,
+`tomorrow`, `+90d`/`-2h` (units `s m h d w`), any ontodag time literal
+(`2026-10`, `2026-10-01`, `2026-10-01T10:00:00Z`), and ranges `A..B`,
+`..B` (from now), `A..` (refused: a window needs an end). A name whose
+node hangs under a `time(...)` term is a window too (`when(evenings)`).
+Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
+`500m`, bare metres.
+
+### Commands
+
+| role | command | does |
+|---|---|---|
+| maker | `give [QTY] CAT\|TERM... [PRICE]` | resolve, show the block, confirm, publish, commit, print the id |
+| | `want [QTY] CAT\|TERM... [PRICE]` | the other side |
+| | `withdraw ID` | tombstone one of my open offers (id or unique prefix); filled refuses |
+| | `mine` | my offers, all states |
+| | `place NAME LAT,LON,RADIUS` | a place node under its `geo(cell)` with `{"disc": [lat, lon, r]}` in metadata, written to odag's active store (temporary bridge; adopts the prelude there if absent) |
+| reader | `offers [CATEGORY...]` | open offers in the fold, filtered through `satisfies` |
+| | `show ID` | one offer as the approval block, plus `state` |
+| | `matches` | every feasible handoff in the fold (exit 1: none) |
+| | `status` | book and catalogue specs and roots, counts, settings in force |
+| solver | `loops` | profitable loops on a pinned snapshot; prints, never clears (exit 1: none) |
+| clearing | `clear` | `MockClearing` over the fold; with `peers`, my book first absorbs the fold; fills committed to my book (exit 1: nothing cleared) |
+| plumbing | `set [KEY [VALUE]]` | list / show / durably change a setting; unknown keys are errors; values validated at set time |
+| | `export` | every offer of my book as JSON lines of canonical records |
+| | `import [FILE]` | publish records from FILE or stdin; ids survive |
+| | `help`, `--version` | |
+
+Not yet at the command line: `propose`, `fold`, `audit` (after the
+federation demo).
+
+### The approval block
+
+`give`/`want` print the fully resolved offer through the same renderer
+`show` uses — byte-identical for the same offer (gate G4): side and
+concepts, maker, quantity with its *reading* ("up to 10 kg, divisible";
+"3, indivisible"; a want's point with the note that a floor is not
+encodable yet), price and unit price on the maker's scale, service and
+validity windows in UTC and local time, the disc, the pins, bond /
+oracle / arbitrator, nonce, `offer_id`. Below the block, `note` lines:
+the place name, a reused price with its source offer and age, and every
+name→value substitution. The nonce is `now` in milliseconds plus the
+maker's offer count in the book, so a fixed `now` still gives identical
+lines distinct ids.
+
+**Confirmation** (`confirm`): `auto` asks `publish? [y/N]` at a terminal
+(default no) and proceeds in a batch — except that a line whose price
+was reused **refuses** (fail closed; type the price or `set confirm
+off`); `on` always asks, via `/dev/tty` when stdin is the script; `off`
+never asks.
+
+### Settings
+
+One rule: **flag > `$LOOP_*`/`$BEE_*` > `~/.loopmarket/config` >
+`~/.ontodag/config` (for the shared keys) > default.** `set` writes the
+loop config (owner-readable, 0600); secrets print masked.
+
+| setting | env | default | meaning |
+|---|---|---|---|
+| `book` | `LOOP_BOOK` | `rs:~/.loopmarket/book` | my writable book: `rs:PATH` (odag's on-disk layout) or `swarm:TOPIC` (signed with `bee_signer`) |
+| `catalogue` | `LOOP_CATALOGUE` | odag's active store | the store offers pin (any odag spec: `.od` file, `rs:PATH`, `swarm:NAME`) |
+| `peers` | `LOOP_PEERS` | none | read-only books folded into every answer: `rs:PATH`, `swarm:TOPIC@OWNER`; comma-separated. A trusted OR-set union today (U8 admission needs owners: the `fold` command) |
+| `maker` | `LOOP_MAKER` | none | my identity; unset with `bee_signer` set and `[sig]` installed ⇒ the key's address, and offers get detached signatures |
+| `where` | `LOOP_WHERE` | none | default place (a node with coordinates) |
+| `when` | `LOOP_WHEN` | `..+90d` | default service window |
+| `valid` | `LOOP_VALID` | `30d` | how long offers stand |
+| `now` | `LOOP_NOW` | wall clock | the clock: unix seconds or an ISO-8601 literal |
+| `confirm` | `LOOP_CONFIRM` | `auto` | `auto` / `on` / `off` |
+| `render`, `limit` | `LOOP_RENDER`, `LOOP_LIMIT` | `auto` | as odag: tables and 50 rows at a terminal, raw and unlimited in a pipe |
+| `bee_api`, `bee_batch`, `bee_signer` | `BEE_*` | inherited from odag | the Bee node; `bee_signer` is secret |
+
+Names resolve through the **view** — the catalogue merged with odag's
+active store and odag's overlays — while matching runs against the
+`catalogue` store alone and only its root is pinned; a private place
+never moves a root offers pin. When `catalogue` is unset the two stores
+coincide (development), so `place` a location before publishing against
+it.
+
+### Programmatic use
+
+`loopmarket.cli.dispatch(argv, session, out=None, err=None) -> int` runs
+one command with captured streams; `Session()` opens stores lazily;
+`run_stream(session, stream, interactive)` runs a batch; `parse_offer_tokens`,
+`window`, `duration_s`, `radius_m`, `render_offer` are the pure pieces.
+Gates G1–G6 (`docs/plans/cli.md`) are `tests/test_cli.py`.

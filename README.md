@@ -18,6 +18,21 @@ product exceeds one, i.e. negative cycles under −log weights — and a
 **clearing** layer re-verifies every leg from scratch and commits the
 whole loop atomically.
 
+```console
+$ odag put piano-lesson music-lesson        # the catalogue is ontodag's
+$ loop set maker amara; loop place home 46.05,14.50,5km; loop set where home
+$ loop give piano-lesson 100                # I give this, priced on my scale
+$ loop want produce local weekly 104        # I want this, priced on my scale
+$ loop loops && loop clear                  # hunt profitable loops; clear one
+```
+
+`loop` is the command line (`pip install loopmarket`): ontodag's grammar
+plus two conventions — a bare number first is the quantity, last is the
+price — every name a catalogue node, an omitted price your last unit
+price, and nothing published before the fully resolved offer is shown.
+Type `loop` alone for a prompt, pipe it a script for a batch. The same in
+Python:
+
 ```python
 from recordstore import MemoryBytesStore, RecordStore
 from loopmarket import (Ontology, OfferRegistry, MockClearing,
@@ -36,22 +51,28 @@ agent.step()                          # snapshot → match → hunt loops → cl
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 59 tests (two need a live Bee node)
-PYTHONPATH=src python3 examples/demo_triangle.py     # P0 in one file
+python3 -m pytest tests/ -v           # 92 tests (two need a live Bee node)
+LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
+PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
 ```
 
-The first demo publishes the smallest nontrivial book — a piano teacher, a
+The script publishes the smallest nontrivial book — a piano teacher, a
 market gardener and a bicycle mechanic, no pair of whom can trade — and
-watches the solver find, verify and clear the triangle at a 12% surplus.
-The second runs the federation: per-maker books, two aggregators folding
-to byte-identical manifests, a forged offer dying at the fold, a
-tombstoned offer staying closed, clearing provably based on the fold,
-and a follower reading it all back — in memory by default, live against a
-Bee node when `BEE_API` and `BEE_BATCH` are set. New here? Start with the
-**[User Guide](docs/USER-GUIDE.md)** (tutorial) and the
-**[Reference Manual](docs/REFERENCE.md)** (API, record formats,
-invariants).
+`loops && clear` finds, verifies and clears the triangle at a 12% surplus:
+fifteen lines of `set maker`, `give piano-lesson where(amara_flat) 100`,
+`want produce local weekly ...`. It runs unchanged with the book on Swarm
+(`loop -f swarm:TOPIC ...`, about two minutes on a light node). The
+federation demo runs per-maker books, two aggregators folding to
+byte-identical manifests, a forged offer dying at the fold, a tombstoned
+offer staying closed, clearing provably based on the fold, and a follower
+reading it all back — in memory by default, live against a Bee node when
+`BEE_API` and `BEE_BATCH` are set. New here? Start with the
+**[User Guide](docs/USER-GUIDE.md)** (a tutorial at the command line,
+with the API alongside), then the **[Reference Manual](docs/REFERENCE.md)**
+(commands, settings, API, record formats, invariants). `loop help` is the
+one-screen version; the design record with its reasons is
+[`docs/plans/cli.md`](docs/plans/cli.md).
 
 Candidate generation can also run through ontodag's **parametric
 dimensions**: `DimensionIndex` files gives under their exact service window
@@ -67,7 +88,7 @@ same code runs with the book on Swarm.
 ## What is built, and what is designed
 
 **Built (P0, plus the live-Swarm milestone):** the full pipeline above runs
-in memory, and since 2026-08-01 also end-to-end on a real Gnosis-mainnet
+in memory — and, since 2026-09-12, from the command line (`loop`) — and since 2026-08-01 also end-to-end on a real Gnosis-mainnet
 Bee node — catalogue and book on Swarm, book head in a signed feed, fills
 atomic (the gated `tests/test_swarm_book.py`). Since 2026-08-21 the
 federation layer runs too — in memory *and* live (the gated
@@ -116,7 +137,7 @@ And two more: **clearing** is the atomic commit that fixes obligations; **settle
 | [`P3-guarantee-coupling.md`](docs/plans/P3-guarantee-coupling.md) | loopmarket's half of the factbond coupling: witness edges, reliance-capped insurance, oracle consumption, risk-priced routing. |
 | [`P4-privacy.md`](docs/plans/P4-privacy.md) | Staged privacy: Tier 1 with zero new cryptography, the P2 format-freeze list, explicit dead/deferred rulings. |
 | [`ontodag-coupling.md`](docs/plans/ontodag-coupling.md) | The catalogue contract: dimension terms, unit families, match degrees, the upstream-vs-local tripwire table. |
-| [`cli.md`](docs/plans/cli.md) | The command line (2026-09-11): `loop` in the package, ontodag's grammar plus quantity-first/price-last, every name a catalogue node, last-price memory, "declare in the direction you know" instead of a tolerance parameter, the approval block, batch scripts. |
+| [`cli.md`](docs/plans/cli.md) | The command line (designed 2026-09-11, **built 2026-09-12** as `loop`): ontodag's grammar plus quantity-first/price-last, every name a catalogue node, last-price memory, "declare in the direction you know" instead of a tolerance parameter, the approval block, batch scripts; what is still open (`fold`/`audit`/`propose`, U8 for peers, the upstream asks). |
 | [`catalogue-bootstrap.md`](docs/plans/catalogue-bootstrap.md) | Seeding and governing the shared catalogue: seed taxonomies, the import pipeline, norms as protocol rules. |
 | [`adoption-and-thickness.md`](docs/plans/adoption-and-thickness.md) | Where the first loops come from: launch verticals, the broker surface, bridge liquidity, thickness engineering. |
 | [`THREATS.md`](docs/plans/THREATS.md) | The threat register, T1–T9, ordered by expected damage to a young system; mirrored in factbond. |
