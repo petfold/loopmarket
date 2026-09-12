@@ -227,7 +227,7 @@ def test_g4_approval_block_is_the_show_renderer(loop):
     assert "state    open" in shown
     assert "up to 10 kg, divisible" in block
     assert "10/kg" in block
-    assert "note     where(home) → where(" in out
+    assert "note     where(home) → where(" in out    # a private place: its cell
 
 
 def test_want_reading_names_the_point(loop):
@@ -363,6 +363,8 @@ def test_places_are_catalogue_nodes_with_coordinates(env, tmp_path):
     # the node persisted through the store (a fresh session reads it back)
     fresh = Runner()
     out = fresh.ok("give", "apple", "where(home)", "5")
+    # the catalogue is a separate store here, so the place is private and
+    # publishes as its cell (a catalogue name would stand as spelled, #15)
     assert f"give     apple where({cell})" in out
     assert f"note     where(home) → where({cell})" in out
     # a place is optional: an offer with none is anywhere
@@ -396,8 +398,13 @@ def test_place_under_a_pinned_rs_catalogue_gets_its_cell_edge(env, tmp_path,
     out = run.ok("give", "apple", "where(home)", "5")
     root = run.session.catalogue.root
     assert root and f"catalogue {root[:16]}" in out
-    # the pinned catalogue itself is untouched by the private name
+    # the pinned catalogue itself is untouched by the private name, and
+    # the offer cannot carry a name that root does not hold: a private
+    # place publishes as its cell, the name stays private (cli.md §12)
     assert "home" not in run.session.catalogue.dag.nodes
+    cell = cell_for_coords(46.05, 14.50, 5_000)
+    assert f"give     apple where({cell})" in out
+    assert f"note     where(home) → where({cell})" in out
     # a place written INTO the prelude'd rs: store commits (metadata too)
     monkeypatch.setenv("ONTODAG_STORE", spec)
     monkeypatch.delenv("LOOP_CATALOGUE")
@@ -425,27 +432,31 @@ def _od_with_prelude(path, extra_puts):
     path.write_text("\n".join(lines) + "\n")
 
 
-def test_role_terms_take_the_name_value_and_match_by_containment(
+def test_role_terms_carry_the_name_and_match_by_the_graph(
         env, tmp_path, monkeypatch):
-    """Peter, 2026-09-12: ontodag interprets `my_home`; the CLI carries its
-    geo value into the term the person typed, and the published offer says
-    `from(u2e4x)` — public vocabulary, matchable by prefix containment,
-    exactly ontodag's London→Rome pattern."""
+    """ontodag #15 (2026-09-12): a role head takes the base dimension's
+    nodes as parameters, so a catalogue name in a role term stands as
+    spelled — `from(my_home)` is the published term, and the graph orders
+    it (`my_home ⊑ geo(u2e4x)`), the London→Rome pattern with the name
+    kept. Here the personal store is the catalogue, so `place` writes
+    vocabulary."""
+    # `from`/`to` as roles OF `geo` (a head under a head, #15): only a
+    # role head reads a parameter as a node; a bare prefix head would
+    # read `my_home` as the literal cell "my_home"
     _od_with_prelude(tmp_path / "roles.od",
-                     [("from", ["prefix-dimension"]), ("to", ["prefix-dimension"]),
+                     [("from", ["geo", "service-role"]), ("to", ["geo", "service-role"]),
                       ("ride", [])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "roles.od"))
+    monkeypatch.setenv("ONTODAG_STORE", str(tmp_path / "roles.od"))
     run = Runner()
-    code, out, err = run("place", "my_home", "46.05,14.50,500m")
-    assert code == 0 and "adopted ontodag's prelude" in err
+    run.ok("place", "my_home", "46.05,14.50,500m")
     cell = cell_for_coords(46.05, 14.50, 500)
     out = run.ok("give", "ride", "from(my_home)", "where(my_home)", "5")
-    assert f"give     from({cell}) ride where({cell})" in out
-    assert f"note     from(my_home) → from({cell})" in out
+    assert "give     from(my_home) ride where(my_home)" in out and "→" not in out
     oid = out.strip().splitlines()[-1]
     rec = run.session.book.store.get(f"offer/{oid}")
-    assert rec["gives"]["concepts"] == [f"from({cell})", "ride", f"where({cell})"]
-    # a want anywhere in the parent cell matches by computed containment
+    assert rec["gives"]["concepts"] == ["from(my_home)", "ride", "where(my_home)"]
+    # a want anywhere in the parent cell matches by the graph's order
     monkeypatch.setenv("LOOP_MAKER", "bruno")
     run.ok("want", "ride", f"from({cell[:2]})", "where(my_home)", "6")
     code, out, err = run("matches")
@@ -456,12 +467,39 @@ def test_role_terms_take_the_name_value_and_match_by_containment(
     # ...an undeclared role head is an unknown category (U7)...
     code, out, err = run("want", "ride", "via(my_home)", "where(my_home)", "6")
     assert code == 1 and "unknown category: via(my_home)" in err
-    # ...and a name with no value in that dimension is refused, not guessed
+    # ...and a name outside the dimension is refused by ontodag, in its
+    # own words, never read as a literal cell that spells the same
     code, out, err = run("want", "ride", "from(ride)", "where(my_home)", "6")
-    assert code == 1 and "`ride` is a catalogue name" in err
-    # `offers` filters through the same containment
+    assert code == 1 and "names a category outside the 'geo' dimension" in err
+    # `offers` filters through the same order
     assert len(run.ok("offers", f"from({cell[:2]})", "--raw").splitlines()) == 3
     assert run.ok("offers", "from(zzzz)", "--raw") == ""
+
+
+def test_regions_and_floors_are_names_in_role_terms(env, tmp_path, monkeypatch):
+    """A region above cells and a floor under a building (ontodag #15's
+    two shapes beyond a place) are catalogue nodes a role term names as
+    spelled; matching decides them by the graph (#16): a give to the
+    region serves a want on the fourth floor of a building it covers."""
+    _od_with_prelude(tmp_path / "city.od",
+                     [("delivery", []),
+                      ("my_home", ["geo(u2e4x)"]), ("my_home_4th", ["my_home"]),
+                      ("ljubljana", ["geo"]), ("geo(u2e4)", ["ljubljana"]),
+                      ("geo(u2e5)", ["ljubljana"])])
+    monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "city.od"))
+    run = Runner()
+    out = run.ok("give", "delivery", "where(ljubljana)", "5")
+    assert "give     delivery where(ljubljana)" in out
+    monkeypatch.setenv("LOOP_MAKER", "bruno")
+    out = run.ok("want", "delivery", "where(my_home_4th)", "6")
+    assert "want     delivery where(my_home_4th)" in out
+    code, out, err = run("matches")
+    assert code == 0 and "amara gives delivery where(ljubljana) to bruno" in out
+    # a region's covering is a lower bound: a want beyond it does not match
+    monkeypatch.setenv("LOOP_MAKER", "chen")
+    run.ok("want", "delivery", "where(u2f)", "6")
+    assert "chen" not in run.ok("matches")
+    assert len(run.ok("offers", "where(u2e4)", "--raw").splitlines()) == 2
 
 
 def test_time_names_need_nothing_from_loopmarket(env, tmp_path, monkeypatch):
@@ -473,9 +511,10 @@ def test_time_names_need_nothing_from_loopmarket(env, tmp_path, monkeypatch):
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "t.od"))
     run = Runner()
     out = run.ok("give", "apple", "when(autumn)", "5")
-    autumn = "when(2026-09-22T00:00:00Z..2026-12-20T23:59:59Z)"   # ontodag's canonical value
-    assert f"give     apple {autumn}" in out
-    assert f"note     when(autumn) → {autumn}" in out
+    # the name stands as spelled (ontodag #15); the graph orders it
+    assert "give     apple when(autumn)" in out and "→" not in out
+    assert run.session.catalogue.covers(
+        "when(2026-09-01T00:00:00Z..2026-12-31T00:00:00Z)", "when(autumn)")
     # relative spellings are input vocabulary, elaborated to fixed UTC
     out = run.ok("give", "apple", "when(today..+1d)", "5")
     assert "note     when(today..+1d) → when(" in out and "T00:00:00Z.." in out
@@ -682,7 +721,7 @@ def test_drafts_named_numbered_canonical_and_never_in_the_book(stage):
     listing = stage.ok("drafts")
     assert f"ride  want from({home}) person to({venue}) transport when(" in listing
     assert "   typed ride want transport person from(home) to(venue)" in listing
-    assert f"   note  from(home) → from({home})" in listing
+    assert f"   note  from(home) → from({home})" in listing   # a private place
     assert re.search(r"^3  want hamlet where\(.*\) 5$", listing, re.M)  # price last
     assert stage.ok("mine", "--raw") == "" and stage.ok("offers", "--raw") == ""
     assert os.path.exists(os.path.join(os.environ["LOOP_HOME"], "drafts"))

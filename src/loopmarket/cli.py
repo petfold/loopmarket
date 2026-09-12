@@ -735,10 +735,14 @@ def _head_kind(dag: OntoDAG, head: str) -> str | None:
 
 
 def _value_of(view: OntoDAG, name: str, kind: str) -> str | None:
-    """A name's public value in a dimension of `kind`: the parameter of the
-    term it (or an ancestor) hangs under — `my_home` under `geo(u2e4x)`
-    yields `u2e4x`. Ontodag interprets the *name*; the CLI only carries
-    the value into the term the person typed (Peter, 2026-09-12)."""
+    """A *private* name's public value in a dimension of `kind`: the
+    parameter of the term it (or an ancestor) hangs under — `my_home`
+    under `geo(u2e4x)` yields `u2e4x`. Used only for names the pinned
+    catalogue does not hold (the personal layer's places): the same-root
+    constraint means a counterparty can interpret `from(my_home)` only if
+    `my_home` is in the root the offer pins, so a private place publishes
+    as its cell and the name stays private (`cli.md` §12). A catalogue
+    name needs none of this since ontodag #15: it stands as spelled."""
     node = view.nodes.get(name)
     if node is None:
         return None
@@ -758,13 +762,27 @@ def _value_of(view: OntoDAG, name: str, kind: str) -> str | None:
 
 def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
     """Each `head(param)` of a declared head: refuse quantity kinds (the
-    field owns them), resolve a private name in parameter position to its
-    public value, turn coordinates into a cell and relative time into fixed
-    UTC (input vocabulary, cli.md §2), and check the result is vocabulary.
-    Head-agnostic on purpose — the CLI knows kinds, never heads (Peter,
-    2026-09-12). Returns (concepts, notes, addresses): the addresses are
-    the settlement texts of the named places (`place NAME ... ADDRESS`),
-    kept locally and sealed to the counterparty at clearing (handoff.py)."""
+    field owns them), let a catalogue name stand as spelled, publish a
+    *private* name as its public value, turn coordinates into a cell and
+    relative time into fixed UTC (input vocabulary, cli.md §2), and check
+    the result is vocabulary. Head-agnostic on purpose — the CLI knows
+    kinds, never heads (Peter, 2026-09-12). Returns (concepts, notes,
+    addresses): the addresses are the settlement texts of the named places
+    (`place NAME ... ADDRESS`), kept locally and sealed to the counterparty
+    at clearing (handoff.py).
+
+    Names, since ontodag #15 (2026-09-12): a parameter that names a node
+    of the *pinned catalogue* — a place under a cell, a region above
+    cells, a floor under a building — is stored as spelled
+    (`where(ljubljana)`, `where(my_home_4th)`): ontodag orders it by the
+    graph, and the counterparty, matching under the same root, can. A
+    name only the personal layer holds is one the root does not carry, so
+    it publishes as the cell it hangs under (`from(my_home)` →
+    `from(u2e4x)`) and the name stays private; a private region or floor
+    has no single value and is refused — publish it to the catalogue, or
+    name a cell. A name outside the dimension is refused by ontodag in
+    its own words, never read as a literal that happens to spell the same
+    (a place called `u2e` must not become the cell `u2e`)."""
     dag = ontology.dag
     out, notes, addresses = [], [], []
     for c in concepts:
@@ -781,22 +799,19 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
                 f"(docs/plans/ontodag-coupling.md §3). Encodable today: a "
                 f"bare quantity first (`10kg`)")
         view = session.view()
-        value = _value_of(view, param, kind)
-        if value is None and param in view.nodes:
-            # A name is interpreted as a name or refused — never read as a
-            # literal value that happens to spell the same (a place called
-            # `u2e` must not become the cell `u2e`, nor `ride` a prefix).
-            raise ValueError(
-                f"{c}: `{param}` is a catalogue name, but nothing places it "
-                f"in a {head}-kind dimension ({kind}) — `loop place {param} "
-                f"LAT,LON,RADIUS` gives a place its value")
         term = c
-        if value is not None:
+        if param in dag.nodes:
+            pass                        # a catalogue name: ontodag's to order
+        elif param in view.nodes:
+            value = _value_of(view, param, kind)
+            if value is None:
+                raise ValueError(
+                    f"{c}: `{param}` is a private name (your personal store, "
+                    f"not the catalogue offers pin) with no single {head} "
+                    f"value to publish in its place — `loop place {param} "
+                    f"LAT,LON,RADIUS` gives a place its cell; a region or a "
+                    f"floor must be in the catalogue to be named in an offer")
             term = f"{head}({value})"
-            address = view.nodes[param].metadata.get("address") \
-                if param in view.nodes else None
-            if address:
-                addresses.append(f"{c}: {address}")
         elif kind == _dims.KIND_PREFIX and "," in param:
             lat, lon, radius = parse_coords(param)
             term = f"{head}({cell_for_coords(lat, lon, radius)})"
@@ -804,10 +819,18 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
             w = window(param, session.now)
             end = "" if w.end is None else _iso(w.end - 1)
             term = f"{head}({_iso(w.start)}..{end})"
+        if param in view.nodes:
+            address = view.nodes[param].metadata.get("address")
+            if address:
+                addresses.append(f"{c}: {address}")
         if term != c:
             notes.append(f"{c} → {term}")
             c = term
         if not ontology.known(c):
+            try:                        # ontodag's own reason, when it has one
+                dag.is_below(c, c)
+            except ValueError as e:
+                raise ValueError(str(e)) from None
             raise ValueError(
                 f"{c}: not a value `{head}` accepts, and not a name the "
                 f"catalogue knows in that dimension")
@@ -1456,19 +1479,23 @@ def cmd_place(args, session, out):
     """The dated bridge (cli.md §4, §11.1): a place node under the cell of
     that radius around that point, written to the personal layer — the
     cell is the place (no disc anywhere since the v3 record). Deleted the
-    day odag accepts `geo(LAT,LON,R)` as input vocabulary. The optional
-    ADDRESS is settlement text on the node (P1-spacetime-terms.md §4):
-    never vocabulary, never in a record — shown in the approval block of
-    an offer naming the place and sealed to the cleared counterparty."""
+    day odag accepts `geo(LAT,LON,R)` as input vocabulary. When the
+    personal store *is* the catalogue the name is vocabulary and offers
+    say `where(NAME)` (ontodag #15 orders the name); under a separate
+    pinned catalogue the place is private and offers say its cell. The
+    optional ADDRESS is settlement text on the node (P1-spacetime-terms.md
+    §4): never vocabulary, never in a record — shown in the approval block
+    of an offer naming the place and sealed to the cleared counterparty."""
     lat, lon, radius = parse_coords(args.coords)
     personal = session.personal_session
     dag = personal.dag
     if not ("geo" in dag.nodes and "prefix-dimension" in dag.nodes
             and dag.is_below("geo", "prefix-dimension")):
         # The cell edge is what lets ontodag interpret the name (`my_home`
-        # under `geo(u2e4x)` is how `from(my_home)` gets its value), and
-        # `geo` comes from the prelude — adopted by merge, idempotent,
-        # canonical, exactly what `odag prelude` does.
+        # under `geo(u2e4x)` is how `from(my_home)` is ordered, or how a
+        # private place gets the cell it publishes as), and `geo` comes
+        # from the prelude — adopted by merge, idempotent, canonical,
+        # exactly what `odag prelude` does.
         from ontodag.prelude import apply as apply_prelude
         apply_prelude(dag)
         print("loop: adopted ontodag's prelude into the personal store "
