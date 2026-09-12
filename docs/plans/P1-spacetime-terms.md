@@ -8,6 +8,7 @@ the design: **cells and region nodes are the exact truth and the disc
 retires** (§4), and **a term's match relation is declared in the
 catalogue, not in code** (§3). Step 2 of the path (§5) landed the same
 day; the record change (step 5) has not. Later the same day Peter
+ruled that v2×v3 pairs are refused at matching (open problems), and
 added two more: **no discs anywhere after v3** (§4) and **`when`/`where`
 are optional at publication** (§2, §3) — an internet service has no
 sensible place, and an offer with no time stands for any time until
@@ -377,12 +378,14 @@ the record.
 
 ## Open problems
 
-- **Cross-version pairs.** A v2 offer's truth is its disc; a v3 offer's is
-  its cell. Matching them needs a view of the disc as a cell (lossy: the
-  maker never said a cell) or a refusal. Recommendation: **refuse** v2×v3
-  pairs — validity windows are short, and `loop` can repost; the honest
-  reading of U2 is that an offer means what its record version defines.
-  Peter's call before step 5.
+- ~~**Cross-version pairs.**~~ **Decided 2026-09-12 (Peter): refuse.** A v2
+  offer's truth is its disc; a v3 offer's is its cell; a view of the disc
+  as a cell would say something the maker never said. So `check_match`
+  refuses a pair whose record versions differ across the v2/v3 line (the
+  same shape as the pin gates: agreement cannot be confirmed, so it is
+  refused). Validity windows are short and `loop` can repost; an offer
+  means what its record version defines (U2). Lands with step 5, with a
+  test that a v2 give and a v3 want over the same cell do not match.
 - ~~**Publishing policy.**~~ **Decided 2026-09-12 (Peter):** `when` and
   `where` are optional at publication too, not only in matching. An
   internet service has no sensible place; an offer with no `when` serves
