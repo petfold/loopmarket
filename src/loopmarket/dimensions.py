@@ -32,18 +32,15 @@ What the one query says:
   the graph decides their overlap (#16), so place prunes exactly: a give
   `from(u2f)` never reaches the exact check for a want `from(my_home)`.
   **Absent = unconstrained** is `Ontology.satisfies`' rule — a give that
-  names no `from(...)` serves a want anywhere — and an overlap term cannot
-  see a give filed under no value of its head. So the index files every
-  give under the *whole space* of each role head it is silent on, spelled
-  with the base head as the parameter: `from(geo)`, `depart(time)`. Since
-  ontodag #17 (2026-09-12) that term denotes the whole space structurally
-  — every term of the head fits within it, it overlaps everything, it is
-  the identity of the meet — in `overlaps`, `get_overlapping` and the
-  planner alike, whether or not any value of the dimension is present. One
-  edge, exact, nothing declared, nothing shared. (Before #17 the planner
-  read the head as a region covering only the values present, and the
-  index carried a private region over the 62 one-character prefixes
-  instead — twice the cost, `ontodag-coupling.md` §7.)
+  names no `from(...)` serves a want anywhere — and since 2026-09-12 night
+  it is ontodag's planner rule too: an overlap term constrains only the
+  candidates that *state* a value of its head, and a candidate stating
+  nothing passes by the other terms, unvisited (Peter: what is
+  unconstrained is not walked; the other constraints give the result). So
+  a give silent on a role is filed under nothing for it — no whole-space
+  value, no region scaffold — and the overlap term is one asserted climb
+  per surviving candidate, never a walk of the term's cone or of the
+  graph;
 - v1/v2 fields: ``service-time(a..b)`` over the offer's `service` window
   as one more overlap term — *exact* for the window-overlap gate, because
   the filed value IS the offer's window. The `where` disc stays with the
@@ -78,7 +75,7 @@ from typing import Iterable, Iterator
 from ontodag import dimensions as _dims
 
 from .matching import Match, check_match
-from .ontology import SERVICE_ROLE, Ontology
+from .ontology import Ontology
 from .schema import GIVE, WANT, Offer, TimeWindow
 
 TIME_DIMENSION = "service-time"
@@ -119,9 +116,6 @@ class DimensionIndex:
         self.ontology = ontology            # the exact-check ground truth
         self._dag = ontology.dag.deepcopy()  # derived: catalogue + offers
         self._filed: set[str] = set()
-        # role head -> the whole-space term a give silent on it is filed
-        # under (`from(geo)`), one per service role the catalogue declares
-        self._anywhere: dict[str, str] = {}
         self._declare()
 
     def _declare(self) -> None:
@@ -133,35 +127,14 @@ class DimensionIndex:
         ]:
             if name not in self._dag.nodes:
                 self._dag.put(name, supers)
-        for head in self._role_heads():
-            self._anywhere[head] = f"{head}({self._base_of(head)})"
-
-    def _role_heads(self) -> list[str]:
-        """The service-role heads the catalogue declares (the marker's
-        cone, heads only: a role term or item that happens to sit under a
-        role in the catalogue is not a head)."""
-        if SERVICE_ROLE not in self.ontology.dag.nodes:
-            return []
-        return sorted(
-            item.name for item in self.ontology.dag.get([SERVICE_ROLE])
-            if item.name != SERVICE_ROLE and _dims.split_term(item.name) is None
-            and self.ontology.head_kind(item.name) is not None)
-
-    def _base_of(self, head: str) -> str:
-        """The base head of a role: the head directly under the kind node
-        (`from` → `geo`). Its nodes are what a role term may name (ontodag
-        #15), and the head itself, named, is the role's whole space (#17)."""
-        for item in [self._dag.nodes[head], *self._dag.get_ancestors(head)]:
-            if any(p.name in _dims.KINDS for p in item.parents):
-                return item.name
-        raise ValueError(f"{head!r} has no base dimension head")
 
     def file(self, offer: Offer) -> bool:
-        """Index a GIVE. Returns False (not filed) when its vocabulary is
-        unknown to the catalogue — the same fail-closed outcome the exact
-        check would reach (invariant U7): a role term ontodag cannot
-        interpret is unknown vocabulary too, and so is a same-head
-        conjunction it cannot decide."""
+        """Index a GIVE under its concepts, its record-line marker and (v1/v2)
+        its window — and under nothing for a role it is silent on. Returns
+        False (not filed) when its vocabulary is unknown to the catalogue —
+        the same fail-closed outcome the exact check would reach (invariant
+        U7): a role term ontodag cannot interpret is unknown vocabulary
+        too, and so is a same-head conjunction it cannot decide."""
         if offer.kind != GIVE:
             return False
         if offer.offer_id in self._filed:
@@ -184,9 +157,7 @@ class DimensionIndex:
         parents = [*offer.thing.concepts, _LINE[_line(offer)]]
         if offer.v < 3:
             parents.append(time_term(offer.service))
-        parents += [term for head, term in self._anywhere.items()
-                    if head not in roles]
-        self._dag.put(offer.offer_id, parents)
+        self._dag.put(offer.offer_id, parents)   # silent roles: nothing
         self._filed.add(offer.offer_id)
         return True
 
@@ -194,8 +165,8 @@ class DimensionIndex:
         """Give offer-ids that can possibly match `want_offer`: inside every
         wanted plain cone, on the want's record line, service windows
         overlapping (v1/v2), and for each role head the want names,
-        overlapping its meet — gives silent on the head are filed under its
-        whole space (`from(geo)`), so they are in. One `get`; recall-exact
+        overlapping its meet — gives silent on the head pass it unvisited
+        (ontodag's rule since 2026-09-12 night). One `get`; recall-exact
         for those gates; every candidate still faces `check_match`."""
         concepts = want_offer.thing.concepts
         if not all(self.ontology.known(c) for c in concepts):

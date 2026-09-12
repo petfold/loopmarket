@@ -33,10 +33,10 @@ the time of writing) — tag ontodag first.
 - **`DimensionIndex.candidates` is one `get`** (ontodag #14):
   `get([line marker, *plain], overlapping=[window, role meets],
   items_only=True)` — no `get_overlapping`, no set arithmetic on the
-  answer. Gives silent on a role head are filed under its whole space —
-  the base head as parameter, `from(geo)`, `depart(time)` (ontodag #17
-  and #18, landed the same night) — so "absent = unconstrained" survives
-  inside the one plan as one edge.
+  answer. A give silent on a role head is filed under nothing for it:
+  ontodag's planner (#17, resolved on Peter's rule the same night) lets a
+  candidate that states nothing under a head pass its overlap term
+  unvisited, so "absent = unconstrained" costs no edge and no walk.
   Recall-exact against the baseline, with names in the random books.
 
 ### Removed

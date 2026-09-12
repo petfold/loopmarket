@@ -412,10 +412,10 @@ blocks `loop` shipping, each removes a loopmarket-only behaviour.
 3. **A public opener for store specs.** `ontodag.open(spec)` or similar
    over `.od` / `rs:` / `swarm:` so loopmarket's `catalogue` setting
    resolves through public API rather than a copy of `_load_native`.
-4. ~~**The whole space of a role**~~ — filed and **landed** as
-   [ontodag #17](https://github.com/petfold/ontodag/issues/17) the same
-   night (2026-09-12): `from(geo)` means "from anywhere" in every query
-   face; `DimensionIndex` files a silent give under it, one edge.
+4. ~~**The whole space of a role**~~ — filed and **resolved the other
+   way** as [ontodag #17](https://github.com/petfold/ontodag/issues/17)
+   the same night (2026-09-12): a give silent on a role files nothing and
+   passes the overlap term unvisited; `from(geo)` is refused.
 5. **(Optional) a shell-safe term spelling**, e.g. `head=param` as an
    input-only alias of `head(param)`, canonical rendering unchanged.
    Only if odag wants it for itself; loopmarket adds no spelling alone

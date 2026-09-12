@@ -314,21 +314,23 @@ system will ever have:
   **Landed 2026-09-12** (ontodag #14 on main): `candidates` is one `get`
   with the record-line marker and plain concepts as containment cones,
   the v2 window and each named role head's meet as overlap terms, and
-  `items_only=True`. One device on our side: "absent = unconstrained"
-  cannot be seen by an overlap term, so the index files every give under
-  the *whole space* of each role it is silent on — the base head as the
-  parameter, `from(geo)`, `depart(time)`, found by Peter's question
-  "`*`?". For a few hours that spelling was accepted by `overlaps` but
-  read by `get`'s planner as a region covering only the `geo(...)` values
-  present (nothing filed, nothing found; `when(time)` failed the
-  mixed-version recall test the same way), and the index carried a
-  private region over the 62 one-character prefixes instead;
-  [ontodag #17](https://github.com/petfold/ontodag/issues/17) fixed the
-  planner the same night (the whole space is read structurally in
-  `is_below`/`overlaps`/`meet`/`get_overlapping`/`get` alike) and
-  [ontodag #18](https://github.com/petfold/ontodag/issues/18) cached
-  `_dimension_of`, so the device is one edge per silent role and the
-  suite runs in 36 s where it ran in 54 s.
+  `items_only=True`. "Absent = unconstrained" needed no device in the
+  end. As first shipped, an overlap term could not see a give filed under
+  no value of its head, and for a few hours the index filed every silent
+  give under a whole-space value (a private region over the 62
+  one-character prefixes, then `from(geo)`). Peter's rule the same night
+  — *when something is unconstrained, it should not be visited at all;
+  the other constraints give the result; we cannot walk the whole DAG
+  when it gets really big* — resolved
+  [ontodag #17](https://github.com/petfold/ontodag/issues/17) the other
+  way: an overlap term is a constraint applied by one asserted climb per
+  candidate the containment cones produced; a candidate stating a value
+  of the head passes iff it overlaps, one stating nothing passes
+  unvisited; nothing is walked for the term, and `from(geo)` is refused
+  (the overlap of everything with A is A).
+  [ontodag #18](https://github.com/petfold/ontodag/issues/18) cached the
+  dimension walk under it. A silent role files nothing; loopmarket's
+  suite runs in 15 s where it ran in 54 s.
 - **One intersection engine** (Peter, 2026-09-07). ontodag is the master
   of every set-valued intersection, optimisations included; loopmarket
   does **no set arithmetic on the answer** — it issues one query per want,
@@ -429,7 +431,7 @@ implementation with its own bugs and no treaty.
 | ZK proofs over private stores | "loopmarket-shaped counterparty" — P4 by name | Nothing built; `P4-privacy.md` owns the firing. Noted: exact rationals + one primitive = circuit-friendly. |
 | Semantic codes / bitmaps      | logged hot solver query-sets          | **Logging on from day one** (§5); cone summaries + `DimensionIndex` meanwhile. |
 | Overlap terms in the query planner | **fired 2026-09-07** (Peter): `DimensionIndex.candidates` runs `get(concepts)` and `get_overlapping(window)` to completion and intersects in Python, so the planner's smallest-first / early-stop logic never crosses dimensions — a category offered only in a few windows or regions can't cut the search short | **Landed 2026-09-12** — [ontodag #14](https://github.com/petfold/ontodag/issues/14): `get(terms, overlapping=[...], items_only=False)`, one plan of three cone kinds, overlap terms never pre-intersected as meets, `items_only` = no parametric value and nothing filed under it. Consumed the same night: `candidates` is one `get`, no set arithmetic on the answer; the `idx/{c,t,g}` index retired (§5). |
-| Whole space of a role: the base head as parameter | **fired 2026-09-12**, consuming #14: `satisfies` reads a head only one side names as unconstrained, but an overlap term sees only items under a *value* of its head, and no value spells a prefix dimension's whole space. `from(geo)` (the base head as a #15 node parameter) was accepted by `overlaps` yet read by `get`'s planner as a region covering only the values present — shape-dependent, a G6 gap | **Landed 2026-09-12 night** — [ontodag #17](https://github.com/petfold/ontodag/issues/17): `R(base)` is the whole space, read structurally, in `is_below`/`overlaps`/`meet`/`get_overlapping`/`get` alike; the whole-space edge beside a finer term is a redundant hop and reduction drops it. Consumed: `DimensionIndex` files a give silent on a role under `head(base)` — one edge; the 62-prefix region scaffold is gone. |
+| Unconstrained passes unvisited | **fired 2026-09-12**, consuming #14: `satisfies` reads a head only one side names as unconstrained, but an overlap term saw only items under a *value* of its head, so a silent give needed a whole-space value to be found (a region over the 62 one-character prefixes, then `from(geo)`) — a device, and a walk | **Landed 2026-09-12 night** — [ontodag #17](https://github.com/petfold/ontodag/issues/17), resolved on Peter's rule (*what is unconstrained is not visited; the other constraints give the result*): overlap terms are constraints, not cones — one asserted climb per candidate, a candidate stating nothing under the head passes, nothing walked; `from(geo)` refused (the overlap of everything with A is A); `overlaps(node, term)` agrees. Consumed: `DimensionIndex` files nothing for a silent role. |
 | `_dimension_of` uncached | **fired 2026-09-12**, profiling the one-query generator on a names-heavy book: `OntoDAG._dimension_of` (the declaration walk from a head to its kind) was recomputed for every star member on every `_contains`/`_param_node` — 44k calls in six `get`s, half a million with the region device | **Landed 2026-09-12 night** — [ontodag #18](https://github.com/petfold/ontodag/issues/18): cached per DAG, dropped with the heads cache (an edge from a kind or a head to a plain node; a node deleted). loopmarket's suite 54 s → 36 s; the indexed generator still not the solver's default (that switch is measured, §5). |
 | Coordinate spelling for `geo` | **fired 2026-09-11** (`cli.md` §4): a named place is a catalogue node, but the prelude's `geo` head takes only cell names as input, so `odag put my_home 'geo(LAT,LON,R)'` cannot be typed | **To ask upstream**: `geo(lat,lon,radius)` as input vocabulary canonicalising to a cell at the radius' precision (D10 shape; geohash is exact bit interleaving on rationals). Meanwhile: `loop place NAME LAT,LON,R` writes the node through the facade with the disc as node metadata — dated, deletable. |
 | Role heads over a base dimension | **fired 2026-09-12** (`P1-spacetime-terms.md` §5.3b): with `from` declared under `geo`, `from(ljubljana)` is accepted and silently read as a literal *cell* named "ljubljana" — the footgun the CLI's value substitution guards against; a region node cannot be a service parameter at all | **Landed 2026-09-12** — [ontodag #15](https://github.com/petfold/ontodag/issues/15), `DIMENSIONS.md` §14: a head under a head is a *role*, its parameters may name the base dimension's nodes (place, region, floor), stored as spelled, ordered by the graph; a name outside the dimension is refused; a region's covering is a lower bound (G2); covering-as-a-value deferred to the anonymity tripwire. Consumed: names stand in role terms at the CLI (a *private* place still publishes as its cell — the same-root constraint, not a grammar gap), the index files them as spelled. |

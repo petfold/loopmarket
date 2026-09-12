@@ -230,15 +230,20 @@ and a record-line marker as containment cones, its v2 window and each
 named role head's meet as overlap terms — and loopmarket does no set
 arithmetic on the answer. The one device this needed on our side: the
 "absent = unconstrained" rule (a give naming no `from(...)` serves a want
-anywhere) is invisible to an overlap term, so the index files every give
-under the *whole space* of each role it is silent on — the base head as
-the parameter, `from(geo)`, `depart(time)`; Peter's `*`-shaped question
-found the spelling, and [ontodag #17](https://github.com/petfold/ontodag/issues/17)
-(same night) made it mean the whole space structurally in every query
-face, where the planner had read it as a region covering only the values
-present; [ontodag #18](https://github.com/petfold/ontodag/issues/18)
-cached the dimension walk under it. One edge per silent role, exact,
-nothing declared. With the one-query generator in place the redundant
+anywhere) was invisible to an overlap term as first shipped, and for a
+few hours the index filed every silent give under a whole-space value
+(first a private region over the one-character cells, then `from(geo)`).
+Peter's rule ended that the same night — *when something is
+unconstrained, it should not be visited at all; the other constraints
+give the result; we cannot walk the whole DAG when it gets really big* —
+and [ontodag #17](https://github.com/petfold/ontodag/issues/17) was
+resolved accordingly: an overlap term in `get` is a constraint applied by
+one asserted climb per candidate the containment cones produced, a
+candidate stating nothing under the head passes unvisited, and `from(geo)`
+is refused (the overlap of everything with A is A);
+[ontodag #18](https://github.com/petfold/ontodag/issues/18) cached the
+dimension walk. So a silent role files nothing, and the suite runs in 15 s
+where it ran in 54 s. With the one-query generator in place the redundant
 `idx/{c,t,g}` recordstore index **retired** as committed 2026-09-07:
 `index_offers`, `ids_by_index` and the bucket/cell chains are gone,
 maker and clearing books hold no index, and the manifest lost its
