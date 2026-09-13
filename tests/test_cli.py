@@ -852,3 +852,33 @@ def test_offer_line_is_pythons_offer_literal(loop):
         cli.offer_from_line("apple 5", loop.session)
     with pytest.raises(ValueError, match="not encodable until the v4"):
         cli.offer_from_line("want apple home + apple home 9", loop.session)
+
+
+def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, monkeypatch):
+    """`give transport(small-item weight(..8kg)) from(u2e4) to(u2e4)`: the
+    line splits on spaces, the tokens rejoin while a parenthesis is open,
+    the constituents are stored sorted (one offer id, U2), and the wanter
+    who names the bicycle matches the courier who names the class — the
+    argument is the courier's want (Peter, 2026-09-13)."""
+    _od_with_prelude(tmp_path / "city.od",
+                     [("operator", []), ("transport", ["operator"]),
+                      ("operator-input", []), ("operator-output", []),
+                      ("from", ["geo", "operator-input"]),
+                      ("to", ["geo", "operator-output"]),
+                      ("small-item", []), ("bicycle", ["small-item"]),
+                      ("piano", [])])
+    monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "city.od"))
+    run = Runner()
+    out = run.ok("give", "transport(weight(..8kg)", "small-item)", "from(u2e4)", "to(u2e4)", "5")
+    assert "transport(small-item weight(..8kg))" in out
+    code, out, err = run("give", "transport(small-item", "5")
+    assert code == 1 and "unbalanced" in err
+    code, out, err = run("give", "transport(unicorn)", "from(u2e4)", "to(u2e4)", "5")
+    assert code == 1 and "unknown category" in err          # fails closed, U7
+    monkeypatch.setenv("LOOP_MAKER", "bruno")
+    run.ok("want", "transport(bicycle weight(5kg))", "from(u2e4x)", "to(u2e4y)", "6")
+    out = run.ok("matches")
+    assert "amara gives from(u2e4) to(u2e4) transport(small-item weight(..8kg)) to bruno" in out
+    monkeypatch.setenv("LOOP_MAKER", "chen")
+    run.ok("want", "transport(piano)", "from(u2e4x)", "to(u2e4y)", "6")
+    assert "chen" not in run.ok("matches")                  # the courier takes no pianos

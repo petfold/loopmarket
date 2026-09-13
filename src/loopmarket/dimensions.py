@@ -12,6 +12,11 @@ arithmetic on the answer (`docs/plans/ontodag-coupling.md` §5, "one
 intersection engine"): it iterates the items ontodag returns and runs the
 exact pairwise `check_match` on each.
 
+An operator term (`transport(small-item)`) is filed and queried as its
+category (`transport`): the category goes give-within-want like any other,
+the argument the other way round (`Ontology.satisfies`), so the argument
+is the exact check's, like the coordinates below.
+
 Handover coordinates — a bare geo or time term, a route's `from`/`to` —
 are NOT in the query. They match when one side contains the other
 (`Ontology.satisfies`), and the gives that *contain* the want's coordinate
@@ -96,7 +101,8 @@ class DimensionIndex:
             return False
         if offer.offer_id in self._filed:
             return True
-        known = [c for c in offer.thing.concepts if self.ontology.known(c)]
+        known = [self.ontology.operator_of(c) or c
+                 for c in offer.thing.concepts if self.ontology.known(c)]
         try:
             self._dag.put(offer.offer_id, [*known, _LINE[_line(offer)]])
         except ValueError:
@@ -112,7 +118,8 @@ class DimensionIndex:
         concepts = want_offer.thing.concepts
         if not all(self.ontology.known(c) for c in concepts):
             return set()          # unknown wanted vocabulary matches nothing
-        one_way = [c for c in concepts if self.ontology.handover_class(c) is None]
+        one_way = [self.ontology.operator_of(c) or c for c in concepts
+                   if self.ontology.handover_class(c) is None]
         try:
             items = self._dag.get([_LINE[_line(want_offer)], *one_way],
                                   items_only=True)

@@ -9,7 +9,40 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Added
+
+- **An operator's argument is its want** (Peter, 2026-09-13 evening: *the
+  parameter of the transport is a want from the transporter's side*).
+  `give transport(small-item weight(..8kg)) from(barcelona) to(barcelona)`
+  says what the courier accepts; `want transport(bicycle weight(5kg))
+  from(flat) to(shop)` says what the wanter hands over; the argument is
+  matched want-within-give, constraint by constraint (`bicycle ⊑
+  small-item`; the 12 kg bicycle fails the 8 kg limit; a give constraint
+  the want is silent on refuses), the operator category itself
+  give-within-want. `transport(A B)` is the same term as `transport(A)
+  transport(B)`; `schema.canonical_term` sorts the constituents so the
+  spellings are one offer id (U2). The same argument is the payload check
+  of a composed leg (`Ontology.accepts`): the small-item courier moves the
+  box and not the piano — the gap 0.5.0's composition had. A direct
+  transport want now matches the courier in `check_match`. New facade
+  methods `operator_of`, `argument`, `ends`, `accepts`; the CLI rejoins a
+  term's tokens while a parenthesis is open. The operator term is split
+  locally until ontodag #19 lands (a role over the category graph, nested
+  and conjunctive parameters). Tests in `test_ontology.py`,
+  `test_circulation.py`, `test_schema.py`, `test_cli.py`; the index recall
+  book carries operator terms; `examples/delivery.loop`'s courier says
+  `transport(small-item)`.
+
 ### Changed
+
+- **`declare_operator` takes the category and its two ends** —
+  `{"transport": ("from", "to")}` puts `transport` under the new `operator`
+  marker and the roles under `operator-input`/`operator-output`; 0.5.0's
+  `{base: (in, out)}` shape raises. `Ontology.operators()` is gone: a
+  give's moves are read off the ends it names (`ends`), and an operator
+  give is recognised by its operator term, not by carrying two role terms.
+  The seeds (`triangle.od`, `delivery.od`, the demos) declare
+  `transport operator` and `storage operator`.
 
 - **Composition search: only where needed, and up to two hops** (Peter's
   follow-up questions, 2026-09-13). `composed_legs` no longer composes an

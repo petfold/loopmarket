@@ -64,7 +64,10 @@ negative radius.
 ### `Thing(concepts, qty=1.0, unit="unit", divisible=False)`
 Frozen. A conjunction of catalogue category names plus quantity.
 `concepts` is normalized to a sorted, deduplicated tuple (order never
-matters to identity). Raises `ValueError` on empty concepts or
+matters to identity), each concept through `canonical_term` — the
+constituents inside a term's parentheses sorted, so an operator's
+argument `transport(weight(..8kg) small-item)` and
+`transport(small-item weight(..8kg))` are one id (U2; 2026-09-13). Raises `ValueError` on empty concepts or
 non-positive qty. `divisible` marks partial-fillability; matching
 requires `want.qty == give.qty` unless *both* sides are divisible, and
 always `want.qty <= give.qty` and equal `unit` strings.
@@ -134,12 +137,14 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 | `.load({sub: [supers, ...]})` | bulk, order-independent declaration; returns self |
 | `.known(concept)` | vocabulary membership: a node, or a parametric term of a declared head the DAG can order — incl. a role term naming a place, region or floor node (ontodag #15); a name outside the head's dimension fails closed |
 | `.covers(wanted, offered)` | `offered` fits within `wanted` (equal or descendant); **False for unknown names** (U7) |
-| `.satisfies(offered, wanted)` | every wanted term answered: a category or descriptive term by an offered concept that fits within it (the want is the wider cone); a **handover coordinate** — a bare geo/time term or a term of a role under a marked dimension — by an offered coordinate of the same head that fits within it *or contains it*; a head the want does not name constrains nothing; a conjunction with provably disjoint same-head terms describes nothing, on either side |
+| `.satisfies(offered, wanted)` | every wanted term answered: a category or descriptive term by an offered concept that fits within it (the want is the wider cone); a **handover coordinate** — a bare geo/time term or a term of a role under a marked dimension — by an offered coordinate of the same head that fits within it *or contains it*; an **operator term** (`transport(bicycle)`, a category under `operator`) by an offered operator term whose category fits within it and whose argument — the operator's own want — contains the wanted argument constraint by constraint (`bicycle ⊑ small-item`; an offered constraint the want does not answer refuses); a head the want does not name constrains nothing; a conjunction with provably disjoint same-head terms describes nothing, on either side |
 | `.declare_roles({head: base})` | seed convenience: put each head under its base dimension head — a role of that dimension, whose parameters may name its nodes (ontodag #15); a catalogue write. `declare_service_roles` is the 0.3.0 name, kept one release |
 | `.declare_handover(heads)` | mark base dimension heads (`geo`, `time`) as handover coordinates under the `handover` marker; roles under them inherit it; prelude adopted on demand |
 | `.declare_descriptive(heads)` | opt a geo/time head out (`made_in`, `made`) under the `descriptive` marker: its terms describe the thing and match one-way |
 | `.handover_class(concept)` / `.handover_heads()` | the head whose coordinate a term states (`None` for categories and descriptive terms; a bare place node states `geo`'s); the marked base heads |
-| `.declare_operator({base: (input_head, output_head)})` / `.operators()` | what moves a thing along a dimension — `{"geo": ("from", "to"), "time": ("depart", "arrive")}` — under the `operator-input`/`operator-output` markers; a give naming both ends is an operator (composition, `P2-loop-selection.md` §10) |
+| `.declare_operator({category: (input_head, output_head)})` | `{"transport": ("from", "to"), "storage": ("depart", "arrive")}`: the category under the `operator` marker (created if absent), the two ends — roles of one dimension — under `operator-input`/`operator-output`; a give naming the category and both ends moves a thing along that dimension (composition, `P2-loop-selection.md` §10); the category's parenthesised argument is what it accepts. 0.5.0's `{base: (in, out)}` shape raises |
+| `.operator_of(term)` / `.argument(term)` | the operator category a term names (`transport(bicycle)` and bare `transport` → `transport`; None otherwise); the sorted constraints of its argument (`transport(small-item weight(..8kg))` → `("small-item", "weight(..8kg)")`; bare → `()`) — split locally until ontodag #19 |
+| `.ends(concepts)` / `.accepts(concepts, operator_terms)` | the moves an operator give states, `[(base, input_term, output_term)]`; whether a thing fits every constraint of the operator terms' arguments (the payload check of `check_composition`) |
 | `.base_head(head)` / `.coordinate(concepts, base)` / `.bare(term)` | a role's base head; the bare coordinate of `base` a conjunction states; a role term respelled as the bare coordinate it denotes (`to(u2e4)` → `geo(u2e4)`, `from(shop)` → `shop`) |
 | `.head_kind(head)` | the registry kind a declared head orders values by, else `None` |
 | `.root` | canonical root of the last committed state, `''` if in-memory/uncommitted |
@@ -234,17 +239,20 @@ One want met by one or more gives — the hyperedge of `P2-loop-selection.md`
 
 ### `check_composition(want, gives, ontology, *, now) -> Leg | None`
 The exact check of a composed leg (2026-09-13): the first give is the
-thing, every further give an operator the catalogue declares
-(`Ontology.declare_operator`, e.g. transport `from`/`to` over geo). Each
-operator's input coordinate must be comparable with the thing's coordinate
-as it stands (one contains the other) and its output replaces it; the thing
-so moved must satisfy the want; every give passes `check_match`'s gates
-against the want (the operator without the quantity gate). Re-run by
-clearing (U3).
+thing, every further give an operator — a give naming a category under
+`operator` and the two ends of a dimension (`transport(small-item)
+from(barcelona) to(barcelona)`). The thing must fit the operator's
+argument (`Ontology.accepts`: the payload check — the box goes, the piano
+does not); each operator's input coordinate must be comparable with the
+thing's coordinate as it stands (one contains the other) and its output
+replaces it; the thing so moved must satisfy the want; every give passes
+`check_match`'s gates against the want (the operator without the quantity
+gate). Re-run by clearing (U3).
 
-### `composed_legs(offers, ontology, *, now) -> Iterator[Leg]`
-Baseline composition search: every want × thing give × one operator give,
-checked exactly; deterministic order. One hop only.
+### `composed_legs(offers, ontology, *, now, max_hops=2) -> Iterator[Leg]`
+Baseline composition search: every want × thing give that does not already
+match it × every chain of up to `max_hops` operator gives, checked exactly;
+a chain only where a shorter one does not reach; deterministic order.
 
 ---
 

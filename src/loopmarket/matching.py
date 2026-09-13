@@ -179,33 +179,34 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
                       *, now: int) -> Leg | None:
     """The exact check of a composed leg (`P2-loop-selection.md` §10, the
     discovered form): the first give is the thing, every further give an
-    operator that moves it along a dimension the catalogue declares an
-    operator for — transport moves place (`from`/`to` over geo). Each
-    operator's input must be comparable with the thing's coordinate as it
-    stands (one contains the other, the handover rule), and its output
-    replaces that coordinate; the thing so moved must then satisfy the
-    want like any give. Every give passes `check_match`'s gates against
-    the want (an operator without the quantity gate: it moves a lot rather
-    than being one). Clearing re-runs this; nothing is trusted (U3)."""
+    operator — a give naming a category under `operator` (`transport`) and
+    the two ends of a dimension it moves the thing along (`from`/`to` over
+    geo). The thing must fit what the operator accepts — its argument, the
+    operator's own want (`transport(small-item)`: the box goes, the piano
+    does not; `Ontology.accepts`). Each operator's input must be comparable
+    with the thing's coordinate as it stands (one contains the other, the
+    handover rule), and its output replaces that coordinate; the thing so
+    moved must then satisfy the want like any give. Every give passes
+    `check_match`'s gates against the want (an operator without the
+    quantity gate: it moves a lot rather than being one). Clearing re-runs
+    this; nothing is trusted (U3)."""
     gives = tuple(gives)
     if not gives:
         return None
     thing, operators = gives[0], gives[1:]
     if not _gates(thing, want, ontology, now=now):
         return None
-    declared = ontology.operators()
     derived = list(thing.thing.concepts)
     for op in operators:
         if not _gates(op, want, ontology, now=now, quantity=False):
             return None
-        moved = False
-        for base, (inp, out) in sorted(declared.items()):
-            in_term = next((c for c in op.thing.concepts
-                            if ontology.handover_class(c) == inp), None)
-            out_term = next((c for c in op.thing.concepts
-                             if ontology.handover_class(c) == out), None)
-            if in_term is None or out_term is None:
-                continue
+        terms = [c for c in op.thing.concepts if ontology.operator_of(c)]
+        moves = ontology.ends(op.thing.concepts)
+        if not terms or not moves:
+            return None                # not an operator give, or one that moves nothing
+        if not ontology.accepts(thing.thing.concepts, terms):
+            return None                # the operator does not take this thing
+        for base, in_term, out_term in moves:
             here = ontology.coordinate(derived, base)
             if here is None:
                 return None            # the thing states no such coordinate
@@ -214,9 +215,6 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
                 return None            # the operator cannot pick it up there
             derived.remove(here)
             derived.append(ontology.bare(out_term))
-            moved = True
-        if not moved:
-            return None                # not an operator give
     if not ontology.satisfies(derived, want.thing.concepts):
         return None
     return Leg(want, gives)
@@ -239,14 +237,13 @@ def composed_legs(offers: Iterable[Offer], ontology: Ontology, *,
     Deterministic order."""
     from itertools import permutations
     offers = list(offers)
-    declared = ontology.operators()
-    if not declared:
-        return
-    inputs = {inp for inp, _ in declared.values()}
     gives = sorted((o for o in offers if o.kind == GIVE), key=lambda o: o.offer_id)
     wants = sorted((o for o in offers if o.kind == WANT), key=lambda o: o.offer_id)
     ops = [g for g in gives
-           if any(ontology.handover_class(c) in inputs for c in g.thing.concepts)]
+           if any(ontology.operator_of(c) for c in g.thing.concepts)
+           and ontology.ends(g.thing.concepts)]
+    if not ops:
+        return
     things = [g for g in gives if g not in ops]
     for w in wants:
         for thing in things:

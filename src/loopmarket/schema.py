@@ -155,6 +155,31 @@ class GeoDisc:
 
 # -------------------------------------------------------------------------- sides
 
+def canonical_term(concept: str) -> str:
+    """One spelling per term (U2): a conjunction inside a term's parentheses
+    — an operator's argument, `transport(small-item weight(..8kg))` — has
+    its whitespace-separated constituents sorted, so the two orders are one
+    offer id, as the concepts of a Thing are sorted. Purely syntactic, like
+    the sort; ontodag #19 canonicalises the same way. A term without a
+    space inside its parentheses is returned unchanged."""
+    if "(" not in concept or " " not in concept or not concept.endswith(")"):
+        return concept
+    idx = concept.index("(")
+    head, inner = concept[:idx], concept[idx + 1:-1]
+    parts, depth, cur = [], 0, ""
+    for ch in inner:
+        depth += (ch == "(") - (ch == ")")
+        if ch.isspace() and depth == 0:
+            if cur:
+                parts.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    if cur:
+        parts.append(cur)
+    return f"{head}({' '.join(sorted(parts))})" if depth == 0 else concept
+
+
 @dataclass(frozen=True, slots=True)
 class Thing:
     """A conjunction of OntoDAG category names, with quantity.
@@ -177,7 +202,8 @@ class Thing:
             raise ValueError("Thing needs at least one concept")
         if self.qty <= 0:
             raise ValueError("Thing qty must be positive")
-        object.__setattr__(self, "concepts", tuple(sorted(set(self.concepts))))
+        object.__setattr__(self, "concepts",
+                           tuple(sorted({canonical_term(c) for c in self.concepts})))
 
     def to_record(self) -> dict[str, Any]:
         return {

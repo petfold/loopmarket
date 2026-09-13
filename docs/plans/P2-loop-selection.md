@@ -349,10 +349,18 @@ vegetable-box example (Peter: *the whole point of a solver is to find
 circulations*): `matching.Leg`/`check_composition`/`composed_legs`,
 `graph.Circulation` (node potentials, `surplus`, `loop_id`) and
 `find_circulations`, clearing re-deriving composed legs, the `loop/`
-record carrying `gives` and `potentials`. One hop, one operator per leg,
-operators declared in the catalogue (`Ontology.declare_operator`). The
-reseller form clears too as a plain cycle; the reason to prefer
-composition (unconditional offers) stands. `examples/delivery.loop`,
+record carrying `gives` and `potentials`. Up to two hops since the same
+evening (two couriers of one packet), operators declared in the catalogue
+(`Ontology.declare_operator({"transport": ("from", "to")})`: a category
+under `operator`, moving along the dimension whose two ends its give
+names). **The operator's argument is its want** (Peter, 2026-09-13
+evening): `transport(small-item weight(..8kg))` is what the courier
+accepts and matches the wanter's `transport(bicycle weight(5kg))`
+want-within-give; the same argument is the payload check of a composed
+leg (`Ontology.accepts`) — the box goes with the small-item courier, the
+piano does not. Upstream: ontodag #19. The reseller form clears too as a
+plain cycle; the reason to prefer composition (unconditional offers)
+stands. `examples/delivery.loop`,
 `tests/test_circulation.py`, `tests/test_handover.py`.
 
 **Shape.** The result is not a cycle and does not decompose into cycles:

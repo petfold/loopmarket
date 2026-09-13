@@ -140,6 +140,7 @@ def roles_ontology():
     ont = fresh_ontology()
     ont.declare_roles(ROLES)
     ont.declare_handover(["geo", "time"])
+    ont.declare_operator({"transport": ("from", "to")})   # `transport(x)`: reversed
     ont.dag.put("made_in", ["geo"])           # descriptive: containment
     ont.declare_descriptive(["made_in"])
     ont.dag.put("my_home", ["geo(u2e4x)"])
@@ -173,6 +174,11 @@ class TestRoleTerms:
                 terms.append(f"depart({cal(a)}..{cal(a + rng.randrange(60, 3600))})")
             if rng.random() < 0.3:
                 terms.append(f"made_in({rng.choice(CELLS)})")
+            if rng.random() < 0.3:              # an operator, argument reversed
+                terms = [t for t in terms if t not in concepts]
+                terms.append(rng.choice(
+                    ["transport", "transport(produce)", "transport(vegetable-box)",
+                     "transport(fruit-box produce)"]))
             thing = Thing(tuple(terms), qty=rng.choice([1, 2]),
                           divisible=rng.random() < 0.5)
             side = give if rng.random() < 0.5 else want

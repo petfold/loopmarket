@@ -142,7 +142,7 @@ else:
 ROLES = {"from": "geo", "to": "geo",                # a route
          "depart": "time", "arrive": "time"}         # a transport
 HANDOVER = ["geo", "time"]                           # coordinates match either way
-OPERATORS = {"geo": ("from", "to"), "time": ("depart", "arrive")}   # what moves a thing
+OPERATORS = {"transport": ("from", "to"), "storage": ("depart", "arrive")}   # what moves a thing, and along what
 catalogue.declare_roles(ROLES)
 catalogue.declare_handover(HANDOVER)
 catalogue.declare_operator(OPERATORS)

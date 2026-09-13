@@ -17,8 +17,9 @@ coordinates of one kind — a route's `from(...)`/`to(...)`, a transport's
 `depart`/`arrive` — or where a geo/time term *describes* the thing rather
 than saying where it changes hands (`made_in(corinth)`, `made(1850)`).
 
-Two relations, and the catalogue says which applies (the marker node
-`handover`, the one name this module knows besides the dimensions'):
+Three relations, and the catalogue says which applies (the marker nodes
+`handover`, `descriptive` and `operator`, the names this module knows
+besides the dimensions'):
 
 - **containment, give within want**, for categories and descriptive
   terms — the offered thing is at least as specific as asked (a Corinthian
@@ -36,12 +37,35 @@ Two relations, and the catalogue says which applies (the marker node
   under them inherits it (`from`/`to`, `depart`/`arrive`), a descriptive
   head opts out under `descriptive` (`declare_descriptive`), and a bare
   node in a marked dimension — a place, a region, a named time — is a
-  coordinate of that dimension.
+  coordinate of that dimension;
+- **want within give**, for the argument of an operator — `transport(...)`,
+  the category under the marker `operator`. The courier who moves small
+  items writes `give transport(small-item weight(..8kg))`; the wanter with
+  a bicycle writes `want transport(bicycle weight(12kg))`. The argument is
+  the operator's own want — what it accepts, an implicit want the give
+  carries (Peter, 2026-09-13) — so it is matched like one, with the sides
+  swapped: every constraint of the give's argument must contain a term of
+  the want's (`bicycle ⊑ small-item`; the 12 kg bicycle fails the 8 kg
+  limit), while the operator itself goes the usual way (`bicycle-courier ⊑
+  transport`). A conjunction in the argument is several constraints, and
+  `transport(A B)` is the same term as `transport(A) transport(B)`; its
+  constituents are spelled sorted (`schema.canonical_term`). A give
+  constraint the want does not answer refuses — a vague want ("move some
+  goods") against a bicycle-only courier is the mirror of `give fruit`
+  against `want apples`.
+
+The one rule under all three: whoever fixes a value states a fact, whoever
+leaves it open states an acceptance, and the fact must lie within the
+acceptance. The giver fixes what the thing is; the wanter fixes what the
+courier carries; either may fix where and when it changes hands.
 
 A head the want does not name constrains nothing; a coordinate the give
 does not state puts it in no cone of that head (an internet service has no
-place, and does not serve a want at a door). Ontodag is intersection; both
-relations are `is_below`, and the seed decides the direction.
+place, and does not serve a want at a door). Ontodag is intersection; all
+three relations are `is_below`, and the seed decides the direction. Until
+ontodag #19 lands (a role over the category graph, nested and conjunctive
+parameters), this module splits operator terms itself and orders the
+constituents one by one — a loopmarket-only behaviour to delete then.
 
 Offers pin the catalogue version they were written against
 (`Offer.ontology_root`): persistence through `EagerOntoDAG` over a
@@ -67,8 +91,8 @@ except Exception:  # pragma: no cover
     EagerOntoDAG = None  # type: ignore[assignment]
 
 
-#: Two marker nodes, the only names this module knows besides the
-#: dimensions'. `handover`: the base heads under it (`geo`, `time`) are the
+#: Marker nodes, the only names this module knows besides the dimensions'.
+#: `handover`: the base heads under it (`geo`, `time`) are the
 #: dimensions whose terms say where or when the thing changes hands and
 #: match when one side contains the other — a bare cell, place or window,
 #: and every role head under them (`from`/`to`, `depart`/`arrive`), since a
@@ -78,12 +102,16 @@ except Exception:  # pragma: no cover
 #: containment like a category.
 HANDOVER = "handover"
 DESCRIPTIVE = "descriptive"
-#: Operator markers (composition, `docs/plans/P2-loop-selection.md` §10): a
-#: give carrying a term of a head under `operator-input` and one under
-#: `operator-output` of the same dimension MOVES a thing along it —
-#: transport (`from`/`to` over geo) moves place, storage (`depart`/`arrive`
-#: over time) moves time. The solver composes such a give with the give of
-#: the thing to satisfy a want at the output coordinate; clearing re-derives.
+#: Operator markers (composition, `docs/plans/P2-loop-selection.md` §10).
+#: `operator`: a category under it (`transport`, `storage`) is an operator —
+#: its parenthesised argument is what it accepts, matched want-within-give
+#: (module docstring), and a give naming it MOVES a thing along the
+#: dimension whose two ends it also names: a role under `operator-input`
+#: (`from`, `depart`) is where it picks the thing up, one under
+#: `operator-output` (`to`, `arrive`) where it puts it down. The solver
+#: composes such a give with the give of the thing to satisfy a want at the
+#: output coordinate; clearing re-derives.
+OPERATOR = "operator"
 OPERATOR_INPUT = "operator-input"
 OPERATOR_OUTPUT = "operator-output"
 
@@ -190,33 +218,100 @@ class Ontology:
             if not self.dag.is_below(head, marker):
                 self.dag.add_edge(node, self.dag.nodes[head])
 
-    def declare_operator(self, pairs: Mapping[str, tuple[str, str]]) -> None:
-        """Declare the operators of dimensions: {base: (input head, output
-        head)} — `{"geo": ("from", "to"), "time": ("depart", "arrive")}`.
-        Both heads must be roles of `base`. A give naming both is an
-        operator on that dimension (module constants). Seed vocabulary;
-        the core names no head."""
-        for base, (inp, out) in pairs.items():
-            for head in (inp, out):
-                if self.base_head(head) != base:
-                    raise ValueError(
-                        f"{head!r} is not a role of {base!r}: an operator's "
-                        f"ends are roles of the dimension it moves along")
+    def declare_operator(self, operators: Mapping[str, tuple[str, str]]) -> None:
+        """Declare operators: {category: (input head, output head)} —
+        `{"transport": ("from", "to"), "storage": ("depart", "arrive")}`.
+        The category goes under `operator` (created if absent, like a
+        supercategory in `assert_edge`), the two heads — roles of one
+        dimension — under `operator-input` and `operator-output`: three
+        edges, `odag put transport operator`, `odag put from geo
+        operator-input`, `odag put to geo operator-output`. Which dimension
+        a give moves along is read off the give itself (the ends it names),
+        so the category is not tied to a dimension here. Seed vocabulary;
+        the core names no head. (0.5.0 took `{base: (in, out)}`: a give was
+        an operator by naming two ends; since 2026-09-13 the operator is a
+        category, because its argument is what it accepts.)"""
+        for category, (inp, out) in operators.items():
+            if self.head_kind(category) is not None or category in _dims.KINDS:
+                raise ValueError(
+                    f"{category!r} is a dimension head: an operator is a "
+                    f"category whose argument is what it accepts")
+            base = self.base_head(inp)
+            if base is None or base == inp or self.base_head(out) != base \
+                    or base == out:
+                raise ValueError(
+                    f"{inp!r}/{out!r}: an operator's ends are two roles of one "
+                    f"dimension, the one it moves a thing along")
+            if category not in self.dag.nodes:
+                self.dag.put(category, [])
+            if OPERATOR not in self.dag.nodes:
+                self.dag.put(OPERATOR, [])
+            if not self.dag.is_below(category, OPERATOR):
+                self.dag.add_edge(self.dag.nodes[OPERATOR], self.dag.nodes[category])
             self._mark(OPERATOR_INPUT, [inp])
             self._mark(OPERATOR_OUTPUT, [out])
 
-    def operators(self) -> dict[str, tuple[str, str]]:
-        """{base: (input head, output head)} as declared."""
-        ins = {n.name for n in self.dag.nodes[OPERATOR_INPUT].neighbors} \
-            if OPERATOR_INPUT in self.dag.nodes else set()
-        outs = {n.name for n in self.dag.nodes[OPERATOR_OUTPUT].neighbors} \
-            if OPERATOR_OUTPUT in self.dag.nodes else set()
+    def operator_of(self, term: str) -> str | None:
+        """The operator category `term` names — `transport(bicycle)` and
+        bare `transport` both name `transport` — or None."""
+        split = self._split_operator(term)
+        head = term if split is None else split[0]
+        if head not in self.dag.nodes or head in _dims.KINDS \
+                or OPERATOR not in self.dag.nodes \
+                or not self.dag.is_below(head, OPERATOR):
+            return None
+        return head
+
+    def argument(self, term: str) -> tuple[str, ...]:
+        """The constraints an operator term's argument states, sorted:
+        `transport(small-item weight(..8kg))` → `("small-item",
+        "weight(..8kg)")`; a bare operator accepts anything: `()`."""
+        split = self._split_operator(term)
+        return () if split is None else split[1]
+
+    @staticmethod
+    def _split_operator(term: str) -> tuple[str, tuple[str, ...]] | None:
+        """Syntactic: `head(a b ...)` → (head, sorted constituents), else
+        None. The constituents are the whitespace-separated pieces at
+        parenthesis depth 0 inside the outer pair, so a nested term
+        (`weight(..8kg)`) stays whole. What ontodag #19 will parse."""
+        if not term.endswith(")") or "(" not in term:
+            return None
+        idx = term.index("(")
+        head, inner = term[:idx], term[idx + 1:-1]
+        if not head or not inner:
+            return None
+        parts, depth, cur = [], 0, ""
+        for ch in inner:
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth < 0:
+                    return None
+            if ch.isspace() and depth == 0:
+                if cur:
+                    parts.append(cur)
+                cur = ""
+            else:
+                cur += ch
+        if cur:
+            parts.append(cur)
+        return (head, tuple(sorted(parts))) if depth == 0 else None
+
+    def ends(self, concepts: Iterable[str]) -> list[tuple[str, str, str]]:
+        """The moves an operator give states: `[(base, input term, output
+        term)]` — one per dimension whose two ends it names (`from(a)` and
+        `to(b)` → `("geo", "from(a)", "to(b)")`). Sorted by base."""
         by_base: dict[str, list] = {}
-        for head in sorted(ins):
-            by_base.setdefault(self.base_head(head), [None, None])[0] = head
-        for head in sorted(outs):
-            by_base.setdefault(self.base_head(head), [None, None])[1] = head
-        return {base: (i, o) for base, (i, o) in by_base.items() if i and o}
+        for c in concepts:
+            head = self.handover_class(c)
+            if head is None or _dims.split_term(c) is None:
+                continue
+            for marker, slot in ((OPERATOR_INPUT, 0), (OPERATOR_OUTPUT, 1)):
+                if marker in self.dag.nodes and self.dag.is_below(head, marker):
+                    by_base.setdefault(self.base_head(head), [None, None])[slot] = c
+        return [(b, i, o) for b, (i, o) in sorted(by_base.items()) if i and o]
 
     def base_head(self, head: str) -> str | None:
         """The base head of a role — the head directly under a kind node on
@@ -303,6 +398,8 @@ class Ontology:
             return True
         if "(" not in concept:
             return False
+        if self.operator_of(concept) is not None:     # `transport(bicycle weight(..8kg))`
+            return all(self.known(c) for c in self.argument(concept))
         try:
             return bool(self.dag.is_below(concept, concept))
         except ValueError:
@@ -361,26 +458,56 @@ class Ontology:
         narrows the offer and is ignored; a give whose same-head terms are
         provably disjoint describes nothing and satisfies nothing.
 
-        Both relations are ontodag's `is_below`; the seed decides the
-        direction by marking the handover heads (Peter, 2026-09-12/13:
-        ontodag is intersection; a want is the wider cone for what a thing
-        is, and either side may be the wider one for where and when it
-        changes hands).
+        An operator term (`transport(bicycle)`, a category under
+        `operator`) is answered by an offered operator term whose category
+        fits within it — and the offered term's argument, the operator's own
+        want, must be answered in turn: every constraint it states contains
+        some constituent the wanted operator terms state (`bicycle ⊑
+        small-item`), so an offered constraint the want is silent on
+        refuses. Both sides may spread one argument over several terms.
+
+        All three relations are ontodag's `is_below`; the seed decides the
+        direction by marking the handover heads and the operator categories
+        (Peter, 2026-09-12/13: ontodag is intersection; a want is the wider
+        cone for what a thing is, the give's argument the wider cone for
+        what an operator accepts, and either side may be the wider one for
+        where and when it changes hands).
         """
         offered, wanted = list(offered), list(wanted)
         if not self._consistent(offered) or not self._consistent(wanted):
             return False                # a conjunction that describes nothing
         classes = {o: self.handover_class(o) for o in offered}
+        ops_o = {o: h for o in offered if (h := self.operator_of(o))}
+        ops_w = {w: h for w in wanted if (h := self.operator_of(w))}
         for w in wanted:
             wc = self.handover_class(w)
-            if wc is None:
+            if w in ops_w:
+                if not any(self.covers(ops_w[w], ho) for ho in ops_o.values()):
+                    return False
+            elif wc is None:
                 if not any(self.covers(w, o) for o in offered):
                     return False
-                continue
-            same = [o for o in offered if classes[o] == wc]
-            if not any(self.covers(w, o) or self.covers(o, w) for o in same):
+            else:
+                same = [o for o in offered if classes[o] == wc]
+                if not any(self.covers(w, o) or self.covers(o, w) for o in same):
+                    return False
+        for o, ho in ops_o.items():     # the operator's own want, answered
+            pool = [d for w, hw in ops_w.items() if self.covers(hw, ho)
+                    for d in self.argument(w)]
+            if not any(self.covers(hw, ho) for hw in ops_w.values()):
+                return False
+            if not all(any(self.covers(c, d) for d in pool) for c in self.argument(o)):
                 return False
         return True
+
+    def accepts(self, concepts: Iterable[str], operator_terms: Iterable[str]) -> bool:
+        """Does a thing described by `concepts` fit what the operator terms
+        accept — every constraint of every argument contains some concept?
+        The payload check of a composed leg (`matching.check_composition`):
+        the box goes with the small-item courier, the piano does not."""
+        concepts = list(concepts)
+        return all(any(self.covers(c, d) for d in concepts)
+                   for t in operator_terms for c in self.argument(t))
 
     def _consistent(self, concepts) -> bool:
         """Can the conjunction be held at all? Two coordinates of one head

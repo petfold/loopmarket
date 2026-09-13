@@ -82,7 +82,11 @@ three things:
   `weight(10kg..10.5kg)`, `time(2026-10-01..2026-12-31)`,
   `from(my_home)`, `valid(2h)`. Quoted in a shell exactly as odag's own
   help says ("quote the parentheses in a shell"); unquoted at the `loop`
-  prompt and in batch scripts. A `key=value` spelling was proposed and
+  prompt and in batch scripts. An operator's argument may be a
+  conjunction — `transport(small-item weight(..8kg))`, what the courier
+  accepts (2026-09-13) — so the tokens of a line are rejoined while a
+  parenthesis is open, and the constituents are stored sorted (one offer
+  id, `schema.canonical_term`). A `key=value` spelling was proposed and
   **rejected** on 2026-09-11 for being a second grammar; if a shell-safe
   spelling is ever wanted it lands upstream (§11) and loopmarket follows.
 - **A bare number first is the quantity, a bare number last is the

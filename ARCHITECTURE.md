@@ -444,11 +444,14 @@ Peter, after the vegetable-box example: *the whole point of a solver is to
 find circulations*. So the baseline now does. `matching.Leg` is one want
 met by one or more gives; `check_composition(want, gives)` is the exact
 check of a composed leg — the first give is the thing, each further give an
-operator the catalogue declares (`Ontology.declare_operator`: transport as
-`from`/`to` over geo, storage as `depart`/`arrive` over time), whose input
-coordinate must be comparable with the thing's as it stands and whose output
-replaces it, the moved thing then satisfying the want like any give;
-`composed_legs` is the cubic baseline search, one hop. `graph.Circulation`
+operator the catalogue declares (`Ontology.declare_operator`: `transport`
+under the `operator` marker, moving along the dimension whose two ends its
+give names, `from`/`to` over geo or `depart`/`arrive` over time), which
+must accept the thing (its argument, see below) and whose input coordinate
+must be comparable with the thing's as it stands and whose output replaces
+it, the moved thing then satisfying the want like any give;
+`composed_legs` is the polynomial baseline search, up to two hops, only
+where the plain give does not reach. `graph.Circulation`
 is a set of legs in which every maker both gives and receives, each offer
 once; feasibility is the existence of node potentials — the least ones by
 a Bellman–Ford-shaped fixpoint over the hypergraph, which for a simple cycle
@@ -462,8 +465,32 @@ re-derives composed legs with `check_composition` and checks the potentials
 composed set its `potentials`, the clearing prices as the dual of §11 of
 the loop-selection plan; a simple cycle's record is byte-identical to
 before, and U11 reads composed legs. Not built: aggregation by quantity,
-operators beyond one hop, declared parts on a v4 record, and the LP/ILP
+operators beyond two hops, declared parts on a v4 record, and the LP/ILP
 selection over competing sets.
+
+**Update 2026-09-13 evening — the operator's argument is its want.** Peter,
+on why `want transport(bicycle)` should match `give transport(goods)` when
+`want apples` does not match `give fruit`: *the parameter of the transport
+is a want from the transporter's side*. So the third relation: the
+argument of a category under `operator` is matched want-within-give (the
+courier's `transport(small-item weight(..8kg))` must contain the wanter's
+`transport(bicycle weight(5kg))`, constraint by constraint), the operator
+category itself give-within-want, and a give constraint the want is silent
+on refuses. The same argument is the payload check of a composed leg
+(`Ontology.accepts`): the box goes with the small-item courier, the piano
+does not — the gap the 0.5.0 composition had. One rule under all three
+relations: whoever fixes a value states a fact, whoever leaves it open an
+acceptance, and the fact lies within the acceptance — the giver fixes what
+the thing is, the wanter fixes what the courier carries, either may fix
+where and when it changes hands (hence the two-way rule for coordinates).
+Simplifications this bought: `declare_operator` takes the category and its
+two ends, `operators()` is gone (a give's moves are read off the ends it
+names, `Ontology.ends`), the operator give is recognised by its term, not
+by carrying two role terms, and a direct transport want matches the courier
+in `check_match` without composition. Upstream ask ontodag #19 (a role over
+the category graph, nested and conjunctive parameters); until it lands the
+facade splits the term itself and `schema.canonical_term` sorts the
+constituents so the two spellings are one offer id.
 
 ## 7. The arithmetic of loops (graph.py)
 

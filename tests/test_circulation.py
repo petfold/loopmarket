@@ -12,7 +12,7 @@ from loopmarket import (
     SolverAgent, Thing, TimeWindow, check_composition, find_circulations, give, want,
 )
 from loopmarket.clearing import LoopProposal
-from loopmarket.matching import candidate_matches, composed_legs
+from loopmarket.matching import candidate_matches, check_match, composed_legs
 from recordstore import MemoryBytesStore, RecordStore
 
 NOW = 5_000
@@ -23,7 +23,7 @@ def city():
     cat = Ontology(OntoDAG())
     cat.declare_roles({"from": "geo", "to": "geo"})
     cat.declare_handover(["geo", "time"])
-    cat.declare_operator({"geo": ("from", "to")})
+    cat.declare_operator({"transport": ("from", "to")})
     cat.load({"vegetable-box": [], "transport": [], "bicycle-repair": [],
               "piano-lesson": [], "g1": [], "g2": [], "g3": []})
     cat.dag.put("barcelona", ["geo"])
@@ -240,3 +240,31 @@ def test_two_couriers_carry_one_packet():
     three = [l for l in rec["legs"] if len(l["gives"]) == 3]
     assert len(three) == 1 and book.get(three[0]["want"]).maker == "buyer"
     book.verify_loop_atomicity()
+
+
+def test_the_operator_takes_only_what_it_accepts():
+    """The payload check: the courier's argument is what the courier
+    accepts. A small-item courier moves the box and not the piano; the
+    solver composes neither where the argument refuses, and clearing
+    re-derives the same refusal (U3)."""
+    cat = city()
+    cat.load({"small-item": [], "piano": []})
+    cat.dag.put("vegetable-box", ["small-item"])
+    box = give("grocer", Thing(("vegetable-box", "shop")), 5, **V)
+    piano = give("dealer", Thing(("piano", "shop")), 500, **V)
+    run = give("courier", Thing(("transport(small-item)", "from(barcelona)", "to(barcelona)")), 2, **V)
+    at_door = want("buyer", Thing(("vegetable-box", "door")), 8, **V)
+    piano_at_door = want("buyer", Thing(("piano", "door")), 600, **V)
+    assert check_composition(at_door, (box, run), cat, now=NOW) is not None
+    assert check_composition(piano_at_door, (piano, run), cat, now=NOW) is None
+    anything = give("courier", Thing(("transport", "from(barcelona)", "to(barcelona)")), 2, **V)
+    assert check_composition(piano_at_door, (piano, anything), cat, now=NOW) is not None
+    legs = list(composed_legs([box, piano, run, at_door, piano_at_door], cat, now=NOW))
+    assert [l.gives[0].maker for l in legs] == ["grocer"]
+    # a direct transport want needs no composition: the wanter names the
+    # bicycle, the courier the class, and the argument matches reversed
+    cat.dag.put("bicycle", ["small-item"])
+    ride = want("buyer", Thing(("transport(bicycle)", "from(door)", "to(shop)")), 3, **V)
+    assert check_match(run, ride, cat, now=NOW) is not None
+    assert check_match(give("courier", Thing(("transport(piano)", "from(barcelona)", "to(barcelona)")), 2, **V),
+                       ride, cat, now=NOW) is None

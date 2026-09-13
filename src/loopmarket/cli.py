@@ -630,7 +630,7 @@ def parse_want_line(tokens: list[str]) -> "Parsed | Composed":
     last for the lot. Each part reads as a want line without its price
     (a bare number first is that part's quantity); parts carry no price
     (P2-loop-selection.md §10 pays once) and no validity of their own."""
-    toks = list(tokens)
+    toks = _join_terms(list(tokens))
     if PART_SEP not in toks:
         return parse_offer_tokens(toks)
     price = None
@@ -666,6 +666,24 @@ def parse_part_tokens(tokens: list[str]) -> Parsed:
     return parsed
 
 
+def _join_terms(tokens: list[str]) -> list[str]:
+    """An operator's argument may be a conjunction —
+    `transport(small-item weight(..8kg))` — and the line splits on spaces,
+    so tokens are rejoined while a parenthesis is open (the same line
+    quoted, `'transport(small-item weight(..8kg))'`, arrives whole). The
+    canonical spelling sorts the constituents (`schema.canonical_term`)."""
+    out, depth, cur = [], 0, ""
+    for tok in tokens:
+        cur = f"{cur} {tok}" if depth else tok
+        depth += tok.count("(") - tok.count(")")
+        if depth <= 0:
+            out.append(cur)
+            cur, depth = "", 0
+    if cur:
+        raise ValueError(f"{cur}: unbalanced parentheses")
+    return out
+
+
 def parse_offer_tokens(tokens: list[str]) -> Parsed:
     """`[10kg] CATEGORY|TERM ... [PRICE]` → the pieces, nothing resolved.
 
@@ -674,7 +692,7 @@ def parse_offer_tokens(tokens: list[str]) -> Parsed:
     interpreted heads are separated so the caller can map them onto the
     offer's fields. Band spellings in quantity position are *accepted*
     here and refused at publish (gate G6) — they are the grammar."""
-    toks = list(tokens)
+    toks = _join_terms(list(tokens))
     if not toks:
         raise ValueError("what? — give/want [QUANTITY] CATEGORY... [PRICE]")
     if PART_SEP in toks:
@@ -835,6 +853,9 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
     dag = ontology.dag
     out, notes, addresses = [], [], []
     for c in concepts:
+        if ontology.operator_of(c) is not None:
+            out.append(c)               # `transport(bicycle)`: `known` decides
+            continue
         split = _dims.split_term(c)
         kind = _head_kind(dag, split[0]) if split else None
         if kind is None:

@@ -150,3 +150,84 @@ def test_time_terms_match_when_one_window_contains_the_other():
         inside += expect
         outside += not expect
     assert inside and outside
+
+
+def _operators():
+    from ontodag import OntoDAG
+    cat = Ontology(OntoDAG())
+    cat.declare_roles({"from": "geo", "to": "geo"})
+    cat.declare_handover(["geo", "time"])
+    cat.declare_operator({"transport": ("from", "to")})
+    cat.load({"goods": [], "small-item": ["goods"], "bicycle": ["small-item"],
+              "racing-bicycle": ["bicycle"], "piano": ["goods"],
+              "bicycle-courier": ["transport"]})
+    cat.dag.put("barcelona", ["geo"]); cat.dag.put("geo(sp3e)", ["barcelona"])
+    cat.dag.put("flat", ["geo(sp3e3)"]); cat.dag.put("shop", ["geo(sp3e7)"])
+    return cat
+
+
+def test_an_operators_argument_is_its_want_and_matches_reversed():
+    """Peter, 2026-09-13: `want 1kg fruit` matches `give 50kg apples`, and
+    `want transport(bicycle)` matches `give transport(goods)` — the
+    parameter of the transport is what the courier accepts, a want from the
+    courier's side, so it is matched with the sides swapped."""
+    cat = _operators()
+    ok = cat.satisfies
+    assert ok(["transport(goods)", "from(barcelona)", "to(barcelona)"],
+              ["transport(bicycle)", "from(flat)", "to(shop)"])
+    # the specialist takes racing bicycles and nothing else
+    assert ok(["transport(bicycle)"], ["transport(racing-bicycle)"])
+    assert not ok(["transport(bicycle)"], ["transport(piano)"])
+    # a vague want against a constrained courier refuses — the mirror of
+    # `give fruit` against `want apples`
+    assert not ok(["transport(bicycle)"], ["transport(goods)"])
+    assert not ok(["transport(bicycle)"], ["transport"])
+    # a courier who takes anything takes the bicycle
+    assert ok(["transport"], ["transport(bicycle)"])
+    # the operator itself goes the usual way: a bicycle courier is transport
+    assert ok(["bicycle-courier(bicycle)"], ["transport(racing-bicycle)"])
+    assert not ok(["transport(bicycle)"], ["bicycle-courier(racing-bicycle)"])
+    # a want naming no operator is not served by one
+    assert not ok(["transport(goods)"], ["bicycle"])
+    assert not ok(["transport(goods)"], ["goods"])
+
+
+def test_a_conjunction_in_the_argument_is_several_constraints():
+    """`transport(small-item weight(..8kg))` is the same term as
+    `transport(small-item) transport(weight(..8kg))` — a list of cones the
+    payload must sit within, however the two sides spell it; the 12 kg
+    bicycle fails the 8 kg limit in every spelling."""
+    cat = _operators()
+    ok = cat.satisfies
+    courier = ["transport(small-item weight(..8kg))"]
+    split = ["transport(small-item)", "transport(weight(..8kg))"]
+    for give in (courier, split):
+        assert ok(give, ["transport(bicycle weight(5kg))"])
+        assert ok(give, ["transport(bicycle)", "transport(weight(5kg))"])
+        assert not ok(give, ["transport(bicycle weight(12kg))"])
+        assert not ok(give, ["transport(bicycle)"])          # silent on weight
+    assert cat.known("transport(small-item weight(..8kg))")
+    assert not cat.known("transport(unicorn)")               # fails closed (U7)
+    assert not cat.known("delivery(bicycle)")                # not an operator
+    assert cat.argument("transport(weight(..8kg) small-item)") == \
+        ("small-item", "weight(..8kg)")
+    assert cat.operator_of("transport") == "transport" and cat.operator_of("from(flat)") is None
+    assert cat.ends(["transport", "from(flat)", "to(shop)"]) == [("geo", "from(flat)", "to(shop)")]
+    assert cat.ends(["transport", "from(flat)"]) == []
+    assert cat.accepts(["bicycle", "flat"], ["transport(small-item)"])
+    assert not cat.accepts(["piano", "flat"], ["transport(small-item)"])
+
+
+def test_declare_operator_takes_a_category_and_two_ends():
+    from ontodag import OntoDAG
+    import pytest
+    cat = Ontology(OntoDAG())
+    cat.declare_roles({"from": "geo", "to": "geo", "depart": "time"})
+    with pytest.raises(ValueError):
+        cat.declare_operator({"geo": ("from", "to")})        # the 0.5.0 shape
+    with pytest.raises(ValueError):
+        cat.declare_operator({"transport": ("from", "depart")})  # two dimensions
+    with pytest.raises(ValueError):
+        cat.declare_operator({"transport": ("geo", "to")})   # a base, not a role
+    cat.declare_operator({"transport": ("from", "to")})      # the category is created
+    assert cat.operator_of("transport(x)") == "transport"

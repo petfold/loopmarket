@@ -27,7 +27,7 @@ def city():
     cat = Ontology(OntoDAG())
     cat.declare_roles({"from": "geo", "to": "geo"})
     cat.declare_handover(["geo", "time"])
-    cat.declare_operator({"geo": ("from", "to")})
+    cat.declare_operator({"transport": ("from", "to")})
     cat.load({"vegetable-box": [], "transport": [], "bicycle-repair": [],
               "piano-lesson": []})
     cat.dag.put("barcelona", ["geo"])                # a region above its cells

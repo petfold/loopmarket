@@ -82,3 +82,17 @@ def test_time_and_geo_fits_within():
     assert big.intersects(small)
     far = GeoDisc(48.0, 16.0, 1_000)
     assert not big.intersects(far)
+
+
+def test_an_operator_argument_has_one_spelling():
+    """U2: the constituents inside a term's parentheses are sorted like the
+    concepts of a Thing, so `transport(weight(..8kg) small-item)` and
+    `transport(small-item weight(..8kg))` are one offer id (what ontodag #19
+    will canonicalise the same way). Other terms pass unchanged."""
+    from loopmarket.schema import canonical_term
+    a = Thing(("transport(weight(..8kg) small-item)", "from(u2e)"))
+    b = Thing(("from(u2e)", "transport(small-item weight(..8kg))"))
+    assert a == b and a.concepts == ("from(u2e)", "transport(small-item weight(..8kg))")
+    assert canonical_term("time(2026-01-01T00:00:00Z..)") == "time(2026-01-01T00:00:00Z..)"
+    assert canonical_term("transport(b a") == "transport(b a"     # not a term: untouched
+    assert canonical_term("x(b (c") == "x(b (c"                    # unbalanced: untouched
