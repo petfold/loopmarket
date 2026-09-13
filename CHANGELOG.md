@@ -9,6 +9,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-09-13
+
+The day after 0.4.0, from one worked example (a vegetable box, a shop, a
+courier, a door): no `where`/`when` heads, handover coordinates matching
+when one side contains the other, and a baseline solver that finds
+circulations — a want met by several gives at once, cleared as one leg.
+Needs ontodag 0.25.0.
+
 ### Added
 
 - **The baseline solver finds circulations** (Peter, 2026-09-13: "the
