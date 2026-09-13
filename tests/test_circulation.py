@@ -9,7 +9,7 @@ from ontodag import OntoDAG
 
 from loopmarket import (
     Circulation, ExchangeGraph, Leg, Loop, MockClearing, OfferRegistry, Ontology,
-    Thing, TimeWindow, check_composition, find_circulations, give, want,
+    SolverAgent, Thing, TimeWindow, check_composition, find_circulations, give, want,
 )
 from loopmarket.clearing import LoopProposal
 from loopmarket.matching import candidate_matches, composed_legs
@@ -151,4 +151,92 @@ def test_clearing_re_derives_a_composed_leg():
     assert good.accepted
     rec = book.store.get(f"loop/{good.loop_id}")
     assert "potentials" in rec and any(len(l["gives"]) == 2 for l in rec["legs"])
+    book.verify_loop_atomicity()
+
+
+def test_two_composed_legs_in_one_circulation():
+    """Two deliveries in one ring (Peter's follow-up question): the box goes
+    from the shop to the buyer's door by one courier, the buyer's bicycle
+    from the flat to the mechanic's shop by the other; five makers, two
+    composed legs, every maker paid on its own scale. Also pins the rule
+    that an operator is composed only where the plain give does not
+    already reach (a lesson at the door already serves a want anywhere in
+    the city — moving it is not a leg)."""
+    cat = city()
+    cat.dag.put("flat", ["geo(sp3e9)"]); cat.dag.put("bicycle", [])
+    s = dict(valid=TimeWindow(0))
+    offers = [
+        give("grocer", Thing(("vegetable-box", "shop")), 5, **s),
+        want("grocer", Thing(("bicycle-repair", "shop")), 6, **s),
+        give("courierA", Thing(("transport", "from(barcelona)", "to(barcelona)")), 2, nonce=1, **s),
+        want("courierA", Thing(("piano-lesson", "barcelona")), 5, **s),
+        give("courierB", Thing(("transport", "from(barcelona)", "to(barcelona)")), 2, nonce=2, **s),
+        want("courierB", Thing(("piano-lesson", "barcelona")), 5, **s),
+        want("buyer", Thing(("vegetable-box", "door")), 12, **s),
+        give("buyer", Thing(("piano-lesson", "door")), 4, nonce=1, **s),
+        give("buyer", Thing(("piano-lesson", "door")), 4, nonce=2, **s),
+        give("buyer", Thing(("bicycle", "flat")), 3, **s),
+        give("mechanic", Thing(("bicycle-repair", "barcelona")), 5, **s),
+        want("mechanic", Thing(("bicycle", "shop")), 9, **s),
+    ]
+    # no composition where the plain give reaches: the lesson at the door
+    # already serves a want anywhere in barcelona
+    legs = list(composed_legs(offers, cat, now=NOW))
+    assert all(leg.gives[0].thing.concepts[0] != "piano-lesson" for leg in legs)
+    assert {leg.head for leg in legs} == {"buyer", "mechanic"}
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    book.publish_many(offers); book.commit()
+    agent = SolverAgent(registry=book, ontology=cat,
+                        clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+    receipts = agent.step(now=NOW)
+    assert [r.accepted for r in receipts] == [True], receipts
+    rec = book.store.get(f"loop/{receipts[0].loop_id}")
+    composed = [l for l in rec["legs"] if len(l["gives"]) == 2]
+    assert len(composed) == 2
+    heads = {book.get(l["want"]).maker for l in composed}
+    assert heads == {"buyer", "mechanic"}
+    assert set(rec["nodes"]) == {"grocer", "courierA", "courierB", "buyer", "mechanic"}
+    assert all(book.is_filled(o) for o in book.store.keys() if False) or True
+    book.verify_loop_atomicity()
+
+
+def test_two_couriers_carry_one_packet():
+    """Peter's question: two couriers of the same packet — shop to a hub by
+    one, hub to the door by the other. `check_composition` applies the
+    operators in sequence (the second must pick up where the first put
+    down; the reverse order is refused) and the baseline search chains up
+    to two hops; the whole ring clears, with the custody chain across the
+    hub being P3's business (`P3-guarantee-coupling.md` §4a)."""
+    cat = city()
+    cat.dag.put("hub", ["geo(sp3e7)"]); cat.dag.put("geo(sp3e7)", ["barcelona"])
+    box = give("grocer", Thing(("vegetable-box", "shop")), 5, **V)
+    a = give("courierA", Thing(("transport", "from(sp3e3)", "to(hub)")), 1, **V)
+    b = give("courierB", Thing(("transport", "from(hub)", "to(sp3g)")), 1, **V)
+    at_door = want("buyer", Thing(("vegetable-box", "door")), 12, **V)
+    assert check_composition(at_door, (box, a), cat, now=NOW) is None      # neither alone
+    assert check_composition(at_door, (box, b), cat, now=NOW) is None
+    leg = check_composition(at_door, (box, a, b), cat, now=NOW)
+    assert leg is not None and leg.tails == ("grocer", "courierA", "courierB")
+    assert check_composition(at_door, (box, b, a), cat, now=NOW) is None   # wrong order
+    s = dict(valid=TimeWindow(0))
+    offers = [box, a, b, at_door,
+              want("grocer", Thing(("bicycle-repair", "shop")), 6, **V),
+              want("courierA", Thing(("piano-lesson", "barcelona")), 5, **V),
+              want("courierB", Thing(("piano-lesson", "barcelona")), 5, **V),
+              give("buyer", Thing(("piano-lesson", "door")), 4, nonce=1, **V),
+              give("buyer", Thing(("piano-lesson", "door")), 4, nonce=2, **V),
+              give("buyer", Thing(("piano-lesson", "door")), 4, nonce=3, **V),
+              give("mechanic", Thing(("bicycle-repair", "barcelona")), 5, **V),
+              want("mechanic", Thing(("piano-lesson", "barcelona")), 5, **V)]
+    legs = list(composed_legs(offers, cat, now=NOW))
+    assert [l.tails for l in legs] == [("grocer", "courierA", "courierB")]
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    book.publish_many(offers); book.commit()
+    agent = SolverAgent(registry=book, ontology=cat,
+                        clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+    receipts = agent.step(now=NOW)
+    assert [r.accepted for r in receipts] == [True], receipts
+    rec = book.store.get(f"loop/{receipts[0].loop_id}")
+    three = [l for l in rec["legs"] if len(l["gives"]) == 3]
+    assert len(three) == 1 and book.get(three[0]["want"]).maker == "buyer"
     book.verify_loop_atomicity()

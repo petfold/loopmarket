@@ -223,11 +223,21 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
 
 
 def composed_legs(offers: Iterable[Offer], ontology: Ontology, *,
-                  now: int) -> Iterator[Leg]:
-    """Baseline composition search: every want × every thing-give × every
-    single operator give, checked exactly. One hop only (the open problem
-    of §10); cubic in the book, which the baseline accepts as the recall
-    benchmark composing species must beat. Deterministic order."""
+                  now: int, max_hops: int = 2) -> Iterator[Leg]:
+    """Baseline composition search: every want × every thing-give that does
+    not already satisfy it × every chain of up to `max_hops` distinct
+    operator gives, checked exactly — an operator is composed only where it
+    is needed (a lesson at the door already serves a want anywhere in the
+    city; moving it is not a leg), and a chain only where a shorter one
+    does not reach (one courier who goes the whole way is not also
+    proposed as two). Two couriers of one packet — shop to hub, hub to
+    door — are a two-hop leg; the intermediate coordinate is where the
+    first operator puts the thing down and the second picks it up
+    (`P2-loop-selection.md` §10's open problem, closed for fixed hops).
+    Polynomial in the book with the exponent `max_hops`, which the baseline
+    accepts as the recall benchmark composing species must beat.
+    Deterministic order."""
+    from itertools import permutations
     offers = list(offers)
     declared = ontology.operators()
     if not declared:
@@ -240,10 +250,17 @@ def composed_legs(offers: Iterable[Offer], ontology: Ontology, *,
     things = [g for g in gives if g not in ops]
     for w in wants:
         for thing in things:
-            for op in ops:
-                leg = check_composition(w, (thing, op), ontology, now=now)
-                if leg is not None:
-                    yield leg
+            if check_match(thing, w, ontology, now=now) is not None:
+                continue           # the thing already reaches: no operator needed
+            reached = False
+            for hops in range(1, max_hops + 1):
+                if reached:
+                    break          # a shorter chain reaches: no longer one
+                for chain in permutations(ops, hops):
+                    leg = check_composition(w, (thing, *chain), ontology, now=now)
+                    if leg is not None:
+                        reached = True
+                        yield leg
 
 
 def candidate_matches(offers: Iterable[Offer], ontology: Ontology, *,

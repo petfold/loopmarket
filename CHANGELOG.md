@@ -9,6 +9,18 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Changed
+
+- **Composition search: only where needed, and up to two hops** (Peter's
+  follow-up questions, 2026-09-13). `composed_legs` no longer composes an
+  operator onto a give that already reaches the want (a lesson at the door
+  already serves a want anywhere in the city), and chains up to two
+  distinct operator gives for one thing — two couriers of the same packet,
+  shop to hub, hub to door — proposing a chain only where a shorter one
+  does not reach. `check_composition` always applied operators in
+  sequence; clearing verifies chains of any length. Tests: two deliveries
+  in one ring, two couriers of one packet (`tests/test_circulation.py`).
+
 ## [0.5.0] — 2026-09-13
 
 The day after 0.4.0, from one worked example (a vegetable box, a shop, a
