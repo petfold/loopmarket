@@ -344,6 +344,17 @@ the qty-as-flow-capacity mechanism of §2, and the settled-quantities v4
 record (`P2-clearing-pricing.md` §8) already has to grow per-fill
 quantities for it.
 
+**Built 2026-09-13, the discovered form, in the baseline.** After the
+vegetable-box example (Peter: *the whole point of a solver is to find
+circulations*): `matching.Leg`/`check_composition`/`composed_legs`,
+`graph.Circulation` (node potentials, `surplus`, `loop_id`) and
+`find_circulations`, clearing re-deriving composed legs, the `loop/`
+record carrying `gives` and `potentials`. One hop, one operator per leg,
+operators declared in the catalogue (`Ontology.declare_operator`). The
+reseller form clears too as a plain cycle; the reason to prefer
+composition (unconditional offers) stands. `examples/delivery.loop`,
+`tests/test_circulation.py`, `tests/test_handover.py`.
+
 **Shape.** The result is not a cycle and does not decompose into cycles:
 the buyer has one inflow (the composed thing) and k outflows (the split
 payment), or k inflows and one outflow if you count the gives. It is a
@@ -452,8 +463,9 @@ solvers' problem to be good at, not clearing's.
 the maker graph that is conserved at every node, where conservation is
 of *value on that node's own scale* and some legs are hyper-legs (one
 want composed from several gives, §10). A simple cycle is the smallest
-non-trivial circulation; the P0 solver finds exactly those and nothing
-else. "The numbers cancel in-loop" (the essay) is precisely "the numbers
+non-trivial circulation; the P0 solver found exactly those and nothing
+else until 2026-09-13, when the baseline gained composed legs and a
+circulation hunt (§10, "Built"). "The numbers cancel in-loop" (the essay) is precisely "the numbers
 cancel at every node". Nothing in U1–U7 or U11 changes; they were always
 statements about nodes and legs, never about cycles.
 

@@ -262,8 +262,12 @@ and no downward walk reaches it; place and time are the exact check's,
 and the ask upstream, if book sizes ever need it, is a query term meaning
 "comparable to X". The case the example also exposes: the shop's box plus
 the courier's `from(barcelona) to(barcelona)` satisfy the want at the door
-together, and the P0 solver cannot compose them — that leg is P2's
-operator form (`tests/test_handover.py` pins both).
+together — and the same day the baseline solver learned to compose them
+(§6 below and `docs/plans/P2-loop-selection.md` §10/§11): `Leg`,
+`check_composition`, `Circulation` with node potentials, and a
+deterministic circulation hunt after Bellman–Ford's simple cycles;
+`examples/delivery.loop` clears it (`tests/test_handover.py`,
+`tests/test_circulation.py`).
 
 ## 4. The catalogue (ontology.py)
 
@@ -434,6 +438,32 @@ it, so no index, cache or heuristic may be load-bearing for correctness.
 The baseline candidate generator is the full give×want product with the
 constant-time gates doing the pruning — right for in-memory books, and the
 benchmark smarter generators must not fall behind on recall.
+
+**Update 2026-09-13 — composed legs and circulations in the baseline.**
+Peter, after the vegetable-box example: *the whole point of a solver is to
+find circulations*. So the baseline now does. `matching.Leg` is one want
+met by one or more gives; `check_composition(want, gives)` is the exact
+check of a composed leg — the first give is the thing, each further give an
+operator the catalogue declares (`Ontology.declare_operator`: transport as
+`from`/`to` over geo, storage as `depart`/`arrive` over time), whose input
+coordinate must be comparable with the thing's as it stands and whose output
+replaces it, the moved thing then satisfying the want like any give;
+`composed_legs` is the cubic baseline search, one hop. `graph.Circulation`
+is a set of legs in which every maker both gives and receives, each offer
+once; feasibility is the existence of node potentials — the least ones by
+a Bellman–Ford-shaped fixpoint over the hypergraph, which for a simple cycle
+is exactly "product of rates > 1" — and `surplus` compounds the largest
+uniform per-leg gain, agreeing with `Loop.surplus` on cycles;
+`find_circulations` is a deterministic depth-first hunt that extends at the
+smallest unbalanced maker so the set stays connected. The agent runs
+Bellman–Ford first and the circulation hunt over what it leaves; clearing
+re-derives composed legs with `check_composition` and checks the potentials
+(U3 unchanged in shape). The `loop/` record's legs carry `gives` and a
+composed set its `potentials`, the clearing prices as the dual of §11 of
+the loop-selection plan; a simple cycle's record is byte-identical to
+before, and U11 reads composed legs. Not built: aggregation by quantity,
+operators beyond one hop, declared parts on a v4 record, and the LP/ILP
+selection over competing sets.
 
 ## 7. The arithmetic of loops (graph.py)
 

@@ -139,6 +139,8 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 | `.declare_handover(heads)` | mark base dimension heads (`geo`, `time`) as handover coordinates under the `handover` marker; roles under them inherit it; prelude adopted on demand |
 | `.declare_descriptive(heads)` | opt a geo/time head out (`made_in`, `made`) under the `descriptive` marker: its terms describe the thing and match one-way |
 | `.handover_class(concept)` / `.handover_heads()` | the head whose coordinate a term states (`None` for categories and descriptive terms; a bare place node states `geo`'s); the marked base heads |
+| `.declare_operator({base: (input_head, output_head)})` / `.operators()` | what moves a thing along a dimension — `{"geo": ("from", "to"), "time": ("depart", "arrive")}` — under the `operator-input`/`operator-output` markers; a give naming both ends is an operator (composition, `P2-loop-selection.md` §10) |
+| `.base_head(head)` / `.coordinate(concepts, base)` / `.bare(term)` | a role's base head; the bare coordinate of `base` a conjunction states; a role term respelled as the bare coordinate it denotes (`to(u2e4)` → `geo(u2e4)`, `from(shop)` → `shop`) |
 | `.head_kind(head)` | the registry kind a declared head orders values by, else `None` |
 | `.root` | canonical root of the last committed state, `''` if in-memory/uncommitted |
 | `.pins` | `{"ontology_root", "registry_version", "contract_version"}` — splat into `give`/`want` (U10) |
@@ -225,6 +227,25 @@ Exact, self-contained, re-runnable by clearing. Gates, in order:
 ### `candidate_matches(offers, ontology, *, now) -> Iterator[Match]`
 The exact check over the full give × want product. The recall baseline.
 
+### `Leg(want: Offer, gives: tuple[Offer, ...])` — frozen
+One want met by one or more gives — the hyperedge of `P2-loop-selection.md`
+§10/§11. `Leg.from_match(m)`; `.head` (the buyer), `.tails` (the givers),
+`.offer_ids`, `.simple` (one give), `.key` (`give+give>want`, the sort key).
+
+### `check_composition(want, gives, ontology, *, now) -> Leg | None`
+The exact check of a composed leg (2026-09-13): the first give is the
+thing, every further give an operator the catalogue declares
+(`Ontology.declare_operator`, e.g. transport `from`/`to` over geo). Each
+operator's input coordinate must be comparable with the thing's coordinate
+as it stands (one contains the other) and its output replaces it; the thing
+so moved must satisfy the want; every give passes `check_match`'s gates
+against the want (the operator without the quantity gate). Re-run by
+clearing (U3).
+
+### `composed_legs(offers, ontology, *, now) -> Iterator[Leg]`
+Baseline composition search: every want × thing give × one operator give,
+checked exactly; deterministic order. One hop only.
+
 ---
 
 ## 6. `loopmarket.dimensions` — indexed candidate generation
@@ -247,7 +268,7 @@ and #18 (the dimension cache).
 
 ---
 
-## 7. `loopmarket.graph` — loops
+## 7. `loopmarket.graph` — loops and circulations
 
 ### `Loop(matches: tuple[Match, ...])` — frozen
 Raises `ValueError` unless ≥ 2 legs chaining into a cycle
@@ -272,12 +293,39 @@ Raises `ValueError` unless ≥ 2 legs chaining into a cycle
 | `.find_profitable_loop(*, min_surplus=0.0)` | Bellman–Ford over −log(rate); deterministic (sorted iteration, U6); one `Loop` or `None` |
 | `.find_profitable_loops(*, min_surplus=0.0, limit=10)` | greedy disjoint extraction (each offer used once) |
 
+### `Circulation(legs: tuple[Leg, ...])` — frozen
+A set of legs, some possibly composed, in which every maker both gives and
+receives; each offer once, a maker may take part through several offers.
+Raises `ValueError` otherwise. `Circulation.from_loop(loop)` lifts a cycle,
+and `loop_id`/`surplus` agree with the `Loop` there.
+
+| member | meaning |
+|---|---|
+| `.nodes` / `.offer_ids` / `.simple` | sorted makers; every offer id; all legs single-give |
+| `.as_loop()` | the `Loop`, when every leg is simple, each maker takes part once each way and the legs chain; else `None` |
+| `.potentials(gain=1.0)` | the least node potentials `e ≥ 1` with `want.price·e[buyer] ≥ gain·Σ give.price·e[giver]` on every leg — the clearing prices as the dual of §11 — or `None` when none exist; a Bellman–Ford-shaped fixpoint over the legs in sorted order (U6) |
+| `.feasible` | potentials exist at gain 1 |
+| `.surplus` | `(1+t)^k − 1` for the largest uniform per-leg gain `t` with potentials (bisection); for a simple cycle exactly `Loop.surplus`; negative when infeasible |
+| `.per_node_ok` | each maker's wants cover its gives on its own scale — `Loop.per_node_ok` over any shape |
+| `.loop_id` | a simple cycle's `Loop.loop_id`; else SHA-256 of the sorted leg keys |
+
+### `find_circulations(legs, *, min_surplus=0.0, limit=10, max_legs=6, budget=50_000) -> list[Circulation]`
+The baseline hunt: depth-first from each leg in sorted order, always
+extending at the smallest unbalanced maker, so the set stays connected and
+balances; the first set with surplus ≥ `min_surplus` is taken and its
+offers retired. Deterministic (U6); bounded by `max_legs` and a node
+budget. Simple cycles are found first by `ExchangeGraph` in the agent.
+
 ---
 
 ## 8. `loopmarket.clearing` — trust nothing, commit atomically
 
 ### `LoopProposal(loop, book_root, ontology_root, solver, found_at)` — frozen
-`.to_record()` → the `loop/` record (see §13).
+`loop` is a `Loop` or a `Circulation` (`.circulation` lifts either).
+`.to_record()` → the `loop/` record: every leg names `want`, `gives` (all
+of them) and `give` (the first — the 2026-08 shape's key, kept for
+readers); a simple leg carries its `rate`; a composed set carries the
+node `potentials`. A simple cycle's record is byte-identical to before.
 
 ### `Receipt(accepted, loop_id, reason="", book_root="")` — frozen
 `book_root` is the post-clearing root when accepted.

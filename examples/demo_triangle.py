@@ -55,8 +55,10 @@ ontology = Ontology().load({
 ROLES = {"from": "geo", "to": "geo",                # a route
          "depart": "time", "arrive": "time"}         # a transport
 HANDOVER = ["geo", "time"]                           # coordinates match either way
+OPERATORS = {"geo": ("from", "to"), "time": ("depart", "arrive")}   # what moves a thing
 ontology.declare_roles(ROLES)
 ontology.declare_handover(HANDOVER)
+ontology.declare_operator(OPERATORS)
 
 # --- the book ------------------------------------------------------------------
 

@@ -4,12 +4,11 @@ coordinates match when one side contains the other.
 
 Two cases. A seller who delivers anywhere in the city serves a want at a
 door inside it: the give is the wider one, and it matches. A seller at a
-shop does not serve a want at a door — that leg needs the courier who says
-`transport from(barcelona) to(barcelona)`, and composing the shop's give
-with the courier's into one leg is the solver-side operator form of
-`docs/plans/P2-loop-selection.md` §10, not built: today's solver hunts
-simple cycles of single gives, so the case yields no loop and is pinned
-here as the gap."""
+shop does not serve a want at a door by itself — that leg is the shop's
+give composed with the courier's `transport from(barcelona) to(barcelona)`
+(the operator form of `docs/plans/P2-loop-selection.md` §10), which the
+circulation hunt finds and clearing re-derives (built 2026-09-13, the
+same day the example was put through)."""
 
 from ontodag import OntoDAG
 
@@ -28,6 +27,7 @@ def city():
     cat = Ontology(OntoDAG())
     cat.declare_roles({"from": "geo", "to": "geo"})
     cat.declare_handover(["geo", "time"])
+    cat.declare_operator({"geo": ("from", "to")})
     cat.load({"vegetable-box": [], "transport": [], "bicycle-repair": [],
               "piano-lesson": []})
     cat.dag.put("barcelona", ["geo"])                # a region above its cells
@@ -71,10 +71,13 @@ def test_the_courier_matches_a_transport_want_either_way():
                        want("b", Thing(("transport", "to(door)")), 3, **V), cat, now=NOW) is None
 
 
-def test_the_shop_plus_courier_leg_is_not_composed_yet():
-    """The gap this example pins: the shop's box and the courier's run
-    together satisfy the want at the door, but the P0 solver matches one
-    give to one want and finds no loop. Solver-side composition is P2."""
+def test_the_shop_plus_courier_leg_clears_as_a_circulation():
+    """The case the example was about: the shop's box and the courier's
+    run together satisfy the want at the door — one composed leg, found by
+    the circulation hunt and re-derived by clearing. The ring closes
+    through the grocer's repair and two lessons from the buyer, so every
+    maker both gives and receives; the buyer takes part through three
+    offers (one want, two gives), each used once."""
     cat = city()
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
     standing = dict(valid=TimeWindow(0))
@@ -82,20 +85,44 @@ def test_the_shop_plus_courier_leg_is_not_composed_yet():
         give("grocer", Thing(("vegetable-box", "shop")), 5, **standing),
         want("grocer", Thing(("bicycle-repair", "shop")), 6, **standing),
         give("courier", Thing(("transport", "from(barcelona)", "to(barcelona)")), 2, **standing),
-        want("courier", Thing(("piano-lesson", "barcelona")), 3, **standing),
-        give("buyer", Thing(("piano-lesson", "door")), 4, **standing),
-        want("buyer", Thing(("vegetable-box", "door")), 7, **standing),
+        want("courier", Thing(("piano-lesson", "barcelona")), 5, **standing),
+        want("buyer", Thing(("vegetable-box", "door")), 8, **standing),
+        give("buyer", Thing(("piano-lesson", "door")), 4, nonce=1, **standing),
+        give("buyer", Thing(("piano-lesson", "door")), 4, nonce=2, **standing),
         give("mechanic", Thing(("bicycle-repair", "barcelona")), 5, **standing),
-        want("mechanic", Thing(("transport", "from(barcelona)", "to(barcelona)")), 8, **standing),
+        want("mechanic", Thing(("piano-lesson", "barcelona")), 5, **standing),
     ])
     book.commit()
     agent = SolverAgent(registry=book, ontology=cat,
                         clearing=MockClearing(book, cat, clock=lambda: NOW),
                         solver_id="t")
-    assert agent.step() == []                        # no simple cycle: the box is at the shop
-    # the city-wide seller closes it: the same book with one more give
-    book.publish(give("grocer2", Thing(("vegetable-box", "barcelona")), 5, **standing))
-    book.publish(want("grocer2", Thing(("bicycle-repair", "barcelona")), 6, **standing))
-    book.commit()
     receipts = agent.step()
-    assert len(receipts) == 1 and receipts[0].accepted
+    assert len(receipts) == 1 and receipts[0].accepted, receipts
+    rec = book.store.get(f"loop/{receipts[0].loop_id}")
+    composed = [leg for leg in rec["legs"] if len(leg["gives"]) == 2]
+    assert len(composed) == 1
+    gives = {book.get(g).maker for g in composed[0]["gives"]}
+    assert gives == {"grocer", "courier"} and book.get(composed[0]["want"]).maker == "buyer"
+    assert set(rec["potentials"]) == {"grocer", "courier", "buyer", "mechanic"}
+    assert all(book.is_filled(oid) for oid in
+               [o for leg in rec["legs"] for o in (*leg["gives"], leg["want"])])
+    book.verify_loop_atomicity()                     # U11 reads composed legs
+    assert agent.step() == []
+
+
+def test_without_the_courier_nothing_clears():
+    cat = city()
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    standing = dict(valid=TimeWindow(0))
+    book.publish_many([
+        give("grocer", Thing(("vegetable-box", "shop")), 5, **standing),
+        want("grocer", Thing(("bicycle-repair", "shop")), 6, **standing),
+        want("buyer", Thing(("vegetable-box", "door")), 8, **standing),
+        give("buyer", Thing(("piano-lesson", "door")), 4, **standing),
+        give("mechanic", Thing(("bicycle-repair", "barcelona")), 5, **standing),
+        want("mechanic", Thing(("piano-lesson", "barcelona")), 5, **standing),
+    ])
+    book.commit()
+    agent = SolverAgent(registry=book, ontology=cat,
+                        clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+    assert agent.step() == []                        # the box stays at the shop

@@ -59,7 +59,7 @@ from ontodag import dimensions as _dims
 
 from . import __version__
 from .clearing import MockClearing
-from .graph import Loop
+from .graph import Circulation, Loop
 from .matching import candidate_matches
 from .ontology import Ontology
 from .registry import OfferRegistry
@@ -1872,12 +1872,21 @@ def cmd_status(args, session, out):
 # Commands: solver and clearing
 # --------------------------------------------------------------------------- #
 
-def _print_loop(loop: Loop, fold: OfferRegistry, out, *, prefix="") -> None:
-    print(f"{prefix}loop {loop.loop_id[:16]}… surplus {100 * loop.surplus:.2f}%",
+def _print_loop(loop, fold: OfferRegistry, out, *, prefix="") -> None:
+    circ = loop if isinstance(loop, Circulation) else Circulation.from_loop(loop)
+    print(f"{prefix}loop {circ.loop_id[:16]}… surplus {100 * circ.surplus:.2f}%",
           file=out)
-    for m in loop.matches:
-        print(f"  {m.giver} gives {' '.join(m.give.thing.concepts)} to "
-              f"{m.receiver} (rate {m.rate:.4g})", file=out)
+    for leg in sorted(circ.legs, key=lambda leg: leg.key):
+        print("  " + _leg_line(leg.gives, leg.want), file=out)
+
+
+def _leg_line(gives, want) -> str:
+    """`grocer gives vegetable-box shop + courier gives transport ... to buyer`
+    — a composed leg names every give it consumes; a simple one its rate."""
+    parts = " + ".join(f"{g.maker} gives {' '.join(g.thing.concepts)}" for g in gives)
+    tail = f"(rate {want.unit_price / gives[0].unit_price:.4g})" if len(gives) == 1 \
+        else "(composed)"
+    return f"{parts} to {want.maker} {tail}"
 
 
 def cmd_loops(args, session, out):
@@ -1917,9 +1926,8 @@ def cmd_clearing(args, session, out):
             print(f"cleared {r.loop_id[:16]}… surplus "
                   f"{100 * rec['surplus']:.2f}%", file=out)
             for leg in rec["legs"]:
-                a, b = book.get(leg["give"]), book.get(leg["want"])
-                print(f"  {a.maker} gives {' '.join(a.thing.concepts)} to "
-                      f"{b.maker} (rate {leg['rate']:.4g})", file=out)
+                gives = [book.get(g) for g in leg.get("gives", [leg["give"]])]
+                print("  " + _leg_line(gives, book.get(leg["want"])), file=out)
         else:
             print(f"rejected {r.loop_id[:16]}…: {r.reason}", file=_err())
     if cleared:

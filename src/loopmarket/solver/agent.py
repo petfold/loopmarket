@@ -36,8 +36,8 @@ import logging
 import time as _time
 from dataclasses import dataclass, field
 
-from ..graph import ExchangeGraph, Loop
-from ..matching import candidate_matches
+from ..graph import Circulation, ExchangeGraph, Loop, find_circulations
+from ..matching import Leg, candidate_matches, composed_legs
 from ..ontology import Ontology
 from ..registry import OfferRegistry
 from ..clearing import LoopProposal, Receipt, Clearing
@@ -55,19 +55,34 @@ class SolverAgent:
     max_loops_per_step: int = 10
     receipts: list[Receipt] = field(default_factory=list)
 
-    def find_loops(self, *, now: int | None = None) -> tuple[str, list[Loop]]:
-        """Steps 1-5: returns (book_root, profitable disjoint loops)."""
+    def find_loops(self, *, now: int | None = None
+                   ) -> tuple[str, list[Loop | Circulation]]:
+        """Steps 1-5: returns (book_root, profitable disjoint loops and
+        circulations). Simple cycles first, by Bellman-Ford; then, when the
+        catalogue declares operators and the book composes any leg, the
+        circulation hunt over the offers the cycles left (`graph.
+        find_circulations`), simple legs and composed legs together."""
         now = int(_time.time()) if now is None else now
         root, book = self.registry.snapshot()
         offers = list(book.offers(now=now))
         matches = list(candidate_matches(offers, self.ontology, now=now))
         graph = ExchangeGraph.from_matches(matches)
-        loops = graph.find_profitable_loops(
+        loops: list[Loop | Circulation] = graph.find_profitable_loops(
             min_surplus=self.min_surplus, limit=self.max_loops_per_step
         )
+        used = {oid for loop in loops for oid in loop.offer_ids}
+        rest = [o for o in offers if o.offer_id not in used]
+        composed = list(composed_legs(rest, self.ontology, now=now))
+        if composed and len(loops) < self.max_loops_per_step:
+            legs = composed + [Leg.from_match(m) for m in matches
+                               if not ({m.give.offer_id, m.want.offer_id} & used)]
+            loops.extend(find_circulations(
+                legs, min_surplus=self.min_surplus,
+                limit=self.max_loops_per_step - len(loops)))
         log.info(
-            "root=%s offers=%d matches=%d loops=%d",
-            root[:12] if root else "-", len(offers), len(matches), len(loops),
+            "root=%s offers=%d matches=%d composed=%d loops=%d",
+            root[:12] if root else "-", len(offers), len(matches),
+            len(composed), len(loops),
         )
         return root, loops
 

@@ -142,8 +142,10 @@ else:
 ROLES = {"from": "geo", "to": "geo",                # a route
          "depart": "time", "arrive": "time"}         # a transport
 HANDOVER = ["geo", "time"]                           # coordinates match either way
+OPERATORS = {"geo": ("from", "to"), "time": ("depart", "arrive")}   # what moves a thing
 catalogue.declare_roles(ROLES)
 catalogue.declare_handover(HANDOVER)
+catalogue.declare_operator(OPERATORS)
 t0 = time.time()
 committed(catalogue)
 pins = catalogue.pins

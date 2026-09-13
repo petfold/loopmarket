@@ -25,34 +25,60 @@ import time as _time
 from dataclasses import dataclass
 from typing import Protocol
 
-from .graph import Loop
-from .matching import check_match
+from .graph import Circulation, Loop
+from .matching import check_composition, check_match
 from .ontology import Ontology
 from .registry import OfferRegistry
 
 
 @dataclass(frozen=True, slots=True)
 class LoopProposal:
-    loop: Loop
+    loop: Loop | Circulation
     book_root: str        # the registry version the loop was solved against
     ontology_root: str    # the catalogue version subsumption was checked under
     solver: str           # who found it (fee/reputation address)
     found_at: int
 
+    @property
+    def circulation(self) -> Circulation:
+        return self.loop if isinstance(self.loop, Circulation) \
+            else Circulation.from_loop(self.loop)
+
     def to_record(self) -> dict:
-        return {
-            "loop_id": self.loop.loop_id,
+        """The `loop/` record. Every leg names its want and its gives —
+        `give` is the first (the thing; the only one of a simple leg, kept
+        for readers of the 2026-08 shape) and `gives` all of them, so a
+        fill of a composed want names every give it consumed (§10). A
+        simple leg carries its rate; a composed set carries the node
+        potentials — the clearing prices as the dual of §11."""
+        circ = self.circulation
+        legs = []
+        for leg in sorted(circ.legs, key=lambda leg: leg.key):
+            rec = {"give": leg.gives[0].offer_id,
+                   "gives": [g.offer_id for g in leg.gives],
+                   "want": leg.want.offer_id}
+            if leg.simple:
+                rec["rate"] = leg.want.unit_price / leg.gives[0].unit_price
+            legs.append(rec)
+        record = {
+            "loop_id": circ.loop_id,
             "solver": self.solver,
             "found_at": self.found_at,
             "book_root": self.book_root,
             "ontology_root": self.ontology_root,
-            "surplus": self.loop.surplus,
-            "nodes": list(self.loop.nodes),
-            "legs": [
-                {"give": m.give.offer_id, "want": m.want.offer_id, "rate": m.rate}
-                for m in self.loop.matches
-            ],
+            "surplus": circ.surplus,
+            "nodes": list(circ.nodes),
+            "legs": legs,
         }
+        loop = circ.as_loop()
+        if loop is not None:          # the P0 shape, byte for byte
+            record["nodes"] = list(loop.nodes)
+            record["legs"] = [
+                {"give": m.give.offer_id, "want": m.want.offer_id, "rate": m.rate}
+                for m in loop.matches]
+        else:
+            record["potentials"] = circ.potentials()
+        return record
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,7 +115,7 @@ class MockClearing:
         self.verifiable_oracles = frozenset(verifiable_oracles)
 
     def submit(self, proposal: LoopProposal) -> Receipt:
-        loop = proposal.loop
+        loop = proposal.circulation
         lid = loop.loop_id
         now = int(self.clock())
 
@@ -124,17 +150,26 @@ class MockClearing:
             if offer.oracle not in self.verifiable_oracles:
                 return reject(f"unverifiable oracle type: {offer.oracle}")
 
-        # 2. re-derive every leg — never trust the solver's matches
-        for m in loop.matches:
-            fresh_give = self.registry.get(m.give.offer_id)
-            fresh_want = self.registry.get(m.want.offer_id)
-            if check_match(fresh_give, fresh_want, self.ontology, now=now) is None:
+        # 2. re-derive every leg — never trust the solver's matches; a
+        #    composed leg is re-composed (`check_composition`) from the
+        #    current book, operators included
+        for leg in loop.legs:
+            fresh_want = self.registry.get(leg.want.offer_id)
+            fresh_gives = [self.registry.get(g.offer_id) for g in leg.gives]
+            ok = check_match(fresh_gives[0], fresh_want, self.ontology, now=now) \
+                if leg.simple else \
+                check_composition(fresh_want, fresh_gives, self.ontology, now=now)
+            if ok is None:
                 return reject(
-                    f"leg fails re-verification: {m.give.offer_id[:8]}"
-                    f" -> {m.want.offer_id[:8]}"
+                    f"leg fails re-verification: "
+                    f"{'+'.join(g.offer_id[:8] for g in leg.gives)}"
+                    f" -> {leg.want.offer_id[:8]}"
                 )
 
-        # 3. the arithmetic
+        # 3. the arithmetic: potentials exist (a simple cycle: product > 1)
+        #    with the required uniform gain, and the indivisible gate
+        if not loop.feasible:
+            return reject("no node potentials: the legs do not balance")
         if loop.surplus < self.min_surplus - 1e-12:
             return reject(f"surplus {loop.surplus:.4f} below minimum")
         if self.require_per_node and not loop.all_divisible \

@@ -52,7 +52,7 @@ agent.step()                          # snapshot → match → hunt loops → cl
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 126 tests (two need a live Bee node)
+python3 -m pytest tests/ -v           # 132 tests (two need a live Bee node)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
@@ -62,6 +62,8 @@ The script publishes the smallest nontrivial book — a piano teacher, a
 market gardener and a bicycle mechanic, no pair of whom can trade — and
 `loops && clear` finds, verifies and clears the triangle at a 12% surplus:
 fifteen lines of `set maker`, `give piano-lesson amara_flat 100`,
+`examples/delivery.loop` clears a *circulation*: the grocer's box at the
+shop plus the courier's run to the door as one composed leg (2026-09-13),
 `want produce local weekly ...`. It runs unchanged with the book on Swarm
 (`loop -f swarm:TOPIC ...`; 0.3.0 live-checked 2026-09-12 on a Bee 2.8.2
 light node: published, solved and cleared in 1m51s with the same `loop_id`

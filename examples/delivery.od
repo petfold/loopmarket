@@ -26,10 +26,15 @@ size dominance-dimension
 # `depart`/`arrive` — roles under them — are the two ends of one kind; all
 # match when one side contains the other (a descriptive head would opt out
 # under `descriptive`).
-from geo
-to geo
-depart time
-arrive time
+# and the operators (P2-loop-selection.md §10): a give naming an input and an
+# output end of one dimension moves a thing along it — the solver composes it
+# with the thing's give to satisfy a want at the output coordinate
+from geo operator-input
+to geo operator-output
+depart time operator-input
+arrive time operator-output
 # the example's trades
 vegetable-box
 transport
+bicycle-repair
+piano-lesson

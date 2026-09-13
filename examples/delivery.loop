@@ -1,6 +1,8 @@
 # Peter's vegetable-box example (2026-09-13), as a `loop` session. Where an
-# offer holds is a bare place in its conjunction; a place and a want's place
-# match when one contains the other. Run it in a scratch home:
+# offer holds is a bare place in its conjunction; place and time match when
+# one contains the other; and a want may be met by several gives at once —
+# the grocer's box at the shop plus the courier's run to the door is one
+# composed leg of a circulation the solver finds and clearing re-derives.
 #
 #   LOOP_HOME=$(mktemp -d) ONTODAG_HOME=$(mktemp -d) loop --catalogue examples/delivery.od < examples/delivery.loop
 set confirm off
@@ -9,12 +11,17 @@ place shop 41.3874,2.1686,20m
 place door 41.4036,2.1744,20m
 set maker grocer
 give vegetable-box shop 5
+want bicycle-repair shop 6
 set maker buyer
-want vegetable-box door 6
+want vegetable-box door 8
 matches
+give piano-lesson door 4
+give piano-lesson door 4
 set maker courier
 give transport from(sp3) to(sp3) 2
+want piano-lesson geo(sp3) 5
+set maker mechanic
+give bicycle-repair geo(sp3) 5
+want piano-lesson geo(sp3) 5
 loops
-set maker grocer2
-give vegetable-box geo(sp3) 5
-matches
+clearing

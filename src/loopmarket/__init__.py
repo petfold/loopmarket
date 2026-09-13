@@ -22,10 +22,10 @@ from .schema import (
 from .federation import Aggregator, Manifest, Omission, audit_manifest
 from .ontology import Ontology
 from .registry import OfferRegistry, PartialLoopError, swarm_offer_book
-from .matching import Match, candidate_matches, check_match
+from .matching import Leg, Match, candidate_matches, check_composition, check_match
 from .sigs import maker_address, recover_maker, sign_offer, verify_offer_sig
 from .dimensions import DimensionIndex, candidate_matches_indexed
-from .graph import ExchangeGraph, Loop
+from .graph import Circulation, ExchangeGraph, Loop, find_circulations
 from .clearing import LoopProposal, MockClearing, Receipt, Clearing
 from .solver.agent import SolverAgent
 
@@ -39,5 +39,6 @@ __all__ = [
     "Match", "candidate_matches", "check_match",
     "maker_address", "recover_maker", "sign_offer", "verify_offer_sig",
     "DimensionIndex", "candidate_matches_indexed", "ExchangeGraph", "Loop",
+    "Circulation", "find_circulations", "Leg", "check_composition",
     "LoopProposal", "MockClearing", "Receipt", "Clearing", "SolverAgent",
 ]

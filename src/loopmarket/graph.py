@@ -21,6 +21,21 @@ conservative extra check is offered — per-node surplus (each node's want
 unit price >= its give unit price), under which exact cancellation with
 qty=1 legs is feasible. `Loop.per_node_ok` reports it; the solver decides
 policy.
+
+Circulations (2026-09-13, `docs/plans/P2-loop-selection.md` §10/§11): the
+cleared object is a set of legs, some of them composed — one want met by
+the give of a thing plus the operator gives that move it (the box at the
+shop plus the courier's run). Every maker in the set gives once and wants
+once; conservation is of value on each maker's own scale. Feasibility is
+the existence of node potentials e > 0 with, for every leg, the buyer's
+price times its potential covering the sum of the givers' prices times
+theirs — the dual of §11, and for a simple cycle exactly "product of rates
+> 1". `Circulation.potentials` finds the least such potentials by the
+Bellman–Ford-shaped fixpoint on the hypergraph (Knuth's superior functions:
+each head's potential is raised to what its tails demand, n rounds, and a
+set that keeps growing has no potentials). `find_circulations` is the
+baseline hunt: a deterministic depth-first search for a connected set of
+legs in which every maker is head of one leg and tail of one.
 """
 
 from __future__ import annotations
@@ -30,7 +45,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Iterable
 
-from .matching import Match
+from .matching import Leg, Match
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,3 +211,222 @@ class ExchangeGraph:
                 if m.give.offer_id not in used and m.want.offer_id not in used
             })
         return loops
+
+
+# --------------------------------------------------------------------------- #
+# Circulations: legs, some composed, balanced at every maker
+# --------------------------------------------------------------------------- #
+
+@dataclass(frozen=True, slots=True)
+class Circulation:
+    """A set of legs in which every maker both gives and receives.
+
+    Each offer is used once; a maker may take part through several offers
+    (the buyer who pays for the box and its delivery with two lessons). A
+    simple cycle is the case where every leg has one give and every maker
+    one offer each way; `from_loop` lifts a `Loop`, and `loop_id`/`surplus`
+    agree with it there, so a circulation of simple legs clears under the
+    same id and arithmetic the P0 solver always produced.
+    """
+
+    legs: tuple[Leg, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.legs) < 2:
+            raise ValueError("a circulation needs at least two legs")
+        ids = [oid for leg in self.legs for oid in leg.offer_ids]
+        if len(set(ids)) != len(ids):
+            raise ValueError("an offer is used once in a circulation")
+        heads = {leg.head for leg in self.legs}
+        tails = {m for leg in self.legs for m in leg.tails}
+        if heads != tails:
+            raise ValueError("legs do not balance: some maker gives without "
+                             "receiving, or receives without giving")
+
+    @classmethod
+    def from_loop(cls, loop: Loop) -> "Circulation":
+        return cls(tuple(Leg.from_match(m) for m in loop.matches))
+
+    @property
+    def nodes(self) -> tuple[str, ...]:
+        return tuple(sorted(leg.head for leg in self.legs))
+
+    @property
+    def offer_ids(self) -> tuple[str, ...]:
+        ids: list[str] = []
+        for leg in self.legs:
+            ids.extend(leg.offer_ids)
+        return tuple(ids)
+
+    @property
+    def simple(self) -> bool:
+        return all(leg.simple for leg in self.legs)
+
+    def as_loop(self) -> Loop | None:
+        """The `Loop` this is, when every leg is simple, every maker takes
+        part once each way, and the legs chain."""
+        if not self.simple:
+            return None
+        if len({leg.gives[0].maker for leg in self.legs}) != len(self.legs) \
+                or len({leg.head for leg in self.legs}) != len(self.legs):
+            return None
+        by_giver = {leg.gives[0].maker: leg for leg in self.legs}
+        order = [self.legs[0]]
+        while len(order) < len(self.legs):
+            nxt = by_giver.get(order[-1].head)
+            if nxt is None or nxt in order:
+                return None
+            order.append(nxt)
+        if order[-1].head != order[0].gives[0].maker:
+            return None
+        return Loop(tuple(Match(give=leg.gives[0], want=leg.want) for leg in order))
+
+    def potentials(self, gain: float = 1.0) -> dict[str, float] | None:
+        """The least node potentials e >= 1 with, for every leg,
+        want.price * e[buyer] >= gain * sum(give.price * e[giver]); None
+        when no potentials exist (the set cannot clear at that gain).
+        Legs are visited in sorted order (U6)."""
+        legs = sorted(self.legs, key=lambda leg: leg.key)
+        e = {m: 1.0 for m in self.nodes}
+        for _ in range(len(e) + 1):
+            changed = False
+            for leg in legs:
+                need = gain * sum(g.unit_price * e[g.maker] for g in leg.gives) \
+                    / leg.want.unit_price
+                if need > e[leg.head] * (1 + 1e-12):
+                    e[leg.head] = need
+                    changed = True
+            if not changed:
+                return e
+        return None
+
+    @property
+    def feasible(self) -> bool:
+        return self.potentials() is not None
+
+    @property
+    def surplus(self) -> float:
+        """The uniform per-leg gain the set can bear, compounded over its
+        legs: (1 + t)^k - 1 for the largest t with potentials — which for a
+        simple cycle is exactly the product of rates minus one, the P0
+        figure. Negative (below -1e-9) when infeasible."""
+        loop = self.as_loop()
+        if loop is not None:
+            return loop.surplus
+        if self.potentials() is None:
+            return -1.0
+        lo, hi = 0.0, 1.0
+        while self.potentials(1.0 + hi) is not None and hi < 1e6:
+            hi *= 2
+        for _ in range(60):
+            mid = (lo + hi) / 2
+            if self.potentials(1.0 + mid) is not None:
+                lo = mid
+            else:
+                hi = mid
+        return (1.0 + lo) ** len(self.legs) - 1.0
+
+    @property
+    def per_node_ok(self) -> bool:
+        """Each maker's wants, priced on its own scale, cover its gives —
+        `Loop.per_node_ok` over any shape (one want and one give each in a
+        simple cycle)."""
+        wants: dict[str, float] = {}
+        gives: dict[str, float] = {}
+        for leg in self.legs:
+            wants[leg.head] = wants.get(leg.head, 0.0) + leg.want.unit_price
+            for g in leg.gives:
+                gives[g.maker] = gives.get(g.maker, 0.0) + g.unit_price
+        return all(wants.get(m, 0.0) >= gives[m] - 1e-12 for m in gives)
+
+    @property
+    def all_divisible(self) -> bool:
+        return all(leg.want.thing.divisible and all(g.thing.divisible for g in leg.gives)
+                   for leg in self.legs)
+
+    @property
+    def loop_id(self) -> str:
+        """Content address of the clearing decision. A simple cycle keeps
+        `Loop.loop_id` (rotation-invariant, pairing-sensitive); a composed
+        set hashes its legs — give ids joined by `+`, `>` the want — in
+        sorted order, which is invariant to the search order and sensitive
+        to how offers are grouped into legs."""
+        loop = self.as_loop()
+        if loop is not None:
+            return loop.loop_id
+        return hashlib.sha256(
+            "|".join(sorted(leg.key for leg in self.legs)).encode()).hexdigest()
+
+
+def find_circulations(legs: Iterable[Leg], *, min_surplus: float = 0.0,
+                      limit: int = 10, max_legs: int = 6,
+                      budget: int = 50_000) -> list[Circulation]:
+    """The baseline hunt for circulations among `legs` (simple and
+    composed): depth-first from each leg in sorted order, always extending
+    at the smallest unbalanced maker — one that has given and not received
+    takes a leg it heads, one that has received and not given takes a leg
+    it tails — so the set stays connected and every maker gives once and
+    wants once. The first balanced set with surplus >= `min_surplus` is
+    taken, its offers retired, and the search repeats up to `limit`
+    times. Exponential in the worst case and bounded by `max_legs` and a
+    node `budget`; deterministic throughout (U6). Simple cycles are found
+    first by Bellman-Ford in the agent; this is the hunt for what has a
+    composed leg in it. The recall benchmark for composing species, not
+    the ceiling."""
+    legs = sorted(legs, key=lambda leg: leg.key)
+    found: list[Circulation] = []
+    used: set[str] = set()
+    while len(found) < limit:
+        pool = [leg for leg in legs if not (set(leg.offer_ids) & used)]
+        circ = _search(pool, min_surplus, max_legs, [budget])
+        if circ is None:
+            break
+        found.append(circ)
+        used.update(circ.offer_ids)
+    return found
+
+
+def _search(pool: list[Leg], min_surplus: float, max_legs: int,
+            budget: list[int]) -> Circulation | None:
+    by_head: dict[str, list[Leg]] = {}
+    by_tail: dict[str, list[Leg]] = {}
+    for leg in pool:
+        by_head.setdefault(leg.head, []).append(leg)
+        for m in leg.tails:
+            by_tail.setdefault(m, []).append(leg)
+
+    def compatible(leg: Leg, offers: set[str]) -> bool:
+        # each offer once; a maker may return through another offer
+        return leg.head not in leg.tails and not (set(leg.offer_ids) & offers)
+
+    def dfs(chosen: list[Leg], heads: set[str], tails: set[str],
+            offers: set[str]) -> Circulation | None:
+        budget[0] -= 1
+        if budget[0] < 0:
+            return None
+        if heads == tails:
+            circ = Circulation(tuple(chosen))
+            return circ if circ.surplus >= min_surplus - 1e-12 else None
+        if len(chosen) >= max_legs:
+            return None
+        gave_not_received = sorted(tails - heads)
+        if gave_not_received:
+            candidates = by_head.get(gave_not_received[0], [])
+        else:
+            candidates = by_tail.get(sorted(heads - tails)[0], [])
+        for leg in candidates:
+            if not compatible(leg, offers):
+                continue
+            found = dfs(chosen + [leg], heads | {leg.head}, tails | set(leg.tails),
+                        offers | set(leg.offer_ids))
+            if found is not None:
+                return found
+        return None
+
+    for start in pool:
+        if start.head in start.tails:
+            continue
+        found = dfs([start], {start.head}, set(start.tails), set(start.offer_ids))
+        if found is not None:
+            return found
+    return None

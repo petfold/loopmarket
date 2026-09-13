@@ -9,6 +9,28 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Added
+
+- **The baseline solver finds circulations** (Peter, 2026-09-13: "the
+  whole point of a solver is to find circulations"). A want may be met by
+  several gives at once: `matching.Leg`, `check_composition(want, gives)`
+  — the thing's give moved by an operator give the catalogue declares
+  (`Ontology.declare_operator({"geo": ("from", "to"), "time": ("depart",
+  "arrive")})`; the operator's input must be comparable with the thing's
+  coordinate, its output replaces it) — and `composed_legs`, the cubic
+  one-hop search. `graph.Circulation` is a set of legs in which every
+  maker both gives and receives; feasibility is the existence of node
+  potentials (a Bellman–Ford-shaped fixpoint; for a simple cycle exactly
+  product > 1), `surplus` compounds the largest uniform per-leg gain and
+  equals `Loop.surplus` on a cycle, `loop_id` agrees with `Loop` there.
+  `find_circulations` is a deterministic depth-first hunt the agent runs
+  after Bellman–Ford's simple cycles. Clearing re-derives composed legs
+  with `check_composition` and checks the potentials; the `loop/` record's
+  legs carry `gives` and a composed set its `potentials`; U11 reads them.
+  `examples/delivery.loop` clears the grocer's box at the shop plus the
+  courier's run to the door as one composed leg (with the ring closed by
+  two lessons); the seeds declare the operators.
+
 ### Changed
 
 - **No `where`/`when` heads; handover coordinates match either way**

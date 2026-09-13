@@ -78,6 +78,14 @@ except Exception:  # pragma: no cover
 #: containment like a category.
 HANDOVER = "handover"
 DESCRIPTIVE = "descriptive"
+#: Operator markers (composition, `docs/plans/P2-loop-selection.md` §10): a
+#: give carrying a term of a head under `operator-input` and one under
+#: `operator-output` of the same dimension MOVES a thing along it —
+#: transport (`from`/`to` over geo) moves place, storage (`depart`/`arrive`
+#: over time) moves time. The solver composes such a give with the give of
+#: the thing to satisfy a want at the output coordinate; clearing re-derives.
+OPERATOR_INPUT = "operator-input"
+OPERATOR_OUTPUT = "operator-output"
 
 
 class Ontology:
@@ -181,6 +189,65 @@ class Ontology:
                     f"declaration needs a value space to be ordered in")
             if not self.dag.is_below(head, marker):
                 self.dag.add_edge(node, self.dag.nodes[head])
+
+    def declare_operator(self, pairs: Mapping[str, tuple[str, str]]) -> None:
+        """Declare the operators of dimensions: {base: (input head, output
+        head)} — `{"geo": ("from", "to"), "time": ("depart", "arrive")}`.
+        Both heads must be roles of `base`. A give naming both is an
+        operator on that dimension (module constants). Seed vocabulary;
+        the core names no head."""
+        for base, (inp, out) in pairs.items():
+            for head in (inp, out):
+                if self.base_head(head) != base:
+                    raise ValueError(
+                        f"{head!r} is not a role of {base!r}: an operator's "
+                        f"ends are roles of the dimension it moves along")
+            self._mark(OPERATOR_INPUT, [inp])
+            self._mark(OPERATOR_OUTPUT, [out])
+
+    def operators(self) -> dict[str, tuple[str, str]]:
+        """{base: (input head, output head)} as declared."""
+        ins = {n.name for n in self.dag.nodes[OPERATOR_INPUT].neighbors} \
+            if OPERATOR_INPUT in self.dag.nodes else set()
+        outs = {n.name for n in self.dag.nodes[OPERATOR_OUTPUT].neighbors} \
+            if OPERATOR_OUTPUT in self.dag.nodes else set()
+        by_base: dict[str, list] = {}
+        for head in sorted(ins):
+            by_base.setdefault(self.base_head(head), [None, None])[0] = head
+        for head in sorted(outs):
+            by_base.setdefault(self.base_head(head), [None, None])[1] = head
+        return {base: (i, o) for base, (i, o) in by_base.items() if i and o}
+
+    def base_head(self, head: str) -> str | None:
+        """The base head of a role — the head directly under a kind node on
+        the way up (`from` → `geo`); a base head is its own base."""
+        if head not in self.dag.nodes or self.head_kind(head) is None:
+            return None
+        node = self.dag.nodes[head]
+        for item in [node, *self.dag.get_ancestors(node)]:
+            if any(p.name in _dims.KINDS for p in item.parents):
+                return item.name
+        return None
+
+    def coordinate(self, concepts: Iterable[str], base: str) -> str | None:
+        """The bare coordinate of dimension `base` a conjunction states
+        (its place, its time), or None."""
+        for c in concepts:
+            if self.handover_class(c) == base:
+                return c
+        return None
+
+    def bare(self, term: str) -> str:
+        """A role term respelled as the bare coordinate it denotes:
+        `from(my_home)` → `my_home` (a node), `to(u2e4)` → `geo(u2e4)`."""
+        split = _dims.split_term(term)
+        if split is None:
+            return term
+        head, param = split
+        base = self.base_head(head)
+        if base is None or base == head or param in self.dag.nodes:
+            return param if param in self.dag.nodes else term
+        return f"{base}({param})"
 
     def handover_heads(self) -> set[str]:
         """The base heads directly under the `handover` marker."""
