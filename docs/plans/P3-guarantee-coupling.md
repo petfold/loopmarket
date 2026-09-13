@@ -182,6 +182,56 @@ whale-captured tribunal ruling, a collusive countersign pair, an
 ambiguous-policy leg, and a revoked-certificate photo must each be rejected
 or bounded by construction, the way `tests/test_boundaries.py` pins B1/B2.
 
+### 4a. Custody of a moved thing: the seal, not the box (Peter, 2026-09-13; not urgent)
+
+The composed leg of `P2-loop-selection.md` §10 — the grocer's box at the
+shop moved to the buyer's door by a courier — put the question: the courier
+picks up a box of a maximal size and weight and delivers a box of a maximal
+size and weight, and need not look inside. A courier who dumps the box and
+delivers one with a rock in it meets that obligation to the letter. Matching
+cannot help: the want named a category (`vegetable-box`), and any box of the
+kind discharges a category; identity enters only when a want names an
+individual (an ontodag item, `bike-4711` — the customer's own bicycle at the
+mechanic is that case, and today's example glosses it with a category).
+
+**The ruling.** The obligation is not "a box" but "the box signed for". The
+grocer gives the packed box an identifier and a seal; the courier's
+countersign at pickup attests *received sealed box #ID, undamaged*, which
+fixes the identity and shifts custody; the buyer's countersign at the door
+attests *received sealed box #ID, seal intact*. The courier's obligation is
+exactly the difference between the two signatures: a rock behind an intact
+seal is the grocer's fraud against the buyer, a broken or swapped seal is
+the courier's. A bill of lading, in the oldest sense.
+
+Consequences for this plan:
+
+- *The identifier is settlement data.* It comes into being at the first
+  handover, after clearing, so it lives beside the fill like the address
+  (`P1-spacetime-terms.md` §4: settlement text, never vocabulary, never
+  record identity) — the countersign record of a handover carries the seal
+  identifier; a composed leg has one countersign per operator boundary, and
+  the chain of identifiers across them is the custody record. The
+  `handoff/` sidecar is the natural carrier; whether the seal id travels in
+  the same sealed text or a sibling record is decided when the countersign
+  record is designed (§4's roster, factbond's evidence policy).
+- *Refusal is the signal, as with every countersign.* A courier who will
+  not sign for the box, or a buyer who will not sign at the door, stops
+  the leg at settlement; bonds and arbitration price and adjudicate it.
+  Nothing reaches matching or clearing, which fixed the obligations and
+  should not pretend to check the world.
+- *The operator's payload.* Independent of custody, the operator give
+  today describes only its service and its two ends; `check_composition`
+  skips the quantity gate for it and nothing checks the thing against what
+  the operator will carry (a small-item courier composes with a crate).
+  A payload constraint on the operator, checked against the moved thing,
+  belongs with the operator algebra (`P2-loop-selection.md` §10, open).
+- *Later, per item: an NFT.* Viktor Trón's suggestion, recorded for the
+  step after seals: a token per physical item, so that custody is a
+  transfer of the token at each handover and the chain of custody is the
+  token's history — the seal identifier becomes the token id, and the
+  countersign becomes its transfer. Not before the countersign record
+  exists; not a matching concern at any point.
+
 ## 5. Risk-priced routing: the lemons defense
 
 The solver maximizes the rate product, so it routes through the cheapest leg
