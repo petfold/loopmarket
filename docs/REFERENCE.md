@@ -343,7 +343,8 @@ node `potentials`. A simple cycle's record is byte-identical to before.
 1. every offer exists in the *current* book, is unfilled, is not
    tombstoned, is used once, and names an oracle type in
    `verifiable_oracles`
-2. every leg re-derived with `check_match` against the current book and
+2. every leg re-derived against the current book — `check_match` for a
+   simple leg, `check_composition` for a composed one — and
    the clearing's own catalogue
 3. arithmetic: `surplus >= min_surplus`; indivisible loops additionally
    need `per_node_ok` (while `require_per_node`, the pre-P2 policy)
