@@ -35,6 +35,8 @@ open-ended: the offer stands until withdrawn.
 
 from __future__ import annotations
 
+from ontodag import dimensions as _dims
+
 import hashlib
 import json
 import math
@@ -157,27 +159,19 @@ class GeoDisc:
 
 def canonical_term(concept: str) -> str:
     """One spelling per term (U2): a conjunction inside a term's parentheses
-    — an operator's argument, `transport(small-item weight(..8kg))` — has
-    its whitespace-separated constituents sorted, so the two orders are one
-    offer id, as the concepts of a Thing are sorted. Purely syntactic, like
-    the sort; ontodag #19 canonicalises the same way. A term without a
-    space inside its parentheses is returned unchanged."""
+    — an operator's argument, `transport(small-item weight(..8kg))`, a term
+    of ontodag's category kind — has its constraints sorted and
+    deduplicated the way ontodag canonicalises it, so the two orders are
+    one offer id, as the concepts of a Thing are sorted. Syntactic only
+    (the schema has no catalogue): the constraints themselves are spelled
+    as given, and `Ontology.known` is where the catalogue refuses one. A
+    term without a space inside its parentheses is returned unchanged."""
     if "(" not in concept or " " not in concept or not concept.endswith(")"):
         return concept
-    idx = concept.index("(")
-    head, inner = concept[:idx], concept[idx + 1:-1]
-    parts, depth, cur = [], 0, ""
-    for ch in inner:
-        depth += (ch == "(") - (ch == ")")
-        if ch.isspace() and depth == 0:
-            if cur:
-                parts.append(cur)
-            cur = ""
-        else:
-            cur += ch
-    if cur:
-        parts.append(cur)
-    return f"{head}({' '.join(sorted(parts))})" if depth == 0 else concept
+    try:
+        return _dims.canonicalize(concept, _dims.KIND_CATEGORY)
+    except ValueError:
+        return concept
 
 
 @dataclass(frozen=True, slots=True)

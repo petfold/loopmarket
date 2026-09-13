@@ -358,7 +358,7 @@ evening): `transport(small-item weight(..8kg))` is what the courier
 accepts and matches the wanter's `transport(bicycle weight(5kg))`
 want-within-give; the same argument is the payload check of a composed
 leg (`Ontology.accepts`) — the box goes with the small-item courier, the
-piano does not. Upstream: ontodag #19. The reseller form clears too as a
+piano does not. The term is ontodag's category kind (#19, 0.26.0). The reseller form clears too as a
 plain cycle; the reason to prefer composition (unconditional offers)
 stands. `examples/delivery.loop`,
 `tests/test_circulation.py`, `tests/test_handover.py`.

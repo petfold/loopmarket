@@ -62,10 +62,13 @@ courier carries; either may fix where and when it changes hands.
 A head the want does not name constrains nothing; a coordinate the give
 does not state puts it in no cone of that head (an internet service has no
 place, and does not serve a want at a door). Ontodag is intersection; all
-three relations are `is_below`, and the seed decides the direction. Until
-ontodag #19 lands (a role over the category graph, nested and conjunctive
-parameters), this module splits operator terms itself and orders the
-constituents one by one — a loopmarket-only behaviour to delete then.
+three relations are `is_below`, and the seed decides the direction. The
+operator term itself is ontodag's: a head of the *category kind*
+(`category-dimension`, ontodag #19, 0.26.0) takes a conjunction of
+constraints on the graph as its parameter, canonicalises it (sorted,
+deduplicated, a redundant constraint refused, an unknown one failing
+closed) and orders two such terms by the graph; this module only reads
+the head and the constraints off it.
 
 Offers pin the catalogue version they were written against
 (`Offer.ontology_root`): persistence through `EagerOntoDAG` over a
@@ -221,20 +224,24 @@ class Ontology:
     def declare_operator(self, operators: Mapping[str, tuple[str, str]]) -> None:
         """Declare operators: {category: (input head, output head)} —
         `{"transport": ("from", "to"), "storage": ("depart", "arrive")}`.
-        The category goes under `operator` (created if absent, like a
-        supercategory in `assert_edge`), the two heads — roles of one
-        dimension — under `operator-input` and `operator-output`: three
-        edges, `odag put transport operator`, `odag put from geo
-        operator-input`, `odag put to geo operator-output`. Which dimension
+        The category goes under `operator` and under ontodag's
+        `category-dimension` kind (so `transport(small-item weight(..8kg))`
+        is a term the graph orders, ontodag #19; the kind is declared under
+        `dimension` if the catalogue lacks it), the two heads — roles of
+        one dimension — under `operator-input` and `operator-output`:
+        `odag put category-dimension dimension`, `odag put transport
+        category-dimension operator`, `odag put from geo operator-input`,
+        `odag put to geo operator-output`. Which dimension
         a give moves along is read off the give itself (the ends it names),
         so the category is not tied to a dimension here. Seed vocabulary;
         the core names no head. (0.5.0 took `{base: (in, out)}`: a give was
         an operator by naming two ends; since 2026-09-13 the operator is a
         category, because its argument is what it accepts.)"""
         for category, (inp, out) in operators.items():
-            if self.head_kind(category) is not None or category in _dims.KINDS:
+            kind = self.head_kind(category)
+            if kind not in (None, _dims.KIND_CATEGORY) or category in _dims.KINDS:
                 raise ValueError(
-                    f"{category!r} is a dimension head: an operator is a "
+                    f"{category!r} is a {kind} head: an operator is a "
                     f"category whose argument is what it accepts")
             base = self.base_head(inp)
             if base is None or base == inp or self.base_head(out) != base \
@@ -242,8 +249,13 @@ class Ontology:
                 raise ValueError(
                     f"{inp!r}/{out!r}: an operator's ends are two roles of one "
                     f"dimension, the one it moves a thing along")
-            if category not in self.dag.nodes:
-                self.dag.put(category, [])
+            if kind is None:            # `transport(...)` is a term of the category kind
+                if _dims.KIND_CATEGORY not in self.dag.nodes:
+                    if _dims.DIMENSION_ROOT not in self.dag.nodes:
+                        from ontodag.prelude import apply as apply_prelude
+                        apply_prelude(self.dag)
+                    self.dag.put(_dims.KIND_CATEGORY, [_dims.DIMENSION_ROOT])
+                self.dag.put(category, [_dims.KIND_CATEGORY])
             if OPERATOR not in self.dag.nodes:
                 self.dag.put(OPERATOR, [])
             if not self.dag.is_below(category, OPERATOR):
@@ -254,7 +266,7 @@ class Ontology:
     def operator_of(self, term: str) -> str | None:
         """The operator category `term` names — `transport(bicycle)` and
         bare `transport` both name `transport` — or None."""
-        split = self._split_operator(term)
+        split = _dims.split_term(term)
         head = term if split is None else split[0]
         if head not in self.dag.nodes or head in _dims.KINDS \
                 or OPERATOR not in self.dag.nodes \
@@ -263,41 +275,20 @@ class Ontology:
         return head
 
     def argument(self, term: str) -> tuple[str, ...]:
-        """The constraints an operator term's argument states, sorted:
-        `transport(small-item weight(..8kg))` → `("small-item",
-        "weight(..8kg)")`; a bare operator accepts anything: `()`."""
-        split = self._split_operator(term)
-        return () if split is None else split[1]
-
-    @staticmethod
-    def _split_operator(term: str) -> tuple[str, tuple[str, ...]] | None:
-        """Syntactic: `head(a b ...)` → (head, sorted constituents), else
-        None. The constituents are the whitespace-separated pieces at
-        parenthesis depth 0 inside the outer pair, so a nested term
-        (`weight(..8kg)`) stays whole. What ontodag #19 will parse."""
-        if not term.endswith(")") or "(" not in term:
-            return None
-        idx = term.index("(")
-        head, inner = term[:idx], term[idx + 1:-1]
-        if not head or not inner:
-            return None
-        parts, depth, cur = [], 0, ""
-        for ch in inner:
-            if ch == "(":
-                depth += 1
-            elif ch == ")":
-                depth -= 1
-                if depth < 0:
-                    return None
-            if ch.isspace() and depth == 0:
-                if cur:
-                    parts.append(cur)
-                cur = ""
-            else:
-                cur += ch
-        if cur:
-            parts.append(cur)
-        return (head, tuple(sorted(parts))) if depth == 0 else None
+        """The constraints an operator term's argument states, in
+        ontodag's canonical spelling: `transport(weight(..8000g)
+        small-item)` → `("small-item", "weight(..8kg)")`; a bare operator
+        accepts anything: `()`. A term the catalogue refuses (an unknown or
+        redundant constraint) has no argument here — `known` is where it
+        fails closed."""
+        split = _dims.split_term(term)
+        if split is None:
+            return ()
+        try:
+            canonical = self.dag._canonical_name(term)
+        except ValueError:
+            return ()
+        return _dims.constraints(_dims.split_term(canonical)[1])
 
     def ends(self, concepts: Iterable[str]) -> list[tuple[str, str, str]]:
         """The moves an operator give states: `[(base, input term, output
@@ -398,8 +389,6 @@ class Ontology:
             return True
         if "(" not in concept:
             return False
-        if self.operator_of(concept) is not None:     # `transport(bicycle weight(..8kg))`
-            return all(self.known(c) for c in self.argument(concept))
         try:
             return bool(self.dag.is_below(concept, concept))
         except ValueError:
@@ -455,8 +444,11 @@ class Ontology:
 
         Strict on vocabulary (U7): a wanted category nobody knows never
         matches; an extra unknown category on the offered side only
-        narrows the offer and is ignored; a give whose same-head terms are
-        provably disjoint describes nothing and satisfies nothing.
+        narrows the offer and is ignored — except an operator term the
+        catalogue refuses (an unknown or redundant constraint), which
+        would widen the give to "accepts anything" and so refuses; a give
+        whose same-head terms are provably disjoint describes nothing and
+        satisfies nothing.
 
         An operator term (`transport(bicycle)`, a category under
         `operator`) is answered by an offered operator term whose category
@@ -492,6 +484,8 @@ class Ontology:
                 if not any(self.covers(w, o) or self.covers(o, w) for o in same):
                     return False
         for o, ho in ops_o.items():     # the operator's own want, answered
+            if not self.known(o):
+                return False            # an argument the catalogue refuses is not "accepts anything"
             pool = [d for w, hw in ops_w.items() if self.covers(hw, ho)
                     for d in self.argument(w)]
             if not any(self.covers(hw, ho) for hw in ops_w.values()):

@@ -178,7 +178,9 @@ class TestRoleTerms:
                 terms = [t for t in terms if t not in concepts]
                 terms.append(rng.choice(
                     ["transport", "transport(produce)", "transport(vegetable-box)",
-                     "transport(fruit-box produce)"]))
+                     "transport(fruit-box local)", "transport(fruit-box produce)"]))
+                # the last spelling is redundant when fruit-box ⊑ produce: ontodag
+                # refuses it, and both generators must agree on refusing the give
             thing = Thing(tuple(terms), qty=rng.choice([1, 2]),
                           divisible=rng.random() < 0.5)
             side = give if rng.random() < 0.5 else want

@@ -208,6 +208,12 @@ def test_a_conjunction_in_the_argument_is_several_constraints():
         assert not ok(give, ["transport(bicycle)"])          # silent on weight
     assert cat.known("transport(small-item weight(..8kg))")
     assert not cat.known("transport(unicorn)")               # fails closed (U7)
+    # ontodag #19 refuses a redundant constraint (one canonical name per
+    # set): the spelling is unknown here, and a give carrying it is not read
+    # as "accepts anything" — it matches nothing
+    assert not cat.known("transport(bicycle small-item)")
+    assert not ok(["transport(bicycle small-item)"], ["transport(racing-bicycle)"])
+    assert cat.argument("transport(weight(..8000g) bicycle)") == ("bicycle", "weight(..8kg)")
     assert not cat.known("delivery(bicycle)")                # not an operator
     assert cat.argument("transport(weight(..8kg) small-item)") == \
         ("small-item", "weight(..8kg)")

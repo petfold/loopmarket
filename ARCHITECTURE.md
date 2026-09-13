@@ -487,10 +487,15 @@ Simplifications this bought: `declare_operator` takes the category and its
 two ends, `operators()` is gone (a give's moves are read off the ends it
 names, `Ontology.ends`), the operator give is recognised by its term, not
 by carrying two role terms, and a direct transport want matches the courier
-in `check_match` without composition. Upstream ask ontodag #19 (a role over
-the category graph, nested and conjunctive parameters); until it lands the
-facade splits the term itself and `schema.canonical_term` sorts the
-constituents so the two spellings are one offer id.
+in `check_match` without composition. The term itself is ontodag's: the
+ask (#19) landed the same evening as the *category kind* (ontodag 0.26.0,
+registry 4.2) — a head under `category-dimension` takes a conjunction of
+constraints on the graph, canonicalised (sorted, deduplicated, a redundant
+constraint refused, an unknown one failing closed) and ordered by the
+graph; `declare_operator` declares the category under that kind, the
+facade reads the head and the constraints off the term, and
+`schema.canonical_term` applies the same sort to the stored spelling so
+the two orders are one offer id.
 
 ## 7. The arithmetic of loops (graph.py)
 

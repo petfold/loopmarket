@@ -26,9 +26,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   box and not the piano — the gap 0.5.0's composition had. A direct
   transport want now matches the courier in `check_match`. New facade
   methods `operator_of`, `argument`, `ends`, `accepts`; the CLI rejoins a
-  term's tokens while a parenthesis is open. The operator term is split
-  locally until ontodag #19 lands (a role over the category graph, nested
-  and conjunctive parameters). Tests in `test_ontology.py`,
+  term's tokens while a parenthesis is open. The term is ontodag's
+  **category kind** (#19, asked and landed the same evening, ontodag
+  0.26.0 — the pin moves): `declare_operator` puts the category under
+  `category-dimension` as well as `operator`, ontodag canonicalises the
+  argument (sorted, deduplicated; a redundant constraint such as
+  `transport(bicycle small-item)` refused, an unknown one failing closed)
+  and orders two such terms by the graph, and a give whose argument the
+  catalogue refuses matches nothing rather than "anything". Tests in
+  `test_ontology.py`,
   `test_circulation.py`, `test_schema.py`, `test_cli.py`; the index recall
   book carries operator terms; `examples/delivery.loop`'s courier says
   `transport(small-item)`.
@@ -42,7 +48,8 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   give's moves are read off the ends it names (`ends`), and an operator
   give is recognised by its operator term, not by carrying two role terms.
   The seeds (`triangle.od`, `delivery.od`, the demos) declare
-  `transport operator` and `storage operator`.
+  `category-dimension dimension`, `transport category-dimension operator`
+  and `storage category-dimension operator`. Pin `ontodag>=0.26.0`.
 
 - **Composition search: only where needed, and up to two hops** (Peter's
   follow-up questions, 2026-09-13). `composed_legs` no longer composes an
