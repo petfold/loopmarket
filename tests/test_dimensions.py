@@ -55,11 +55,17 @@ class TestCandidates:
         assert a3.offer_id in cands
         assert check_match(a3, b, ontology, now=NOW) is None
 
-    def test_unknown_vocabulary_not_filed(self):
-        index = DimensionIndex(fresh_ontology())
-        stranger = give("x", Thing(("mystery-goods",)), 1, **wide())
-        assert not index.file(stranger)
-        assert stranger.offer_id not in index._filed
+    def test_unknown_vocabulary_on_a_give_is_left_out_not_refused(self):
+        """An unknown term narrows a give; the exact check ignores it, so
+        the index files the give under what it does know (U7 fails closed
+        on the want side, where unknown vocabulary gets no candidates)."""
+        ontology = fresh_ontology()
+        index = DimensionIndex(ontology)
+        stranger = give("x", Thing(("vegetable-box", "mystery-goods")), 1, **wide())
+        assert index.file(stranger)
+        assert stranger.offer_id in index.candidates(
+            want("y", Thing(("produce",)), 2, **wide()))
+        assert index.candidates(want("y", Thing(("mystery-goods",)), 2, **wide())) == set()
 
     def test_shared_catalogue_untouched(self):
         ontology = fresh_ontology()
@@ -133,7 +139,9 @@ PLACES = ["my_home", "my_home_4th", "ljubljana"]
 def roles_ontology():
     ont = fresh_ontology()
     ont.declare_roles(ROLES)
+    ont.declare_handover(["geo", "time"])
     ont.dag.put("made_in", ["geo"])           # descriptive: containment
+    ont.declare_descriptive(["made_in"])
     ont.dag.put("my_home", ["geo(u2e4x)"])
     ont.dag.put("my_home_4th", ["my_home"])
     ont.dag.put("ljubljana", ["geo"])
@@ -201,65 +209,73 @@ class TestRoleTerms:
         assert any("my_home" in c or "ljubljana" in c for m in baseline
                    for c in m.give.thing.concepts + m.want.thing.concepts)
 
-    def test_place_prunes_by_containment(self):
+    def _matches(self, ontology, offers):
+        return {(m.give.maker, m.want.maker)
+                for m in candidate_matches_indexed(offers, ontology, now=NOW)}
+
+    def test_place_is_decided_by_the_exact_check(self):
+        """Handover coordinates are left out of the index query (a give that
+        CONTAINS the want's place sits above it, not in its cone) and
+        decided by `check_match`: the narrower give and the wider give both
+        serve, the sibling and the silent give do not."""
         ontology = roles_ontology()
         inside = give("bruno", Thing(("vegetable-box", "from(u2e4x)")), 50, **wide())
         wider = give("chiara", Thing(("vegetable-box", "from(u2e)")), 50, **wide())
         far = give("dora", Thing(("vegetable-box", "from(u2f)")), 50, **wide())
         silent = give("erin", Thing(("vegetable-box",)), 50, **wide())
+        b = want("amara", Thing(("produce", "from(u2e4)")), 104, **wide())
         index = DimensionIndex(ontology)
         for a in (inside, wider, far, silent):
             assert index.file(a)
-        b = want("amara", Thing(("produce", "from(u2e4)")), 104, **wide())
-        assert index.candidates(b) == {inside.offer_id}    # the narrower give
+        assert index.candidates(b) == {inside.offer_id, wider.offer_id,
+                                       far.offer_id, silent.offer_id}
+        assert self._matches(ontology, [inside, wider, far, silent, b]) == \
+            {("bruno", "amara"), ("chiara", "amara")}
         # a want silent on `from` takes every give
-        assert len(index.candidates(
-            want("amara", Thing(("produce",)), 104, **wide()))) == 4
-        # a provably empty want, or an uninterpretable one, matches nothing
-        assert index.candidates(want("amara", Thing(
-            ("produce", "from(u2e4)", "from(u2e5)")), 104, **wide())) == set()
+        assert len(self._matches(ontology, [inside, wider, far, silent,
+                                            want("amara", Thing(("produce",)), 104, **wide())])) == 4
+        # a provably empty want matches nothing (the exact check refuses;
+        # the index does not look at handover terms), an uninterpretable one
+        # is unknown vocabulary and gets no candidates at all
+        assert self._matches(ontology, [inside, wider, far, silent, want("amara", Thing(
+            ("produce", "from(u2e4)", "from(u2e5)")), 104, **wide())]) == set()
         assert index.candidates(want("amara", Thing(
             ("produce", "depart(garbage)")), 104, **wide())) == set()
-        assert not index.file(give("e", Thing(("produce", "depart(garbage)")), 1, **wide()))
+        assert index.file(give("e", Thing(("produce", "depart(garbage)")), 1, **wide()))   # narrows only
         assert not index.file(give("f", Thing(("produce", "from(u2e4)", "from(u2e5)")), 1, **wide()))
 
     def test_every_wanted_head_must_be_answered(self):
-        """A give silent on `to` is in no `to` cone: a want naming `to`
-        does not see it, however well its `from` fits."""
+        """A give silent on `to` answers no `to`: a want naming `to` does
+        not see it, however well its `from` fits."""
         ontology = roles_ontology()
         half = give("bruno", Thing(("vegetable-box", "from(u2e4x)")), 50, **wide())
         both = give("chiara", Thing(("vegetable-box", "from(u2e4x)", "to(u2f1)")), 50, **wide())
-        index = DimensionIndex(ontology)
-        for a in (half, both):
-            assert index.file(a)
         b = want("amara", Thing(("produce", "from(u2e4)", "to(u2f)")), 104, **wide())
-        assert index.candidates(b) == {both.offer_id}
+        assert self._matches(ontology, [half, both, b]) == {("chiara", "amara")}
         b = want("amara", Thing(("produce", "from(u2e4)")), 104, **wide())
-        assert index.candidates(b) == {half.offer_id, both.offer_id}
+        assert self._matches(ontology, [half, both, b]) == {("bruno", "amara"), ("chiara", "amara")}
 
-    def test_names_in_role_terms_prune_through_the_graph(self):
+    def test_names_in_role_terms_match_through_the_graph(self):
         """ontodag #15: `from(my_home_4th)`, `from(ljubljana)` are filed as
-        spelled and the cone query decides them by the graph."""
+        spelled and decided by the graph — either way round."""
         ontology = roles_ontology()
         floor = give("chiara", Thing(("vegetable-box", "from(my_home_4th)")), 50, **wide())
         region = give("bruno", Thing(("vegetable-box", "from(ljubljana)")), 50, **wide())
         far = give("dora", Thing(("vegetable-box", "from(u2f)")), 50, **wide())
-        index = DimensionIndex(ontology)
-        for a in (floor, region, far):
-            assert index.file(a)
-        for wanted in ("from(my_home)", "from(u2e4)", "from(u2e)", "from(ljubljana)"):
-            cands = index.candidates(want("amara", Thing(("produce", wanted)), 104, **wide()))
-            assert floor.offer_id in cands and far.offer_id not in cands, wanted
-        # the region is wider than a cell inside it, and its covering is a
-        # lower bound: it fits within nothing but itself
-        assert region.offer_id in index.candidates(
-            want("amara", Thing(("produce", "from(ljubljana)")), 104, **wide()))
-        assert region.offer_id not in index.candidates(
-            want("amara", Thing(("produce", "from(u2)")), 104, **wide()))
+        for wanted, expected in [("from(my_home)", {"chiara", "bruno"}),
+                                 ("from(u2e4)", {"chiara", "bruno"}),
+                                 ("from(u2e)", {"chiara"}),     # the region's covering is a
+                                 ("from(u2)", {"chiara", "dora"}),   # u2f is inside u2 too
+                                 ("from(ljubljana)", {"chiara", "bruno"}),
+                                 ("from(u2f)", {"dora"})]:
+            got = self._matches(ontology, [floor, region, far,
+                                           want("amara", Thing(("produce", wanted)), 104, **wide())])
+            assert {g for g, _ in got} == expected, wanted
 
     def test_candidates_is_exactly_one_get(self, monkeypatch):
-        """One `get` per want, the want's own terms as the query, `items_only`,
-        no set arithmetic on the answer."""
+        """One `get` per want, the want's categories as the query,
+        `items_only`, handover coordinates left to the exact check, no set
+        arithmetic on the answer."""
         ontology = roles_ontology()
         index = DimensionIndex(ontology)
         v3 = dict(valid=TimeWindow(0, 1_000_000))
@@ -272,11 +288,11 @@ class TestRoleTerms:
                             lambda *a, **kw: calls.append((a, kw)) or real_get(*a, **kw))
         monkeypatch.setattr(index._dag, "get_overlapping",
                             lambda *a, **kw: pytest.fail("get_overlapping called"))
-        b = want("amara", Thing(("produce", "from(u2e4)", "from(u2e)")), 104, **v3)
-        assert len(index.candidates(b)) == 1
+        b = want("amara", Thing(("produce", "from(u2e4)")), 104, **v3)
+        assert len(index.candidates(b)) == 2           # place is the exact check's
         assert len(calls) == 1
         (terms,), kw = calls[0]
-        assert {"produce", "from(u2e4)", "from(u2e)"} <= set(terms)
+        assert "produce" in terms and "from(u2e4)" not in terms
         assert kw == {"items_only": True}
 
 

@@ -7,21 +7,41 @@ covered by some offered concept — equal to it, or an ancestor of it in the
 DAG (the offered concept fits within the wanted one).
 
 Since 2026-09-12 a conjunction also carries where and when a thing changes
-hands — `where(u2e4x)`, `when(2026-10-05T19:00:00Z..)`, a route's
-`from(...)`/`to(...)` — as terms of heads the catalogue declares under its
-`geo` and `time` dimensions (roles of a dimension, ontodag #15: a role's
-parameter may be a value or a node filed in the dimension — a place under
-a cell, a region above cells, a floor under a building). They match
-exactly like every other term, by **containment**: the want is the wider
-cone, the give the narrower (Peter, 2026-09-12 — the toothbrush wanted
-within five metres of the reception desk within thirty minutes is a
-narrow want, and the give that fits within it is what matches). A head the
-want does not name constrains nothing; a head the give does not name puts
-it in no cone of that head. There is no second relation: an overlap rule
-for "service roles" under a marker node was built on 2026-09-12 and
-withdrawn the same night, with ontodag's overlap query mode
-(`docs/plans/P1-spacetime-terms.md` §3, superseded). Ontodag is
-intersection; so is matching.
+hands, as **bare terms of the geo and time dimensions**: a cell
+(`geo(u2e4x)`), a place node under a cell (`my_shop`), a region above cells
+(`barcelona`), a window (`time(2026-10-05T19:00:00Z..)`), a named time. No
+head: "at this place" is what a geo term in a conjunction already means
+(Peter, 2026-09-13 — the `where`/`when` heads of the day before were
+unnecessary and are gone). A head is kept only where something has two
+coordinates of one kind — a route's `from(...)`/`to(...)`, a transport's
+`depart`/`arrive` — or where a geo/time term *describes* the thing rather
+than saying where it changes hands (`made_in(corinth)`, `made(1850)`).
+
+Two relations, and the catalogue says which applies (the marker node
+`handover`, the one name this module knows besides the dimensions'):
+
+- **containment, give within want**, for categories and descriptive
+  terms — the offered thing is at least as specific as asked (a Corinthian
+  amphora for "Greek amphora", `made_in(u2e4x)` for `made_in(u2e)`), never
+  the reverse (a thing made somewhere in Greece is not known to be
+  Corinthian);
+- **one contains the other**, for handover coordinates — a seller who
+  delivers anywhere in Barcelona (`barcelona`) serves a want at a door
+  inside it (`my_door`), and a seller at a fixed shop (`my_shop`) serves a
+  buyer who will collect anywhere in the city; whichever side is the
+  flexible one. Partial overlap (a box straddling the edge of the
+  courier's area) is not a match: one set contains the other, or nothing.
+  Which dimensions are handover coordinates is seed vocabulary: `geo` and
+  `time` hang under the marker `handover` (`declare_handover`), every role
+  under them inherits it (`from`/`to`, `depart`/`arrive`), a descriptive
+  head opts out under `descriptive` (`declare_descriptive`), and a bare
+  node in a marked dimension — a place, a region, a named time — is a
+  coordinate of that dimension.
+
+A head the want does not name constrains nothing; a coordinate the give
+does not state puts it in no cone of that head (an internet service has no
+place, and does not serve a want at a door). Ontodag is intersection; both
+relations are `is_below`, and the seed decides the direction.
 
 Offers pin the catalogue version they were written against
 (`Offer.ontology_root`): persistence through `EagerOntoDAG` over a
@@ -45,6 +65,19 @@ try:  # persistence is optional: the core must work in memory (boundary B1)
     from ontodag import EagerOntoDAG
 except Exception:  # pragma: no cover
     EagerOntoDAG = None  # type: ignore[assignment]
+
+
+#: Two marker nodes, the only names this module knows besides the
+#: dimensions'. `handover`: the base heads under it (`geo`, `time`) are the
+#: dimensions whose terms say where or when the thing changes hands and
+#: match when one side contains the other — a bare cell, place or window,
+#: and every role head under them (`from`/`to`, `depart`/`arrive`), since a
+#: head under a head inherits the marker by transitive reduction anyway.
+#: `descriptive`: a geo or time head whose terms describe the thing instead
+#: (`made_in(corinth)`, `made(1850)`) opts out here and matches by
+#: containment like a category.
+HANDOVER = "handover"
+DESCRIPTIVE = "descriptive"
 
 
 class Ontology:
@@ -112,9 +145,76 @@ class Ontology:
             self.dag.put(head, [base])
 
     #: The 2026-09-12 name, kept one release: roles were "service roles"
-    #: while they matched by overlap under a marker node; they match by
-    #: containment like everything else now, and the marker is gone.
+    #: while they matched by overlap under a marker node.
     declare_service_roles = declare_roles
+
+    def declare_handover(self, heads: Iterable[str]) -> None:
+        """Mark base dimension heads as handover coordinates: their terms —
+        and the terms of every role under them — say where or when the
+        thing changes hands and match when one side contains the other
+        (module docstring). Seed vocabulary, no default: the core names no
+        head. One edge each, `handover → geo`; a role `from` under `geo`
+        needs no edge of its own (it would be redundant and reduced away).
+        Prelude heads are adopted on demand. A catalogue write, before
+        offers pin the root."""
+        self._mark(HANDOVER, heads)
+
+    def declare_descriptive(self, heads: Iterable[str]) -> None:
+        """Opt a geo or time head out of the handover reading: its terms
+        describe the thing (`made_in(corinth)`, `made(1850)`) and match by
+        containment like a category — the offered thing at least as
+        specific as asked, never the reverse."""
+        self._mark(DESCRIPTIVE, heads)
+
+    def _mark(self, marker: str, heads: Iterable[str]) -> None:
+        heads = list(heads)
+        if any(head not in self.dag.nodes for head in heads):
+            from ontodag.prelude import apply as apply_prelude
+            apply_prelude(self.dag)             # `geo`/`time` are prelude heads
+        if marker not in self.dag.nodes:
+            self.dag.put(marker, [])
+        node = self.dag.nodes[marker]
+        for head in heads:
+            if self.head_kind(head) is None:
+                raise ValueError(
+                    f"{head!r} is not a dimension head: a {marker} "
+                    f"declaration needs a value space to be ordered in")
+            if not self.dag.is_below(head, marker):
+                self.dag.add_edge(node, self.dag.nodes[head])
+
+    def handover_heads(self) -> set[str]:
+        """The base heads directly under the `handover` marker."""
+        if HANDOVER not in self.dag.nodes:
+            return set()
+        return {n.name for n in self.dag.nodes[HANDOVER].neighbors}
+
+    def handover_class(self, concept: str) -> str | None:
+        """The head whose handover coordinate `concept` states, or None
+        when `concept` is a category or a descriptive term. A term
+        `head(param)` states a coordinate iff its head is under `handover`
+        (a marked base head, or a role under one) and not under
+        `descriptive`; a bare node — a place under a cell, a region above
+        cells, a named time — states the coordinate of the marked base head
+        it is filed in."""
+        marked = self.handover_heads()
+        if not marked:
+            return None
+        split = _dims.split_term(concept)
+        if split is not None:
+            head = split[0]
+            if head not in self.dag.nodes or self.head_kind(head) is None:
+                return None
+            if not self.dag.is_below(head, HANDOVER):
+                return None
+            if DESCRIPTIVE in self.dag.nodes and self.dag.is_below(head, DESCRIPTIVE):
+                return None
+            return head
+        if concept not in self.dag.nodes or concept in marked:
+            return None
+        for head in sorted(marked):
+            if self.dag.is_below(concept, head):
+                return head
+        return None
 
     # -- querying ---------------------------------------------------------------
 
@@ -178,45 +278,67 @@ class Ontology:
     def satisfies(self, offered: Iterable[str], wanted: Iterable[str]) -> bool:
         """Does the offered conjunction satisfy the wanted one?
 
-        One relation, containment, for every term: each wanted term is
-        covered by some offered concept — the offered thing is at least as
-        specific as asked. A Corinthian amphora for "Greek amphora";
-        `made_in(u2e4x)` for `made_in(u2e)`; a give `where(my_home)` for a
-        want `where(u2e4)` (the place is under the cell); a give
-        `when(19:00..19:15)` for a want `when(18:00..20:00)`. A head the
-        want does not name constrains nothing. A head the give does not
-        name is a head it fits within no term of: a give that says nothing
-        about where it hands over does not satisfy a want that says where.
+        Every wanted term must be answered by an offered one. A category or
+        descriptive term is answered by an offered concept that fits within
+        it (the offered thing is at least as specific as asked). A handover
+        coordinate — a bare geo or time term, or a term of a head marked
+        under `handover` — is answered by an offered coordinate *of the
+        same head* that fits within it or contains it: the seller who
+        delivers anywhere in the city serves the want at the door, and the
+        seller at the shop serves the buyer who collects anywhere in the
+        city. A head the want does not name constrains nothing; a
+        coordinate the give does not state answers nothing.
+
         Strict on vocabulary (U7): a wanted category nobody knows never
         matches; an extra unknown category on the offered side only
-        narrows the offer and is ignored.
+        narrows the offer and is ignored; a give whose same-head terms are
+        provably disjoint describes nothing and satisfies nothing.
 
-        This is exactly ontodag's `get(wanted)` membership test for the
-        give, term by term — `DimensionIndex.candidates` asks that one
-        query and this is its pairwise face (Peter, 2026-09-12: ontodag is
-        intersection; a want is the wider cone, a give the narrower).
+        Both relations are ontodag's `is_below`; the seed decides the
+        direction by marking the handover heads (Peter, 2026-09-12/13:
+        ontodag is intersection; a want is the wider cone for what a thing
+        is, and either side may be the wider one for where and when it
+        changes hands).
         """
-        offered = list(offered)
-        if not self._consistent(offered):
-            return False
-        return all(any(self.covers(w, o) for o in offered) for w in wanted)
+        offered, wanted = list(offered), list(wanted)
+        if not self._consistent(offered) or not self._consistent(wanted):
+            return False                # a conjunction that describes nothing
+        classes = {o: self.handover_class(o) for o in offered}
+        for w in wanted:
+            wc = self.handover_class(w)
+            if wc is None:
+                if not any(self.covers(w, o) for o in offered):
+                    return False
+                continue
+            same = [o for o in offered if classes[o] == wc]
+            if not any(self.covers(w, o) or self.covers(o, w) for o in same):
+                return False
+        return True
 
     def _consistent(self, concepts) -> bool:
-        """Can the conjunction be held at all? Two same-head parametric
-        terms with a provably empty meet (`from(u2e4)` and `from(u2e5)`)
-        describe nothing — ontodag refuses to file such an item, so the
-        index never holds it, and the exact check agrees by matching it
-        against nothing (recall-exactness both ways)."""
-        by_head: dict[str, list[str]] = {}
+        """Can the conjunction be held at all? Two coordinates of one head
+        that provably share no point — `from(u2e4)` and `from(u2e5)`, a
+        place under `u2e4x` and the cell `u2f` — describe nothing: ontodag
+        refuses to file such an item, so the index never holds it, and the
+        exact check agrees by matching it against nothing (recall-exactness
+        both ways). Same-head descriptive terms likewise. Decided by
+        ontodag's pairwise `overlaps` (terms or nodes either side); a pair
+        it cannot compare fails closed."""
+        by_class: dict[str, list[str]] = {}
         for c in concepts:
-            split = _dims.split_term(c)
-            if split is not None and self.head_kind(split[0]) is not None:
-                by_head.setdefault(split[0], []).append(c)
-        for terms in by_head.values():
+            cls = self.handover_class(c)
+            if cls is None:
+                split = _dims.split_term(c)
+                if split is None or self.head_kind(split[0]) is None \
+                        or not self.known(c):
+                    continue
+                cls = split[0]
+            by_class.setdefault(cls, []).append(c)
+        for terms in by_class.values():
             for i, a in enumerate(terms):
                 for b in terms[i + 1:]:
                     try:
-                        if self.dag.meet(a, b) is None:
+                        if not self.dag.overlaps(a, b):
                             return False
                     except ValueError:
                         return False

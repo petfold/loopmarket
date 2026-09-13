@@ -9,6 +9,28 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Changed
+
+- **No `where`/`when` heads; handover coordinates match either way**
+  (Peter, 2026-09-13, from the vegetable-box example). Where an offer
+  holds is a bare geo term in its conjunction — `give vegetable-box shop`,
+  a cell, a region, a place node — and when it holds a bare time term; a
+  head stays only for the two ends of a route or transport
+  (`from`/`to`, `depart`/`arrive`) and for descriptive geo/time terms
+  (`made_in`, `made`). A handover coordinate on a give answers the want's
+  when it fits within it *or contains it*: the seller delivering anywhere
+  in the city serves the want at the door, the shop serves the buyer who
+  collects anywhere; partial overlap is not a match; categories and
+  descriptive terms stay one-way. The seed marks the dimensions:
+  `declare_handover(["geo", "time"])` (roles under them inherit),
+  `declare_descriptive(["made_in"])`. `DimensionIndex.candidates` queries
+  the one-way terms only and leaves place and time to `check_match`. The
+  seeds, demos, `triangle.loop` (`give piano-lesson amara_flat 100`) and
+  the CLI (`set terms home`, a bare `LAT,LON,R` or `today..+7d`) follow;
+  `examples/delivery.loop` and `tests/test_handover.py` carry the example,
+  including the leg the P0 solver cannot yet compose (the shop's box plus
+  the courier's `from(barcelona) to(barcelona)` — P2's operator form).
+
 ## [0.4.0] — 2026-09-13
 
 Needs ontodag 0.25.0 (role parameters naming nodes, `items_only`, the

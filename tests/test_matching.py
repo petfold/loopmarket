@@ -98,33 +98,46 @@ def test_pinned_catalogue_refuses_unpinned_offers():
     assert check_match(pinned_a, pinned_b, cat, now=NOW) is not None
 
 
-def test_handover_terms_match_by_containment():
-    """A give at `u2e4x` serves a want from anywhere in `u2e`; a give from
-    anywhere in `u2e` does not serve a want at `u2e4x` — the give is the
-    narrower cone (Peter, 2026-09-12). `from` is a role of `geo` (a head
-    under a head, so it may name places); nothing else is declared."""
+def test_handover_terms_match_when_one_contains_the_other():
+    """A give at `u2e4x` serves a want from anywhere in `u2e`, and a give
+    from anywhere in `u2e` serves a want at `u2e4x` — whichever side is
+    the flexible one (Peter, 2026-09-13); siblings share nothing. `from`
+    is a role of `geo`, so it is a handover coordinate with `geo`; a
+    descriptive head under `geo` would opt out."""
     from ontodag import OntoDAG
     cat = Ontology(OntoDAG())
-    cat.declare_roles({"from": "geo"})
-    cat.load({"ride": []})
+    cat.declare_roles({"from": "geo", "made_in": "geo"})
+    cat.declare_handover(["geo"])
+    cat.declare_descriptive(["made_in"])
+    cat.load({"ride": [], "amphora": []})
     narrow = give("bruno", Thing(("ride", "from(u2e4x)")), 5, **W)
     wide = give("bruno", Thing(("ride", "from(u2e)")), 5, **W)
     assert check_match(narrow, want("amara", Thing(("ride", "from(u2e)")), 6, **W),
                        cat, now=NOW) is not None
     assert check_match(wide, want("amara", Thing(("ride", "from(u2e4x)")), 6, **W),
+                       cat, now=NOW) is not None
+    assert check_match(give("bruno", Thing(("ride", "from(u2e4)")), 5, **W),
+                       want("amara", Thing(("ride", "from(u2e5)")), 6, **W),
+                       cat, now=NOW) is None
+    # descriptive stays one-way: made somewhere in Greece is not Corinthian
+    assert check_match(give("bruno", Thing(("amphora", "made_in(u2e4x)")), 5, **W),
+                       want("amara", Thing(("amphora", "made_in(u2e)")), 6, **W),
+                       cat, now=NOW) is not None
+    assert check_match(give("bruno", Thing(("amphora", "made_in(u2e)")), 5, **W),
+                       want("amara", Thing(("amphora", "made_in(u2e4x)")), 6, **W),
                        cat, now=NOW) is None
 
 
 def test_places_regions_and_floors_match_through_the_graph():
-    """ontodag #15 (2026-09-12): a role term may name a *node* of the base
-    dimension — a place under a cell, a region above cells, a floor under
-    a building — and containment is the graph's. A give at the place fits
-    a want for the region that covers its cell; a give on the fourth floor
-    fits a want for the building; never the other way round, and two
-    floors never fit each other."""
+    """ontodag #15 (2026-09-12): a bare place term may be a *node* of the
+    geo dimension — a place under a cell, a region above cells, a floor
+    under a building — and containment is the graph's. Handover
+    coordinates match when one contains the other: the region serves the
+    place inside it and the place serves a buyer collecting anywhere in the
+    region; two floors of one building never serve each other."""
     from ontodag import OntoDAG
     cat = Ontology(OntoDAG())
-    cat.declare_roles({"where": "geo"})
+    cat.declare_handover(["geo", "time"])
     cat.load({"ride": [], "delivery": []})
     cat.dag.put("my_home", ["geo(u2e4x)"])
     cat.dag.put("my_home_4th", ["my_home"])
@@ -139,20 +152,18 @@ def test_places_regions_and_floors_match_through_the_graph():
         b = want("amara", Thing(("delivery", *want_terms)), 6, **V)
         return check_match(a, b, cat, now=NOW) is not None
 
-    assert pair(["where(my_home)"], ["where(ljubljana)"])       # place ⊑ region
-    assert not pair(["where(ljubljana)"], ["where(my_home)"])   # the region is wider
-    assert pair(["where(my_home_4th)"], ["where(my_home)"])     # floor ⊑ building
-    assert not pair(["where(my_home)"], ["where(my_home_4th)"])
-    assert not pair(["where(my_home_ground)"], ["where(my_home_4th)"])  # siblings
-    assert pair(["where(my_home_4th)"], ["where(u2e)"])         # up through the cell
-    assert not pair(["where(ljubljana)"], ["where(u2)"])        # covering: lower bound
-    assert not pair(["where(my_home)"], ["where(u2f)"])
+    assert pair(["my_home"], ["ljubljana"])       # place ⊑ region: collect anywhere
+    assert pair(["ljubljana"], ["my_home"])       # region ⊒ place: delivers anywhere
+    assert pair(["my_home_4th"], ["my_home"])     # floor ⊑ building
+    assert pair(["my_home"], ["my_home_4th"])     # the building serves its floor
+    assert not pair(["my_home_ground"], ["my_home_4th"])  # siblings
+    assert pair(["my_home_4th"], ["geo(u2e)"])         # up through the cell
+    assert pair(["geo(u2e)"], ["my_home_4th"])         # and down to it
+    assert not pair(["ljubljana"], ["geo(u2)"])        # covering: lower bound
+    assert not pair(["my_home"], ["geo(u2f)"])
     # the stored spelling is the name; ontodag orders it (`known` passes)
-    assert cat.known("where(my_home_4th)") and cat.known("where(ljubljana)")
-    # a name outside the dimension is refused, never read as a literal cell
-    assert not cat.known("where(ride)")
-    assert not pair(["where(ride)"], ["where(u2e)"])
+    assert cat.known("my_home_4th") and cat.known("ljubljana")
     # a give with two same-head terms sits in their meet; a provably empty
     # meet describes nothing
-    assert pair(["where(my_home)", "where(u2e)"], ["where(u2e4)"])
-    assert not pair(["where(my_home)", "where(u2f)"], ["where(u2e4)"])
+    assert pair(["my_home", "geo(u2e)"], ["geo(u2e4)"])
+    assert not pair(["my_home", "geo(u2f)"], ["geo(u2e4)"])

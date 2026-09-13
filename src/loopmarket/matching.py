@@ -15,9 +15,9 @@ Conditions, in cheap-to-expensive order:
                (decided 2026-09-12: refuse; repost instead)
 3. validity:   both offers open at `now`
 4. time:       v1/v2 only — the service windows intersect (a delivery
-               instant exists); v3 says it with `when(...)` in step 7
+               instant exists); v3 says it with a bare `time(...)` in step 7
 5. space:      v1/v2 only — the service discs intersect (a handover point
-               exists); v3 says it with `where(...)`/`from(...)`/`to(...)`
+               exists); v3 says it with a bare geo term or `from(...)`/`to(...)`
 6. quantity:   wanted quantity within given quantity (equal, unless
                divisible), identical units
 7. meaning:    the given conjunction satisfies the wanted one under the

@@ -94,7 +94,7 @@ _SETTINGS = {
     "terms": _Setting(
         "LOOP_TERMS", "", "--terms 'TERM ...'",
         "terms added to every offer whose line does not name that head, "
-        "e.g. 'where(home) when(..+90d)'; unset: anywhere, any time"),
+        "e.g. 'home ..+90d'; unset: anywhere, any time"),
     "valid": _Setting(
         "LOOP_VALID", "30d", "--valid DURATION",
         "how long my offers stand (a duration, or an absolute window)"),
@@ -396,7 +396,7 @@ def radius_m(text: str) -> float:
 
 def parse_coords(text: str) -> tuple[float, float, float]:
     """`LAT,LON,RADIUS` — the spelling `place` takes, and the literal any
-    geo-kind term accepts (`where(46.05,14.50,5km)`); both become the cell
+    geo-kind term accepts, bare or as `from(46.05,14.50,5km)`; both become the cell
     of that radius around that point (`spacetime.cell_for_coords`), which
     is what the offer says — no disc anywhere since the v3 record. The day
     odag accepts `geo(LAT,LON,R)` this maps onto it (cli.md §11.1)."""
@@ -760,21 +760,70 @@ def _value_of(view: OntoDAG, name: str, kind: str) -> str | None:
     return _dims.split_term(best.name)[1] if best is not None else None
 
 
+def _term_of(view: OntoDAG, name: str) -> str | None:
+    """The most specific dimension term a name hangs under, whatever its
+    kind — `home` under `geo(u2e4x)` yields `geo(u2e4x)`. What a *private*
+    place publishes as when typed bare (Peter, 2026-09-13: a bare geo term
+    is where the offer holds; no `where` head)."""
+    node = view.nodes.get(name)
+    if node is None:
+        return None
+    best = None
+    for item in [node, *view.get_ancestors(node)]:
+        split = _dims.split_term(item.name)
+        if not split or _head_kind(view, split[0]) is None:
+            continue
+        if best is None or view.is_below(item.name, best.name):
+            best = item
+    return best.name if best is not None else None
+
+
+def _handover_base(ontology: Ontology, kind: str, spelling: str) -> str:
+    """The base head of `kind` the catalogue marks as a handover
+    coordinate — where a bare coordinate literal or time spelling goes
+    (`46.05,14.50,5km` → `geo(u2e4x)`, `today..+7d` → `time(...)`). The
+    CLI names no head: it asks the catalogue which head under `handover`
+    is a base of that kind, and refuses when there is none."""
+    dag = ontology.dag
+    bases = [head for head in sorted(ontology.handover_heads())
+             if _head_kind(dag, head) == kind
+             and any(p.name in _dims.KINDS for p in dag.nodes[head].parents)]
+    if len(bases) > 1:
+        raise ValueError(
+            f"{spelling}: the catalogue marks several {kind} heads as "
+            f"handover coordinates ({', '.join(bases)}) — spell the head: "
+            f"`{bases[0]}({spelling})`")
+    if bases:
+        return bases[0]
+    raise ValueError(
+        f"{spelling}: the catalogue marks no {kind} head as a handover "
+        f"coordinate, so a bare {'coordinate' if kind == _dims.KIND_PREFIX else 'time'} "
+        f"has no head to go under — `odag put geo prefix-dimension handover`")
+
+
+def _looks_like_time(token: str) -> bool:
+    return ".." in token or token in ("now", "today", "tomorrow") \
+        or bool(re.match(r"^\d{4}-\d{2}(-\d{2})?(T|$)", token))
+
+
 def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
-    """Each `head(param)` of a declared head: refuse quantity kinds (the
-    field owns them), let a catalogue name stand as spelled, publish a
-    *private* name as its public value, turn coordinates into a cell and
-    relative time into fixed UTC (input vocabulary, cli.md §2), and check
-    the result is vocabulary. Head-agnostic on purpose — the CLI knows
-    kinds, never heads (Peter, 2026-09-12). Returns (concepts, notes,
-    addresses): the addresses are the settlement texts of the named places
-    (`place NAME ... ADDRESS`), kept locally and sealed to the counterparty
-    at clearing (handoff.py).
+    """Each token: let a catalogue name stand as spelled, publish a
+    *private* place as the dimension term it hangs under, turn a bare
+    coordinate literal into a cell and a bare time spelling into a fixed-UTC
+    window (input vocabulary, cli.md §2) — both under the base head the
+    catalogue marks as a handover coordinate — and, for `head(param)`
+    tokens, refuse quantity kinds (the field owns them) and check the
+    result is vocabulary. Head-agnostic on purpose — the CLI knows kinds,
+    never heads (Peter, 2026-09-12); since 2026-09-13 there is no `where`
+    or `when` head at all: `give vegetable-box shop` says the box is at the
+    shop. Returns (concepts, notes, addresses): the addresses are the
+    settlement texts of the named places (`place NAME ... ADDRESS`), kept
+    locally and sealed to the counterparty at clearing (handoff.py).
 
     Names, since ontodag #15 (2026-09-12): a parameter that names a node
     of the *pinned catalogue* — a place under a cell, a region above
     cells, a floor under a building — is stored as spelled
-    (`where(ljubljana)`, `where(my_home_4th)`): ontodag orders it by the
+    (`ljubljana`, `my_home_4th`, `from(my_home)`): ontodag orders it by the
     graph, and the counterparty, matching under the same root, can. A
     name only the personal layer holds is one the root does not carry, so
     it publishes as the cell it hangs under (`from(my_home)` →
@@ -789,7 +838,33 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
         split = _dims.split_term(c)
         kind = _head_kind(dag, split[0]) if split else None
         if kind is None:
-            out.append(c)
+            if c in dag.nodes:          # a catalogue name (a place, a category)
+                address = dag.nodes[c].metadata.get("address")
+                if address:
+                    addresses.append(f"{c}: {address}")
+                out.append(c)
+                continue
+            view = session.view()
+            term = None
+            if c in view.nodes:         # a private name: publish its term
+                term = _term_of(view, c)
+                address = view.nodes[c].metadata.get("address")
+                if term and address:
+                    addresses.append(f"{c}: {address}")
+            elif "," in c and c.count(",") == 2:
+                lat, lon, radius = parse_coords(c)
+                head = _handover_base(ontology, _dims.KIND_PREFIX, c)
+                term = f"{head}({cell_for_coords(lat, lon, radius)})"
+            elif _looks_like_time(c):
+                w = window(c, session.now)
+                end = "" if w.end is None else _iso(w.end - 1)
+                head = _handover_base(ontology, _dims.KIND_CALENDAR, c)
+                term = f"{head}({_iso(w.start)}..{end})"
+            if term is None:
+                out.append(c)           # unknown: fails closed at `known`
+                continue
+            notes.append(f"{c} → {term}")
+            out.append(term)
             continue
         head, param = split
         if kind in _FIELD_KINDS:
@@ -939,19 +1014,35 @@ def _print_table(rows: list[list[str]], args, out) -> None:
 Part = namedtuple("Part", "thing notes addresses")
 
 
-def _default_terms(parsed: Parsed) -> list[str]:
-    """The `terms` setting's defaults whose head the line does not name
-    (cli.md §3): where and when are optional since the v3 record — unset,
-    an offer is anywhere, any time — and the CLI knows no head by name."""
-    named = {split[0] for split in map(_dims.split_term, parsed.concepts) if split}
-    out = []
-    for term in shlex.split(_configured("terms") or ""):
-        split = _dims.split_term(term)
-        if split is None:
-            raise ValueError(f"terms setting: {term!r} is not a term head(param)")
-        if split[0] not in named:
-            out.append(term)
-    return out
+def _term_class(session: "Session", token: str) -> str:
+    """What a default term and a line's token compete on: the head of a
+    `head(param)` token, the dimension head a bare name hangs under in the
+    view (`home` → `geo`), else the token itself."""
+    split = _dims.split_term(token)
+    if split is not None:
+        return split[0]
+    term = _term_of(session.view(), token)
+    if term is not None:
+        return _dims.split_term(term)[0]
+    kind = _dims.KIND_PREFIX if "," in token and token.count(",") == 2 \
+        else _dims.KIND_CALENDAR if _looks_like_time(token) else None
+    if kind is not None:
+        try:                        # the base head a bare literal goes under
+            return _handover_base(session.catalogue, kind, token)
+        except ValueError:
+            return kind
+    return token
+
+
+def _default_terms(session: "Session", parsed: Parsed) -> list[str]:
+    """The `terms` setting's defaults whose coordinate the line does not
+    already state (cli.md §3): `set terms home` puts every offer at home
+    unless the line names a place. Place and time are optional since the
+    v3 record — unset, an offer is anywhere, any time — and the CLI knows
+    no head by name."""
+    named = {_term_class(session, c) for c in parsed.concepts}
+    return [term for term in shlex.split(_configured("terms") or "")
+            if _term_class(session, term) not in named]
 
 
 def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology) -> Part:
@@ -968,7 +1059,7 @@ def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology) -> Part:
             f"not encodable until quantities become catalogue terms "
             f"(docs/plans/ontodag-coupling.md §3). Encodable today: the point "
             f"`{point}` — declare in the direction you know")
-    defaults = _default_terms(parsed)
+    defaults = _default_terms(session, parsed)
     for term in defaults:
         notes.append(f"default {term}")
     concepts, term_notes, addresses = _elaborate_terms(
@@ -1390,7 +1481,7 @@ def cmd_offer(args, session, out):
 # --------------------------------------------------------------------------- #
 
 def offer_from_line(line: str, session: "Session | None" = None) -> Offer:
-    """`"want 10kg apple where(home) 100"` → the resolved `Offer`, under the
+    """`"want 10kg apple home 100"` → the resolved `Offer`, under the
     session's settings (maker, defaults, catalogue), not published. A
     composed line raises with the v4 refusal."""
     session = session or Session()
@@ -1481,7 +1572,7 @@ def cmd_place(args, session, out):
     cell is the place (no disc anywhere since the v3 record). Deleted the
     day odag accepts `geo(LAT,LON,R)` as input vocabulary. When the
     personal store *is* the catalogue the name is vocabulary and offers
-    say `where(NAME)` (ontodag #15 orders the name); under a separate
+    say `NAME` bare (ontodag #15 orders the name); under a separate
     pinned catalogue the place is private and offers say its cell. The
     optional ADDRESS is settlement text on the node (P1-spacetime-terms.md
     §4): never vocabulary, never in a record — shown in the approval block
@@ -1896,9 +1987,15 @@ def cmd_set(args, session, out):
         validity(value, 0)
     if args.key == "terms":
         for term in shlex.split(value):
-            if _dims.split_term(term) is None:
+            # a name is checked when an offer uses it (fails closed, U7);
+            # what can be checked now is the spelling of what is not a name
+            if "(" in term and _dims.split_term(term) is None:
                 raise ValueError(f"{term!r} is not a term head(param) — "
-                                 f"terms are e.g. 'where(home) when(..+90d)'")
+                                 f"terms are e.g. 'home ..+90d'")
+            if "," in term:
+                parse_coords(term)
+            elif _looks_like_time(term):
+                window(term, session.now)
     if args.key == "limit":
         _want_limit(argparse.Namespace(limit=value), out)
     if args.key in ("book", "peers"):
@@ -1948,10 +2045,12 @@ term is head(param) in ontodag's spelling — quote the parentheses in a
 shell; a bare number FIRST is the quantity (10kg = up to 10 kg divisible,
 3 = three indivisible), a bare number LAST is the price. An omitted price
 is your last unit price for the same thing, scaled, and marked.
-Every term is the catalogue's: where(PLACE|LAT,LON,R), when(WINDOW), from(),
-to(), depart(), arrive() are heads the catalogue declares under time and geo
-— a give must fit within the want's; omit them on a want and it does not
-care, omit them on a give and it says nothing. The one head the
+Every term is the catalogue's. A bare place (PLACE, or LAT,LON,R) is where
+the offer holds and a bare window (A..B, today..+7d) is when; from(), to(),
+depart(), arrive() are a route's or a transport's two ends. Place and time
+match when one side contains the other (a seller delivering anywhere in the
+city serves a want at a door); omit them on a want and it does not care,
+omit them on a give and it says nothing. The one head the
 CLI interprets is valid(DURATION|A..B|A..) — how long the offer stands
 (A.. is until withdrawn). Relative time and LAT,LON,R are input spellings.
 A composed want (`+` between parts, one price last) renders and is refused
@@ -1959,7 +2058,7 @@ until the v4 record carries parts (docs/plans/cli.md §13).
 Time: now, today, tomorrow, +90d, -2h, ISO dates, A..B.
 
   loop give 10kg apple 100
-  loop want ride 'where(my_home)' 'when(today..+7d)' 5
+  loop want ride my_home 'today..+7d' 5
   loop give piano-lesson 'valid(2h)'
 
 Settings (flag > $LOOP_* > ~/.loopmarket/config > ~/.ontodag/config > default):

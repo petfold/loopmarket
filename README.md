@@ -20,7 +20,7 @@ whole loop atomically.
 
 ```console
 $ odag put piano-lesson music-lesson        # the catalogue is ontodag's
-$ loop set maker amara; loop place home 46.05,14.50,5km; loop set terms 'where(home)'
+$ loop set maker amara; loop place home 46.05,14.50,5km; loop set terms home
 $ loop give piano-lesson 100                # I give this, priced on my scale
 $ loop want produce local weekly 104        # I want this, priced on my scale
 $ loop loops && loop clearing               # hunt profitable loops; run the clearing house
@@ -52,7 +52,7 @@ agent.step()                          # snapshot → match → hunt loops → cl
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 123 tests (two need a live Bee node)
+python3 -m pytest tests/ -v           # 126 tests (two need a live Bee node)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
@@ -61,7 +61,7 @@ PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery,
 The script publishes the smallest nontrivial book — a piano teacher, a
 market gardener and a bicycle mechanic, no pair of whom can trade — and
 `loops && clear` finds, verifies and clears the triangle at a 12% surplus:
-fifteen lines of `set maker`, `give piano-lesson where(amara_flat) 100`,
+fifteen lines of `set maker`, `give piano-lesson amara_flat 100`,
 `want produce local weekly ...`. It runs unchanged with the book on Swarm
 (`loop -f swarm:TOPIC ...`; 0.3.0 live-checked 2026-09-12 on a Bee 2.8.2
 light node: published, solved and cleared in 1m51s with the same `loop_id`
@@ -81,11 +81,12 @@ one-screen version; the design record with its reasons is
 
 Candidate generation can also run through ontodag's **parametric
 dimensions**: `DimensionIndex` files gives under exactly the terms they
-carry (`where(u24)`, `where(ljubljana)`, `when(...)`, `from(my_home)` —
-cells, places, regions and floors, ordered by the graph), and
+carry (`geo(u24)`, `ljubljana`, `time(...)`, `from(my_home)` — cells,
+places, regions and floors, ordered by the graph), and
 `candidate_matches_indexed` asks **one** ontodag `get` per want — the
-want's own conjunction as the query, items only — provably the same
-matches as the exhaustive baseline
+want's categories as the query, items only; where and when are the exact
+check's, since a give that contains the want's place sits above it —
+provably the same matches as the exhaustive baseline
 (the recall test enforces set-equality), with far fewer exact checks. The
 index is a derived, per-solver copy; the shared catalogue and its pinned
 roots never move because of it. Swap the in-memory store for

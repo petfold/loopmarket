@@ -11,13 +11,13 @@ place amara_flat 46.05,14.50,5km
 place bruno_farm 46.10,14.55,15km
 place chen_shop 46.06,14.51,4km
 set maker amara
-give piano-lesson where(amara_flat) 100
-want produce local weekly where(amara_flat) 104
+give piano-lesson amara_flat 100
+want produce local weekly amara_flat 104
 set maker bruno
-give vegetable-box where(bruno_farm) 50
-want bicycle-repair where(bruno_farm) 52
+give vegetable-box bruno_farm 50
+want bicycle-repair bruno_farm 52
 set maker chen
-give bicycle-repair where(chen_shop) 80
-want music-lesson where(chen_shop) 83
+give bicycle-repair chen_shop 80
+want music-lesson chen_shop 83
 loops
 clearing

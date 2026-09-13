@@ -37,8 +37,8 @@ def test_public_key_recovers_from_an_offer_signature():
 
 
 def _cleared_pair(blobs):
-    w = want(A, Thing(("ride", "where(u24)")), 5, **V)
-    g = give(B, Thing(("ride", "where(u24)")), 4, **V)
+    w = want(A, Thing(("ride", "geo(u24)")), 5, **V)
+    g = give(B, Thing(("ride", "geo(u24)")), 4, **V)
     book_a, book_b = OfferRegistry(RecordStore(blobs)), OfferRegistry(RecordStore(blobs))
     book_a.publish(w); book_a.attach_signature(w.offer_id, sign_offer(w, KEY_A)); book_a.commit()
     book_b.publish(g); book_b.attach_signature(g.offer_id, sign_offer(g, KEY_B)); book_b.commit()
@@ -99,16 +99,16 @@ def test_watch_reports_fills_seals_and_opens_handoffs(env, tmp_path, monkeypatch
     run = Runner()
     as_(KEY_A)
     run.ok("place", "home", "46.05,14.50,5km", "Trubarjeva", "12,", "4th", "floor")
-    out = run.ok("want", "ride", "where(home)", "5")
-    assert "note     handoff where(home): Trubarjeva 12, 4th floor — sealed" in out
+    out = run.ok("want", "ride", "home", "5")
+    assert "note     handoff home: Trubarjeva 12, 4th floor — sealed" in out
     want_id = out.strip().splitlines()[-1]
-    out = run.ok("give", "piano-lesson", "where(home)", "4")
+    out = run.ok("give", "piano-lesson", "home", "4")
     give_id = out.strip().splitlines()[-1]
     run.ok("handoff", give_id[:12], "Ring", "twice")   # overrides the place text
     as_(KEY_B)
     run.ok("place", "depot", "46.05,14.50,5km")         # no address
-    run.ok("give", "ride", "where(depot)", "4")
-    run.ok("want", "piano-lesson", "where(depot)", "5")
+    run.ok("give", "ride", "geo(depot)", "4")
+    run.ok("want", "piano-lesson", "geo(depot)", "5")
     assert run("watch", "--once")[0] == 1               # nothing cleared yet
     run.ok("clearing")
     # Amara: two fills reported, two handoffs sealed to Bruno
@@ -123,7 +123,7 @@ def test_watch_reports_fills_seals_and_opens_handoffs(env, tmp_path, monkeypatch
     out = run.ok("watch", "--once")
     assert out.count("filled   ") == 2
     assert f"handoff  from {A} for loop" in out
-    assert "where(home): Trubarjeva 12, 4th floor" in out and "Ring twice" in out
+    assert "home: Trubarjeva 12, 4th floor" in out and "Ring twice" in out
     assert run("watch", "--once")[0] == 1
     listing = run.ok("handoffs")
     assert listing.count(f"from {A}:") == 2 and "Ring twice" in listing

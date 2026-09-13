@@ -131,7 +131,20 @@ its native version, so old ids never move. The v3 constructor refuses
 > `declare_roles({head: base})` and matched exactly like categories. The
 > `service-role` marker, `Ontology`'s overlap half, ontodag's overlap
 > query mode (#14, built and withdrawn that day) and the whole-space
-> device are gone. The text below is kept as the record of the error.
+> device are gone.
+>
+> **Corrected again 2026-09-13** (the vegetable-box example): the
+> `where`/`when` heads themselves were unnecessary — where an offer holds
+> is a *bare* geo term (`give vegetable-box shop`), when it holds a bare
+> time term; only a route's/transport's two ends and descriptive terms
+> keep heads. And for handover coordinates the flexible side may be
+> either party: the seller delivering anywhere in the city serves the
+> want at the door, the shop serves the buyer collecting anywhere — so
+> they match when **one contains the other** (both directions of
+> `is_below`, never partial overlap), while categories and descriptive
+> terms stay one-way. The catalogue says which: `geo`/`time` under the
+> marker `handover`, descriptive heads under `descriptive`. The text
+> below is kept as the record of the error.
 
 **The decision the note skipped.** Today the match relation is encoded in
 the *field*: concepts match by containment (the offered thing fits within

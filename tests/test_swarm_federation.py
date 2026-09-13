@@ -44,7 +44,7 @@ def _iso(t: int) -> str:
 def _place(lat, lon, radius_m) -> str:
     """v3: a place is the cell containing the radius (all three `u24`)."""
     from loopmarket.spacetime import cell_for_coords
-    return f"where({cell_for_coords(lat, lon, radius_m)})"
+    return f"geo({cell_for_coords(lat, lon, radius_m)})"
 
 
 @unittest.skipUnless(
@@ -70,12 +70,12 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
         catalogue = Ontology.persistent(
             swarm_store(f"{topic}-catalogue", signer=BEE_SIGNER, **swarm))
         catalogue.load(CATALOGUE)
-        catalogue.declare_roles({"when": "time", "where": "geo"})
+        catalogue.declare_handover(["geo", "time"])
         self.assertTrue(catalogue.commit())
         pins = catalogue.pins
 
         now = int(time.time())
-        season = f"when({_iso(now)}..{_iso(now + 120 * 86_400 - 1)})"   # v3 terms
+        season = f"time({_iso(now)}..{_iso(now + 120 * 86_400 - 1)})"   # v3 terms
         town = dict(valid=TimeWindow(now - 3_600, now + 30 * 86_400), **pins)
         places = [_place(46.05, 14.50, 5_000), _place(46.10, 14.55, 15_000),
                   _place(46.06, 14.51, 4_000)]

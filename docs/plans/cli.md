@@ -95,19 +95,20 @@ three things:
 
 ```
 loop give 10kg apple 100
-loop want ride 'from(my_home)' 'to(my_supermarket)' 'when(today)' 5
+loop want ride 'from(my_home)' 'to(my_supermarket)' today 5
 loop give piano-lesson 'valid(2h)'
 loop give apple                      # 1 unit, last apple price, all defaults
 ```
 
 **The one head the CLI interprets** (since the v3 record, 2026-09-12 —
 `P1-spacetime-terms.md`) is `valid(...)`, the offer's own field: how long
-it stands, `valid(A..)` until withdrawn. `when(...)`/`where(...)` are
-ordinary catalogue terms, role heads the seed declares under
-`service-role` and matched by overlap; the mapping code that once put
-them into `service`/`where` fields is gone and nothing changed at the
-prompt — `examples/triangle.loop` is byte-identical across the flip. The
-CLI knows *kinds*, never heads: a prefix-kind parameter `LAT,LON,R`
+it stands, `valid(A..)` until withdrawn. Where and when the offer holds
+are **bare** terms — a place name, a cell, a window: `give vegetable-box
+shop 5` (2026-09-13: the `where`/`when` heads of the day before were
+unnecessary and are gone; a route's `from`/`to` keep theirs). Handover
+coordinates match when one side contains the other. The mapping code that
+once put them into `service`/`where` fields is gone. The CLI knows
+*kinds*, never heads: a prefix-kind parameter `LAT,LON,R`
 becomes the finest cell containing that radius, a calendar-kind parameter
 in relative spelling becomes fixed UTC, a name becomes its value. The
 startup test asserts `valid` is not a dimension head of the loaded
@@ -115,7 +116,7 @@ catalogue, so a pack cannot silently shadow it. (Until that day three
 heads were interpreted onto fields; the design discussion is §1 of the
 spacetime package.)
 
-**Relative time is input vocabulary.** `valid(2h)`, `when(today..+90d)`
+**Relative time is input vocabulary.** `valid(2h)`, a bare `today..+90d`
 elaborate to fixed ISO-8601 UTC at entry — the coupling plan's rule that
 "timezones elaborate at creation" applied to durations too. Stored terms
 are absolute; the approval block shows both UTC and local. This is a
@@ -141,7 +142,7 @@ key lists everything; with a key shows it; unknown keys are errors
 | `catalogue` | the ontodag store spec offers pin (any odag spec) | odag's active store |
 | `peers` | read-only maker books / manifests folded into every answer | none |
 | `maker` | my identity; the signer's address when `sig` is installed | none — required to publish |
-| `terms` | terms added to every offer whose line does not name that head, e.g. `where(home) when(..+90d)` (since v3, 2026-09-12: where and when are optional — unset, an offer is anywhere, any time) | none |
+| `terms` | terms added to every offer whose line does not already state that coordinate, e.g. `home ..+90d` (since v3, 2026-09-12: place and time are optional — unset, an offer is anywhere, any time) | none |
 | `valid` | how long my offers stand | `30d` |
 | `now` | the clock, for reproducible runs and tests | wall clock |
 | `confirm` | `auto` / `on` / `off` (§7) | `auto` |
@@ -194,7 +195,7 @@ fail-closed, and `my_home` is a bare word like any other.
   offer's disc field. *The offer carries coordinates, ontodag carries
   the name.* When §2 of the coupling plan lands the field goes and the
   offer references the node. **Done 2026-09-12 (v3):** the field is gone,
-  the offer carries `where(cell)` — the finest cell containing the radius
+  the offer carries `geo(cell)` — the finest cell containing the radius
   — and the place node carries no disc; region nodes as parameters landed
   with ontodag #15 the same night (§12, "names stand").
 
@@ -484,8 +485,8 @@ decide something the design left implicit.
   that night, it does: a role head takes the base dimension's nodes as
   parameters, so a term `head(param)` whose `param` is a node of the
   *pinned catalogue* — a place under a cell, a region above cells, a
-  floor under a building — is published as spelled (`where(ljubljana)`,
-  `where(my_home_4th)`, `from(my_home)` when the personal store is the
+  floor under a building — is published as spelled (`ljubljana`,
+  `my_home_4th`, `from(my_home)` when the personal store is the
   catalogue) and ontodag orders it by the graph. The one substitution
   left is the same-root constraint's: a name only the personal layer
   holds cannot be interpreted under the root the offer pins, so a
@@ -592,7 +593,7 @@ one part block each, one price, the notes — and then **refuse** with
 this section and `P2-loop-selection.md` §10 named, the G6 pattern,
 until `wants` can carry parts; nothing enters the book and the drafts
 are kept. Simple drafts publish today. Two details the build fixed:
-`where(...)` accepts the coordinate literal `LAT,LON,R` that `place`
+A bare coordinate literal `LAT,LON,R` — the spelling `place` takes —
 takes, so the canonical line re-parses to the same cell (the day odag
 accepts `geo(LAT,LON,R)`, §11.1, this maps onto it); and a name in a role
 term takes its *most specific* value — a place hangs under its own cell
@@ -608,7 +609,7 @@ noun; `clear` stays a silent alias for one release.
 **The line as Python's literal.** `loopmarket.cli.offer_from_line(line,
 session)` resolves an offer line to an `Offer` under a session's settings
 without publishing; `line_for(offer)` renders an `Offer` back to its
-canonical line (`want 2kg apple when(...) where(...) valid(...) 9`), and
+canonical line (`want 2kg apple geo(...) time(...) valid(...) 9`), and
 the two round-trip. One grammar for the shell, the API and the
 assistant: a program builds offers as objects or as lines, and both end
 at the same approval block.
@@ -626,7 +627,7 @@ maker agent in Python; reaction (repost when filled) is an agent; macros
 (a theatre visit parameterised by the evening) are a program printing
 lines into `loop`, the preprocessor in a pipeline, with `confirm on`
 making the batch ask on the terminal. **Parked:** an `at` setting
-anchoring relative service-time spellings (`when(-2h..)`) so that a
+anchoring relative service-time spellings (`-2h..`) so that a
 `.loop` file is itself a one-parameter template — a tripwire, not a
 feature, until a real template need arrives that Python does not cover.
 

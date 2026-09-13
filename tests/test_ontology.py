@@ -43,22 +43,24 @@ def test_known_accepts_terms_ontodag_can_interpret_and_nothing_else():
 # places — and they match by containment like any category. The overlap
 # relation for "service roles" under a marker node lived one day.
 
-ROLES = {"when": "time", "where": "geo", "from": "geo", "to": "geo"}
+ROLES = {"from": "geo", "to": "geo"}
 
 
 def _roles_catalogue():
     from ontodag import OntoDAG
     ont = Ontology(OntoDAG())
     ont.declare_roles(ROLES)
+    ont.declare_handover(["geo", "time"])
     ont.load({"amphora": [], "ride": []})
-    ont.dag.put("made_in", ["geo"])             # descriptive: the same shape
+    ont.dag.put("made_in", ["geo"])             # descriptive: opts out
     ont.dag.put("made", ["time"])
+    ont.declare_descriptive(["made_in", "made"])
     return ont
 
 
 def test_declare_roles_adopts_the_prelude_and_pins_kinds():
     ont = _roles_catalogue()
-    assert ont.head_kind("when") == "calendar-dimension"
+    assert ont.head_kind("time") == "calendar-dimension"
     assert ont.head_kind("from") == ont.head_kind("made_in") == "prefix-dimension"
     assert ont.head_kind("geo") and ont.head_kind("prefix-dimension") is None
     assert "service-role" not in ont.dag.nodes
@@ -81,14 +83,18 @@ def test_descriptive_terms_the_amphora():
     assert not ont.satisfies(["amphora", "made_in(u2e5)"], ["amphora", "made_in(u2e4)"])
 
 
-def test_handover_terms_are_the_same_shape_the_ride():
-    """A give from `u2e4x` fits within a want from anywhere in `u2e`; a
-    give from anywhere in `u2e` does not fit a want at `u2e4x` (the give
-    is the narrower cone). Siblings refuse; roles are never confused."""
+def test_handover_terms_match_either_way_the_ride():
+    """A give from `u2e4x` serves a want from anywhere in `u2e`, and a give
+    from anywhere in `u2e` serves a want at `u2e4x` — whichever side is
+    the flexible one (Peter, 2026-09-13). Siblings refuse; roles are never
+    confused; a bare cell is the handover place with no head at all."""
     ont = _roles_catalogue()
     assert ont.satisfies(["ride", "from(u2e4x)"], ["ride", "from(u2e)"])
-    assert not ont.satisfies(["ride", "from(u2e)"], ["ride", "from(u2e4x)"])
+    assert ont.satisfies(["ride", "from(u2e)"], ["ride", "from(u2e4x)"])
     assert not ont.satisfies(["ride", "from(u2e4)"], ["ride", "from(u2e5)"])
+    assert ont.satisfies(["ride", "geo(u2e)"], ["ride", "geo(u2e4x)"])
+    assert ont.satisfies(["ride", "geo(u2e4x)"], ["ride", "geo(u2e)"])
+    assert not ont.satisfies(["ride", "geo(u2e4)"], ["ride", "geo(u2e5)"])
     # roles are never confused: the give's `to` is what answers a `to`
     assert not ont.satisfies(["ride", "from(u2e4x)", "to(u2e5)"], ["ride", "to(u2e4x)"])
     # a route: both places, independently
@@ -104,7 +110,7 @@ def test_silence_and_vocabulary():
     # an extra unknown *category* only narrows the give: ignorable ...
     assert ont.satisfies(["ride", "mystery"], ["ride"])
     # ... a term the want names that nobody can interpret never matches
-    assert not ont.satisfies(["ride"], ["ride", "when(garbage)"])
+    assert not ont.satisfies(["ride"], ["ride", "time(garbage)"])
     assert not ont.satisfies(["ride", "at(u2e)"], ["ride", "at(u2e)"])  # no head
     # provably disjoint same-head terms describe nothing, on either side
     assert not ont.satisfies(["ride", "from(u2e4)", "from(u2e5)"], ["ride"])
@@ -114,8 +120,8 @@ def test_silence_and_vocabulary():
     assert not ont.satisfies(["ride", "from(u2e5)"], ["ride", "from(u2e)", "from(u2e4)"])
 
 
-def test_when_term_is_window_containment():
-    """`when(a..b)` on a give fits within `when(c..d)` on a want exactly
+def test_time_terms_match_when_one_window_contains_the_other():
+    """`time(a..b)` on a give fits within `time(c..d)` on a want exactly
     when the give's half-open window lies inside the want's — inclusive
     calendar values encode [start, end-1]."""
     import random
@@ -125,8 +131,8 @@ def test_when_term_is_window_containment():
     def iso(t):
         return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    def when(w):
-        return f"when({iso(w.start)}..{iso(w.end - 1)})"
+    def time(w):
+        return f"time({iso(w.start)}..{iso(w.end - 1)})"
 
     ont = _roles_catalogue()
     rng = random.Random(2026_09_12)
@@ -138,8 +144,9 @@ def test_when_term_is_window_containment():
         if rng.random() < 0.5:                    # boundary cases often
             give = TimeWindow(want.start, want.end) if rng.random() < 0.5 else \
                 TimeWindow(want.start, want.end + 1)
-        expect = want.start <= give.start and give.end <= want.end
-        assert ont.satisfies(["ride", when(give)], ["ride", when(want)]) == expect, (give, want)
+        expect = (want.start <= give.start and give.end <= want.end) or \
+                 (give.start <= want.start and want.end <= give.end)
+        assert ont.satisfies(["ride", time(give)], ["ride", time(want)]) == expect, (give, want)
         inside += expect
         outside += not expect
     assert inside and outside

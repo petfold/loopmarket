@@ -134,8 +134,11 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 | `.load({sub: [supers, ...]})` | bulk, order-independent declaration; returns self |
 | `.known(concept)` | vocabulary membership: a node, or a parametric term of a declared head the DAG can order — incl. a role term naming a place, region or floor node (ontodag #15); a name outside the head's dimension fails closed |
 | `.covers(wanted, offered)` | `offered` fits within `wanted` (equal or descendant); **False for unknown names** (U7) |
-| `.satisfies(offered, wanted)` | every wanted term covered by some offered concept — containment, term by term, place and time included (the want is the wider cone, the give the narrower); a head the want does not name constrains nothing; a give with provably disjoint same-head terms satisfies nothing |
+| `.satisfies(offered, wanted)` | every wanted term answered: a category or descriptive term by an offered concept that fits within it (the want is the wider cone); a **handover coordinate** — a bare geo/time term or a term of a role under a marked dimension — by an offered coordinate of the same head that fits within it *or contains it*; a head the want does not name constrains nothing; a conjunction with provably disjoint same-head terms describes nothing, on either side |
 | `.declare_roles({head: base})` | seed convenience: put each head under its base dimension head — a role of that dimension, whose parameters may name its nodes (ontodag #15); a catalogue write. `declare_service_roles` is the 0.3.0 name, kept one release |
+| `.declare_handover(heads)` | mark base dimension heads (`geo`, `time`) as handover coordinates under the `handover` marker; roles under them inherit it; prelude adopted on demand |
+| `.declare_descriptive(heads)` | opt a geo/time head out (`made_in`, `made`) under the `descriptive` marker: its terms describe the thing and match one-way |
+| `.handover_class(concept)` / `.handover_heads()` | the head whose coordinate a term states (`None` for categories and descriptive terms; a bare place node states `geo`'s); the marked base heads |
 | `.head_kind(head)` | the registry kind a declared head orders values by, else `None` |
 | `.root` | canonical root of the last committed state, `''` if in-memory/uncommitted |
 | `.pins` | `{"ontology_root", "registry_version", "contract_version"}` — splat into `give`/`want` (U10) |
@@ -209,8 +212,8 @@ Exact, self-contained, re-runnable by clearing. Gates, in order:
 
 1. kinds: give is `GIVE`, want is `WANT`, distinct makers
 2. validity: both offers open at `now`
-3. time: service windows intersect (v1/v2 records; a `when(...)` term since v3)
-4. space: service discs intersect (v1/v2 records; a `where(...)` term since v3)
+3. time: service windows intersect (v1/v2 records; a bare `time(...)` term since v3, one containing the other)
+4. space: service discs intersect (v1/v2 records; a bare geo term since v3, one containing the other)
 5. quantity: `want.qty <= give.qty`; equal unless both divisible; equal units
 6. **pins**: if the verifying catalogue is pinned (`ontology.root`), both
    offers must carry all three pins; mixed pinning (one side declares,
@@ -235,7 +238,7 @@ answer.
 |---|---|
 | `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) under exactly the terms they carry, plus a record-line marker |
 | `.file(offer) -> bool` | index a give under its concepts and its line marker; `False` for non-gives, unknown vocabulary (U7's outcome) and a conjunction ontodag refuses |
-| `.candidates(want) -> set[str]` | one `get([line marker, *want.concepts], items_only=True)`: the gives inside every wanted cone — place and time prune like categories |
+| `.candidates(want) -> set[str]` | one `get([line marker, *one-way terms], items_only=True)`: the gives inside every wanted category cone; handover coordinates are left to `check_match` (a give that *contains* the want's place sits above it, not in its cone) |
 | `candidate_matches_indexed(offers, ontology, *, now, index=None)` | drop-in for `candidate_matches` |
 
 The v1/v2 window and disc are fields the exact check gates, not terms;
@@ -421,19 +424,22 @@ announcement stores.
 ## 13. Record formats
 
 **Offer, v3** (2026-09-12, `docs/plans/P1-spacetime-terms.md`): no
-`service`/`where` — where and when the thing changes hands are role terms
-in `concepts` (`when(...)`, `where(cell)`, `from`/`to`, `depart`/`arrive`;
-roles of the time and geo dimensions the catalogue declares, matched by
-containment like every term — a give must fit within the want's; a want
-that names none does not care); `valid` may have a `null` end (stands until
-withdrawn). A v3 record carrying `service` or `where` is refused on read.
+`service`/`where` — where and when the thing changes hands are terms in
+`concepts`: a bare geo or time term (`geo(u24)`, a place node, a region, a
+window `time(a..b)`, a named time) and, for a route or a transport, the
+two ends `from`/`to`, `depart`/`arrive`. Handover coordinates match when
+one side contains the other (the seller delivering anywhere in the city
+serves the want at the door; the buyer collecting anywhere is served by the
+shop); a want that names none does not care. `valid` may have a `null` end
+(stands until withdrawn). A v3 record carrying `service` or `where` is
+refused on read.
 v2 and v3 offers never match each other (`check_match`):
 
 ```json
 {"v": 3, "maker": "amara",
  "gives": {"type": "thing",
-           "concepts": ["piano-lesson", "when(2026-10-01T00:00:00Z..2026-12-31T23:59:59Z)",
-                        "where(u24)"],
+           "concepts": ["geo(u24)", "piano-lesson",
+                        "time(2026-10-01T00:00:00Z..2026-12-31T23:59:59Z)"],
            "qty": 1.0, "unit": "course", "divisible": false},
  "wants": {"type": "tokens", "issuer": "amara", "amount": 100},
  "valid": [1699999999, null],
@@ -562,23 +568,25 @@ Whole numbers encode as integers, decimals as floats (canonical JSON tells
 **The one interpreted head** is `valid(DURATION | A..B | A..)` → the
 offer's `valid` window (`A..` stands until withdrawn). A startup check
 refuses a catalogue that declares `valid` as a dimension head. Everything
-else is a catalogue term — since the v3 record (2026-09-12) `when(...)`
-and `where(...)` included: roles of time and geo the seed catalogue
-declares, matched by containment like every term — omit them on a want and
-it does not care, omit them on a give and it says nothing about where or
-when. The `terms` setting adds default terms to every line that does not
-name their head.
+else is a catalogue term. Where and when the offer holds are **bare**
+terms (2026-09-13: no `where`/`when` head): a place name, a cell, a
+window — `give vegetable-box shop 5`, `want vegetable-box door 6`. Omit
+them on a want and it does not care; omit them on a give and it says
+nothing about where or when. A route's ends keep their heads,
+`from(...)`/`to(...)`. The `terms` setting adds default terms to every
+line that does not already state that coordinate (`set terms home`).
 
 **Terms** pass into the description, elaborated by *kind*, never by head
-(the CLI names no head): if the parameter is a catalogue *name*, the
-name's value in that kind of dimension is substituted (`where(home)` →
-`where(u24)`, from `home ⊑ geo(u24)`; `when(autumn)` → the `time(...)`
-term `autumn` hangs under) and printed as a note — a name with no such
-value is refused, never read as a literal; a *prefix*-kind parameter
-`LAT,LON,R` becomes the finest cell containing that radius around the
-point (the spelling `place` takes; a place near a cell edge names the
-coarser cell); a *calendar*-kind parameter in relative spelling
-(`today..+7d`) is elaborated to fixed UTC. A term of a *linear* or
+(the CLI names no head). A *catalogue* name stands as spelled (`shop`,
+`ljubljana`, `my_home_4th`, `autumn`): ontodag orders it. A *private*
+name — one only the personal store holds, which the pinned root cannot
+carry — publishes as the dimension term it hangs under (`home` →
+`geo(u24)`) and is printed as a note; a private name with no such term is
+refused, never read as a literal. A bare `LAT,LON,R` becomes the finest
+cell containing that radius around the point (the spelling `place` takes;
+a place near a cell edge names the coarser cell) under the prefix head the
+catalogue marks as a handover coordinate; a bare relative time
+(`today..+7d`) is elaborated to fixed UTC under the calendar one. A term of a *linear* or
 *count* head (`weight(...)`, `count(...)`) is accepted by the parser and
 **refused at publish** with the coupling plan named: quantities are
 fields today. Band spellings in quantity position (`9kg..11kg`,
@@ -588,7 +596,7 @@ fields today. Band spellings in quantity position (`9kg..11kg`,
 `tomorrow`, `+90d`/`-2h` (units `s m h d w`), any ontodag time literal
 (`2026-10`, `2026-10-01`, `2026-10-01T10:00:00Z`), and ranges `A..B`,
 `..B` (from now), `A..` (open-ended: for `valid`, until withdrawn). A name
-whose node hangs under a `time(...)` term is a window too (`when(evenings)`).
+whose node hangs under a `time(...)` term is a window too (`evenings`).
 Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 `500m`, bare metres.
 
@@ -659,7 +667,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `catalogue` | `LOOP_CATALOGUE` | odag's active store | the store offers pin (any odag spec: `.od` file, `rs:PATH`, `swarm:NAME`) |
 | `peers` | `LOOP_PEERS` | none | read-only books folded into every answer: `rs:PATH`, `swarm:TOPIC@OWNER`; comma-separated. A trusted OR-set union today (U8 admission needs owners: the `fold` command) |
 | `maker` | `LOOP_MAKER` | none | my identity; unset with `bee_signer` set and `[sig]` installed ⇒ the key's address, and offers get detached signatures |
-| `terms` | `LOOP_TERMS` | none | terms added to every offer whose line does not name that head, e.g. `where(home) when(..+90d)`; unset ⇒ anywhere, any time |
+| `terms` | `LOOP_TERMS` | none | terms added to every offer whose line does not already state that coordinate, e.g. `home ..+90d`; unset ⇒ anywhere, any time |
 | `valid` | `LOOP_VALID` | `30d` | how long offers stand (`A..` until withdrawn) |
 | `interval` | `LOOP_INTERVAL` | `30s` | how often `watch` polls |
 | `now` | `LOOP_NOW` | wall clock | the clock: unix seconds or an ISO-8601 literal |
@@ -682,7 +690,7 @@ one command with captured streams; `Session()` opens stores lazily;
 Python's literal:** `offer_from_line(line, session=None) -> Offer` resolves
 an offer line under the session's settings without publishing (a composed
 line raises until v3); `line_for(offer) -> str` renders an `Offer` to its
-canonical line, `want 2kg apple when(A..B) where(CELL) valid(A..B) 9`,
+canonical line, `want 2kg apple geo(CELL) time(A..B) valid(A..B) 9`,
 and the two round-trip. `parse_offer_tokens`, `parse_want_line`, `window`,
 `duration_s`, `radius_m`, `render_offer` are the pure pieces.
 Gates G1–G6 (`docs/plans/cli.md`) are `tests/test_cli.py`.

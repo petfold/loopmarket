@@ -49,8 +49,9 @@ the repo front page (`README.md`).
 ## 2. The uniform offer (schema.py)
 
 Every offer exchanges a **Thing** (a conjunction of catalogue categories —
-since the v3 record, 2026-09-12, including the role terms that say where and
-when it changes hands, `where(u24)`, `when(a..b)`, a route's `from`/`to` —
+since the v3 record, 2026-09-12, including the bare geo and time terms that
+say where and when it changes hands, `geo(u24)`, `shop`, `time(a..b)`, and a
+route's `from`/`to` —
 plus quantity) against **Tokens** of the maker's personal numéraire, while a
 validity window stands (open-ended since v3: until withdrawn). The v1/v2
 records carried a service `TimeWindow` and a service `GeoDisc` as fields;
@@ -213,7 +214,7 @@ head declared under a head (`from` under `geo`) reads a parameter that
 names a node of the base dimension — a place under a cell, a region above
 cells, a floor under a building — stored as spelled and ordered by the
 graph; a name outside the dimension is refused. So a catalogue name in a
-role term stands in the offer (`where(ljubljana)`, `where(my_home_4th)`),
+term stands in the offer (`ljubljana`, `my_home_4th`, bare since the 13th),
 and the CLI's value substitution survives only for *private* places
 (`cli.md` §12). (ii) *Overlap was a modelling error, not a missing
 operator.* Peter, after three revisions of an overlap query mode in one
@@ -237,6 +238,32 @@ Truth untouched throughout: `check_match` and the recall-exactness guard
 are what changed hands, not what they decide — except that a give which
 says nothing about where it hands over no longer satisfies a want that
 says where, which is the containment reading and the right one.
+
+**Update 2026-09-13 — no `where`, and either side may be the wider one.**
+Two corrections from the vegetable-box example. First, the `where`/`when`
+heads were unnecessary and are gone: where an offer holds is a bare geo
+term in its conjunction — `give vegetable-box shop`, `want vegetable-box
+door` — and when it holds a bare time term; a head stays only where
+something has two coordinates of one kind (a route's `from`/`to`, a
+transport's `depart`/`arrive`) or where a geo/time term describes the
+thing (`made_in`, `made`). Second, for handover coordinates the flexible
+side may be either party: the seller who delivers anywhere in the city
+(`barcelona`, a region) serves the want at the door inside it, and the
+seller at a fixed shop serves the buyer who collects anywhere. So
+`Ontology.satisfies` answers a handover coordinate when the offered one
+of the same head fits within the wanted one *or contains it* — both
+directions of `is_below`, never partial overlap — while categories and
+descriptive terms stay one-way. Which dimensions are handover coordinates
+is seed vocabulary: `geo` and `time` hang under the marker `handover`
+(`declare_handover`), every role under them inherits it, and a
+descriptive head opts out under `descriptive`. The index queries only the
+one-way terms, since a give that contains the want's place sits above it
+and no downward walk reaches it; place and time are the exact check's,
+and the ask upstream, if book sizes ever need it, is a query term meaning
+"comparable to X". The case the example also exposes: the shop's box plus
+the courier's `from(barcelona) to(barcelona)` satisfy the want at the door
+together, and the P0 solver cannot compose them — that leg is P2's
+operator form (`tests/test_handover.py` pins both).
 
 ## 4. The catalogue (ontology.py)
 

@@ -134,15 +134,16 @@ else:
         "local": [], "weekly": [],
         "vegetable-box": ["produce", "local", "weekly"],
     })
-# Roles of time and geo (docs/plans/P1-spacetime-terms.md §3, 2026-09-12):
-# the handover's `when`/`where`, a route's `from`/`to`, a transport's
-# `depart`/`arrive` — terms like any other, matched by containment (the
-# want is the wider cone, the give the narrower). Seed vocabulary, one
-# value space per head; the core names no head.
-ROLES = {"when": "time", "where": "geo",           # the handover
-         "from": "geo", "to": "geo",                # a route
+# Handover coordinates (docs/plans/P1-spacetime-terms.md §3, 2026-09-13): a
+# bare geo or time term says where/when the offer holds; a route's `from`/
+# `to` and a transport's `depart`/`arrive` are the two ends of one kind.
+# They match when one side contains the other. Seed vocabulary, one value
+# space per head; the core names no head but the `handover` marker.
+ROLES = {"from": "geo", "to": "geo",                # a route
          "depart": "time", "arrive": "time"}         # a transport
+HANDOVER = ["geo", "time"]                           # coordinates match either way
 catalogue.declare_roles(ROLES)
+catalogue.declare_handover(HANDOVER)
 t0 = time.time()
 committed(catalogue)
 pins = catalogue.pins
@@ -171,11 +172,11 @@ now = int(time.time())
 # v3 offers: the season and the place are terms in the conjunction (each
 # place is the cell containing its radius — here all `u24`, see
 # demo_triangle.py); offers stand a month.
-season = f"when({iso(now)}..{iso(now + 120 * 86_400 - 1)})"
+season = f"time({iso(now)}..{iso(now + 120 * 86_400 - 1)})"
 town = dict(valid=TimeWindow(now - 3_600, now + 30 * 86_400), **pins)
-places = {"amara": f"where({cell_for_coords(46.05, 14.50, 5_000)})",
-          "bruno": f"where({cell_for_coords(46.10, 14.55, 15_000)})",
-          "chen": f"where({cell_for_coords(46.06, 14.51, 4_000)})"}
+places = {"amara": f"geo({cell_for_coords(46.05, 14.50, 5_000)})",
+          "bruno": f"geo({cell_for_coords(46.10, 14.55, 15_000)})",
+          "chen": f"geo({cell_for_coords(46.06, 14.51, 4_000)})"}
 
 books, name_of = {}, {}
 for name in ("amara", "bruno", "chen"):

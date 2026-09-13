@@ -18,7 +18,7 @@ from loopmarket.dimensions import candidate_matches_indexed
 from loopmarket.matching import candidate_matches, check_match
 
 NOW = 5_000
-ROLES = {"when": "time", "where": "geo", "from": "geo", "to": "geo"}
+ROLES = {"from": "geo", "to": "geo"}
 V = dict(valid=TimeWindow(0, 1_000_000))
 FIELDS = dict(service=TimeWindow(1_000, 100_000),
               where=GeoDisc(46.0, 14.0, 10_000), **V)
@@ -28,16 +28,17 @@ def iso(t):
     return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def when(a, b):
-    return f"when({iso(a)}..{iso(b - 1)})"
+def time(a, b):
+    return f"time({iso(a)}..{iso(b - 1)})"
 
 
-SEASON = when(1_000, 100_000)
+SEASON = time(1_000, 100_000)
 
 
 def catalogue():
     ont = Ontology(OntoDAG())
     ont.declare_roles(ROLES)
+    ont.declare_handover(["geo", "time"])
     ont.load({
         "service": [], "lesson": ["service"], "music-lesson": ["lesson"],
         "piano-lesson": ["music-lesson"], "repair": ["service"],
@@ -51,7 +52,7 @@ def catalogue():
 # ------------------------------------------------------------------ the record
 
 def test_v3_is_the_default_record_and_carries_no_fields():
-    o = give("a", Thing(("ride", "where(u2e4)", SEASON)), 5, nonce=7, **V)
+    o = give("a", Thing(("ride", "geo(u2e4)", SEASON)), 5, nonce=7, **V)
     assert o.v == 3 and o.service is None and o.where is None
     rec = o.to_record()
     assert "service" not in rec and "where" not in rec and rec["v"] == 3
@@ -95,22 +96,23 @@ def test_open_ended_valid_is_a_v3_form():
 # ------------------------------------------------------------------- matching
 
 def test_v3_matches_through_the_conjunction():
-    """Place and time are terms: the give must fit within the want's
-    (the want is the wider cone, the give the narrower)."""
+    """Place and time are bare terms, and handover coordinates match when
+    one contains the other: the ride serving all of `u2e` serves the want
+    at `u2e4x`, and the ride at `u2e4x` serves a want anywhere in `u2e`."""
     ont = catalogue()
-    broad = give("bruno", Thing(("ride", "where(u2e)", SEASON)), 5, **V)
-    near = want("amara", Thing(("ride", "where(u2e4x)", SEASON)), 6, **V)
-    assert check_match(broad, near, ont, now=NOW) is None      # the give is wider
-    assert check_match(give("bruno", Thing(("ride", "where(u2e4x)", SEASON)), 5, **V),
-                       want("amara", Thing(("ride", "where(u2e)", SEASON)), 6, **V),
+    broad = give("bruno", Thing(("ride", "geo(u2e)", SEASON)), 5, **V)
+    near = want("amara", Thing(("ride", "geo(u2e4x)", SEASON)), 6, **V)
+    assert check_match(broad, near, ont, now=NOW) is not None  # the give is wider
+    assert check_match(give("bruno", Thing(("ride", "geo(u2e4x)", SEASON)), 5, **V),
+                       want("amara", Thing(("ride", "geo(u2e)", SEASON)), 6, **V),
                        ont, now=NOW) is not None               # u2e4x lies inside u2e
-    sibling = want("amara", Thing(("ride", "where(u2e5)", SEASON)), 6, **V)
-    assert check_match(give("bruno", Thing(("ride", "where(u2e4)", SEASON)), 5, **V),
+    sibling = want("amara", Thing(("ride", "geo(u2e5)", SEASON)), 6, **V)
+    assert check_match(give("bruno", Thing(("ride", "geo(u2e4)", SEASON)), 5, **V),
                        sibling, ont, now=NOW) is None          # siblings share no cell
-    at_cell = give("bruno", Thing(("ride", "where(u2e4x)", SEASON)), 5, **V)
-    late = want("amara", Thing(("ride", "where(u2e4x)", when(200_000, 300_000))), 6, **V)
+    at_cell = give("bruno", Thing(("ride", "geo(u2e4x)", SEASON)), 5, **V)
+    late = want("amara", Thing(("ride", "geo(u2e4x)", time(200_000, 300_000))), 6, **V)
     assert check_match(at_cell, late, ont, now=NOW) is None    # the season is not inside
-    slot = give("bruno", Thing(("ride", "where(u2e4x)", when(2_000, 3_000))), 5, **V)
+    slot = give("bruno", Thing(("ride", "geo(u2e4x)", time(2_000, 3_000))), 5, **V)
     assert check_match(slot, near, ont, now=NOW) is not None   # a slot inside the season
     silent = give("bruno", Thing(("ride",)), 5, **V)
     assert check_match(silent, near, ont, now=NOW) is None     # says nothing about where/when
@@ -151,10 +153,10 @@ def _mixed_book(seed, n=80):
         side = give if rng.random() < 0.5 else want
         if rng.random() < 0.5:                       # a v3 offer: terms
             if rng.random() < 0.8:
-                terms.append(f"where({rng.choice(CELLS)})")
+                terms.append(f"geo({rng.choice(CELLS)})")
             if rng.random() < 0.8:
                 a = 1_000 + rng.randrange(0, 90_000)
-                terms.append(when(a, a + rng.randrange(600, 60_000)))
+                terms.append(time(a, a + rng.randrange(600, 60_000)))
             fields = dict(valid=TimeWindow(0) if rng.random() < 0.3
                           else TimeWindow(0, 1_000_000))
         else:                                        # a v2 offer: fields
@@ -190,7 +192,7 @@ def test_index_is_recall_exact_on_a_mixed_version_book():
 def test_registry_files_v3_offers_and_nothing_else():
     store = RecordStore(MemoryBytesStore())
     book = OfferRegistry(store)
-    o = give("a", Thing(("ride", "where(u2e4)")), 5, valid=TimeWindow(100))
+    o = give("a", Thing(("ride", "geo(u2e4)")), 5, valid=TimeWindow(100))
     book.publish(o)
     book.commit()
     assert [x.offer_id for x in book.offers(now=10**9)] == [o.offer_id]
@@ -209,7 +211,7 @@ def test_the_v3_triangle_clears():
     town = dict(valid=TimeWindow(0))
     # each give hands over inside the cell the receiving want names: the
     # want is the wider cone (bruno takes his repair anywhere in u2e4)
-    flat, shop, area = "where(u2e4x)", "where(u2e4x)", "where(u2e4)"
+    flat, shop, area = "geo(u2e4x)", "geo(u2e4x)", "geo(u2e4)"
     offers = [
         give("amara", Thing(("piano-lesson", flat, SEASON), unit="course"), 100, **town),
         want("amara", Thing(("produce", "local", "weekly", flat, SEASON), unit="course"), 104, **town),

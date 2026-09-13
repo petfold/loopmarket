@@ -1,20 +1,27 @@
 """Candidate generation through ontodag parametric dimensions — one query.
 
-The want's conjunction IS the query (Peter, 2026-09-12: ontodag is
-intersection; a want is the wider cone, a give the narrower). Gives are
-filed in a derived catalogue copy under exactly the terms they carry —
-categories, descriptive terms, and the place and time terms of the roles
-the catalogue declares (`where(u2e4x)`, `from(my_home)`, `when(...)`) —
-plus a private record-line marker; a want's candidates are one
-``dag.get([line marker, *want.concepts], items_only=True)``: the gives
-inside every wanted cone, ontodag's planner ordering the cones smallest
-first, walking or probing from the exact running result and stopping on
-empty. Place and time prune like categories, because they are terms like
-categories. loopmarket does no set arithmetic on the answer
-(`docs/plans/ontodag-coupling.md` §5, "one intersection engine"): it
-iterates the items ontodag returns and runs the exact pairwise
-`check_match` on each — whose meaning half, `Ontology.satisfies`, is the
-same containment test term by term.
+The want's categories and descriptive terms ARE the query (Peter,
+2026-09-12: ontodag is intersection; for what a thing is, a want is the
+wider cone and a give the narrower). Gives are filed in a derived catalogue
+copy under exactly the terms they carry plus a private record-line marker;
+a want's candidates are one ``dag.get([line marker, *one-way terms],
+items_only=True)``: the gives inside every wanted category cone, ontodag's
+planner ordering the cones smallest first, walking or probing from the
+exact running result and stopping on empty. loopmarket does no set
+arithmetic on the answer (`docs/plans/ontodag-coupling.md` §5, "one
+intersection engine"): it iterates the items ontodag returns and runs the
+exact pairwise `check_match` on each.
+
+Handover coordinates — a bare geo or time term, a route's `from`/`to` —
+are NOT in the query. They match when one side contains the other
+(`Ontology.satisfies`), and the gives that *contain* the want's coordinate
+(the seller who delivers anywhere in the city, for a want at a door) sit
+above it, not in its cone; a downward query cannot reach them, and
+loopmarket does not stitch a downward and an upward walk together in
+Python. So place and time are decided by the exact check, per candidate.
+When book sizes make place pruning worth having, the ask upstream is a
+query term meaning "comparable to X" — below or above — which is two
+containment walks, not overlap (`ontodag-coupling.md` §7).
 
 Why the marker: `check_match` refuses pairs across the v2/v3 record line
 (a disc is not a cell), so v1/v2 gives and v3 gives are filed under two
@@ -22,15 +29,6 @@ private marker categories and a want names its own. The marker is also
 what makes `items_only` return offers and nothing else: a childless
 *category* in the wanted cone (`fruit-box` when nobody offers one) is an
 item to ontodag, but it is not under the marker.
-
-Nothing else is filed. A give silent on a head is in no cone of that
-head, which is the containment reading of silence; the v1/v2 window and
-disc are fields the exact check gates, not terms (an index fact for them
-would be a second machine). There was, for one day, an overlap mode —
-role terms matched by "a handover point exists", three queries intersected
-in Python, then ontodag #14's `overlapping=` planner argument, then a
-whole-space value for silence — all withdrawn 2026-09-12 night when the
-question was asked properly (`docs/plans/P1-spacetime-terms.md` §3).
 
 The generator is recall-exact against the baseline give x want product —
 and clearing re-verification never depends on it either way (invariant U3).
@@ -86,35 +84,37 @@ class DimensionIndex:
                 self._dag.put(marker, [])
 
     def file(self, offer: Offer) -> bool:
-        """Index a GIVE under its concepts and its record-line marker.
-        Returns False (not filed) when its vocabulary is unknown to the
-        catalogue — the same fail-closed outcome the exact check would
-        reach (invariant U7) — or when ontodag refuses the conjunction
-        (provably disjoint same-head terms: it matches nothing)."""
+        """Index a GIVE under its known concepts and its record-line
+        marker. A concept the catalogue cannot interpret is left out, not
+        refused: an unknown term on the give side only narrows what the
+        give is, and the exact check ignores it the same way (U7 fails
+        closed on the *want* side — a want naming unknown vocabulary gets
+        no candidates). Returns False when ontodag refuses the conjunction
+        (provably disjoint same-head terms: it describes nothing) or when
+        the offer is not a give."""
         if offer.kind != GIVE:
             return False
         if offer.offer_id in self._filed:
             return True
-        if not all(self.ontology.known(c) for c in offer.thing.concepts):
-            return False
+        known = [c for c in offer.thing.concepts if self.ontology.known(c)]
         try:
-            self._dag.put(offer.offer_id,
-                          [*offer.thing.concepts, _LINE[_line(offer)]])
+            self._dag.put(offer.offer_id, [*known, _LINE[_line(offer)]])
         except ValueError:
             return False
         self._filed.add(offer.offer_id)
         return True
 
     def candidates(self, want_offer: Offer) -> set[str]:
-        """Give offer-ids inside every wanted cone, on the want's record
-        line: one `get`. Recall-exact for the meaning gate; every candidate
-        still faces `check_match` (rates, quantities, pins, the v1/v2 field
-        gates)."""
+        """Give offer-ids inside every wanted category cone, on the want's
+        record line: one `get`. Handover coordinates (place, time, a
+        route's ends) are left to `check_match`, which every candidate
+        still faces (module docstring)."""
         concepts = want_offer.thing.concepts
         if not all(self.ontology.known(c) for c in concepts):
             return set()          # unknown wanted vocabulary matches nothing
+        one_way = [c for c in concepts if self.ontology.handover_class(c) is None]
         try:
-            items = self._dag.get([_LINE[_line(want_offer)], *concepts],
+            items = self._dag.get([_LINE[_line(want_offer)], *one_way],
                                   items_only=True)
         except ValueError:        # a conjunction ontodag cannot order
             return set()

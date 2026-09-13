@@ -234,7 +234,7 @@ class Offer:
     wants: Thing | Tokens
     valid: TimeWindow             # while the offer itself stands (v3: may be open)
     # v1/v2 only — when and where the thing changes hands. v3 carries both
-    # as role terms in the conjunction (`when(...)`, `where(...)`, ...);
+    # as bare geo/time terms in the conjunction (`geo(...)`, `time(...)`, a place);
     # the constructor refuses them on a v3 record and requires them below.
     service: TimeWindow | None = None
     where: GeoDisc | None = None
@@ -275,7 +275,7 @@ class Offer:
             if self.service is not None or self.where is not None:
                 raise ValueError(
                     "a v3 offer carries no service/where fields: put when(...) "
-                    "and where(...) role terms in the conjunction, or pass v=2 "
+                    "and place as bare terms in the conjunction, or pass v=2 "
                     "for the field form")
         else:
             if self.service is None or self.where is None:

@@ -47,15 +47,16 @@ ontology = Ontology().load({
     "vegetable-box": ["produce", "local", "weekly"],
 })
 
-# Roles of time and geo (docs/plans/P1-spacetime-terms.md §3, 2026-09-12):
-# the handover's `when`/`where`, a route's `from`/`to`, a transport's
-# `depart`/`arrive` — terms like any other, matched by containment (the
-# want is the wider cone, the give the narrower). Seed vocabulary, one
-# value space per head; the core names no head.
-ROLES = {"when": "time", "where": "geo",           # the handover
-         "from": "geo", "to": "geo",                # a route
+# Handover coordinates (docs/plans/P1-spacetime-terms.md §3, 2026-09-13): a
+# bare geo or time term says where/when the offer holds; a route's `from`/
+# `to` and a transport's `depart`/`arrive` are the two ends of one kind.
+# They match when one side contains the other. Seed vocabulary, one value
+# space per head; the core names no head but the `handover` marker.
+ROLES = {"from": "geo", "to": "geo",                # a route
          "depart": "time", "arrive": "time"}         # a transport
+HANDOVER = ["geo", "time"]                           # coordinates match either way
 ontology.declare_roles(ROLES)
+ontology.declare_handover(HANDOVER)
 
 # --- the book ------------------------------------------------------------------
 
@@ -63,19 +64,19 @@ registry = OfferRegistry(RecordStore(MemoryBytesStore()))
 
 now = int(time.time())
 # The v3 record (2026-09-12): where and when are terms in the conjunction.
-# The season is one inclusive `when(a..b)`; a place is the cell containing
+# The season is one inclusive `time(a..b)`; a place is the cell containing
 # the radius the maker names — all three here sit within their radius of a
 # cell edge, so each honestly names the coarser cell `u24` (the exact
 # covering would be a region node above the few cells that matter — role
 # heads take nodes since ontodag #15 landed 2026-09-12; this demo keeps
 # the plain cells). Offers stand until withdrawn.
-season = f"when({iso(now)}..{iso(now + 120 * 86_400 - 1)})"   # four months
+season = f"time({iso(now)}..{iso(now + 120 * 86_400 - 1)})"   # four months
 standing = TimeWindow(now - 3_600)                          # until withdrawn
 
 town = dict(valid=standing)
-amara_flat = f"where({cell_for_coords(46.05, 14.50, 5_000)})"
-bruno_farm = f"where({cell_for_coords(46.10, 14.55, 15_000)})"  # covers the town
-chen_shop = f"where({cell_for_coords(46.06, 14.51, 4_000)})"
+amara_flat = f"geo({cell_for_coords(46.05, 14.50, 5_000)})"
+bruno_farm = f"geo({cell_for_coords(46.10, 14.55, 15_000)})"  # covers the town
+chen_shop = f"geo({cell_for_coords(46.06, 14.51, 4_000)})"
 
 offers = [
     # Amara: piano for amara-tokens; amara-tokens for a vegetable box

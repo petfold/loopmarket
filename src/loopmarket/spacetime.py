@@ -80,7 +80,7 @@ def cell_bounds(cell: str) -> tuple[float, float, float, float]:
 def cell_for_coords(lat: float, lon: float, radius_m: float,
                     max_precision: int = 6) -> str:
     """The finest geohash cell that *contains* the whole radius around the
-    point — the v3 spelling of a place: `where(LAT,LON,R)` at the prompt
+    point — the v3 spelling of a place: a bare `LAT,LON,R` at the prompt
     becomes `where(cell)`, and the cell is what the offer says (the truth
     since 2026-09-12, `docs/plans/P1-spacetime-terms.md` §4). Containing,
     not centred: a point near a cell edge names the coarser cell that

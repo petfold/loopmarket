@@ -1,0 +1,20 @@
+# Peter's vegetable-box example (2026-09-13), as a `loop` session. Where an
+# offer holds is a bare place in its conjunction; a place and a want's place
+# match when one contains the other. Run it in a scratch home:
+#
+#   LOOP_HOME=$(mktemp -d) ONTODAG_HOME=$(mktemp -d) loop --catalogue examples/delivery.od < examples/delivery.loop
+set confirm off
+set now 2026-09-13T09:00:00Z
+place shop 41.3874,2.1686,20m
+place door 41.4036,2.1744,20m
+set maker grocer
+give vegetable-box shop 5
+set maker buyer
+want vegetable-box door 6
+matches
+set maker courier
+give transport from(sp3) to(sp3) 2
+loops
+set maker grocer2
+give vegetable-box geo(sp3) 5
+matches
