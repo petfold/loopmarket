@@ -235,15 +235,26 @@ class Thing:
         if self.min and q(self.step) and q(self.min) % q(self.step):
             raise ValueError("min must be a multiple of step")
 
-    def takes(self, qty) -> bool:
-        """May one fill take `qty` of this thing? Within the quantity, not
-        below the floor, and a positive multiple of the step (any positive
-        amount when the step is 0). For a v3 thing this is exactly the old
-        rule: all of it, or any part of a divisible one."""
+    def takes(self, qty, available=None) -> bool:
+        """May one fill take `qty` of this thing? Within what is left of
+        the quantity (`available`, the whole quantity when None — partial
+        fills of a divisible give leave a remainder, 2026-09-14), not below
+        the floor, and a positive multiple of the step (any positive amount
+        when the step is 0). For a v3 thing this is exactly the old rule:
+        all of it, or any part of a divisible one."""
         w, g, s, m = q(qty), q(self.qty), q(self.step), q(self.min)
+        if available is not None:
+            g = min(g, q(available))
         if w <= 0 or w > g or w < m:
             return False
         return s == 0 or w % s == 0
+
+    def exhausted(self, available) -> bool:
+        """Is what is left too little for any fill — nothing, less than the
+        floor, or less than one step? (The remainder is dust: it stays
+        unfilled, the U13 rule.)"""
+        a = q(available)
+        return a <= 0 or a < q(self.min) or (q(self.step) > 0 and a < q(self.step))
 
     def to_record(self, v: int = 4) -> dict[str, Any]:
         if v < 4:

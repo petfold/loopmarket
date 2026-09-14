@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .graph import Circulation, Loop
-from .schema import rat
+from .schema import q, rat
 from .matching import check_composition, check_match, check_parts
 from .ontology import Ontology
 from .registry import OfferRegistry
@@ -78,10 +78,12 @@ class LoopProposal:
         }
 
     def fills(self) -> dict[str, dict]:
-        """The `fill/` records, one per offer: a give's names the loop and
-        the quantity taken; a want's names the loop and every give that
-        served it with its quantity — nothing else, ever (P4 §5 item 4: no
-        prices in fills)."""
+        """The `fill/` records, keyed under `fill/`: a want's, `<offer>`,
+        names the loop and every give that served it with its quantity; a
+        give taken whole, `<offer>`, the loop and the quantity; a give taken
+        in part — a divisible give with a remainder — `<offer>/<loop>`, so
+        several loops may each take their share and the sum is checked at
+        the fold (U11). Nothing else, ever (P4 §5 item 4: no prices in fills)."""
         circ = self.circulation
         out: dict[str, dict] = {}
         for leg in circ.legs:
@@ -90,7 +92,9 @@ class LoopProposal:
                 "gives": [{"offer": g.offer_id, "qty": rat(leg.taken(i))}
                           for i, g in enumerate(leg.gives)]}
             for i, g in enumerate(leg.gives):
-                out[g.offer_id] = {"loop": circ.loop_id, "qty": rat(leg.taken(i))}
+                taken = leg.taken(i)
+                key = g.offer_id if taken == q(g.thing.qty) else f"{g.offer_id}/{circ.loop_id}"
+                out[key] = {"loop": circ.loop_id, "qty": rat(taken)}
         return out
 
 
@@ -165,16 +169,21 @@ class MockClearing:
 
         # 2. re-derive every leg — never trust the solver's matches; a
         #    composed leg is re-composed (`check_composition`) from the
-        #    current book, operators included
+        #    current book, operators included, against what fills have
+        #    left of every give (a partial fill's remainder)
+        available = {oid: self.registry.available(oid) for oid in loop.offer_ids}
         for leg in loop.legs:
             fresh_want = self.registry.get(leg.want.offer_id)
             fresh_gives = [self.registry.get(g.offer_id) for g in leg.gives]
             if fresh_want.composed:
-                ok = check_parts(fresh_want, fresh_gives, self.ontology, now=now)
+                ok = check_parts(fresh_want, fresh_gives, self.ontology, now=now,
+                                 available=available)
             elif leg.simple:
-                ok = check_match(fresh_gives[0], fresh_want, self.ontology, now=now)
+                ok = check_match(fresh_gives[0], fresh_want, self.ontology, now=now,
+                                 available=available)
             else:
-                ok = check_composition(fresh_want, fresh_gives, self.ontology, now=now)
+                ok = check_composition(fresh_want, fresh_gives, self.ontology, now=now,
+                                       available=available)
             if ok is None:
                 return reject(
                     f"leg fails re-verification: "

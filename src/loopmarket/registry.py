@@ -6,9 +6,12 @@ Layout (one book = one RecordStore, one root reference per version):
     sig/<offer_id>                   -> detached maker signature (U8, off-feed)
     handoff/<loop_id>/<offer_id>     -> sealed settlement text (handoff.py)
     withdraw/<offer_id>              -> 1  (monotone tombstone: offer closed)
-    fill/<offer_id>                  -> {"loop": <loop_id>, "qty": <taken>} for a give,
+    fill/<offer_id>                  -> {"loop": <loop_id>, "qty": <taken>} for a give taken whole,
                                         {"loop": <loop_id>, "gives": [{"offer", "qty"}]} for a want
                                         (v4, 2026-09-14; the 2026-08 fill was {"loop"} alone)
+    fill/<offer_id>/<loop_id>        -> {"loop": <loop_id>, "qty": <taken>} — a PARTIAL fill of a
+                                        divisible give (2026-09-14): the remainder stays open, and
+                                        the fills of one give sum to at most its quantity (U11)
     loop/<loop_id>                   -> the cleared loop record
 
 There is no index in the book. The `idx/{c,t,g}` prefixes (per concept,
@@ -42,9 +45,10 @@ Deployment shapes (see ARCHITECTURE.md §5):
 
 from __future__ import annotations
 
+from fractions import Fraction
 from typing import Iterable, Iterator
 
-from .schema import Offer
+from .schema import q, Offer
 
 OFFER = "offer/"
 SIG = "sig/"
@@ -159,10 +163,51 @@ class OfferRegistry:
         return self.store.get(key) if self.store.contains(key) else None
 
     def loop_of(self, offer_id: str) -> str | None:
-        """The loop that filled `offer_id`, if any."""
+        """The loop that filled `offer_id` whole, if any; for a partially
+        filled give, the first of its loops in sorted order (`loops_of` has
+        them all)."""
         key = FILL + offer_id
         rec = self.store.get(key) if self.store.contains(key) else None
-        return rec.get("loop") if isinstance(rec, dict) else None
+        if isinstance(rec, dict):
+            return rec.get("loop")
+        loops = self.loops_of(offer_id)
+        return loops[0] if loops else None
+
+    def loops_of(self, offer_id: str) -> list[str]:
+        """Every loop that took from `offer_id`: the whole fill's, or the
+        partial fills', sorted."""
+        key = FILL + offer_id
+        if self.store.contains(key):
+            rec = self.store.get(key)
+            return [rec["loop"]] if isinstance(rec, dict) and rec.get("loop") else []
+        return sorted(k[len(key) + 1:] for k in self.store.keys(key + "/"))
+
+    def taken(self, offer_id: str) -> Fraction:
+        """How much of the offer's thing fills have taken: the whole
+        quantity under a whole fill (a want's always), the sum of the partial
+        fills otherwise."""
+        key = FILL + offer_id
+        if self.store.contains(key):
+            return q(self.get(offer_id).parts[0].qty) if not self.get(offer_id).composed \
+                else Fraction(1)
+        total = Fraction(0)
+        for k in self.store.keys(key + "/"):
+            rec = self.store.get(k)
+            total += q(rec["qty"]) if isinstance(rec, dict) and "qty" in rec else 0
+        return total
+
+    def available(self, offer_id: str) -> Fraction:
+        """What a fill may still take from a give: its quantity less what
+        fills took (0 for a want or a composed want once filled)."""
+        offer = self.get(offer_id)
+        if offer.composed:
+            return Fraction(0) if self.store.contains(FILL + offer_id) else Fraction(1)
+        return q(offer.thing.qty) - self.taken(offer_id)
+
+    def availability(self, offers) -> dict[str, Fraction]:
+        """{offer_id: available} for the offers given — what the solver and
+        clearing pass to the matching checks."""
+        return {o.offer_id: self.available(o.offer_id) for o in offers}
 
     def attach_handoff(self, loop_id: str, offer_id: str, record: dict, *,
                        fold=None) -> None:
@@ -238,17 +283,29 @@ class OfferRegistry:
                     claim = (self.store.get(FILL + oid)
                              if self.store.contains(FILL + oid) else None)
                     winner = claim.get("loop") if isinstance(claim, dict) else None
-                    if winner != lid:
+                    if winner != lid and not self.store.contains(f"{FILL}{oid}/{lid}"):
                         raise PartialLoopError(
                             f"loop {lid[:12]} lost offer {oid[:12]} to "
                             f"{winner[:12] if winner else 'nothing'}"
                         )
+        partial: dict[str, Fraction] = {}
         for key, rec in self.store.items(FILL):
             lid = rec.get("loop", "") if isinstance(rec, dict) else ""
             if not self.store.contains(LOOP + lid):
                 raise PartialLoopError(
                     f"fill on {key[len(FILL):][:12]} points at absent loop"
                 )
+            oid, _, part = key[len(FILL):].partition("/")
+            if part:
+                partial[oid] = partial.get(oid, Fraction(0)) + q(rec.get("qty", 0))
+                if self.store.contains(FILL + oid):
+                    raise PartialLoopError(
+                        f"offer {oid[:12]} is filled whole and in part")
+        for oid, total in partial.items():
+            if self.store.contains(OFFER + oid) and total > q(self.get(oid).thing.qty):
+                raise PartialLoopError(
+                    f"offer {oid[:12]} oversold: fills take {total} of "
+                    f"{q(self.get(oid).thing.qty)}")
 
     # -- reading ---------------------------------------------------------------
 
@@ -262,7 +319,14 @@ class OfferRegistry:
         return Offer.from_record(self.store.get(OFFER + offer_id))
 
     def is_filled(self, offer_id: str) -> bool:
-        return self.store.contains(FILL + offer_id)
+        """Filled whole, or a give whose remainder is too little for any
+        further fill (below its floor or its step: dust, left unfilled)."""
+        if self.store.contains(FILL + offer_id):
+            return True
+        if next(iter(self.store.keys(FILL + offer_id + "/")), None) is None:
+            return False                       # no partial fill either
+        offer = self.get(offer_id)
+        return offer.thing.exhausted(self.available(offer_id))
 
     def offers(self, *, now: int | None = None,
                include_filled: bool = False) -> Iterator[Offer]:

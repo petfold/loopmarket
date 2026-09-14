@@ -66,15 +66,17 @@ class SolverAgent:
         now = int(_time.time()) if now is None else now
         root, book = self.registry.snapshot()
         offers = list(book.offers(now=now))
-        matches = list(candidate_matches(offers, self.ontology, now=now))
+        available = book.availability(offers)      # partial fills leave remainders
+        matches = list(candidate_matches(offers, self.ontology, now=now,
+                                         available=available))
         graph = ExchangeGraph.from_matches(matches)
         loops: list[Loop | Circulation] = graph.find_profitable_loops(
             min_surplus=self.min_surplus, limit=self.max_loops_per_step
         )
         used = {oid for loop in loops for oid in loop.offer_ids}
         rest = [o for o in offers if o.offer_id not in used]
-        composed = list(composed_legs(rest, self.ontology, now=now)) \
-            + list(parts_legs(rest, self.ontology, now=now))
+        composed = list(composed_legs(rest, self.ontology, now=now, available=available)) \
+            + list(parts_legs(rest, self.ontology, now=now, available=available))
         if composed and len(loops) < self.max_loops_per_step:
             legs = composed + [Leg.from_match(m) for m in matches
                                if not ({m.give.offer_id, m.want.offer_id} & used)]

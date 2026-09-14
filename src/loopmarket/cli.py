@@ -1114,7 +1114,13 @@ def _state(book: OfferRegistry, offer: Offer, now: int) -> str:
         return "filled"
     if book.is_withdrawn(offer.offer_id):
         return "withdrawn"
-    return "open" if offer.valid.is_open_at(now) else "expired"
+    if not offer.valid.is_open_at(now):
+        return "expired"
+    taken = book.taken(offer.offer_id) if offer.kind == GIVE else 0
+    if taken:
+        unit = "" if offer.thing.unit == "unit" else f" {offer.thing.unit}"
+        return f"open ({_num(book.available(offer.offer_id))}{unit} left)"
+    return "open"
 
 
 def _row(offer: Offer, now: int, book: OfferRegistry) -> list[str]:

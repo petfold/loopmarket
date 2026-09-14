@@ -83,13 +83,12 @@ class Loop:
 
     @property
     def per_node_ok(self) -> bool:
-        """Each node's incoming want unit price >= its outgoing give unit price."""
-        k = len(self.matches)
-        for i, incoming in enumerate(self.matches):
-            outgoing = self.matches[(i + 1) % k]
-            if incoming.want.unit_price < outgoing.give.unit_price:
-                return False
-        return True
+        """Each node's lot received covers what it gives: the want's price
+        against the give's unit price times the quantity taken — the same
+        rule as `Circulation.per_node_ok` (until 2026-09-14 this compared
+        unit prices of two different things, which only agreed when both
+        quantities were 1)."""
+        return Circulation.from_loop(self).per_node_ok
 
     @property
     def all_divisible(self) -> bool:

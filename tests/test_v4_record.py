@@ -126,7 +126,11 @@ def test_a_composed_want_clears_as_one_leg_with_quantities_in_the_fills():
     assert fill == {"loop": receipts[0].loop_id,
                     "gives": [{"offer": offers[1].offer_id, "qty": "2"},
                               {"offer": offers[2].offer_id, "qty": "1"}]}
-    assert book.store.get(f"fill/{offers[1].offer_id}") == {"loop": receipts[0].loop_id, "qty": "2"}
+    # two of the ten tickets: a partial fill, keyed per loop; eight stay open
+    assert book.store.get(f"fill/{offers[1].offer_id}/{receipts[0].loop_id}") == \
+        {"loop": receipts[0].loop_id, "qty": "2"}
+    assert book.available(offers[1].offer_id) == 8 and not book.is_filled(offers[1].offer_id)
+    assert book.store.get(f"fill/{offers[2].offer_id}") == {"loop": receipts[0].loop_id, "qty": "1"}
     assert "price" not in str(fill) and "rate" not in str(fill)    # P4 §5 item 4: no prices in fills
     book.verify_loop_atomicity()
     assert agent.step() == []

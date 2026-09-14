@@ -11,6 +11,19 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Partial fills of divisible gives.** A fill takes exactly the want's
+  quantity and the remainder stays open for the next loop:
+  `OfferRegistry.available`/`taken`/`loops_of`/`availability`, matching
+  and the composition searches take `available=`, the solver passes the
+  book's remainders, clearing re-derives against its own. A give taken in
+  part is filled at `fill/<offer>/<loop>` (whole at `fill/<offer>` as
+  before); U11 now also refuses a give filled whole and in part, or
+  oversold. A remainder below the floor or one step is dust and exhausts
+  the offer (`Thing.exhausted`). The stepped clearing regime is therefore
+  the exact one: no rounding. `Loop.per_node_ok` is the circulation's
+  rule (lot paid against unit price times quantity taken; it compared unit
+  prices of two different things before). `show` prints what is left.
+  `tests/test_partial_fills.py`.
 - **The quantity token carries the floor and the step**: `[MIN..]QTY[UNIT][:STEP]`
   — `50kg..100kg:25 flour` is a hundred kilos in 25 kg sacks, fifty at
   least; `1000:1 apple` a thousand by the piece (cli.md §6). Rendered back

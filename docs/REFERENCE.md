@@ -586,10 +586,15 @@ quantity `taken` from each; a simple leg's exact `rate`; the node
  "potentials": {"amara": "1", "bruno": "26/25", "chen": "…"}}
 ```
 
-**Fill** (`LoopProposal.fills()`): a give's `{"loop": "<loop_id>", "qty": "<taken>"}`,
-a want's `{"loop": "<loop_id>", "gives": [{"offer": "<id>", "qty": "<taken>"}]}` —
-and nothing else, ever: no wall clock (fill determinism), no prices (P4 §5
-item 4). The 2026-08 fill was `{"loop"}` alone and still reads.
+**Fill** (`LoopProposal.fills()`): a want's, at `fill/<offer>`,
+`{"loop": "<loop_id>", "gives": [{"offer": "<id>", "qty": "<taken>"}]}`; a
+give taken whole, at `fill/<offer>`, `{"loop": "<loop_id>", "qty": "<taken>"}`;
+a divisible give taken in part, at `fill/<offer>/<loop_id>`, the same
+record — several loops each take their share, the remainder stays open
+(`OfferRegistry.available`), and the fills of one give may not sum past
+its quantity (U11 raises "oversold"). Nothing else, ever: no wall clock
+(fill determinism), no prices (P4 §5 item 4). The 2026-08 fill was
+`{"loop"}` alone and still reads.
 
 ## 14. Invariants (binding; tests enforce them)
 
