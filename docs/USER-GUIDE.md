@@ -127,9 +127,8 @@ catalogue = Ontology().load({
     "bicycle-repair": ["repair"], "food": [], "produce": ["food"],
     "local": [], "weekly": [], "vegetable-box": ["produce", "local", "weekly"],
 })
-# the two service roles every offer below speaks: heads under `service-role`
-# match by overlap (where and when the thing changes hands)
-catalogue.declare_service_roles({"when": "time", "where": "geo"})
+# a route's two ends are roles of geo (a bare place needs no head)
+catalogue.declare_roles({"from": "geo", "to": "geo"})
 catalogue.covers("music-lesson", "piano-lesson")               # True
 catalogue.satisfies(("vegetable-box",), ("produce", "weekly"))  # True
 catalogue.satisfies(("mystery-goods",), ("mystery-goods",))     # False (U7)

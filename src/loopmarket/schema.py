@@ -35,8 +35,6 @@ open-ended: the offer stands until withdrawn.
 
 from __future__ import annotations
 
-from ontodag import dimensions as _dims
-
 import hashlib
 import json
 import math
@@ -157,23 +155,6 @@ class GeoDisc:
 
 # -------------------------------------------------------------------------- sides
 
-def canonical_term(concept: str) -> str:
-    """One spelling per term (U2): a conjunction inside a term's parentheses
-    — an operator's argument, `transport(small-item weight(..8kg))`, a term
-    of ontodag's graph kind — has its constraints sorted and
-    deduplicated the way ontodag canonicalises it, so the two orders are
-    one offer id, as the concepts of a Thing are sorted. Syntactic only
-    (the schema has no catalogue): the constraints themselves are spelled
-    as given, and `Ontology.known` is where the catalogue refuses one. A
-    term without a space inside its parentheses is returned unchanged."""
-    if "(" not in concept or " " not in concept or not concept.endswith(")"):
-        return concept
-    try:
-        return _dims.canonicalize(concept, _dims.KIND_GRAPH)
-    except ValueError:
-        return concept
-
-
 @dataclass(frozen=True, slots=True)
 class Thing:
     """A conjunction of OntoDAG category names, with quantity.
@@ -196,8 +177,7 @@ class Thing:
             raise ValueError("Thing needs at least one concept")
         if self.qty <= 0:
             raise ValueError("Thing qty must be positive")
-        object.__setattr__(self, "concepts",
-                           tuple(sorted({canonical_term(c) for c in self.concepts})))
+        object.__setattr__(self, "concepts", tuple(sorted(set(self.concepts))))
 
     def to_record(self) -> dict[str, Any]:
         return {

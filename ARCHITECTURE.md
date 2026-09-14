@@ -493,9 +493,9 @@ registry 4.2) — a head under `graph-dimension` takes a conjunction of
 constraints on the graph, canonicalised (sorted, deduplicated, a redundant
 constraint refused, an unknown one failing closed) and ordered by the
 graph; `declare_operator` declares the category under that kind, the
-facade reads the head and the constraints off the term, and
-`schema.canonical_term` applies the same sort to the stored spelling so
-the two orders are one offer id.
+facade reads the head and the constraints off the term, and the CLI
+stores every term in the catalogue's canonical spelling (`surface.elaborate`)
+so the two orders are one offer id.
 
 ## 7. The arithmetic of loops (graph.py)
 

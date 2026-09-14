@@ -9,6 +9,23 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Changed
+
+- **Terms are stored in the catalogue's canonical spelling.** The CLI runs
+  every known term through ontodag's `surface.elaborate` before it enters
+  an offer — `weight(8000g)` → `weight(8kg)`, `time(2026-10)` → the
+  month's full range (as a bare `2026-10` already was), `transport(weight(..8kg)
+  small-item)` → `transport(small-item weight(..8kg))` — so one denotation
+  is one offer id (U2). `schema.canonical_term`, the interim sort that
+  only ordered an operator's constituents, is gone; `Thing` sorts
+  concepts and nothing else.
+
+### Removed
+
+- `Ontology.declare_service_roles` (the 0.3.0 name, kept one release) and
+  the `loopmarket.settlement` import alias (the pre-2026-09-07 name, kept
+  one release). Both had outlived the release they were kept for.
+
 ## [0.6.0] — 2026-09-14
 
 The operator's argument is its want: `transport(small-item weight(..8kg))`

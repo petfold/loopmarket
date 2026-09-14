@@ -671,7 +671,7 @@ def _join_terms(tokens: list[str]) -> list[str]:
     `transport(small-item weight(..8kg))` — and the line splits on spaces,
     so tokens are rejoined while a parenthesis is open (the same line
     quoted, `'transport(small-item weight(..8kg))'`, arrives whole). The
-    canonical spelling sorts the constituents (`schema.canonical_term`)."""
+    catalogue then spells it canonically (`_canonical`)."""
     out, depth, cur = [], 0, ""
     for tok in tokens:
         cur = f"{cur} {tok}" if depth else tok
@@ -854,7 +854,7 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
     out, notes, addresses = [], [], []
     for c in concepts:
         if ontology.operator_of(c) is not None:
-            out.append(c)               # `transport(bicycle)`: `known` decides
+            out.append(_canonical(c, dag, notes))   # `transport(bicycle)`: `known` decides
             continue
         split = _dims.split_term(c)
         kind = _head_kind(dag, split[0]) if split else None
@@ -930,8 +930,20 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
             raise ValueError(
                 f"{c}: not a value `{head}` accepts, and not a name the "
                 f"catalogue knows in that dimension")
-        out.append(c)
+        out.append(_canonical(c, dag, notes))
     return tuple(out), notes, addresses
+
+
+def _canonical(term: str, dag, notes: list[str]) -> str:
+    """The catalogue's canonical spelling of a known term — `weight(8000g)`
+    → `weight(8kg)`, `transport(weight(..8kg) small-item)` →
+    `transport(small-item weight(..8kg))` — so one denotation is one offer
+    id (U2). The catalogue's rule, not the CLI's: `surface.elaborate`."""
+    from ontodag.surface import elaborate
+    canonical = elaborate(term, dag)
+    if canonical != term:
+        notes.append(f"{term} → {canonical}")
+    return canonical
 
 
 def _bare_key(concepts) -> tuple[str, ...]:

@@ -85,8 +85,9 @@ three things:
   prompt and in batch scripts. An operator's argument may be a
   conjunction — `transport(small-item weight(..8kg))`, what the courier
   accepts (2026-09-13) — so the tokens of a line are rejoined while a
-  parenthesis is open, and the constituents are stored sorted (one offer
-  id, `schema.canonical_term`). A `key=value` spelling was proposed and
+  parenthesis is open, and every term is stored in the catalogue's
+  canonical spelling (`weight(8000g)` → `weight(8kg)`, constituents
+  sorted; one offer id). A `key=value` spelling was proposed and
   **rejected** on 2026-09-11 for being a second grammar; if a shell-safe
   spelling is ever wanted it lands upstream (§11) and loopmarket follows.
 - **A bare number first is the quantity, a bare number last is the

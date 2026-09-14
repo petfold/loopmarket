@@ -65,7 +65,6 @@ def test_declare_roles_adopts_the_prelude_and_pins_kinds():
     assert ont.head_kind("geo") and ont.head_kind("prefix-dimension") is None
     assert "service-role" not in ont.dag.nodes
     ont.declare_roles(ROLES)                    # idempotent, like the prelude
-    ont.declare_service_roles(ROLES)            # the 2026-09-12 name, one release
     import pytest
     with pytest.raises(ValueError):
         ont.declare_roles({"at": "amphora"})    # not a value space

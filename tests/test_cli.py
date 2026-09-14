@@ -298,7 +298,9 @@ def test_g6_dimension_terms_refuse_until_quantities_are_terms(env, tmp_path,
     assert code == 1 and "quantity term" in err and "ontodag-coupling.md" in err
     # a time term is a catalogue term like any other since the v3 record
     out = run.ok("give", "apple", "time(2026-10)", "5")
-    assert "give     apple time(2026-10)" in out
+    # stored in the catalogue's canonical spelling, like a bare `2026-10`
+    assert "give     apple time(2026-10-01T00:00:00Z..2026-10-31T23:59:59Z)" in out
+    assert "time(2026-10) → time(2026-10-01T00:00:00Z..2026-10-31T23:59:59Z)" in out
 
 
 def test_unknown_category_fails_closed(loop):
@@ -842,7 +844,8 @@ def test_offer_line_is_pythons_offer_literal(loop):
     assert o.kind == "want" and o.thing.qty == 2 and o.tokens.amount == 9
     line = cli.line_for(o)
     home = cell_for_coords(46.05, 14.50, 5000)
-    assert line.startswith(f"want 2kg apple geo({home}) time(2026-10-01..2026-10-03) valid(")
+    assert line.startswith(f"want 2kg apple geo({home}) "
+                           f"time(2026-10-01T00:00:00Z..2026-10-03T23:59:59Z) valid(")
     assert line.endswith(" 9")
     again = cli.offer_from_line(line, loop.session)
     assert cli.line_for(again) == line
@@ -870,12 +873,12 @@ def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, m
                       ("piano", [])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "city.od"))
     run = Runner()
-    out = run.ok("give", "transport(weight(..8kg)", "small-item)", "from(u2e4)", "to(u2e4)", "5")
-    assert "transport(small-item weight(..8kg))" in out
+    out = run.ok("give", "transport(weight(..8000g)", "small-item)", "from(u2e4)", "to(u2e4)", "5")
+    assert "transport(small-item weight(..8kg))" in out   # the catalogue's spelling, constituents included
     code, out, err = run("give", "transport(small-item", "5")
     assert code == 1 and "unbalanced" in err
     code, out, err = run("give", "transport(unicorn)", "from(u2e4)", "to(u2e4)", "5")
-    assert code == 1 and "unknown category" in err          # fails closed, U7
+    assert code == 1 and "'unicorn' is neither a category" in err   # ontodag's reason; fails closed, U7
     monkeypatch.setenv("LOOP_MAKER", "bruno")
     run.ok("want", "transport(bicycle weight(5kg))", "from(u2e4x)", "to(u2e4y)", "6")
     out = run.ok("matches")

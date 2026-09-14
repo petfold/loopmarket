@@ -64,10 +64,8 @@ negative radius.
 ### `Thing(concepts, qty=1.0, unit="unit", divisible=False)`
 Frozen. A conjunction of catalogue category names plus quantity.
 `concepts` is normalized to a sorted, deduplicated tuple (order never
-matters to identity), each concept through `canonical_term` — the
-constituents inside a term's parentheses sorted, so an operator's
-argument `transport(weight(..8kg) small-item)` and
-`transport(small-item weight(..8kg))` are one id (U2; 2026-09-13). Raises `ValueError` on empty concepts or
+matters to identity); the spelling of each term is the caller's — the CLI
+stores the catalogue's canonical spelling (`surface.elaborate`). Raises `ValueError` on empty concepts or
 non-positive qty. `divisible` marks partial-fillability; matching
 requires `want.qty == give.qty` unless *both* sides are divisible, and
 always `want.qty <= give.qty` and equal `unit` strings.
@@ -138,7 +136,7 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 | `.known(concept)` | vocabulary membership: a node, or a parametric term of a declared head the DAG can order — incl. a role term naming a place, region or floor node (ontodag #15); a name outside the head's dimension fails closed |
 | `.covers(wanted, offered)` | `offered` fits within `wanted` (equal or descendant); **False for unknown names** (U7) |
 | `.satisfies(offered, wanted)` | every wanted term answered: a category or descriptive term by an offered concept that fits within it (the want is the wider cone); a **handover coordinate** — a bare geo/time term or a term of a role under a marked dimension — by an offered coordinate of the same head that fits within it *or contains it*; an **operator term** (`transport(bicycle)`, a category under `operator`) by an offered operator term whose category fits within it and whose argument — the operator's own want — contains the wanted argument constraint by constraint (`bicycle ⊑ small-item`; an offered constraint the want does not answer refuses); a head the want does not name constrains nothing; a conjunction with provably disjoint same-head terms describes nothing, on either side |
-| `.declare_roles({head: base})` | seed convenience: put each head under its base dimension head — a role of that dimension, whose parameters may name its nodes (ontodag #15); a catalogue write. `declare_service_roles` is the 0.3.0 name, kept one release |
+| `.declare_roles({head: base})` | seed convenience: put each head under its base dimension head — a role of that dimension, whose parameters may name its nodes (ontodag #15); a catalogue write. |
 | `.declare_handover(heads)` | mark base dimension heads (`geo`, `time`) as handover coordinates under the `handover` marker; roles under them inherit it; prelude adopted on demand |
 | `.declare_descriptive(heads)` | opt a geo/time head out (`made_in`, `made`) under the `descriptive` marker: its terms describe the thing and match one-way |
 | `.handover_class(concept)` / `.handover_heads()` | the head whose coordinate a term states (`None` for categories and descriptive terms; a bare place node states `geo`'s); the marked base heads |

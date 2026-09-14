@@ -48,8 +48,8 @@ besides the dimensions'):
   the want's (`bicycle ⊑ small-item`; the 12 kg bicycle fails the 8 kg
   limit), while the operator itself goes the usual way (`bicycle-courier ⊑
   transport`). A conjunction in the argument is several constraints, and
-  `transport(A B)` is the same term as `transport(A) transport(B)`; its
-  constituents are spelled sorted (`schema.canonical_term`). A give
+  `transport(A B)` is the same term as `transport(A) transport(B)`, and
+  ontodag spells it one way (sorted, deduplicated). A give
   constraint the want does not answer refuses — a vague want ("move some
   goods") against a bicycle-only courier is the mirror of `give fruit`
   against `want apples`.
@@ -182,10 +182,6 @@ class Ontology:
                     f"needs a value space to be ordered in")
         for head, base in roles.items():
             self.dag.put(head, [base])
-
-    #: The 2026-09-12 name, kept one release: roles were "service roles"
-    #: while they matched by overlap under a marker node.
-    declare_service_roles = declare_roles
 
     def declare_handover(self, heads: Iterable[str]) -> None:
         """Mark base dimension heads as handover coordinates: their terms —
@@ -518,8 +514,9 @@ class Ontology:
             if cls is None:
                 split = _dims.split_term(c)
                 if split is None or self.head_kind(split[0]) is None \
+                        or self.head_kind(split[0]) == _dims.KIND_GRAPH \
                         or not self.known(c):
-                    continue
+                    continue            # (graph-kind terms are never disjoint)
                 cls = split[0]
             by_class.setdefault(cls, []).append(c)
         for terms in by_class.values():
