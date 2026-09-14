@@ -9,6 +9,16 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-09-14
+
+The read path: a book becomes discoverable by one announcement on the
+chain Swarm settles on, every reader folds the announced set under U8 as
+each book's owner, and a manifest is a cache audited against that set.
+GSOC and the aggregator-agreement check dropped; terms stored in the
+catalogue's canonical spelling; two aliases kept "one release" removed.
+Needs ontodag 0.26.1. The registry contract is written and tested against
+a client with web3's face; deployment on chain follows.
+
 ### Added
 
 - **The announcement channel, and the read path** (Peter, 2026-09-14:
