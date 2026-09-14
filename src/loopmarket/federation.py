@@ -19,6 +19,15 @@ announcement ground truth (threat register T14). Aggregators charge for
 serving, never inclusion; an aggregator that folds selectively is a
 censoring aggregator and is caught as one.
 
+Since 2026-09-14 the ground truth has one channel (`announce.py`): the
+registry event on chain, latest per owner, readable by anyone. An
+aggregator `subscribe`s to it and folds exactly the announced set; a
+reader audits any manifest against the same set — a book announced and
+never folded is an omission with an absence proof, like a dropped record
+— so completeness is a computation one reader runs alone, and comparing
+aggregators with each other is no longer how they are trusted. Plurality
+stays a deployment property (latency, availability), not a security one.
+
 One assumption rides throughout: all books share one blob space — Swarm's
 in deployment, one `MemoryBytesStore` in tests — so a root is enough to
 reach any book's bytes. In memory, "feed ownership" is the declared
@@ -86,14 +95,37 @@ class Aggregator:
     def announce(self, owner: str, store, *, role: str = MAKER) -> None:
         """Register a book: "`owner`'s book is `store`" (one per owner).
 
-        In deployment the announcement arrives over GSOC or the registry
-        events and names (owner address, topic); here the store stands in
-        for the resolved feed. Re-announcing an owner replaces the entry;
-        un-announcing (admission-by-reference's teeth) is `retract`.
+        In deployment the announcement is the registry event (`announce.py`)
+        naming (owner address, book spec), and `subscribe` resolves the
+        channel to these calls; here the store stands in for the resolved
+        feed. Re-announcing an owner replaces the entry; un-announcing
+        (admission-by-reference's teeth) is `retract`.
         """
         if role not in (MAKER, CLEARING):
             raise ValueError(f"unknown book role: {role!r}")
         self._announced[owner] = (role, store)
+
+    def subscribe(self, announcements, open_book) -> list:
+        """Make the announced set exactly the channel's: every standing
+        announcement opened with `open_book(spec) -> store` as its owner's
+        book, every owner no longer announced retracted. Returns the
+        announcements folded. A book the channel names but `open_book`
+        cannot reach (an expired feed, a node down) is skipped and recorded
+        by the caller's provenance if it wants — it is the maker's
+        postage, not the aggregator's omission (P1 §6)."""
+        standing = list(announcements.announced())
+        for owner in list(self._announced):
+            if owner not in {a.owner for a in standing}:
+                self.retract(owner)
+        folded = []
+        for ann in standing:
+            try:
+                store = open_book(ann.spec())
+            except Exception:
+                continue
+            self.announce(ann.owner, store, role=ann.role)
+            folded.append(ann)
+        return folded
 
     def retract(self, owner: str) -> None:
         """Stop folding an owner's book (takes effect at the next fold)."""
@@ -279,8 +311,16 @@ class Omission:
 
 
 def audit_manifest(manifest: Manifest, blobs, *,
-                   store_type=RecordStore) -> list[Omission]:
+                   store_type=RecordStore, expected=()) -> list[Omission]:
     """(announced set) − (speech under `book_root`), as P1 §2 defines it.
+
+    `expected` is the channel's standing announcements (`announce.py`):
+    a maker book announced there and absent from the manifest's own
+    announcement set is an omitted *book* — the aggregator never folded
+    it — reported as an `Omission` of the key `announce/<owner>` with the
+    absence proof against `announcement_root`. With the chain as the
+    channel this is the whole of T14's completeness check, run by one
+    reader with no second aggregator in sight.
 
     An honest fold is total on the speech it admits: every `offer/` and
     `withdraw/` record in an announced maker book either enters
@@ -316,6 +356,10 @@ def audit_manifest(manifest: Manifest, blobs, *,
         return True
 
     omissions: list[Omission] = []
+    for ann in sorted(expected, key=lambda a: a.owner):
+        if ann.role == MAKER and not in_store(announced, f"announce/{ann.owner}"):
+            omissions.append(Omission(ann.owner, f"announce/{ann.owner}", "",
+                                      announced.prove(f"announce/{ann.owner}")))
     for ann_key in sorted(announced.keys("announce/")):
         rec = announced.get(ann_key)
         owner = ann_key[len("announce/"):]

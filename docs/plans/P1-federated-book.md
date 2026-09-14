@@ -3,9 +3,9 @@
 Status: design, 2026-08-07. Decided here: one book per maker under the
 maker's own feed and signer, maker = feed-owner address; two-layer offer
 authenticity (U8) with detached signatures and fold-time `origin/` records;
-fill determinism and loop-granularity merge (U11); GSOC announcements with
-a Gnosis registry-event fallback and defined switchover thresholds; the
-aggregator as a full Bee node publishing the manifest tuple
+fill determinism and loop-granularity merge (U11); the registry event on
+Gnosis as the one announcement channel (GSOC dropped 2026-09-14, §4);
+the aggregator — anyone who folds the announced set — publishing the manifest tuple
 `{book_root, provenance_root, index_root, announcement_root}` (the
 fourth element added 2026-08-21); stamp TTL as the hard
 offer-lifetime bound, permissionless top-up as a solver-ecology mechanism;
@@ -13,7 +13,7 @@ withdrawal as monotone tombstones; the shared-Swarm-book deployment demoted
 to a development tool (flagged); dead `idx/{c,t,g}` writes dropped from
 maker books, reborn as the aggregator's derived index. Open here: the
 deterministic loop-granularity resolver; resurrection windows; aggregator
-economics; GSOC reliability; the announcement-layer spam floor.
+economics; the announcement-layer spam floor.
 
 This is the per-maker-book work package: everything between today's
 shared-book demo (`tests/test_swarm_book.py`, settled live 2026-08-01) and
@@ -98,8 +98,8 @@ Feed lookups cost seconds: Bee 2.7.0 (2026-02-04) made feed resolution
 deterministic, but the live triangle still ran ~51 s end-to-end on a
 Gnosis-mainnet light node, and a solver polling N maker feeds pays N
 lookups. Aggregation is mandatory for solver-speed reads, not an
-optimization. An **aggregator** is a full Bee node (GSOC reception
-requires one, §4) that: subscribes to announcements; folds maker and
+optimization. An **aggregator** is anyone who (a light node suffices since
+GSOC went, §4): subscribes to the announced set; folds maker and
 settlement books with `RecordStore.merge` under the loop-aware resolver
 (§3), delta-driven via `RecordStore.diff` — the `merge_delta` pattern
 ontodag shipped 2026-08-04, O(divergence), never O(store), which raises
@@ -194,39 +194,66 @@ Everything derived — `idx/`, `DimensionIndex`, `index_root` — is
 re-derived after merge, never merged. Ontodag's descendant counts are the
 cautionary tale: derived state conflicts on every concurrent write.
 
-## 4. Announcements: GSOC first, registry events as the floor
+## 4. Announcements: the registry event is the channel (decided 2026-09-14)
 
-A maker must be discoverable: "my book is (owner, topic)". **GSOC** is
-the Swarm-native many-to-one channel — a key is mined (`gsocMine`,
-default 16 matched prefix bits) so the single-owner-chunk address lands
-in the aggregator's neighbourhood; any writer derives the same key and
-posts; the aggregator subscribes (`gsocSubscribe`) and validates
-announcements with the assert-function hook of Solar Punk's
-`@solarpunkltd/gsoc`. Announcements use mutable batches (immutable ones
-burn a slot per update). Two structural caveats: one mined address serves
-one neighbourhood, so each aggregator needs its own mined id; and GSOC is
-experimental with **no delivery guarantees**.
+A maker must be discoverable: "my book is (owner, topic)". **The channel
+is one transaction on Gnosis Chain** to the `LoopBookRegistry` contract
+(`contracts/LoopBookRegistry.sol`): `announce(book, role)` emits
+`Announce(msg.sender, book, role)`, `retract()` ends it, and the standing
+set is the event log read with `eth_getLogs`, latest per owner
+(`src/loopmarket/announce.py`, `ChainAnnouncements`). `msg.sender` is the
+owner — the same secp256k1 key that signs the maker's Swarm feed — so
+the announcement authenticates the book it names: U8's primary layer,
+with no separate key registry. `book` is the spec without its owner
+(`swarm:TOPIC`); a reader opens `swarm:TOPIC@OWNER`. ~5 s blocks, gas
+~0.2 gwei in xDAI: sub-cent per announcement, and a maker announces a
+handful of times, ever — the announcement is the *book*, not the offer;
+offers change inside the feed. Makers need a little xDAI beside the BZZ
+they already hold for postage, and discovery is tied to Gnosis, where
+P2's clearing contract lands anyway. Two more backends behind the same
+protocol, chosen by spec the way books are: `file:PATH` (sessions on one
+machine discover each other's `rs:` books — the dev stand-in, as `rs:` is
+for Swarm) and `memory:` (tests, demos).
 
-So the fallback is permanent: a minimal registry event on Gnosis Chain
-(~5.15 s blocks, gas ~0.2 gwei in xDAI — sub-cent per registration).
-Switchover is defined by measured loss, not sentiment: during burn-in
-makers dual-publish and the aggregator measures GSOC delivery against the
-registry-event ground truth. Chosen tripwires (ours, adjustable with
-evidence): GSOC is promoted to primary when measured announcement loss
-stays **< 1% over a 30-day window**; demoted — registry events mandatory
-again — when rolling 7-day loss exceeds **5%** or any 24-hour outage
-occurs. Announcements are idempotent and re-emittable, so measurement is
-cheap. PSS stays out: best-effort, receiver-must-be-listening — at most
-ephemeral solver gossip, never discovery.
+**GSOC dropped (Peter, 2026-09-14).** Until this date the plan carried
+GSOC — a Swarm-native single-owner chunk mined into an aggregator's
+neighbourhood — as the primary channel with the registry event as its
+permanent fallback, promoted or demoted by measured loss. Three reasons
+it goes entirely: there is no announcement volume to optimise (per book,
+not per offer); the chain is what a censored announcement would be
+detected against, so the chain is the channel; and GSOC's receivers each
+needed a full Bee node and their own mined id, so fan-out grew with the
+number of aggregators — the wrong shape for "several aggregators
+minimum". The dual-publish burn-in, the loss tripwires and the
+full-node requirement on aggregators go with it: an aggregator is now
+anyone who folds the announced set and publishes a manifest. PSS stays
+out as before. **Upstream watch:** if Swarm pub/sub ever ships with
+delivery semantics, revisit it for ephemeral solver gossip (fill
+notifications, `watch`), never for discovery.
 
-**Upstream watch (noted 2026-08-07).** GSOC and Swarm pub/sub are under
-active development (Viktor Trón and Viktor Tóth are working on both), so
-the "experimental, no delivery guarantees" caveat above has a live path to
-obsolescence. Track that work and feed our burn-in loss measurements back
-as the consumer evidence it needs; a pub/sub primitive with delivery
-semantics would also revisit the "PSS stays out" ruling for solver-facing
-feeds. Channel: the Swarm ecosystem directly (Solar Punk maintains
-`@solarpunkltd/gsoc`).
+**What the chain replaces besides GSOC: comparing aggregators with each
+other.** With a public announced set, completeness is a computation one
+reader runs alone — `audit_manifest(manifest, blobs, expected=channel
+.announced())` reports a book announced and never folded as an omission
+with an absence proof against `announcement_root`, beside the dropped
+records it already caught. Byte-identical `book_root`s across aggregators
+remain true for free (merge is commutative) and stay a sanity check, but
+they are no longer the trust basis; plurality is a deployment property
+(latency, availability), not a security one. One distinction the audit
+keeps: a book the chain announces but Swarm cannot serve — postage
+expired, never pinned — is the maker's problem (§6), not an omission;
+`Aggregator.subscribe` skips it and provenance may record why.
+
+**Built 2026-09-14:** `announce.py` (the protocol, the three backends,
+the ABI beside the Solidity source, `scripts/deploy_registry.py`),
+`Aggregator.subscribe(channel, open_book)`, `audit_manifest(expected=)`,
+and the CLI's `registry` setting with `announce` / `announced` / `fold`:
+with a registry set, every session's fold is the announced set folded
+through `Aggregator` under U8 as each book's announced owner — the
+solver-self-fold as the default read path, manifests as caches. Not yet
+run against a deployed contract: the chain backend is exercised against
+a client with web3's face (`tests/test_announce.py`); deployment and the
+live gate wait for a key with xDAI.
 
 ### 4a. Anchoring offers on chain (recorded 2026-09-11, not adopted)
 
@@ -394,8 +421,8 @@ The numbers are small: batch cost = 2^depth × amount, minimum depth 17
 (131,072 chunk-slots, ≈512 MB theoretical); at the 24,000 PLUR/chunk/block
 reference price a depth-17 batch for a year ≈ 2 xBZZ — with BZZ at
 $0.04–0.19 (sources disagree 4×: CoinMarketCap $0.0432, CoinGecko
-$0.049–0.156, Aug 2026), cents to well under $1 per maker-year. Feeds and
-GSOC use **mutable batches** (immutable ones reject writes when any of
+$0.049–0.156, Aug 2026), cents to well under $1 per maker-year. Feeds
+use **mutable batches** (immutable ones reject writes when any of
 the 2^16 buckets fills; mutable overwrite oldest — right for a
 continuously-updated head, wrong for archival blobs, which get their own
 immutable batch). Two mechanisms fall out of the stamp design:
@@ -470,8 +497,8 @@ stance); no store-side rate limiting to game. Economic spam pricing
 beyond these floors arrives later as factbond's layer. Full attack
 economics: `docs/plans/THREATS.md` T2 (sybil offer spam & statistics
 pollution — primary here) and T8 (reputation gaming). Residual: the
-announcement layer is floored only by sub-cent registry events and GSOC
-mining — far below the storage floor; registered below.
+announcement layer is floored only by sub-cent registry events — far
+below the storage floor; registered below.
 
 ## 9. Tests: the scorched-earth follower is the template
 
@@ -503,7 +530,7 @@ cleared.
   manifest roots byte-identical, not just the book). **Live variant green the same
   day, gate closed** (`tests/test_swarm_federation.py`, 104.6s on a
   local Bee 2.8.1 **light** node — everything here provably needs no
-  full node; GSOC reception and pinning are what will): three per-maker
+  full node; pinning is what will — GSOC went 2026-09-14): three per-maker
   feeds with maker =
   feed-owner address; two independent aggregators — the second sharing
   no Python state with the publishers, following the maker feeds by
@@ -571,16 +598,14 @@ cleared.
   (e.g., solvers folding maker feeds themselves by default, with
   manifests as disposable caches) is a mandated investigation before P1
   completes.** Registered as threat T14 (`docs/plans/THREATS.md`).
-- **GSOC reliability** (this work package). No delivery guarantees, an
-  experimental library, per-aggregator mined ids that grow announcement
-  fan-out with aggregator count. The burn-in measures loss, not
-  adversarial suppression; a neighbourhood censoring announcements is
-  detectable only against registry events — which is why the fallback is
-  permanent, not transitional.
+  **Resolved in shape 2026-09-14** (§4): the read path is the announced
+  set folded by the reader (`loop fold`, `Session.fold`), manifests are
+  caches audited against the chain's set, and plurality is a deployment
+  property. What remains open is who runs the always-on folders that
+  make reads fast, and their economics.
 - **The announcement-layer spam floor** (THREATS T2 residual). Sub-cent
-  registry events and cheap GSOC mining make *discovery* spam orders of
-  magnitude cheaper than *storage* spam. Assert-functions and
-  admission-by-reference contain it operationally; a principled cost
+  registry events make *discovery* spam orders of magnitude cheaper than
+  *storage* spam. Admission-by-reference contains it operationally; a principled cost
   floor (stake, fees, proof-of-settled-history for announcement priority)
   is undesigned.
 

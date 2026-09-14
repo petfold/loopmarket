@@ -388,14 +388,19 @@ model, and settlement atomicity must never rest on the feed CAS. The
 2026-08-01 live milestone stands as proof the stack works end-to-end on a
 real network; it is the write-authority shape that does not survive
 multi-writer production. With federation come the decided mechanics
-(`docs/plans/P1-federated-book.md`): maker→aggregator announcement over
-GSOC with a Gnosis registry-event fallback; the aggregator (a full Bee
-node) publishing a manifest tuple {book_root, provenance_root,
+(`docs/plans/P1-federated-book.md`): the maker's announcement as one
+registry event on Gnosis (`announce.py`, since 2026-09-14 the only
+channel — GSOC dropped, §4 there); the aggregator (anyone who folds the
+announced set) publishing a manifest tuple {book_root, provenance_root,
 announcement_root} (the announcement element 2026-08-21: the folded
 input-set commitment that makes aggregator completeness provable — T14;
 the `index_root` element dropped 2026-09-12 with the `idx/` index)
-as the one solver-speed read path (feed lookups cost seconds — polling
-per-maker feeds does not scale); withdrawal as signed tombstones under
+as a solver-speed *cache* of the read path (feed lookups cost seconds —
+polling per-maker feeds does not scale), while the read path itself is
+the announced set folded by the reader under U8 (`Session.fold`, `loop
+fold`) and any manifest is audited against the chain's set
+(`audit_manifest(expected=)`), so trust rests on the audit and not on
+the number of aggregators; withdrawal as signed tombstones under
 grow-only merge; and two merge-discipline fixes found by code review
 (planned invariant U11): fill records lose their wall-clock timestamp —
 equal settlements must produce equal roots (landed 2026-08-20, with a

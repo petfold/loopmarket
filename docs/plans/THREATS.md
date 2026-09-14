@@ -605,7 +605,8 @@ just the attack.
 byte-identical `book_root`s in any fold order, so divergence between
 manifests is evidence, not opinion. Omission is provable, never merely
 suspected: announcements have a censorship-resistant ground truth (the
-*permanent* Gnosis registry-event fallback), maker books are public
+Gnosis registry event — the one channel since 2026-09-14, GSOC dropped;
+`P1-federated-book.md` §4), maker books are public
 feeds, and recordstore absence proofs demonstrate "offer X is absent
 from root R" mechanically while X sits on its maker's feed. Since
 2026-08-21 the manifest carries `announcement_root` — a commitment to
@@ -623,12 +624,21 @@ omission set — `offer/` and `withdraw/` records an announced maker book
 holds that neither entered `book_root` nor earned a `reject/` — and
 returns recordstore absence proofs per record; `tests/test_federation.py`
 covers the silent drop and the eaten tombstone, and
-`examples/demo_federation.py` runs the solver-self-fold recovery. The
-live variant and the tripwire-as-a-running-probe are still open.)*
+`examples/demo_federation.py` runs the solver-self-fold recovery.)*
+*(2026-09-14: the announced set is the chain's, so completeness is one
+reader's computation — `audit_manifest(expected=channel.announced())`
+reports a never-folded book as an omission with a proof — and comparing
+aggregators with each other is no longer how they are trusted. The CLI's
+`fold` recomputes the fold from the announced set under U8 by default,
+manifests being caches. The live variant against a deployed contract is
+still open.)*
 
-**Residual.** Neutrality-by-auditability is only as real as the number of
-independent aggregators actually running — the aggregator-economics open
-problem (`P1-federated-book.md`; `adoption-and-thickness.md`). **Owner
+**Residual.** Since 2026-09-14 auditability no longer depends on the
+number of aggregators: any reader convicts an omission against the
+chain's announced set alone. What plurality still buys is availability
+and latency — the aggregator-economics open problem
+(`P1-federated-book.md`; `adoption-and-thickness.md`) is about who runs
+the always-on folders, not about trust. **Owner
 directive (2026-08-21): distributed, permissionless and censorship-proof
 is loopmarket's main value; several independent aggregators are the
 deployment floor, a single-aggregator steady state is a failure
@@ -637,9 +647,11 @@ investigation before P1 completes.** The P1 settlement-instance
 chokepoint stands until P2's verifiable settlement; no aggregator remedy
 touches it.
 
-**Tripwire.** The count of independently-operated manifests: pages when
-it falls below two. Manifest `book_root` divergence not explained by
-input-set differences (the cross-audit). A planted-offer probe:
+**Tripwire.** `audit_manifest` against the chain's announced set on every
+manifest read — an omission pages. Manifest `book_root` divergence not
+explained by input-set differences (a sanity check now, not the trust
+basis). The count of independently-operated manifests, for availability.
+A planted-offer probe:
 publication-plus-announcement to manifest inclusion, measured across
 every watched aggregator — any manifest that never includes the probe
 pages.

@@ -886,3 +886,49 @@ def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, m
     monkeypatch.setenv("LOOP_MAKER", "chen")
     run.ok("want", "transport(piano)", "from(u2e4x)", "to(u2e4y)", "6")
     assert "chen" not in run.ok("matches")                  # the courier takes no pianos
+
+
+def test_announced_books_are_the_read_path(env, tmp_path, monkeypatch):
+    """Three makers, three `rs:` books, one file registry: each announces
+    their book, and every session's fold is the announced set folded under
+    the U8 admission rules — no `peers`, no aggregator trusted. The triangle
+    clears from any of them; `fold` prints the root all agree on."""
+    registry = f"file:{tmp_path / 'registry'}"
+    monkeypatch.setenv("LOOP_REGISTRY", registry)
+    roots = {}
+    for maker, line in (("amara", ("give", "piano-lesson", "100")),
+                        ("bruno", ("give", "vegetable-box", "50")),
+                        ("chen", ("give", "bicycle-repair", "80"))):
+        monkeypatch.setenv("LOOP_MAKER", maker)
+        monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / maker}")
+        run = Runner()
+        run.ok(*line)
+        out = run.ok("announce")
+        assert out.startswith(f"announced {maker} rs:")
+    monkeypatch.setenv("LOOP_MAKER", "amara"); monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'amara'}")
+    run = Runner()
+    run.ok("want", "produce", "104")
+    monkeypatch.setenv("LOOP_MAKER", "bruno"); monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'bruno'}")
+    Runner().ok("want", "bicycle-repair", "52")
+    monkeypatch.setenv("LOOP_MAKER", "chen"); monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'chen'}")
+    run = Runner()
+    run.ok("want", "music-lesson", "83")
+    listed = run.ok("announced").splitlines()
+    assert [l.split()[0] for l in listed] == ["amara", "bruno", "chen"]
+    assert len(run.ok("offers", "--raw").splitlines()) == 6      # the fold sees every book
+    for maker in ("amara", "bruno", "chen"):
+        monkeypatch.setenv("LOOP_MAKER", maker); monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / maker}")
+        roots[maker] = Runner().ok("fold")
+    assert len(set(roots.values())) == 1 and roots["amara"].startswith("book root ")
+    out = run.ok("loops")
+    assert "surplus" in out
+    assert "registry = file:" in run.ok("status")
+    # the registry is the channel: a book a stranger writes into the file
+    # under another maker's name is folded as THAT owner's, so its offers
+    # signed by nobody and spoken for someone else are refused (U8)
+    from loopmarket.announce import open_announcements
+    stranger = OfferRegistry(cli._open_book(f"rs:{tmp_path / 'stranger'}").store)
+    stranger.publish(give("amara", Thing(("apple",)), 1, valid=TimeWindow(0)))
+    stranger.commit()
+    open_announcements(registry).announce(f"rs:{tmp_path / 'stranger'}", owner="mallory")
+    assert len(run.ok("offers", "--raw").splitlines()) == 6      # mallory's forged amara offer is not in

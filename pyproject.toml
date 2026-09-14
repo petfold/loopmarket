@@ -41,6 +41,10 @@ swarm = ["recordstore[bee,feeds]>=0.16.0"]
 # identity that owns the maker's feed, recoverable without a node.
 # ...and sealed handoffs (`handoff.py`): ECDH on the same curve + AES-GCM.
 sig = ["eth-keys", "eth-hash[pycryptodome]", "coincurve", "cryptography"]
+# The announcement channel on chain (announce.py): the LoopBookRegistry
+# event log read with eth_getLogs, announcements sent as the maker's own
+# transaction. Imported lazily inside the chain: path only (boundary B2).
+chain = ["web3>=6"]
 test = ["pytest"]
 
 [project.scripts]

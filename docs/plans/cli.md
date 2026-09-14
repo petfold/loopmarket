@@ -380,7 +380,8 @@ shell redirect.
 |---|---|
 | maker | `give`, `want`, `withdraw ID`, `mine`, `place NAME LAT,LON,R [ADDRESS]` (temporary, §4), `handoff ID TEXT`, `watch [--once]`, `handoffs` (§14); `draft [NAME] want\|give ...`, `draft [NAME] A + B`, `drafts`, `offer NAME [PRICE]`, `discard [NAME...]` (§13; a composed draft offers with the v3 record) |
 | anyone reading | `offers [CATEGORY...]` (filtered through `satisfies`), `show ID`, `matches`, `status` (roots, counts, settings in force) |
-| solver | `loops` (find on a pinned snapshot, print, never clear), `propose` |
+| solver | `loops` (find on a pinned snapshot, print, never clear), `fold` (fold the announced books and peers myself, print the root any manifest must match — built 2026-09-14), `propose` |
+| maker, discovery | `announce [--role]` (say "my book is here" on the `registry` channel: `chain:RPC@CONTRACT`, `file:PATH`, `memory:`), `announced` (the standing set) — built 2026-09-14; with a registry set every fold is the announced set under U8 as each book's owner |
 | clearing / aggregator | `clearing` (local `MockClearing` over the fold — "you are running the clearing house"; `clear` is a one-release alias, §13), `fold` (write a manifest), `audit MANIFEST` (T14 absence proofs) |
 | plumbing | `set`, `export`, `import`, `help`, `--version` |
 
@@ -657,7 +658,7 @@ The address is settlement text on the place node (`place NAME LAT,LON,R
 place and remembered locally per offer (`$LOOP_HOME/handoffs`; `handoff
 ID TEXT` overrides it). `watch [--once]` polls the fold every `interval`:
 it reports the maker's fills (the fill record is the notification —
-today a poll, GSOC push later, the P2 contract's event after that),
+today a poll, the P2 contract's event later),
 seals each remembered text to the leg counterparty's public key —
 recovered from the signature on *their* offer, so there is no key
 registry — as `handoff/<loop>/<offer>` in the maker's own book

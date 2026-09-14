@@ -9,6 +9,31 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Added
+
+- **The announcement channel, and the read path** (Peter, 2026-09-14:
+  skip GSOC, go straight to the chain; the aggregator-agreement check
+  goes with it). `announce.py`: a book becomes discoverable by one
+  announcement — `Announcement(owner, book, role)`, latest per owner,
+  retractions — on one of three backends chosen by spec:
+  `chain:RPC_URL@CONTRACT` (the `LoopBookRegistry` contract,
+  `contracts/LoopBookRegistry.sol`, its event log read with
+  `eth_getLogs`, announcements sent as the maker's own transaction so
+  `msg.sender` is the feed-signing owner; web3 behind the new `chain`
+  extra, lazy), `file:PATH` (sessions on one machine), `memory:`.
+  `Aggregator.subscribe(channel, open_book)` folds exactly the announced
+  set; `audit_manifest(expected=channel.announced())` reports a book
+  announced and never folded as an omission with an absence proof, so
+  completeness is one reader's computation and aggregators are no longer
+  trusted by agreeing with each other. CLI: the `registry` setting and
+  `announce [--role]`, `announced`, `fold`; with a registry set every
+  fold is the announced set folded through `Aggregator` under U8 as each
+  book's announced owner — the solver-self-fold as the default read
+  path, manifests as caches. `scripts/deploy_registry.py` deploys the
+  contract; not yet run against a deployed one. Plan: `P1-federated-book.md`
+  §4 rewritten, T14 updated. Tests: `tests/test_announce.py`, the
+  three-maker file-registry flow in `tests/test_cli.py`.
+
 ### Changed
 
 - **Terms are stored in the catalogue's canonical spelling.** The CLI runs

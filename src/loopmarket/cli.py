@@ -86,7 +86,14 @@ _SETTINGS = {
     "peers": _Setting(
         "LOOP_PEERS", "", "--peer SPECS",
         "read-only books folded into every answer (comma-separated; "
-        "swarm:TOPIC@OWNER follows someone else's feed)"),
+        "swarm:TOPIC@OWNER follows someone else's feed); books you trust "
+        "— the announced books come from `registry`"),
+    "registry": _Setting(
+        "LOOP_REGISTRY", "", "--registry SPEC",
+        "the announcement channel: chain:RPC_URL@CONTRACT (the "
+        "LoopBookRegistry on Gnosis), file:PATH (sessions on one machine), "
+        "memory:; every announced book is folded into every answer, as its "
+        "announced owner's"),
     "maker": _Setting(
         "LOOP_MAKER", "", "--maker NAME",
         "my identity; the signer's address when bee_signer is set and the "
@@ -497,25 +504,61 @@ class Session:
         return self._book
 
     def fold(self) -> OfferRegistry:
-        """My book plus every peer, as one read-only registry.
+        """My book plus every announced book plus every peer, as one
+        read-only registry — the read path (P1 §2, T14).
 
-        A plain OR-set union into a memory store (`absorb` = re-assert every
-        record), then the U11 check. The U8 admission rules need each book's
-        owner, which a bare store spec does not name — they arrive with the
-        `fold` command and the announcement channel (cli.md §9); until then
-        `peers` are books you trust, the shared dev/demo shape."""
-        specs = _peer_specs()
-        if not specs:
+        The announced books come from the `registry` channel with their
+        owners, so they fold through `Aggregator` under the U8 admission
+        rules: each book is read as *its announced owner's*, and speech the
+        owner may not make is refused with an attributed rejection. This
+        is the solver-self-fold: no aggregator's manifest is trusted, the
+        fold is recomputed from the announced set and the makers' own
+        books. `peers` are books you trust by spec, without an owner: a
+        plain OR-set union (`absorb`) — the shared dev/demo shape. Then the
+        U11 check."""
+        specs, registry = _peer_specs(), _configured("registry")
+        if not specs and not registry:
             return self.book
         from recordstore import MemoryBytesStore, RecordStore
 
         folded = OfferRegistry(RecordStore(MemoryBytesStore()))
         folded.absorb(self.book)
+        if registry:
+            from .federation import Aggregator
+            blobs = MemoryBytesStore()
+            agg = Aggregator(lambda: RecordStore(blobs), aggregator_id="loop-cli")
+            for ann in self.announcements.announced():
+                try:
+                    peer = _open_book(ann.spec())
+                except Exception as exc:                # the maker's postage, not our omission
+                    print(f"loop: {ann.owner}: {exc}", file=_err())
+                    continue
+                if ann.spec() == _book_spec() or ann.spec() == \
+                        f"{_book_spec()}@{ann.owner}":
+                    continue                            # my own book is already in
+                staged = OfferRegistry(RecordStore(blobs))
+                staged.absorb(peer)
+                staged.commit()
+                agg.announce(ann.owner, staged.store, role=ann.role)
+            manifest = agg.fold()
+            if manifest.book_root:
+                folded.absorb(OfferRegistry(RecordStore.at(manifest.book_root, blobs)))
         for spec in specs:
             folded.absorb(_open_book(spec))
         folded.commit()
         folded.verify_loop_atomicity()
         return folded
+
+    @property
+    def announcements(self):
+        """The announcement channel named by `registry` (announce.py)."""
+        from .announce import open_announcements
+        spec = _configured("registry")
+        if not spec:
+            raise ValueError(
+                "no registry: `loop set registry chain:RPC_URL@CONTRACT` (or "
+                "file:PATH for sessions on one machine)")
+        return open_announcements(spec, key=_configured("bee_signer") or None)
 
     # -- the catalogue and the names layer ---------------------------------------
 
@@ -1880,6 +1923,52 @@ def cmd_matches(args, session, out):
     return 0 if rows else 1
 
 
+def _owner_for_announcing(session) -> str:
+    """Who announces: on chain the transaction's sender, i.e. bee_signer's
+    address; on the file and memory channels the configured maker."""
+    key = _configured("bee_signer")
+    if key:
+        try:
+            from .sigs import maker_address
+            return maker_address(key)
+        except Exception:
+            pass
+    maker = _configured("maker")
+    if not maker:
+        raise ValueError("announcing needs an identity: set bee_signer (or maker)")
+    return maker
+
+
+def cmd_announce(args, session, out):
+    """Say "my book is here" on the announcement channel: the book spec
+    without its owner (`swarm:TOPIC`, or `rs:PATH` on a file channel), so
+    every reader of the channel folds it as mine."""
+    spec = _book_spec()
+    if spec.startswith("swarm:") and "@" in spec:
+        raise ValueError(f"{spec}: announce a book you write, not one you follow")
+    role = args.role or "maker"
+    ann = session.announcements.announce(spec, role, owner=_owner_for_announcing(session))
+    print(f"announced {ann.owner} {ann.book} ({ann.role})", file=out)
+    return 0
+
+
+def cmd_announced(args, session, out):
+    """The standing announcements: owner, book, role."""
+    for ann in session.announcements.announced():
+        print(f"{ann.owner} {ann.book} {ann.role}", file=out)
+    return 0
+
+
+def cmd_fold(args, session, out):
+    """Fold the announced books and my peers myself and print the root —
+    the number any aggregator's manifest must agree with (T14)."""
+    fold = session.fold()
+    every = list(fold.offers(include_filled=True))
+    print(f"book root {fold.store.root or '(empty)'}", file=out)
+    print(f"offers {len(every)}", file=_err())
+    return 0
+
+
 def cmd_status(args, session, out):
     print(f"book = {_book_spec()}", file=out)
     book = session.book
@@ -1893,6 +1982,7 @@ def cmd_status(args, session, out):
     ontology = session.catalogue
     print(f"catalogue root = {ontology.root or '(unpinned)'}", file=out)
     print(f"categories = {len(ontology.dag.nodes)}", file=out)
+    print(f"registry = {_configured('registry') or '(none)'}", file=out)
     print(f"peers = {', '.join(_peer_specs()) or '(none)'}", file=out)
     for key in ("maker", "terms", "valid", "confirm"):
         print(f"{key} = {_configured(key) or '(unset)'}", file=out)
@@ -2074,6 +2164,9 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop offers [CATEGORY...]  open offers in the fold (filtered by satisfies)
   loop show ID               one offer, fully — the approval block
   loop matches               every feasible handoff in the fold
+  loop announce [--role maker|clearing]  say "my book is here" on the registry
+  loop announced             the standing announcements: owner, book, role
+  loop fold                  fold the announced books and peers myself; print the root
   loop loops                 profitable loops on a snapshot (exit 1: none)
   loop clearing              run the clearing house locally over the fold (exit 1: none)
   loop status                roots, counts, settings in force
@@ -2184,6 +2277,13 @@ def build_parser():
     _add_output_flags(p)
     p.set_defaults(func=cmd_watch)
 
+    p = sub.add_parser("announce", add_help=False)
+    p.add_argument("--role", choices=("maker", "clearing"), default=None)
+    p.set_defaults(func=cmd_announce)
+    p = sub.add_parser("announced", add_help=False)
+    p.set_defaults(func=cmd_announced)
+    p = sub.add_parser("fold", add_help=False)
+    p.set_defaults(func=cmd_fold)
     p = sub.add_parser("offers", add_help=False)
     p.add_argument("categories", nargs="*")
     _add_output_flags(p)
