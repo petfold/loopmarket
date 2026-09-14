@@ -41,7 +41,38 @@ import math
 import time as _time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from fractions import Fraction
 from typing import Any
+
+
+# ------------------------------------------------------------------- numbers
+
+def q(x) -> Fraction:
+    """The exact value of a quantity, amount or rate (planned invariant U9,
+    riding the v4 record, 2026-09-14): an int or a `Fraction` as it is, a
+    string as the decimal or `n/d` it spells (`"10.5"`, `"21/2"` — the v4
+    record's spelling), and a float as the shortest decimal that prints it
+    (`99.99` is 9999/100, what the person meant, not the binary neighbour
+    the machine stored; `float(q(x)) == x` still holds). Everything
+    clearing re-verifies goes through this; the solver's search may still
+    use floats, since a search is a heuristic and clearing is the truth."""
+    if isinstance(x, Fraction):
+        return x
+    if isinstance(x, bool):
+        raise TypeError("a boolean is not a quantity")
+    if isinstance(x, float):
+        return Fraction(repr(x))
+    if isinstance(x, (int, str)):
+        return Fraction(x)
+    raise TypeError(f"not a number: {x!r}")
+
+
+def rat(x) -> str:
+    """The v4 record's one spelling of an exact number: the reduced
+    fraction `n/d`, or `n` alone when the denominator is 1 (`Fraction`
+    reduces; `str` renders exactly so). What `q` reads back."""
+    f = q(x)
+    return str(f.numerator) if f.denominator == 1 else f"{f.numerator}/{f.denominator}"
 
 try:  # canonical encoding shared with the persistence layer when available
     from recordstore import canonical_bytes as _canonical_bytes
@@ -168,24 +199,89 @@ class Thing:
     """
 
     concepts: tuple[str, ...]
-    qty: float = 1.0
+    qty: float | int | Fraction = 1.0
     unit: str = "unit"
-    divisible: bool = False
+    #: `divisible` is the v1–v3 field and the constructor's shorthand:
+    #: True is `step == 0`, False is `step == qty`. The v4 record carries
+    #: `step` (decided 2026-09-14, `P2-loop-selection.md`): the granularity
+    #: a fill must be a multiple of — 0 continuous, the whole quantity
+    #: indivisible, 1 whole apples out of a thousand, 25 kg sacks. One
+    #: field says all three; `divisible` is derived from it.
+    divisible: bool | None = None
+    step: float | int | Fraction | None = None
+    #: The give-side floor (v4): the least quantity one fill may take —
+    #: the chartered bus that runs only if thirty seats sell, a minimum
+    #: order. 0 is no floor. A flow lower bound, never parts on a give.
+    min: float | int | Fraction = 0
 
     def __post_init__(self) -> None:
         if not self.concepts:
             raise ValueError("Thing needs at least one concept")
-        if self.qty <= 0:
+        for name in ("qty", "step", "min"):        # a spelled number is its value
+            if isinstance(getattr(self, name), str):
+                object.__setattr__(self, name, q(getattr(self, name)))
+        if q(self.qty) <= 0:
             raise ValueError("Thing qty must be positive")
         object.__setattr__(self, "concepts", tuple(sorted(set(self.concepts))))
+        if self.step is None:
+            object.__setattr__(self, "step", 0 if self.divisible else self.qty)
+        elif self.divisible is not None and self.divisible != (q(self.step) != q(self.qty)):
+            raise ValueError("divisible and step disagree: give one of them")
+        object.__setattr__(self, "divisible", q(self.step) != q(self.qty))
+        if q(self.step) < 0 or q(self.step) > q(self.qty):
+            raise ValueError("step must lie between 0 (continuous) and qty (indivisible)")
+        if q(self.min) < 0 or q(self.min) > q(self.qty):
+            raise ValueError("min must lie between 0 (no floor) and qty")
+        if self.min and q(self.step) and q(self.min) % q(self.step):
+            raise ValueError("min must be a multiple of step")
 
-    def to_record(self) -> dict[str, Any]:
+    def takes(self, qty) -> bool:
+        """May one fill take `qty` of this thing? Within the quantity, not
+        below the floor, and a positive multiple of the step (any positive
+        amount when the step is 0). For a v3 thing this is exactly the old
+        rule: all of it, or any part of a divisible one."""
+        w, g, s, m = q(qty), q(self.qty), q(self.step), q(self.min)
+        if w <= 0 or w > g or w < m:
+            return False
+        return s == 0 or w % s == 0
+
+    def to_record(self, v: int = 4) -> dict[str, Any]:
+        if v < 4:
+            return {
+                "concepts": list(self.concepts),
+                "qty": self.qty,
+                "unit": self.unit,
+                "divisible": self.divisible,
+            }
         return {
             "concepts": list(self.concepts),
-            "qty": self.qty,
+            "qty": rat(self.qty),
             "unit": self.unit,
-            "divisible": self.divisible,
+            "step": rat(self.step),
+            "min": rat(self.min),
         }
+
+
+@dataclass(frozen=True, slots=True)
+class Parts:
+    """A composed want: several things wanted together, all or nothing,
+    one price for the lot (`P2-loop-selection.md` §10, `cli.md` §13; the
+    v4 record, 2026-09-14). The theatre ticket and the transport to the
+    theatre. Want side only — a give of several things is one give of one
+    thing, the kit is a category. Each part is satisfied by its own give,
+    and the fill names which give served which part."""
+
+    parts: tuple[Thing, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.parts) < 2:
+            raise ValueError("a composed want has at least two parts; one part is a Thing")
+        object.__setattr__(self, "parts", tuple(self.parts))
+
+    def to_record(self, v: int = 4) -> dict[str, Any]:
+        if v < 4:
+            raise ValueError("parts are a v4 form")
+        return {"parts": [p.to_record(v) for p in self.parts]}
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,14 +297,17 @@ class Tokens:
     """
 
     issuer: str
-    amount: float
+    amount: float | int | Fraction
 
     def __post_init__(self) -> None:
-        if self.amount <= 0:
+        if isinstance(self.amount, str):           # a spelled number is its value
+            object.__setattr__(self, "amount", q(self.amount))
+        if q(self.amount) <= 0:
             raise ValueError("Token amount must be positive")
 
-    def to_record(self) -> dict[str, Any]:
-        return {"issuer": self.issuer, "amount": self.amount}
+    def to_record(self, v: int = 4) -> dict[str, Any]:
+        return {"issuer": self.issuer,
+                "amount": self.amount if v < 4 else rat(self.amount)}
 
 
 GIVE = "give"
@@ -231,7 +330,7 @@ class Offer:
 
     maker: str                    # key/address; also the personal-token issuer
     gives: Thing | Tokens
-    wants: Thing | Tokens
+    wants: Thing | Parts | Tokens
     valid: TimeWindow             # while the offer itself stands (v3: may be open)
     # v1/v2 only — when and where the thing changes hands. v3 carries both
     # as bare geo/time terms in the conjunction (`geo(...)`, `time(...)`, a place);
@@ -252,10 +351,12 @@ class Offer:
     contract_version: str = ""    # ontodag contract version (G1-G6 guarantees)
     # v3 (2026-09-12): `service`/`where` leave the record — spacetime lives
     # in the conjunction as role terms — and `valid` may be open-ended.
-    v: int = 3                    # record version; identity includes it
+    # v4 (2026-09-14): exact numbers as `n/d` strings (U9), `step` and
+    # `min` on a thing in place of `divisible`, and a want may be `Parts`.
+    v: int = 4                    # record version; identity includes it
 
     def __post_init__(self) -> None:
-        thing_sides = [s for s in (self.gives, self.wants) if isinstance(s, Thing)]
+        thing_sides = [s for s in (self.gives, self.wants) if isinstance(s, (Thing, Parts))]
         token_sides = [s for s in (self.gives, self.wants) if isinstance(s, Tokens)]
         if len(thing_sides) != 1 or len(token_sides) != 1:
             raise ValueError(
@@ -267,10 +368,20 @@ class Offer:
             )
         if self.bond < 0:
             raise ValueError("bond must be non-negative")
-        if self.v not in (1, 2, 3):
+        if self.v not in (1, 2, 3, 4):
             raise ValueError(f"unknown offer record version: {self.v!r}")
         if self.v < 2 and (self.registry_version or self.contract_version):
             raise ValueError("registry/contract pins are v2 fields")
+        if isinstance(self.gives, Parts):
+            raise ValueError("a give of several things is one give of one thing: parts are a want's")
+        if self.v < 4:
+            if isinstance(self.wants, Parts):
+                raise ValueError("a composed want is a v4 form")
+            for side in thing_sides:
+                if q(side.min):
+                    raise ValueError("a minimum fill is a v4 form")
+                if q(side.step) not in (0, q(side.qty)):
+                    raise ValueError("a step other than 0 or the whole quantity is a v4 form")
         if self.v >= 3:
             if self.service is not None or self.where is not None:
                 raise ValueError(
@@ -290,9 +401,23 @@ class Offer:
         return GIVE if isinstance(self.gives, Thing) else WANT
 
     @property
-    def thing(self) -> Thing:
+    def composed(self) -> bool:
+        """A want of several parts (v4)."""
+        return isinstance(self.wants, Parts)
+
+    @property
+    def parts(self) -> tuple[Thing, ...]:
+        """The things this offer is about: one for a give or a simple want,
+        several for a composed want."""
         side = self.gives if isinstance(self.gives, Thing) else self.wants
-        assert isinstance(side, Thing)
+        return side.parts if isinstance(side, Parts) else (side,)
+
+    @property
+    def thing(self) -> Thing:
+        """The one thing — a composed want has `parts` instead."""
+        side = self.gives if isinstance(self.gives, Thing) else self.wants
+        if isinstance(side, Parts):
+            raise ValueError("a composed want has parts, not one thing")
         return side
 
     @property
@@ -302,9 +427,15 @@ class Offer:
         return side
 
     @property
-    def unit_price(self) -> float:
-        """Maker-tokens per unit of the thing."""
-        return self.tokens.amount / self.thing.qty
+    def amount(self) -> Fraction:
+        """The price of the lot, exact."""
+        return q(self.tokens.amount)
+
+    @property
+    def unit_price(self) -> Fraction:
+        """Maker-tokens per unit of the thing, exact (U9). A composed want
+        has a price for the lot, not per unit: use `amount`."""
+        return q(self.tokens.amount) / q(self.thing.qty)
 
     # -- encoding -----------------------------------------------------------
 
@@ -316,9 +447,10 @@ class Offer:
         id exactly (invariant U2), never silently re-encode as the current
         version.
         """
-        def side(s: Thing | Tokens) -> dict[str, Any]:
-            rec = s.to_record()
-            rec["type"] = "thing" if isinstance(s, Thing) else "tokens"
+        def side(s: Thing | Parts | Tokens) -> dict[str, Any]:
+            rec = s.to_record(self.v)
+            rec["type"] = "thing" if isinstance(s, Thing) else \
+                "parts" if isinstance(s, Parts) else "tokens"
             return rec
 
         rec = {
@@ -351,19 +483,31 @@ class Offer:
         vocabulary.
         """
         v = rec.get("v")
-        if v not in (1, 2, 3):
+        if v not in (1, 2, 3, 4):
             raise ValueError(f"unknown offer record version: {v!r}")
         if v >= 3 and ("service" in rec or "where" in rec):
             # a field this version does not define is meaning we cannot
             # read: refuse, as for an unknown version — never drop it
             raise ValueError("a v3 offer record carries no service/where")
 
-        def side(r: dict[str, Any]) -> Thing | Tokens:
+        def thing(r: dict[str, Any]) -> Thing:
+            if v < 4:
+                return Thing(tuple(r["concepts"]), r["qty"], r["unit"], r["divisible"])
+            if "divisible" in r or "step" not in r or "min" not in r:
+                raise ValueError("a v4 thing carries step and min, not divisible")
+            return Thing(tuple(r["concepts"]), q(r["qty"]), r["unit"],
+                         step=q(r["step"]), min=q(r["min"]))
+
+        def side(r: dict[str, Any]) -> Thing | Parts | Tokens:
             if r["type"] == "thing":
-                return Thing(
-                    tuple(r["concepts"]), r["qty"], r["unit"], r["divisible"]
-                )
-            return Tokens(r["issuer"], r["amount"])
+                return thing(r)
+            if r["type"] == "parts":
+                if v < 4:
+                    raise ValueError("parts are a v4 form")
+                return Parts(tuple(thing(p) for p in r["parts"]))
+            if r["type"] != "tokens":
+                raise ValueError(f"unknown offer side: {r['type']!r}")
+            return Tokens(r["issuer"], q(r["amount"]) if v >= 4 else r["amount"])
 
         return cls(
             maker=rec["maker"],
@@ -402,7 +546,7 @@ def _field_form(service, where, kw: dict[str, Any]) -> dict[str, Any]:
     return dict(kw, service=service, where=where)
 
 
-def give(maker: str, thing: Thing, amount: float, *, valid: TimeWindow,
+def give(maker: str, thing: Thing, amount, *, valid: TimeWindow,
          service: TimeWindow | None = None, where: GeoDisc | None = None,
          **kw: Any) -> Offer:
     """I give `thing`, priced `amount` on my own scale."""
@@ -410,10 +554,11 @@ def give(maker: str, thing: Thing, amount: float, *, valid: TimeWindow,
                  valid=valid, **_field_form(service, where, kw))
 
 
-def want(maker: str, thing: Thing, amount: float, *, valid: TimeWindow,
+def want(maker: str, thing: Thing | Parts, amount, *, valid: TimeWindow,
          service: TimeWindow | None = None, where: GeoDisc | None = None,
          **kw: Any) -> Offer:
-    """I want `thing`, priced `amount` on my own scale."""
+    """I want `thing` — or several things together, `Parts` — priced
+    `amount` on my own scale for the lot."""
     return Offer(maker=maker, gives=Tokens(maker, amount), wants=thing,
                  valid=valid, **_field_form(service, where, kw))
 

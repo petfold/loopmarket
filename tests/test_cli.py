@@ -232,7 +232,7 @@ def test_g4_approval_block_is_the_show_renderer(loop):
 
 def test_want_reading_names_the_point(loop):
     out = loop.ok("want", "10kg", "apple", "home", "90")
-    assert "10 kg — the point; a floor (`10kg..`) is not encodable yet" in out
+    assert "10 kg — the point" in out
 
 
 # ---------------------------------------------------------------- G5: nothing reserved
@@ -757,7 +757,7 @@ def test_drafts_named_numbered_canonical_and_never_in_the_book(stage):
     assert code == 0 and err.strip() == "2 discarded" and stage("drafts")[0] == 1
 
 
-def test_plus_between_drafts_composes_and_offer_refuses_until_v4(stage, monkeypatch):
+def test_plus_between_drafts_composes_and_offer_publishes_the_v4_want(stage, monkeypatch):
     stage.ok("draft", "ticket", "want", *TICKET)
     stage.ok("draft", "ride", "want", *RIDE)
     out = stage.ok("draft", "evening", "ticket", "+", "ride")
@@ -771,17 +771,21 @@ def test_plus_between_drafts_composes_and_offer_refuses_until_v4(stage, monkeypa
     # a copy keeps its parts (and its price, if any)
     stage.ok("draft", "ticket2", "ticket")
     assert stage.ok("drafts").count("ticket2  want geo(") == 1
-    # offering the composed draft renders every part, then refuses
-    code, out, err = stage("offer", "night", "60")
-    assert code == 1
-    assert "not encodable until the v4 record" in err and "cli.md §13" in err
+    # offering the composed draft renders every part and publishes the one
+    # v4 want (since 2026-09-14); the draft is consumed
+    out = stage.ok("offer", "night", "60")
     assert out.startswith("want     hamlet theatre-ticket + ")
     assert "  part 1   geo(" in out and " hamlet theatre-ticket" in out
     assert "  part 3   geo(" in out and " person transport" in out
     assert "price    60 (the lot, on amara's scale; split across the parts" in out
-    assert "offer_id (none" in out and "note     part 2: from(home) →" in out
-    assert "night  want" in stage.ok("drafts")                     # kept
-    assert "needs its price" in stage("offer", "night")[2]
+    assert "note     part 2: from(home) →" in out
+    oid = out.strip().splitlines()[-1]
+    assert re.fullmatch(r"[0-9a-f]{64}", oid) and "v4" in out
+    assert "night  want" not in stage.ok("drafts")                 # consumed
+    shown = stage.ok("show", oid[:12])
+    assert "  part 3   " in shown and "price    60 (the lot" in shown
+    stage.ok("draft", "night2", "evening", "+", "seat")
+    assert "needs its price" in stage("offer", "night2")[2]
     # parts carry no prices; gives do not compose; one maker
     stage.ok("draft", "priced", "want", "hamlet", "venue", "20")
     assert "carries a price" in stage("draft", "x", "priced", "+", "ride")[2]
@@ -793,7 +797,7 @@ def test_plus_between_drafts_composes_and_offer_refuses_until_v4(stage, monkeypa
     assert "was drafted as amara" in stage("offer", "priced")[2]
     assert "was drafted as amara" in stage("draft", "y", "ticket", "+", "ride")[2]
     monkeypatch.setenv("LOOP_MAKER", "amara")
-    assert stage.ok("mine", "--raw") == ""
+    assert len(stage.ok("mine", "--raw").splitlines()) == 1        # the composed want
 
 
 def test_offer_publishes_a_simple_draft_and_removes_it(stage):
@@ -819,12 +823,11 @@ def test_offer_publishes_a_simple_draft_and_removes_it(stage):
 
 
 def test_one_line_composed_want_is_the_same_block(stage):
-    code, out, err = stage("want", *TICKET, "+", *RIDE, "60")
-    assert code == 1 and "not encodable until the v4 record" in err
+    out = stage.ok("want", *TICKET, "+", *RIDE, "60")
     assert out.startswith("want     hamlet theatre-ticket + ")
     assert "  part 2   from(" in out and "price    60" in out
     assert stage("drafts")[0] == 1                       # the line staged nothing
-    assert stage.ok("mine", "--raw") == ""
+    assert len(stage.ok("mine", "--raw").splitlines()) == 1    # it published
     # a coordinate literal in geo(...) is the spelling `place` takes: the
     # cell containing that radius, and nothing else, is what the offer says
     out = stage.ok("want", "hamlet", "46.1,14.6,2km", "5")
@@ -849,12 +852,15 @@ def test_offer_line_is_pythons_offer_literal(loop):
     assert line.endswith(" 9")
     again = cli.offer_from_line(line, loop.session)
     assert cli.line_for(again) == line
-    assert again.thing == o.thing and again.valid == o.valid and again.v == 3
+    assert again.thing == o.thing and again.valid == o.valid and again.v == 4
     assert loop.ok("mine", "--raw") == ""                # a literal publishes nothing
     with pytest.raises(ValueError, match="starts with give or want"):
         cli.offer_from_line("apple 5", loop.session)
-    with pytest.raises(ValueError, match="not encodable until the v4"):
-        cli.offer_from_line("want apple home + apple home 9", loop.session)
+    composed = cli.offer_from_line("want apple home + 2kg apple home 9", loop.session)
+    assert composed.composed and len(composed.parts) == 2 and composed.tokens.amount == 9
+    assert cli.line_for(composed).startswith("want apple geo(") and " + 2kg apple geo(" in cli.line_for(composed)
+    again = cli.offer_from_line(cli.line_for(composed), loop.session)
+    assert again.wants == composed.wants and again.valid == composed.valid
 
 
 def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, monkeypatch):

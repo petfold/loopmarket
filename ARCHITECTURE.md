@@ -504,6 +504,24 @@ facade reads the head and the constraints off the term, and the CLI
 stores every term in the catalogue's canonical spelling (`surface.elaborate`)
 so the two orders are one offer id.
 
+**Update 2026-09-14 — the v4 record.** Decided with Peter and built the
+same day: exact rationals on the whole clearing path (U9 enters
+CLAUDE.md: `schema.q`/`rat`, `Fraction` rates, potentials and surplus, no
+epsilon in any gate, floats only in the `-log` search); `step` and `min`
+on a thing in place of `divisible` — one granularity field says
+continuous, indivisible, whole apples or 25 kg sacks, and the floor is the
+chartered bus — with `Thing.takes` the one quantity rule; a want of
+`Parts`, several things all or nothing under one price, `check_parts` its
+exact check and `parts_legs` the baseline search, so the theatre ticket
+and the transport to it clear as one leg; fills naming every give with
+the quantity taken (`LoopProposal.fills`), a versioned loop record
+carrying `taken` per give and exact numbers. The settled prices stay in
+the public loop record for now: P4 §5 item 4 was ruled conditional the
+same day — receipts arrive with sealed offers, since while offers are
+plaintext the potentials are a function of public inputs — and four doors
+stay open for them (no prices in fills, potentials outside every id, the
+loop record's version field, a deterministic split rule).
+
 ## 7. The arithmetic of loops (graph.py)
 
 Nodes are personal tokens; a `Match` is an edge giver→receiver with rate

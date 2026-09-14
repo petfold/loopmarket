@@ -242,13 +242,31 @@ the owning P2 document without the named answer (decided 2026-08; items
    ERC-5564 stealth meta-address — riding in the encoding as
    `bond`/`oracle`/`arbitrator` already do, so ids don't churn when it
    activates.
-4. **Per-leg settled prices stay out of public loop records.** The
-   settled price vector goes into private per-participant receipt
-   envelopes (`proof-fabric.md` §6's legal artifacts); the public beat
-   record carries per-directed-pair aggregates.
-   `P2-clearing-pricing.md` §9's commitment to keep settled rates
-   queryable per directed pair must be satisfiable from aggregates —
-   never by identity-keyed plaintext.
+4. **Per-leg settled prices stay out of public loop records — once
+   offers can be sealed.** The settled price vector goes into private
+   per-participant receipt envelopes (`proof-fabric.md` §6's legal
+   artifacts); the public beat record carries per-directed-pair
+   aggregates. `P2-clearing-pricing.md` §9's commitment to keep settled
+   rates queryable per directed pair must be satisfiable from aggregates
+   — never by identity-keyed plaintext. **Ruled 2026-09-14 (Peter):
+   receipts wait for sealed offers.** While offers are plaintext and the
+   split rule is deterministic, the settled point is a function of
+   public inputs — anyone recomputes the potentials from the offers and
+   the fills — so sealing them protects nothing; the potentials the
+   circulation record has carried since 0.5.0 stay public *for now*, and
+   the follower audit (`P2-loop-selection.md` §11 item 6) keeps its
+   public form. Four doors are kept open so the receipts are additive
+   when sealing lands: no prices ever enter `fill/` (v4 fills name the
+   loop and the gives with quantities, nothing else); the potentials sit
+   outside every id (`loop_id` is the content address of the legs);
+   loop records carry a version field from v4 so the later record that
+   drops the potentials and adds a receipt hash reads cleanly; the split
+   rule stays deterministic and written down, and verifiers recompute
+   rather than trust the stored vector (U3). The target form is the
+   Tier 3 proof below — a hidden potential vector shown to put every
+   cleared price inside its bounds and conserve value at every node —
+   which is public verifiability *and* price privacy, and needs U9's
+   rationals, one reason they ride v4.
 5. **Reputation formats key on provable membership, not raw addresses.**
    Key rotation dies at the reputation layer if standing (successRate,
    U12 statistics, bond history, `P2-batch-auction.md` §9's "bonded,

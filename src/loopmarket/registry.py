@@ -6,7 +6,9 @@ Layout (one book = one RecordStore, one root reference per version):
     sig/<offer_id>                   -> detached maker signature (U8, off-feed)
     handoff/<loop_id>/<offer_id>     -> sealed settlement text (handoff.py)
     withdraw/<offer_id>              -> 1  (monotone tombstone: offer closed)
-    fill/<offer_id>                  -> {"loop": <loop_id>}
+    fill/<offer_id>                  -> {"loop": <loop_id>, "qty": <taken>} for a give,
+                                        {"loop": <loop_id>, "gives": [{"offer", "qty"}]} for a want
+                                        (v4, 2026-09-14; the 2026-08 fill was {"loop"} alone)
     loop/<loop_id>                   -> the cleared loop record
 
 There is no index in the book. The `idx/{c,t,g}` prefixes (per concept,
@@ -188,8 +190,7 @@ class OfferRegistry:
             loop_id, _, offer_id = key[len(HANDOFF):].partition("/")
             yield loop_id, offer_id, rec
 
-    def mark_filled(self, offer_ids: Iterable[str], loop_id: str,
-                    loop_record: dict) -> None:
+    def mark_filled(self, fills, loop_id: str, loop_record: dict) -> None:
         """Claim every offer for the loop; a pure function of the decision.
 
         No wall clock: the same logical clearing must produce
@@ -199,8 +200,12 @@ class OfferRegistry:
         anchor — which is factbond's to build, never a field smuggled into
         the fill (docs/plans/P1-federated-book.md §3).
         """
-        for oid in offer_ids:
-            self.store.put(FILL + oid, {"loop": loop_id})
+        if isinstance(fills, dict):         # v4: {offer_id: fill record}
+            for oid, rec in fills.items():
+                self.store.put(FILL + oid, rec)
+        else:                                # ids alone: the 2026-08 fill
+            for oid in fills:
+                self.store.put(FILL + oid, {"loop": loop_id})
         self.store.put(LOOP + loop_id, loop_record)
 
     def commit(self, *, reconcile: bool = True) -> str:

@@ -115,6 +115,8 @@ class DimensionIndex:
         record line: one `get`. Handover coordinates (place, time, a
         route's ends) are left to `check_match`, which every candidate
         still faces (module docstring)."""
+        if want_offer.composed:
+            return set()          # a composed want is met part by part (`parts_legs`)
         concepts = want_offer.thing.concepts
         if not all(self.ontology.known(c) for c in concepts):
             return set()          # unknown wanted vocabulary matches nothing

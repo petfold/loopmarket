@@ -52,7 +52,10 @@ def catalogue():
 # ------------------------------------------------------------------ the record
 
 def test_v3_is_the_default_record_and_carries_no_fields():
-    o = give("a", Thing(("ride", "geo(u2e4)", SEASON)), 5, nonce=7, **V)
+    """v3 was the default record 2026-09-12 to 2026-09-14; since v4 it is
+    asked for with `v=3` and re-encodes byte for byte (U2)."""
+    assert give("a", Thing(("ride",)), 5, **V).v == 4
+    o = give("a", Thing(("ride", "geo(u2e4)", SEASON)), 5, nonce=7, v=3, **V)
     assert o.v == 3 and o.service is None and o.where is None
     rec = o.to_record()
     assert "service" not in rec and "where" not in rec and rec["v"] == 3
@@ -68,10 +71,12 @@ def test_v3_is_the_default_record_and_carries_no_fields():
 
 
 def test_v3_refuses_field_keys_and_unknown_versions():
-    rec = give("a", Thing(("ride",)), 5, **V).to_record()
+    rec = give("a", Thing(("ride",)), 5, v=3, **V).to_record()
     with pytest.raises(ValueError):
         Offer.from_record(dict(rec, where=[46.0, 14.0, 10.0]))
     with pytest.raises(ValueError):
+        Offer.from_record(dict(rec, v=5))
+    with pytest.raises(ValueError):                       # a v3 thing is not a v4 one
         Offer.from_record(dict(rec, v=4))
 
 
@@ -208,7 +213,7 @@ def test_the_v3_triangle_clears():
     conjunction, the season as `when`, offers standing until withdrawn."""
     ont = catalogue()
     registry = OfferRegistry(RecordStore(MemoryBytesStore()))
-    town = dict(valid=TimeWindow(0))
+    town = dict(valid=TimeWindow(0), v=3)
     # each give hands over inside the cell the receiving want names: the
     # want is the wider cone (bruno takes his repair anywhere in u2e4)
     flat, shop, area = "geo(u2e4x)", "geo(u2e4x)", "geo(u2e4)"

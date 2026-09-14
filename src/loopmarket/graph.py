@@ -41,10 +41,12 @@ legs in which every maker is head of one leg and tail of one.
 from __future__ import annotations
 
 import hashlib
+from fractions import Fraction
 import math
 from dataclasses import dataclass, field
 from typing import Iterable
 
+from .schema import q
 from .matching import Leg, Match
 
 
@@ -67,16 +69,17 @@ class Loop:
         return tuple(m.giver for m in self.matches)
 
     @property
-    def product(self) -> float:
-        p = 1.0
+    def product(self) -> Fraction:
+        """The product of rates around the cycle, exact (U9)."""
+        p = Fraction(1)
         for m in self.matches:
             p *= m.rate
         return p
 
     @property
-    def surplus(self) -> float:
-        """Fractional surplus around the loop (0.04 == 4%)."""
-        return self.product - 1.0
+    def surplus(self) -> Fraction:
+        """Fractional surplus around the loop (1/25 == 4%), exact."""
+        return self.product - 1
 
     @property
     def per_node_ok(self) -> bool:
@@ -84,7 +87,7 @@ class Loop:
         k = len(self.matches)
         for i, incoming in enumerate(self.matches):
             outgoing = self.matches[(i + 1) % k]
-            if incoming.want.unit_price < outgoing.give.unit_price - 1e-12:
+            if incoming.want.unit_price < outgoing.give.unit_price:
                 return False
         return True
 
@@ -190,7 +193,7 @@ class ExchangeGraph:
                 break
         cycle.reverse()
         loop = Loop(tuple(cycle))
-        if loop.surplus < min_surplus - 1e-12:
+        if loop.surplus < min_surplus:
             return None
         return loop
 
@@ -281,19 +284,22 @@ class Circulation:
             return None
         return Loop(tuple(Match(give=leg.gives[0], want=leg.want) for leg in order))
 
-    def potentials(self, gain: float = 1.0) -> dict[str, float] | None:
-        """The least node potentials e >= 1 with, for every leg,
-        want.price * e[buyer] >= gain * sum(give.price * e[giver]); None
-        when no potentials exist (the set cannot clear at that gain).
-        Legs are visited in sorted order (U6)."""
+    def potentials(self, gain=1) -> dict[str, Fraction] | None:
+        """The least node potentials e >= 1 with, for every leg, the lot
+        the buyer pays times its potential covering `gain` times the sum
+        of what each giver is owed (unit price times quantity taken) times
+        theirs; None when no potentials exist (the set cannot clear at that
+        gain). Exact rationals (U9); legs visited in sorted order (U6)."""
+        gain = q(gain)
         legs = sorted(self.legs, key=lambda leg: leg.key)
-        e = {m: 1.0 for m in self.nodes}
+        e = {m: Fraction(1) for m in self.nodes}
         for _ in range(len(e) + 1):
             changed = False
             for leg in legs:
-                need = gain * sum(g.unit_price * e[g.maker] for g in leg.gives) \
-                    / leg.want.unit_price
-                if need > e[leg.head] * (1 + 1e-12):
+                need = gain * sum((leg.value_given(i) * e[g.maker]
+                                   for i, g in enumerate(leg.gives)), Fraction(0)) \
+                    / leg.want.amount
+                if need > e[leg.head]:
                     e[leg.head] = need
                     changed = True
             if not changed:
@@ -305,43 +311,46 @@ class Circulation:
         return self.potentials() is not None
 
     @property
-    def surplus(self) -> float:
+    def surplus(self) -> Fraction:
         """The uniform per-leg gain the set can bear, compounded over its
         legs: (1 + t)^k - 1 for the largest t with potentials — which for a
         simple cycle is exactly the product of rates minus one, the P0
-        figure. Negative (below -1e-9) when infeasible."""
+        figure. Exact for a cycle; for a general set found by bisection in
+        exact arithmetic to 2^-40 of the gain, so every replica lands on the
+        same rational (U6). -1 when infeasible."""
         loop = self.as_loop()
         if loop is not None:
             return loop.surplus
         if self.potentials() is None:
-            return -1.0
-        lo, hi = 0.0, 1.0
-        while self.potentials(1.0 + hi) is not None and hi < 1e6:
+            return Fraction(-1)
+        lo, hi = Fraction(0), Fraction(1)
+        while self.potentials(1 + hi) is not None and hi < 10 ** 6:
             hi *= 2
-        for _ in range(60):
+        for _ in range(40):
             mid = (lo + hi) / 2
-            if self.potentials(1.0 + mid) is not None:
+            if self.potentials(1 + mid) is not None:
                 lo = mid
             else:
                 hi = mid
-        return (1.0 + lo) ** len(self.legs) - 1.0
+        return (1 + lo) ** len(self.legs) - 1
 
     @property
     def per_node_ok(self) -> bool:
         """Each maker's wants, priced on its own scale, cover its gives —
         `Loop.per_node_ok` over any shape (one want and one give each in a
-        simple cycle)."""
-        wants: dict[str, float] = {}
-        gives: dict[str, float] = {}
+        simple cycle): the lots paid against the values owed."""
+        wants: dict[str, Fraction] = {}
+        gives: dict[str, Fraction] = {}
         for leg in self.legs:
-            wants[leg.head] = wants.get(leg.head, 0.0) + leg.want.unit_price
-            for g in leg.gives:
-                gives[g.maker] = gives.get(g.maker, 0.0) + g.unit_price
-        return all(wants.get(m, 0.0) >= gives[m] - 1e-12 for m in gives)
+            wants[leg.head] = wants.get(leg.head, Fraction(0)) + leg.want.amount
+            for i, g in enumerate(leg.gives):
+                gives[g.maker] = gives.get(g.maker, Fraction(0)) + leg.value_given(i)
+        return all(wants.get(m, Fraction(0)) >= gives[m] for m in gives)
 
     @property
     def all_divisible(self) -> bool:
-        return all(leg.want.thing.divisible and all(g.thing.divisible for g in leg.gives)
+        return all(all(p.divisible for p in leg.want.parts)
+                   and all(g.thing.divisible for g in leg.gives)
                    for leg in self.legs)
 
     @property
@@ -406,7 +415,7 @@ def _search(pool: list[Leg], min_surplus: float, max_legs: int,
             return None
         if heads == tails:
             circ = Circulation(tuple(chosen))
-            return circ if circ.surplus >= min_surplus - 1e-12 else None
+            return circ if circ.surplus >= min_surplus else None
         if len(chosen) >= max_legs:
             return None
         gave_not_received = sorted(tails - heads)

@@ -40,11 +40,12 @@ price — the number whose product around a cycle decides profitability.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
 from itertools import product
 from typing import Iterable, Iterator
 
 from .ontology import Ontology
-from .schema import GIVE, WANT, Offer
+from .schema import GIVE, WANT, Offer, Thing, q
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,8 +54,8 @@ class Match:
     want: Offer   # the offer receiving it
 
     @property
-    def rate(self) -> float:
-        """(the wanter's quoted price) / (the giver's quoted price)."""
+    def rate(self) -> Fraction:
+        """(the wanter's quoted price) / (the giver's quoted price), exact (U9)."""
         return self.want.unit_price / self.give.unit_price
 
     @property
@@ -66,8 +67,8 @@ class Match:
         return self.want.maker
 
     @property
-    def qty(self) -> float:
-        return self.want.thing.qty
+    def qty(self) -> Fraction:
+        return q(self.want.thing.qty)
 
     # order-book synonyms
     @property
@@ -85,10 +86,12 @@ def _major_skew(a: str, b: str) -> bool:
 
 
 def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
-           quantity: bool = True) -> bool:
+           quantity: bool = True, thing: Thing | None = None) -> bool:
     """Everything `check_match` decides before meaning: kinds and makers,
     the record line, validity, the v1/v2 fields, quantity and unit (skipped
-    for an operator give, which moves a lot rather than being one), pins."""
+    for an operator give, which moves a lot rather than being one), pins.
+    `thing` is the wanted thing when the want has parts (one gate per
+    part); the want's one thing otherwise."""
     if give.kind != GIVE or want.kind != WANT or give.maker == want.maker:
         return False
     if (give.v >= 3) != (want.v >= 3):
@@ -100,9 +103,12 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
             return False
         if not give.where.intersects(want.where):
             return False
-    g, w = give.thing, want.thing
+    g = give.thing
+    w = thing if thing is not None else (None if want.composed else want.thing)
+    if w is None:
+        return False                    # a composed want is met part by part
     if quantity:
-        if w.qty > g.qty or (not g.divisible and w.qty != g.qty):
+        if not g.takes(w.qty):          # within, above the floor, on the step
             return False
         if g.unit != w.unit:
             return False
@@ -131,8 +137,9 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
 
 def check_match(give: Offer, want: Offer, ontology: Ontology, *,
                 now: int) -> Match | None:
-    """The exact pairwise check; returns a Match or None."""
-    if not _gates(give, want, ontology, now=now):
+    """The exact pairwise check; returns a Match or None. A composed
+    want is never met by one give: `check_parts`."""
+    if want.composed or not _gates(give, want, ontology, now=now):
         return None
     if not ontology.satisfies(give.thing.concepts, want.thing.concepts):
         return None
@@ -153,6 +160,27 @@ class Leg:
     @classmethod
     def from_match(cls, m: Match) -> "Leg":
         return cls(m.want, (m.give,))
+
+    @property
+    def parts(self) -> bool:
+        """A leg of a composed want: give i serves part i."""
+        return self.want.composed
+
+    def taken(self, i: int) -> Fraction:
+        """The quantity this leg takes from give `i`: a part's quantity
+        for a composed want, the want's quantity for the thing of a simple
+        or operator-composed leg, the whole run for an operator (it moves a
+        lot rather than being one). What the fill records."""
+        if self.parts:
+            return q(self.want.parts[i].qty)
+        if i == 0:
+            return q(self.want.thing.qty)
+        return q(self.gives[i].thing.qty)
+
+    def value_given(self, i: int) -> Fraction:
+        """What give `i` is owed on its maker's scale: its unit price
+        times the quantity taken."""
+        return self.gives[i].unit_price * self.taken(i)
 
     @property
     def head(self) -> str:
@@ -220,6 +248,52 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
     return Leg(want, gives)
 
 
+def check_parts(want: Offer, gives: Iterable[Offer], ontology: Ontology,
+                *, now: int) -> Leg | None:
+    """The exact check of a composed want's leg (v4, `P2-loop-selection.md`
+    §10's declared form): give `i` serves part `i` — the gates against
+    that part (quantity on the give's step and floor, units, pins) and
+    the containment `satisfies` — every give distinct, all or nothing.
+    Clearing re-runs this (U3)."""
+    gives = tuple(gives)
+    if not want.composed or len(gives) != len(want.parts):
+        return None
+    if len({g.offer_id for g in gives}) != len(gives):
+        return None
+    for g, part in zip(gives, want.parts):
+        if not _gates(g, want, ontology, now=now, thing=part):
+            return None
+        if not ontology.satisfies(g.thing.concepts, part.concepts):
+            return None
+    return Leg(want, gives)
+
+
+def parts_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,
+               limit: int = 64) -> Iterator[Leg]:
+    """Baseline search for composed wants: per part the gives that serve
+    it, then every combination of distinct gives (at most `limit` per
+    want, deterministic order) checked exactly."""
+    from itertools import product as _product
+    offers = list(offers)
+    gives = sorted((o for o in offers if o.kind == GIVE), key=lambda o: o.offer_id)
+    for w in sorted((o for o in offers if o.kind == WANT and o.composed),
+                    key=lambda o: o.offer_id):
+        per_part = [[g for g in gives
+                     if _gates(g, w, ontology, now=now, thing=part)
+                     and ontology.satisfies(g.thing.concepts, part.concepts)]
+                    for part in w.parts]
+        found = 0
+        for combo in _product(*per_part):
+            if len({g.offer_id for g in combo}) != len(combo):
+                continue
+            leg = check_parts(w, combo, ontology, now=now)
+            if leg is not None:
+                yield leg
+                found += 1
+                if found >= limit:
+                    break
+
+
 def composed_legs(offers: Iterable[Offer], ontology: Ontology, *,
                   now: int, max_hops: int = 2) -> Iterator[Leg]:
     """Baseline composition search: every want × every thing-give that does
@@ -238,7 +312,8 @@ def composed_legs(offers: Iterable[Offer], ontology: Ontology, *,
     from itertools import permutations
     offers = list(offers)
     gives = sorted((o for o in offers if o.kind == GIVE), key=lambda o: o.offer_id)
-    wants = sorted((o for o in offers if o.kind == WANT), key=lambda o: o.offer_id)
+    wants = sorted((o for o in offers if o.kind == WANT and not o.composed),
+                   key=lambda o: o.offer_id)
     ops = [g for g in gives
            if any(ontology.operator_of(c) for c in g.thing.concepts)
            and ontology.ends(g.thing.concepts)]
@@ -272,7 +347,7 @@ def candidate_matches(offers: Iterable[Offer], ontology: Ontology, *,
     check.
     """
     gives = [o for o in offers if o.kind == GIVE]
-    wants = [o for o in offers if o.kind == WANT]
+    wants = [o for o in offers if o.kind == WANT and not o.composed]
     for g, w in product(gives, wants):
         m = check_match(g, w, ontology, now=now)
         if m is not None:

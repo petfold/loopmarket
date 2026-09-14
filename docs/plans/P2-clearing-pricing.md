@@ -286,8 +286,13 @@ total). The migration (decided 2026-08, lands with P2):
   the quantities recorded are the *cleared* ones, which presuppose the
   pricing rule this document proposes (discussion agenda #9), and the
   rational representation waits on the unit-family design (see
-  `ontodag-coupling.md`'s dated note). They ride the v3 bump with U9,
-  before P2. Cleared *prices* follow
+  `ontodag-coupling.md`'s dated note). ~~They ride the v3 bump with U9,
+  before P2.~~ **v3 shipped 2026-09-12 as the spacetime record; U9 and the
+  per-fill quantities ride v4, decided 2026-09-14 (Peter) together with
+  want parts, `step` and the give-side floor — a loop record version
+  field too, so the later receipt record reads cleanly. Built the same day:
+`schema.q`/`rat`, exact rates, potentials and surplus, fills with
+`qty` — U9 entered CLAUDE.md.** Cleared *prices* follow
   `P4-privacy.md` §5's format-freeze ruling: the per-leg price vector goes
   into private per-participant receipt envelopes, never public fill
   records; the public beat record carries per-directed-pair aggregates —

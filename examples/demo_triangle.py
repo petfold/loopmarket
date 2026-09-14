@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
+    q,
     MockClearing, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
@@ -113,13 +114,13 @@ for r in receipts:
     print(f"loop {r.loop_id[:16]}… -> {status}")
     if r.accepted:
         loop_rec = registry.store.get(f"loop/{r.loop_id}")
-        print(f"  surplus: {100 * loop_rec['surplus']:.2f}%")
+        print(f"  surplus: {100 * float(q(loop_rec['surplus'])):.2f}%")
         for leg in loop_rec["legs"]:
             a = registry.get(leg["give"])
             b = registry.get(leg["want"])
             print(
                 f"  {a.maker:>6} gives {', '.join(a.thing.concepts):<28}"
-                f" to {b.maker:<6} (rate {leg['rate']:.3f})"
+                f" to {b.maker:<6} (rate {float(q(leg['rate'])):.3f})"
             )
         print(f"  new book root: {r.book_root[:16]}…")
 

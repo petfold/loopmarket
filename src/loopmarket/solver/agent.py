@@ -37,7 +37,7 @@ import time as _time
 from dataclasses import dataclass, field
 
 from ..graph import Circulation, ExchangeGraph, Loop, find_circulations
-from ..matching import Leg, candidate_matches, composed_legs
+from ..matching import Leg, candidate_matches, composed_legs, parts_legs
 from ..ontology import Ontology
 from ..registry import OfferRegistry
 from ..clearing import LoopProposal, Receipt, Clearing
@@ -61,7 +61,8 @@ class SolverAgent:
         circulations). Simple cycles first, by Bellman-Ford; then, when the
         catalogue declares operators and the book composes any leg, the
         circulation hunt over the offers the cycles left (`graph.
-        find_circulations`), simple legs and composed legs together."""
+        find_circulations`), simple legs, operator-composed legs and the
+        legs of composed wants (`parts_legs`, v4) together."""
         now = int(_time.time()) if now is None else now
         root, book = self.registry.snapshot()
         offers = list(book.offers(now=now))
@@ -72,7 +73,8 @@ class SolverAgent:
         )
         used = {oid for loop in loops for oid in loop.offer_ids}
         rest = [o for o in offers if o.offer_id not in used]
-        composed = list(composed_legs(rest, self.ontology, now=now))
+        composed = list(composed_legs(rest, self.ontology, now=now)) \
+            + list(parts_legs(rest, self.ontology, now=now))
         if composed and len(loops) < self.max_loops_per_step:
             legs = composed + [Leg.from_match(m) for m in matches
                                if not ({m.give.offer_id, m.want.offer_id} & used)]
@@ -102,7 +104,7 @@ class SolverAgent:
             receipt = self.clearing.submit(proposal)
             log.info(
                 "loop %s surplus=%.2f%% -> %s%s",
-                loop.loop_id[:12], 100 * loop.surplus,
+                loop.loop_id[:12], 100 * float(loop.surplus),
                 "ACCEPTED" if receipt.accepted else "rejected",
                 "" if receipt.accepted else f" ({receipt.reason})",
             )

@@ -592,7 +592,16 @@ name the unnamed.
   the third loopmarket-only convention, want side only; it reserves a
   token, not a word, so no category is shadowed.
 
-**Until the v4 record.** Everything above is built (2026-09-12, evening)
+**Built on the v4 record, 2026-09-14** (decided the same day: parts,
+per-fill quantities, `step`, the give-side floor and U9's rationals in one
+bump): `offer` on a composed draft and the one-line `+` form publish one
+v4 want of `Parts`, the same block, question and id as a simple want, the
+draft consumed; `show` and `offers` render the parts; a trailing
+`valid(...)` is the composed want's one validity, which is how `line_for`
+round-trips. Still refused at publish: bands on a want, and the give-side
+floor spelling `10kg..` (encodable in the API as `Thing(min=...)`, its CLI
+spelling and one for `step` are the next grammar step). The paragraph
+below is the pre-v4 state. Everything above is built (2026-09-12, evening)
 except the last step for a *composed* want: `offer` on a composed draft
 and the one-line form resolve every part, render the composed block —
 one part block each, one price, the notes — and then **refuse** with

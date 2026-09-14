@@ -363,6 +363,13 @@ plain cycle; the reason to prefer composition (unconditional offers)
 stands. `examples/delivery.loop`,
 `tests/test_circulation.py`, `tests/test_handover.py`.
 
+**Declared parts built 2026-09-14** on the v4 record: `schema.Parts`,
+`matching.check_parts`/`parts_legs`, fills naming each part's give with
+the quantity taken, the CLI publishing `+` lines; the give floor as
+`Thing.min` and the granularity as `Thing.step`, U9's rationals
+throughout (`tests/test_v4_record.py`). Open: partial fills of divisible
+gives (the stepped clearing regime), aggregation by quantity.
+
 **Shape.** The result is not a cycle and does not decompose into cycles:
 the buyer has one inflow (the composed thing) and k outflows (the split
 payment), or k inflows and one outflow if you count the gives. It is a
@@ -682,8 +689,10 @@ rule is decided, the residual gap unquantified. Work package:
 `P2-clearing-pricing.md`; named here because compression is this
 document's mechanism.
 
-**Integer granularity of a give — DECISION REQUIRED before the v4 record
-bump** (raised 2026-09-10). (This bump was called "v3" until 2026-09-12, when v3
+**Integer granularity of a give — DECIDED 2026-09-14 (Peter): option 1,
+`step` replaces the boolean, riding v4 with U9's rationals; the clearing
+regime for stepped legs ((a) vs (b)) stays open until clearing fills
+partially — today it fills whole offers.** (Raised 2026-09-10.) (This bump was called "v3" until 2026-09-12, when v3
 shipped as the spacetime record, `P1-spacetime-terms.md`; the parts,
 per-fill-quantity and rationals record is v4.) `Thing.divisible` is a boolean: off means
 all-or-nothing, on means continuously divisible, and nothing in between

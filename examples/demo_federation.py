@@ -35,6 +35,7 @@ from datetime import datetime, timezone
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
+    q,
     Aggregator, MockClearing, OfferRegistry, Ontology,
     SolverAgent, Thing, TimeWindow, audit_manifest, give, want,
 )
@@ -331,11 +332,11 @@ agent = SolverAgent(clearing, catalogue, MockClearing(clearing, catalogue),
                     solver_id="demo-solver")
 receipts = [r for r in agent.step(now=now) if r.accepted]
 loop_rec = clearing.store.get(f"loop/{receipts[0].loop_id}")
-print(f"the solver cleared 1 loop, surplus {100 * loop_rec['surplus']:.2f}%:")
+print(f"the solver cleared 1 loop, surplus {100 * float(q(loop_rec['surplus'])):.2f}%:")
 for leg in loop_rec["legs"]:
     giver = name_of.get(clearing.get(leg["give"]).maker, "?")
     taker = name_of.get(clearing.get(leg["want"]).maker, "?")
-    print(f"   {giver:>7} → {taker:<7} rate {leg['rate']:.3f}")
+    print(f"   {giver:>7} → {taker:<7} rate {float(q(leg['rate'])):.3f}")
 
 # --- both aggregators fold clearing back in; a follower reads it all --------
 

@@ -63,7 +63,7 @@ from .graph import Circulation, Loop
 from .matching import candidate_matches
 from .ontology import Ontology
 from .registry import OfferRegistry
-from .schema import GIVE, WANT, Offer, Thing, TimeWindow, give, want
+from .schema import GIVE, WANT, Offer, Parts, Thing, TimeWindow, give, q, want
 from .solver.agent import SolverAgent
 from .spacetime import cell_for_coords
 
@@ -653,14 +653,15 @@ _BAND_RE = re.compile(
 _PRICE_RE = re.compile(r"^\d+(?:\.\d+)?$")
 
 
-def _number(text: str) -> int | float:
-    """A whole number stays an int: canonical JSON distinguishes `100` from
-    `100.0`, and the API demos write ints — `give apple 100` must produce
-    the same record bytes as `give(..., 100)` (gate G1, U2)."""
-    return float(text) if "." in text else int(text)
+def _number(text: str):
+    """A typed number, exact (U9): a whole number an int, a decimal the
+    rational it spells (`10.5` → 21/2), so `give apple 100` and
+    `give(..., 100)` — or `10.5` and `give(..., 10.5)` — produce the same
+    v4 record bytes (gate G1, U2)."""
+    return int(text) if "." not in text else Fraction(text)
 
 Parsed = namedtuple("Parsed", "qty unit divisible band concepts heads price")
-Composed = namedtuple("Composed", "parts price")
+Composed = namedtuple("Composed", "parts price valid", defaults=(None,))
 
 #: The part separator of a composed want (cli.md §13, confirmed by Peter
 #: 2026-09-12): the third loopmarket-only convention, want side only. A
@@ -680,6 +681,12 @@ def parse_want_line(tokens: list[str]) -> "Parsed | Composed":
     price = None
     if toks and _PRICE_RE.match(toks[-1]):
         price = _number(toks.pop())
+    # the composed want's one validity: a trailing `valid(...)`, after the
+    # last part and before the price — where `line_for` writes it; inside a
+    # part it is refused (a part has no validity of its own)
+    valid = None
+    if toks and toks[-1].startswith("valid(") and toks[-1].endswith(")"):
+        valid = toks.pop()[len("valid("):-1]
     parts, current = [], []
     for tok in toks + [PART_SEP]:
         if tok == PART_SEP:
@@ -691,7 +698,7 @@ def parse_want_line(tokens: list[str]) -> "Parsed | Composed":
             current = []
         else:
             current.append(tok)
-    return Composed(tuple(parts), price)
+    return Composed(tuple(parts), price, valid)
 
 
 def parse_part_tokens(tokens: list[str]) -> Parsed:
@@ -996,8 +1003,24 @@ def _bare_key(concepts) -> tuple[str, ...]:
     return tuple(sorted(c for c in concepts if _dims.split_term(c) is None))
 
 
-def _num(x: float) -> str:
-    return str(int(x)) if float(x).is_integer() else repr(float(x))
+def _num(x) -> str:
+    """A number for people: an integer as such, a rational whose
+    denominator divides a power of ten as the decimal it is, anything
+    else as `n/d` — exact both ways, never a float's approximation."""
+    f = q(x)
+    if f.denominator == 1:
+        return str(f.numerator)
+    d = f.denominator
+    while d % 2 == 0:
+        d //= 2
+    while d % 5 == 0:
+        d //= 5
+    if d == 1:
+        k = 0
+        while (f.denominator * 10 ** k) % 1 or (f.numerator * 10 ** k) % f.denominator:
+            k += 1
+        return f"{f.numerator * 10 ** k // f.denominator / 10 ** k:.{k}f}"
+    return f"{f.numerator}/{f.denominator}"
 
 
 def reading(offer: Offer) -> str:
@@ -1007,13 +1030,25 @@ def reading(offer: Offer) -> str:
 
 
 def reading_for(t: Thing, kind: str) -> str:
-    q = _num(t.qty)
-    if t.unit == "unit":
-        return f"{q}, indivisible" if not t.divisible else f"up to {q}, divisible"
-    if kind == GIVE:
-        return f"up to {q} {t.unit}, divisible"
-    return (f"{q} {t.unit} — the point; a floor (`{q}{t.unit}..`) is not "
-            f"encodable yet")
+    n = _num(t.qty)
+    unit = "" if t.unit == "unit" else f" {t.unit}"
+    step = q(t.step)
+    if kind == WANT and t.unit != "unit":
+        return f"{n}{unit} — the point"   # what is wanted; a give's step decides fills
+    if step == q(t.qty):
+        return f"{n}{unit}, indivisible"
+    granularity = "divisible" if step == 0 else f"in steps of {_num(step)}{unit}"
+    floor = f", at least {_num(t.min)}{unit}" if q(t.min) else ""
+    return f"up to {n}{unit}, {granularity}{floor}"
+
+
+def _concepts(offer: Offer) -> str:
+    """The headline: one thing's concepts; for a composed want the parts'
+    bare categories joined by `+`, their place and time terms following
+    under each part."""
+    if offer.composed:
+        return f" {PART_SEP} ".join(" ".join(_bare_key(p.concepts)) for p in offer.parts)
+    return " ".join(offer.thing.concepts)
 
 
 # --------------------------------------------------------------------------- #
@@ -1021,16 +1056,23 @@ def reading_for(t: Thing, kind: str) -> str:
 # --------------------------------------------------------------------------- #
 
 def render_offer(offer: Offer) -> str:
-    t = offer.thing
     pins = (f"catalogue {offer.ontology_root[:16] or '-'}  "
             f"registry {offer.registry_version or '-'}  "
             f"contract {offer.contract_version or '-'}  v{offer.v}")
-    lines = [
-        f"{offer.kind:<9}{' '.join(t.concepts)}",
-        f"  maker    {offer.maker}",
-        f"  quantity {_num(t.qty)} {t.unit} — {reading(offer)}",
-        f"  price    {_num(offer.tokens.amount)} "
-        f"({_num(offer.unit_price)}/{t.unit}, on {offer.maker}'s scale)",
+    lines = [f"{offer.kind:<9}{_concepts(offer)}", f"  maker    {offer.maker}"]
+    if offer.composed:
+        for i, t in enumerate(offer.parts, 1):
+            lines += [f"  part {i}   {' '.join(t.concepts)}",
+                      f"           quantity {_num(t.qty)} {t.unit} — {reading_for(t, WANT)}"]
+        lines.append(f"  price    {_num(offer.tokens.amount)} (the lot, on "
+                     f"{offer.maker}'s scale; split across the parts at clearing)")
+    else:
+        t = offer.thing
+        lines += [
+            f"  quantity {_num(t.qty)} {t.unit} — {reading(offer)}",
+            f"  price    {_num(offer.tokens.amount)} "
+            f"({_num(offer.unit_price)}/{t.unit}, on {offer.maker}'s scale)"]
+    lines += [
         f"  valid    {_span(offer.valid)}",
         f"           local {_span(offer.valid, _local)}",
         f"  pins     {pins}",
@@ -1058,9 +1100,9 @@ def _state(book: OfferRegistry, offer: Offer, now: int) -> str:
 
 
 def _row(offer: Offer, now: int, book: OfferRegistry) -> list[str]:
-    t = offer.thing
-    return [offer.offer_id[:12], offer.kind, offer.maker,
-            f"{_num(t.qty)} {t.unit}", " ".join(t.concepts),
+    qty = f"{len(offer.parts)} parts" if offer.composed else \
+        f"{_num(offer.thing.qty)} {offer.thing.unit}"
+    return [offer.offer_id[:12], offer.kind, offer.maker, qty, _concepts(offer),
             _num(offer.tokens.amount), _state(book, offer, now)]
 
 
@@ -1238,7 +1280,7 @@ def _last_unit_price(session: Session, maker: str, side: str, concepts,
     for o in session.book.offers(include_filled=True):
         if o.maker != maker or o.kind != side:
             continue
-        if _bare_key(o.thing.concepts) != key:
+        if o.composed or _bare_key(o.thing.concepts) != key:
             continue
         if best is None or o.nonce > best.nonce:
             best = o
@@ -1319,8 +1361,10 @@ def _part_record(part: Part) -> dict:
 
 def _part_from_record(rec: dict) -> Part:
     t = rec["thing"]
-    return Part(Thing(tuple(t["concepts"]), t["qty"], t["unit"], t["divisible"]),
-                list(rec["notes"]), list(rec.get("addresses", [])))
+    thing = Thing(tuple(t["concepts"]), q(t["qty"]), t["unit"],
+                  step=q(t["step"]), min=q(t["min"])) if "step" in t else \
+        Thing(tuple(t["concepts"]), t["qty"], t["unit"], t["divisible"])
+    return Part(thing, list(rec["notes"]), list(rec.get("addresses", [])))
 
 
 def _draft_line(d: dict) -> str:
@@ -1437,60 +1481,29 @@ def cmd_discard(args, session, out):
     return 0
 
 
-def render_composed(maker: str, parts: list[Part], price, valid: TimeWindow,
-                    pins: dict) -> str:
-    """The approval block of a composed want: every part, one price. When
-    the v4 record lands this is what `show` prints for one (gate G4)."""
-    # the headline names the parts by their bare categories; the terms that
-    # place each part in space and time follow under it
-    heads = f" {PART_SEP} ".join(" ".join(_bare_key(p.thing.concepts)) for p in parts)
-    lines = [f"want     {heads}", f"  maker    {maker}"]
-    for i, p in enumerate(parts, 1):
-        t = p.thing
-        lines += [
-            f"  part {i}   {' '.join(t.concepts)}",
-            f"           quantity {_num(t.qty)} {t.unit} — {reading_for(t, WANT)}",
-        ]
-    lines += [
-        f"  price    {_num(price)} (the lot, on {maker}'s scale; split across "
-        f"the parts at clearing)",
-        f"  valid    {_span(valid)}",
-        f"           local {_span(valid, _local)}",
-        f"  pins     catalogue {pins['ontology_root'][:16] or '-'}  "
-        f"registry {pins['registry_version'] or '-'}  "
-        f"contract {pins['contract_version'] or '-'}  v4 (pending)",
-        "  terms    bond 0  oracle countersign  arbitrator -",
-        "  offer_id (none: a composed want is not encodable before the v4 "
-        "record)",
-    ]
-    return "\n".join(lines)
-
-
-_COMPOSE_REFUSAL = (
-    "a composed want is not encodable until the v4 record lets `wants` carry "
-    "parts (docs/plans/cli.md §13, docs/plans/P2-loop-selection.md §10); "
-    "nothing was published")
-
-
-def _offer_composed(session: Session, parts: list[Part], price, out) -> int:
-    """Render the composed want and — until the v4 record — refuse to
-    publish it, the G6 pattern: the grammar is accepted, the encoding is
-    not there yet, and the person sees exactly what would have been said."""
+def _composed_offer(session: Session, parts: list[Part], price,
+                    valid_text: str | None = None) -> tuple[Offer, list[str]]:
+    """The composed want as one v4 offer: `Parts`, one price for the lot,
+    the session's validity and pins (cli.md §13, since 2026-09-14)."""
     if len(parts) < 2:
         raise ValueError("a composed want has at least two parts")
     if price is None:
         raise ValueError("a composed want needs its price, last on the line "
                          "(there is no price memory for a composition)")
-    maker = session.maker
-    valid = validity(_configured("valid"), session.now)
-    print(render_composed(maker, parts, price, valid, session.catalogue.pins),
-          file=out)
-    for i, p in enumerate(parts, 1):
-        for note in p.notes:
-            print(f"  note     part {i}: {note}", file=out)
-    if hasattr(out, "flush"):
-        out.flush()          # the block before the refusal, on any stream pair
-    raise ValueError(_COMPOSE_REFUSAL)
+    valid = validity(valid_text or _configured("valid"), session.now)
+    offer = want(session.maker, Parts(tuple(p.thing for p in parts)), price,
+                 valid=valid, **session.catalogue.pins)
+    notes = [f"part {i}: {note}" for i, p in enumerate(parts, 1) for note in p.notes]
+    return offer, notes
+
+
+def _offer_composed(session: Session, parts: list[Part], price, out,
+                    valid_text: str | None = None) -> int:
+    """Publish a composed want: the same block, question and id as a
+    simple one, every part under the one price."""
+    offer, notes = _composed_offer(session, parts, price, valid_text)
+    addresses = [a for p in parts for a in p.addresses]
+    return _publish_offer(session, offer, notes, False, out, addresses=addresses)
 
 
 def _publish_offer(session: Session, offer: Offer, notes: list[str],
@@ -1541,7 +1554,10 @@ def cmd_offer(args, session, out):
     price = _number(toks[1]) if len(toks) == 2 else d.get("price")
     parts = [_part_from_record(r) for r in d["parts"]]
     if len(parts) > 1:
-        return _offer_composed(session, parts, price, out)
+        code = _offer_composed(session, parts, price, out)
+        if code == 0:
+            _write_drafts([x for x in drafts if x is not d])
+        return code
     offer, notes, reused = _offer_from_part(session, d["side"], parts[0], price,
                                             session.catalogue)
     code = _publish_offer(session, offer, notes, reused, out,
@@ -1568,7 +1584,8 @@ def offer_from_line(line: str, session: "Session | None" = None) -> Offer:
     side = toks.pop(0)
     parsed = parse_want_line(toks) if side == WANT else parse_offer_tokens(toks)
     if isinstance(parsed, Composed):
-        raise ValueError(_COMPOSE_REFUSAL)
+        parts = [_resolve_part(session, p, session.catalogue) for p in parsed.parts]
+        return _composed_offer(session, parts, parsed.price, parsed.valid)[0]
     offer, _notes, _reused = _resolve_offer(session, side, parsed, session.catalogue)
     return offer
 
@@ -1577,10 +1594,10 @@ def line_for(offer: Offer) -> str:
     """The canonical offer line of an `Offer`: everything the maker typed or
     defaulted, in re-parseable spelling; maker, nonce and pins come from
     the session that speaks it."""
-    part = Part(offer.thing, [], [])
+    body = f" {PART_SEP} ".join(part_line(Part(t, [], [])) for t in offer.parts)
     end = "" if offer.valid.end is None else _iso(offer.valid.end)
     valid = f"valid({_iso(offer.valid.start)}..{end})"
-    return f"{offer.kind} {part_line(part)} {valid} {_num(offer.tokens.amount)}"
+    return f"{offer.kind} {body} {valid} {_num(offer.tokens.amount)}"
 
 
 def _publish(args, session: Session, out, side: str) -> int:
@@ -1589,7 +1606,7 @@ def _publish(args, session: Session, out, side: str) -> int:
         if isinstance(parsed, Composed):
             ontology = session.catalogue
             parts = [_resolve_part(session, p, ontology) for p in parsed.parts]
-            return _offer_composed(session, parts, parsed.price, out)
+            return _offer_composed(session, parts, parsed.price, out, parsed.valid)
     else:
         parsed = parse_offer_tokens(args.tokens)
     part = _resolve_part(session, parsed, session.catalogue)
@@ -1836,7 +1853,7 @@ def _watch_pass(session: Session, out) -> bool:
             continue
         loop_id, leg, side = found
         other = fold.get(leg["want"] if side == "give" else leg["give"])
-        thing = " ".join(_bare_key((offer if side == "give" else other).thing.concepts))
+        thing = " ".join(_bare_key(tuple(c for p in (offer if side == "give" else other).parts for c in p.concepts)))
         verb = f"gives {thing} to" if side == "give" else f"receives {thing} from"
         print(f"filled   {oid[:12]} in loop {loop_id[:16]}…: {me} {verb} "
               f"{other.maker}", file=out)
@@ -1889,7 +1906,7 @@ def cmd_offers(args, session, out):
     ontology = session.catalogue if args.categories else None
     for o in fold.offers(now=now):
         if ontology is not None and \
-                not ontology.satisfies(o.thing.concepts, args.categories):
+                not any(ontology.satisfies(p.concepts, args.categories) for p in o.parts):
             continue
         rows.append(_row(o, now, fold))
     rows.sort(key=lambda r: r[0])
@@ -1998,7 +2015,7 @@ def cmd_status(args, session, out):
 
 def _print_loop(loop, fold: OfferRegistry, out, *, prefix="") -> None:
     circ = loop if isinstance(loop, Circulation) else Circulation.from_loop(loop)
-    print(f"{prefix}loop {circ.loop_id[:16]}… surplus {100 * circ.surplus:.2f}%",
+    print(f"{prefix}loop {circ.loop_id[:16]}… surplus {100 * float(circ.surplus):.2f}%",
           file=out)
     for leg in sorted(circ.legs, key=lambda leg: leg.key):
         print("  " + _leg_line(leg.gives, leg.want), file=out)
@@ -2008,8 +2025,8 @@ def _leg_line(gives, want) -> str:
     """`grocer gives vegetable-box shop + courier gives transport ... to buyer`
     — a composed leg names every give it consumes; a simple one its rate."""
     parts = " + ".join(f"{g.maker} gives {' '.join(g.thing.concepts)}" for g in gives)
-    tail = f"(rate {want.unit_price / gives[0].unit_price:.4g})" if len(gives) == 1 \
-        else "(composed)"
+    tail = f"(rate {float(want.unit_price / gives[0].unit_price):.4g})" \
+        if len(gives) == 1 and not want.composed else "(composed)"
     return f"{parts} to {want.maker} {tail}"
 
 
@@ -2048,7 +2065,7 @@ def cmd_clearing(args, session, out):
             cleared += 1
             rec = book.store.get(f"loop/{r.loop_id}")
             print(f"cleared {r.loop_id[:16]}… surplus "
-                  f"{100 * rec['surplus']:.2f}%", file=out)
+                  f"{100 * float(q(rec['surplus'])):.2f}%", file=out)
             for leg in rec["legs"]:
                 gives = [book.get(g) for g in leg.get("gives", [leg["give"]])]
                 print("  " + _leg_line(gives, book.get(leg["want"])), file=out)

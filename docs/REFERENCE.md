@@ -61,18 +61,42 @@ negative radius.
 
 `haversine_m(lat1, lon1, lat2, lon2) -> float` — great-circle metres.
 
-### `Thing(concepts, qty=1.0, unit="unit", divisible=False)`
+### `q(x) -> Fraction` / `rat(x) -> str`
+Exact numbers (invariant U9, the v4 record, 2026-09-14). `q` reads an int
+or `Fraction` as is, a string as the decimal or `n/d` it spells, a float as
+the shortest decimal that prints it (`99.99` is 9999/100); `rat` writes the
+one v4 spelling, `n/d` reduced or `n` alone. Everything clearing
+re-verifies goes through `q`; the solver's `-log` search may still float.
+
+### `Thing(concepts, qty=1, unit="unit", divisible=None, step=None, min=0)`
 Frozen. A conjunction of catalogue category names plus quantity.
 `concepts` is normalized to a sorted, deduplicated tuple (order never
 matters to identity); the spelling of each term is the caller's — the CLI
-stores the catalogue's canonical spelling (`surface.elaborate`). Raises `ValueError` on empty concepts or
-non-positive qty. `divisible` marks partial-fillability; matching
-requires `want.qty == give.qty` unless *both* sides are divisible, and
-always `want.qty <= give.qty` and equal `unit` strings.
+stores the catalogue's canonical spelling (`surface.elaborate`). Numbers
+may be ints, `Fraction`s, floats or spelled strings; a string is read by
+`q` at construction. `step` is the granularity a fill must be a multiple
+of: `0` continuous, the whole `qty` indivisible (the default), `1` whole
+apples out of a thousand, `25` for 25 kg sacks; `divisible` is the v1–v3
+field and a shorthand (`True` is `step=0`, `False` `step=qty`) and is
+derived from `step`. `min` is the give-side floor, the least one fill may
+take (0: none), a multiple of `step`. `.takes(qty)` is the matching rule:
+within `qty`, not below `min`, a positive multiple of `step`. Raises
+`ValueError` on empty concepts, non-positive qty, a step or floor outside
+`[0, qty]`, a floor off the step, or `divisible` disagreeing with `step`.
+`.to_record(v)`: v1–v3 `{"concepts","qty","unit","divisible"}` with the
+numbers as stored; v4 `{"concepts","qty","unit","step","min"}` with `rat`
+strings.
 
-### `Tokens(issuer: str, amount: float)`
-Frozen. An amount on the maker's personal scale. Raises `ValueError`
-unless `amount > 0`.
+### `Parts(parts: tuple[Thing, ...])`
+Frozen. A composed want: at least two things wanted together, all or
+nothing, one price for the lot (`P2-loop-selection.md` §10, `cli.md` §13;
+v4). Want side only. Each part is served by its own give and the fill
+names which.
+
+### `Tokens(issuer: str, amount)`
+Frozen. An amount on the maker's personal scale (int, `Fraction`, float or
+spelled string). Raises `ValueError` unless `amount > 0`. `.to_record(v)`:
+the stored number for v1–v3, a `rat` string for v4.
 
 ### `Offer(...)` — frozen; the one uniform intention
 
@@ -83,14 +107,17 @@ Offer(maker, gives, wants, service, where, valid,
 ```
 
 Validation (`ValueError`): exactly one of `gives`/`wants` is a `Thing`
-and one a `Tokens` whose `issuer == maker` (invariant U1); `bond >= 0`;
-`v in {1, 2}`; v1 records carry no registry/contract pins.
+(or, on the want side of a v4 record, `Parts`) and one a `Tokens` whose
+`issuer == maker` (invariant U1); `bond >= 0`; `v in {1, 2, 3, 4}`; v1
+records carry no registry/contract pins; parts, a `step` other than 0 or
+the whole quantity, and a floor are v4 forms.
 
 | member | meaning |
 |---|---|
 | `.kind` | `"give"` (gives a Thing) or `"want"` (wants one); constants `GIVE`, `WANT` |
-| `.thing` / `.tokens` | the respective side |
-| `.unit_price` | scale units per thing-unit |
+| `.thing` / `.tokens` | the respective side (`.thing` raises for a composed want) |
+| `.composed` / `.parts` | a want of several parts; the things this offer is about — one for a give or a simple want, several for a composed want |
+| `.amount` / `.unit_price` | the price of the lot, exact; scale units per thing-unit, exact (`Fraction`; not for a composed want) |
 | `.to_record()` | dict, **in the offer's native version** (a v1 offer re-encodes as v1 — version is identity, U2) |
 | `Offer.from_record(rec)` | classmethod; dispatches on `rec["v"]`, **raises `ValueError` on unknown versions** |
 | `.canonical_bytes()` | recordstore canonical JSON of `to_record()` |
@@ -100,8 +127,9 @@ and one a `Tokens` whose `issuer == maker` (invariant U1); `bond >= 0`;
 only `oracle` is enforced today (clearing's refusal gate).
 
 ### `give(maker, thing, amount, *, valid, service=None, where=None, **kw) -> Offer`
-### `want(maker, thing, amount, *, valid, service=None, where=None, **kw) -> Offer`
-A v3 record by default; passing `service`/`where` yields the v2 field form.
+### `want(maker, thing_or_parts, amount, *, valid, service=None, where=None, **kw) -> Offer`
+A v4 record by default (`v=3` for the previous one); passing
+`service`/`where` yields the v2 field form.
 Convenience constructors; `**kw` passes through (`nonce=`, pins, etc.).
 Splat `**Ontology.pins` to pin the catalogue.
 
@@ -230,10 +258,21 @@ Exact, self-contained, re-runnable by clearing. Gates, in order:
 ### `candidate_matches(offers, ontology, *, now) -> Iterator[Match]`
 The exact check over the full give × want product. The recall baseline.
 
+### `check_parts(want, gives, ontology, *, now) -> Leg | None`
+The exact check of a composed want's leg (v4): give `i` serves part `i` —
+the gates against that part (quantity on the give's step and floor, units,
+pins) and `satisfies` — every give distinct, all or nothing. Re-run by
+clearing (U3). `parts_legs(offers, ontology, *, now, limit=64)` is the
+baseline search: per part the gives that serve it, every combination of
+distinct gives checked exactly, deterministic order.
+
 ### `Leg(want: Offer, gives: tuple[Offer, ...])` — frozen
 One want met by one or more gives — the hyperedge of `P2-loop-selection.md`
 §10/§11. `Leg.from_match(m)`; `.head` (the buyer), `.tails` (the givers),
-`.offer_ids`, `.simple` (one give), `.key` (`give+give>want`, the sort key).
+`.offer_ids`, `.simple` (one give), `.key` (`give+give>want`, the sort key),
+`.parts` (a composed want's leg), `.taken(i)` (the quantity taken from give
+`i`: the part's, the want's, or an operator's whole run), `.value_given(i)`
+(its unit price times that quantity — what the giver is owed).
 
 ### `check_composition(want, gives, ontology, *, now) -> Leg | None`
 The exact check of a composed leg (2026-09-13): the first give is the
@@ -518,17 +557,39 @@ v2 and v3 offers never match each other (`check_match`):
  "bond": 0.0, "oracle": "countersign", "arbitrator": "", "nonce": 1}
 ```
 
-**Loop** (`LoopProposal.to_record()`):
+**Offer, v4** (2026-09-14): every number a `rat` string; `step` and `min`
+in place of `divisible`; a want may be `{"type": "parts", "parts": [...]}`:
 
 ```json
-{"loop_id": "…", "solver": "demo-solver", "found_at": 1700000000,
- "book_root": "…", "ontology_root": "…", "surplus": 0.1222,
- "nodes": ["amara", "chen", "bruno"],
- "legs": [{"give": "<offer_id>", "want": "<offer_id>", "rate": 0.83}, …]}
+{"v": 4, "maker": "buyer",
+ "gives": {"type": "tokens", "issuer": "buyer", "amount": "60"},
+ "wants": {"type": "parts", "parts": [
+     {"concepts": ["ticket"], "qty": "2", "unit": "unit", "step": "2", "min": "0"},
+     {"concepts": ["transport"], "qty": "1", "unit": "unit", "step": "1", "min": "0"}]},
+ "valid": [1699999999, null],
+ "ontology_root": "…", "registry_version": "4.2", "contract_version": "0.1",
+ "bond": 0.0, "oracle": "countersign", "arbitrator": "", "nonce": 1}
 ```
 
-**Fill**: `{"loop": "<loop_id>"}` — deliberately nothing else (no wall
-clock: equal clearings must produce equal roots on every replica).
+**Loop, record version 1** (`LoopProposal.to_record()`, 2026-09-14):
+legs in sorted `key` order, each naming its want, its gives and the
+quantity `taken` from each; a simple leg's exact `rate`; the node
+`potentials` (the clearing prices, public while offers are plaintext — P4
+§5 item 4; outside `loop_id`, which hashes the legs alone); all numbers
+`rat` strings. Readers of the 2026-08 shape find `give` (the first give).
+
+```json
+{"v": 1, "loop_id": "…", "solver": "loop-cli", "found_at": 1700000000,
+ "book_root": "…", "ontology_root": "…", "surplus": "611/5000",
+ "nodes": ["amara", "bruno", "chen"],
+ "legs": [{"give": "<id>", "gives": ["<id>"], "taken": ["1"], "want": "<id>", "rate": "104/50"}, …],
+ "potentials": {"amara": "1", "bruno": "26/25", "chen": "…"}}
+```
+
+**Fill** (`LoopProposal.fills()`): a give's `{"loop": "<loop_id>", "qty": "<taken>"}`,
+a want's `{"loop": "<loop_id>", "gives": [{"offer": "<id>", "qty": "<taken>"}]}` —
+and nothing else, ever: no wall clock (fill determinism), no prices (P4 §5
+item 4). The 2026-08 fill was `{"loop"}` alone and still reads.
 
 ## 14. Invariants (binding; tests enforce them)
 

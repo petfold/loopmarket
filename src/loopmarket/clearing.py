@@ -26,7 +26,8 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .graph import Circulation, Loop
-from .matching import check_composition, check_match
+from .schema import rat
+from .matching import check_composition, check_match, check_parts
 from .ontology import Ontology
 from .registry import OfferRegistry
 
@@ -45,40 +46,52 @@ class LoopProposal:
             else Circulation.from_loop(self.loop)
 
     def to_record(self) -> dict:
-        """The `loop/` record. Every leg names its want and its gives —
-        `give` is the first (the thing; the only one of a simple leg, kept
-        for readers of the 2026-08 shape) and `gives` all of them, so a
-        fill of a composed want names every give it consumed (§10). A
-        simple leg carries its rate; a composed set carries the node
-        potentials — the clearing prices as the dual of §11."""
+        """The `loop/` record, version 1 (v4 day, 2026-09-14): every leg
+        names its want, its gives and the quantity `taken` from each, in
+        sorted leg order; a simple leg carries its exact rate; the record
+        carries the node potentials — the clearing prices as the dual of
+        §11, public while offers are plaintext (P4 §5 item 4, ruled
+        2026-09-14) and outside `loop_id`, which hashes the legs alone. All
+        numbers are `n/d` strings (U9). `give` is the first give, kept for
+        readers of the 2026-08 shape."""
         circ = self.circulation
         legs = []
         for leg in sorted(circ.legs, key=lambda leg: leg.key):
             rec = {"give": leg.gives[0].offer_id,
                    "gives": [g.offer_id for g in leg.gives],
+                   "taken": [rat(leg.taken(i)) for i in range(len(leg.gives))],
                    "want": leg.want.offer_id}
-            if leg.simple:
-                rec["rate"] = leg.want.unit_price / leg.gives[0].unit_price
+            if leg.simple and not leg.parts:
+                rec["rate"] = rat(leg.want.unit_price / leg.gives[0].unit_price)
             legs.append(rec)
-        record = {
+        return {
+            "v": 1,
             "loop_id": circ.loop_id,
             "solver": self.solver,
             "found_at": self.found_at,
             "book_root": self.book_root,
             "ontology_root": self.ontology_root,
-            "surplus": circ.surplus,
+            "surplus": rat(circ.surplus),
             "nodes": list(circ.nodes),
             "legs": legs,
+            "potentials": {m: rat(e) for m, e in sorted(circ.potentials().items())},
         }
-        loop = circ.as_loop()
-        if loop is not None:          # the P0 shape, byte for byte
-            record["nodes"] = list(loop.nodes)
-            record["legs"] = [
-                {"give": m.give.offer_id, "want": m.want.offer_id, "rate": m.rate}
-                for m in loop.matches]
-        else:
-            record["potentials"] = circ.potentials()
-        return record
+
+    def fills(self) -> dict[str, dict]:
+        """The `fill/` records, one per offer: a give's names the loop and
+        the quantity taken; a want's names the loop and every give that
+        served it with its quantity — nothing else, ever (P4 §5 item 4: no
+        prices in fills)."""
+        circ = self.circulation
+        out: dict[str, dict] = {}
+        for leg in circ.legs:
+            out[leg.want.offer_id] = {
+                "loop": circ.loop_id,
+                "gives": [{"offer": g.offer_id, "qty": rat(leg.taken(i))}
+                          for i, g in enumerate(leg.gives)]}
+            for i, g in enumerate(leg.gives):
+                out[g.offer_id] = {"loop": circ.loop_id, "qty": rat(leg.taken(i))}
+        return out
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,9 +169,12 @@ class MockClearing:
         for leg in loop.legs:
             fresh_want = self.registry.get(leg.want.offer_id)
             fresh_gives = [self.registry.get(g.offer_id) for g in leg.gives]
-            ok = check_match(fresh_gives[0], fresh_want, self.ontology, now=now) \
-                if leg.simple else \
-                check_composition(fresh_want, fresh_gives, self.ontology, now=now)
+            if fresh_want.composed:
+                ok = check_parts(fresh_want, fresh_gives, self.ontology, now=now)
+            elif leg.simple:
+                ok = check_match(fresh_gives[0], fresh_want, self.ontology, now=now)
+            else:
+                ok = check_composition(fresh_want, fresh_gives, self.ontology, now=now)
             if ok is None:
                 return reject(
                     f"leg fails re-verification: "
@@ -170,13 +186,13 @@ class MockClearing:
         #    with the required uniform gain, and the indivisible gate
         if not loop.feasible:
             return reject("no node potentials: the legs do not balance")
-        if loop.surplus < self.min_surplus - 1e-12:
-            return reject(f"surplus {loop.surplus:.4f} below minimum")
+        if loop.surplus < self.min_surplus:
+            return reject(f"surplus {float(loop.surplus):.4f} below minimum")
         if self.require_per_node and not loop.all_divisible \
                 and not loop.per_node_ok:
             return reject("indivisible legs without per-node surplus")
 
         # 4. atomic commitment: all fills land under one new root, or none
-        self.registry.mark_filled(loop.offer_ids, lid, proposal.to_record())
+        self.registry.mark_filled(proposal.fills(), lid, proposal.to_record())
         root = self.registry.commit()
         return Receipt(True, lid, book_root=root)

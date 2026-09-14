@@ -11,6 +11,28 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **The v4 record** (decided with Peter and built 2026-09-14; the plans'
+  four items in one bump). Exact rationals on the clearing path — U9
+  enters the invariants: `schema.q`/`rat`, `Fraction` rates, potentials
+  and surplus, no epsilon in any gate, floats only in the `-log` search;
+  a typed float is the decimal it prints as. `step` and `min` on a
+  `Thing` in place of `divisible` (0 continuous, the whole quantity
+  indivisible, 1 whole apples, 25 sacks; the floor is the chartered bus;
+  `Thing.takes(qty)` the one rule, identical to the old one on old
+  records). A want of `Parts` — several things, all or nothing, one price
+  — publishes: `check_parts`, `parts_legs`, the CLI's `+` line and
+  composed drafts now publish (the `not encodable until v4` refusal is
+  gone), `show`/`offers` render parts, `line_for` round-trips with a
+  trailing `valid(...)`. Fills name every give with the quantity taken
+  (`LoopProposal.fills`; a want's fill lists `gives` with `qty`) and
+  nothing else — no prices, per P4 §5 item 4, ruled conditional the same
+  day (receipts arrive with sealed offers). The `loop/` record carries
+  `"v": 1`, `taken` per give, exact numbers and the potentials (public
+  for now, outside `loop_id`). v1–v3 records re-encode byte for byte;
+  the 2026-08 fill shape still reads. Not yet: a CLI spelling for `step`
+  and for the give floor (`10kg..` is still refused at publish), partial
+  fills of divisible gives, and the stepped clearing regime.
+  `tests/test_v4_record.py`.
 - **The registry is deployed**: `LoopBookRegistry` at `0xD4379E494a488411D964BebDb210C0bf628d97af` on Gnosis
   (2026-09-14). `loop set registry chain:https://rpc.gnosischain.com@0xD4379E494a488411D964BebDb210C0bf628d97af`;
   `loop announce` from a `bee_signer` key sends the transaction as that
