@@ -9,6 +9,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Added
+
+- **The quantity token carries the floor and the step**: `[MIN..]QTY[UNIT][:STEP]`
+  — `50kg..100kg:25 flour` is a hundred kilos in 25 kg sacks, fifty at
+  least; `1000:1 apple` a thousand by the piece (cli.md §6). Rendered back
+  the same way; a floor or ceiling alone names no quantity and is refused
+  with the encodable spelling named; a want refuses a floor or a step,
+  since the give's decide a fill.
+
 ## [0.8.0] — 2026-09-14
 
 The v4 record — exact rationals (U9), `step` and `min` in place of

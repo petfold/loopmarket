@@ -272,16 +272,44 @@ def test_g5_interpreted_head_declared_as_dimension_fires(env, tmp_path,
     assert code == 1 and "declares `valid` as a dimension" in err
 
 
-# ---------------------------------------------------------------- G6: bands refuse
+# ---------------------------------------------------------------- G6: quantities, floors, steps
 
-@pytest.mark.parametrize("spelling", ["9kg..11kg", "10kg..", "..11kg"])
-def test_g6_band_spellings_parse_and_refuse_with_the_point_named(loop, spelling):
+@pytest.mark.parametrize("spelling", ["10kg..", "..11kg"])
+def test_g6_a_floor_or_ceiling_alone_names_no_quantity(loop, spelling):
     parsed = cli.parse_offer_tokens([spelling, "apple", "5"])
     assert parsed.band == spelling
     code, out, err = loop("give", spelling, "apple", "home", "5")
-    assert code == 1
-    assert "not encodable" in err and "declare in the direction you know" in err
-    assert "`" in err  # the point fallback is named
+    assert code == 1 and "names no quantity" in err and "`" in err
+
+
+def test_the_quantity_token_carries_floor_and_step(loop):
+    """`[MIN..]QTY[UNIT][:STEP]` (v4, 2026-09-14): the give-side floor before
+    `..`, the step after `:`; rendered back the same way; a want names the
+    point and refuses both."""
+    p = cli.parse_offer_tokens(["50kg..100kg:25", "flour", "90"])
+    assert (p.qty, p.unit, p.min, p.step, p.band) == (100, "kg", 50, 25, None)
+    p = cli.parse_offer_tokens(["1000:1", "apple", "500"])
+    assert (p.qty, p.unit, p.min, p.step, p.divisible) == (1000, "unit", 0, 1, True)
+    assert cli.parse_offer_tokens(["10kg", "apple", "5"]).step == 0
+    assert cli.parse_offer_tokens(["3", "apple", "5"]).step is None      # indivisible
+    out = loop.ok("give", "50kg..100kg:25", "apple", "home", "90")
+    assert "quantity 100 kg — up to 100 kg, in steps of 25 kg, at least 50 kg" in out
+    out = loop.ok("give", "1000:1", "apple", "home", "500")
+    assert "quantity 1000 unit — up to 1000, in steps of 1" in out
+    out = loop.ok("give", "9kg..11kg", "apple", "home", "5")
+    assert "up to 11 kg, divisible, at least 9 kg" in out
+    o = cli.offer_from_line("give 50kg..100kg:25 apple home 90", loop.session)
+    assert (o.thing.qty, o.thing.min, o.thing.step) == (100, 50, 25)
+    line = cli.line_for(o)
+    assert line.startswith("give 50kg..100kg:25 apple geo(")
+    assert cli.offer_from_line(line, loop.session).thing == o.thing
+    assert cli.line_for(cli.offer_from_line("give 1000:1 apple home 5", loop.session)).startswith("give 1000:1 apple")
+    assert cli.line_for(cli.offer_from_line("give 3 apple home 5", loop.session)).startswith("give 3 apple")
+    assert cli.line_for(cli.offer_from_line("give 10kg apple home 5", loop.session)).startswith("give 10kg apple")
+    for bad in (("want", "50kg..100kg", "apple", "home", "5"), ("want", "10:1", "apple", "home", "5")):
+        code, out, err = loop(*bad)
+        assert code == 1 and "a floor or a step is the give's" in err
+    assert "the point" in loop.ok("want", "10kg", "apple", "home", "5")
 
 
 def test_g6_dimension_terms_refuse_until_quantities_are_terms(env, tmp_path,

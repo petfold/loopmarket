@@ -300,11 +300,17 @@ CLI and by anything above it):
 | `3` on `bicycle` | give | 3, indivisible | yes; 2 of 3 is not a partial fill |
 | `10kg` on a good | want | at least 10 kg | **no** — encoded as the point 10 kg, printed as such |
 | `10kg` on a capacity service | give | up to 10 kg | as divisible capacity |
-| `9kg..11kg`, `10kg..`, `..11kg` | any | band / floor / ceiling | **no** |
-| `10kg..` on a give | give | minimum order quantity — the give-side *floor* (§13, decided 2026-09-12: a flow lower bound, never give-side parts) | **no** |
+| `50kg..100kg` on a give | give | up to 100 kg, divisible, at least 50 kg — the give-side *floor* (§13, decided 2026-09-12: a flow lower bound, never give-side parts) | **yes** since v4 (2026-09-14): `Thing.min` |
+| `1000:1`, `100kg:25` on a give | give | a thousand by the piece; 25 kg sacks — the *step* a fill is a multiple of | **yes** since v4: `Thing.step` (0 continuous, the quantity indivisible) |
+| `10kg..`, `..11kg` | any | a floor or ceiling alone | **no** — names no quantity; refused with the encodable spelling named |
+| `9kg..11kg`, `10:1` on a want | want | a floor or step on a want | **no** — the give's `step`/`min` decide a fill; a want's floor is a partial-fill matter (P2) |
 
-The band spellings are accepted (they are the grammar) and **refused at
-publish time** with the point spelling named as the fallback, until
+**The quantity token is `[MIN..]QTY[UNIT][:STEP]` since v4** (2026-09-14):
+the give-side floor before `..`, the step after `:` — the colon because `/`
+is ontodag's rational (`1/2kg`) and `x` its tuple. `part_line` renders it
+back the same way, so lines round-trip. The remaining band spellings are
+accepted (they are the grammar) and **refused at
+publish time** with the encodable spelling named, until
 `ontodag-coupling.md` §3 makes quantities unit-family terms — at which
 point quantity overlap is the same overlap-shaped gate as time windows,
 with the cleared amount a point in the intersection chosen by clearing

@@ -646,10 +646,16 @@ class Session:
 # Parsing an offer line: ontodag's grammar plus the two conventions
 # --------------------------------------------------------------------------- #
 
-_QTY_RE = re.compile(r"^(\d+(?:\.\d+)?)([A-Za-z][A-Za-z0-9]*)?$")
+#: The quantity token (cli.md §6, v4 since 2026-09-14): `[MIN..]QTY[UNIT][:STEP]`.
+#: `10kg` — up to 10 kg, divisible; `3` — three, indivisible; `1000:1` — a
+#: thousand by the piece; `50kg..100kg:25` — a hundred kilos in 25 kg sacks,
+#: fifty at least (the give-side floor). The colon is the one new symbol:
+#: `/` is ontodag's rational (`1/2kg` is half a kilo), `x` its tuple.
+_NUM = r"\d+(?:\.\d+)?"
+_QTY_RE = re.compile(rf"^({_NUM})([A-Za-z][A-Za-z0-9]*)?(?::({_NUM}))?$")
 _BAND_RE = re.compile(
-    r"^(\d+(?:\.\d+)?(?:[A-Za-z][A-Za-z0-9]*)?)?\.\."
-    r"(\d+(?:\.\d+)?(?:[A-Za-z][A-Za-z0-9]*)?)?$")
+    rf"^({_NUM}(?:[A-Za-z][A-Za-z0-9]*)?)?\.\."
+    rf"({_NUM}(?:[A-Za-z][A-Za-z0-9]*)?)?(?::({_NUM}))?$")
 _PRICE_RE = re.compile(r"^\d+(?:\.\d+)?$")
 
 
@@ -660,7 +666,8 @@ def _number(text: str):
     v4 record bytes (gate G1, U2)."""
     return int(text) if "." not in text else Fraction(text)
 
-Parsed = namedtuple("Parsed", "qty unit divisible band concepts heads price")
+Parsed = namedtuple("Parsed", "qty unit divisible band concepts heads price step min",
+                    defaults=(None, 0))
 Composed = namedtuple("Composed", "parts price valid", defaults=(None,))
 
 #: The part separator of a composed want (cli.md §13, confirmed by Peter
@@ -751,14 +758,25 @@ def parse_offer_tokens(tokens: list[str]) -> Parsed:
             f"`{PART_SEP}` composes parts of a *want* only (docs/plans/cli.md "
             f"§13): a give of several things that go together is one give of "
             f"one thing — the kit is a category")
-    qty, unit, divisible, band = None, "unit", False, None
+    qty, unit, divisible, band, step, floor = None, "unit", False, None, None, 0
     m = _QTY_RE.match(toks[0])
-    if _BAND_RE.match(toks[0]) and toks[0] != "..":
+    b = _BAND_RE.match(toks[0])
+    if b and toks[0] != "..":
         band = toks.pop(0)
+        low, high, s = b.groups()
+        if low and high:                 # `MIN..QTY[UNIT][:STEP]`: a floor and a quantity
+            hm, lm = _QTY_RE.match(high), _QTY_RE.match(low)
+            if hm and lm and (lm.group(2) or "unit") == (hm.group(2) or "unit"):
+                qty, unit = _number(hm.group(1)), hm.group(2) or "unit"
+                floor = _number(lm.group(1))
+                step = _number(s) if s else (0 if hm.group(2) else None)
+                divisible = q(step if step is not None else qty) != q(qty)
+                band = None
     elif m:
         qty = _number(m.group(1))
         unit = m.group(2) or "unit"
-        divisible = bool(m.group(2))
+        step = _number(m.group(3)) if m.group(3) else (0 if m.group(2) else None)
+        divisible = q(step if step is not None else qty) != q(qty)
         toks.pop(0)
     price = None
     if len(toks) > 1 and _PRICE_RE.match(toks[-1]):
@@ -780,7 +798,7 @@ def parse_offer_tokens(tokens: list[str]) -> Parsed:
             heads[split[0]] = split[1]
         else:
             concepts.append(tok)
-    return Parsed(qty, unit, divisible, band, tuple(concepts), heads, price)
+    return Parsed(qty, unit, divisible, band, tuple(concepts), heads, price, step, floor)
 
 
 # Dimension kinds whose values are offer *fields* today: quantities live in
@@ -1164,7 +1182,8 @@ def _default_terms(session: "Session", parsed: Parsed) -> list[str]:
             if _term_class(session, term) not in named]
 
 
-def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology) -> Part:
+def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology,
+                  side: str = WANT) -> Part:
     """The thing — every default and shorthand expanded, every name resolved
     to its value — plus the notes that carry the surface spellings. Shared
     by a simple offer, a draft and each part of a composed want. Refusals
@@ -1172,12 +1191,17 @@ def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology) -> Part:
     now = session.now
     notes: list[str] = []
     if parsed.band:
-        point = parsed.band.replace("..", "").strip() or "10kg"
+        point = parsed.band.split("..")[-1].split(":")[0] or parsed.band.split("..")[0] or "10kg"
         raise ValueError(
-            f"{parsed.band}: bands, floors and ceilings are the grammar but "
-            f"not encodable until quantities become catalogue terms "
-            f"(docs/plans/ontodag-coupling.md §3). Encodable today: the point "
-            f"`{point}` — declare in the direction you know")
+            f"{parsed.band}: a floor alone or a ceiling alone names no quantity "
+            f"— a give says how much and, before `..`, the least one fill may "
+            f"take (`50kg..100kg`, cli.md §6); a want names the point "
+            f"(`{point}`), its floor being a partial-fill matter (P2)")
+    if side == WANT and (parsed.min or (parsed.step is not None and parsed.qty is not None
+                                        and q(parsed.step) not in (0, q(parsed.qty)))):
+        raise ValueError(
+            f"a floor or a step is the give's: a want names what it wants "
+            f"(the give's `step` and `min` decide the fill, cli.md §6)")
     defaults = _default_terms(session, parsed)
     for term in defaults:
         notes.append(f"default {term}")
@@ -1193,9 +1217,11 @@ def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology) -> Part:
     # An omitted quantity is the schema's own default, not a typed `1`:
     # canonical JSON tells 1 from 1.0, and `Thing(("x",))` from the API
     # must produce the same record bytes as `give x 100` (gate G1, U2).
-    thing = Thing(concepts, unit=parsed.unit, divisible=parsed.divisible) \
-        if parsed.qty is None else \
-        Thing(concepts, parsed.qty, parsed.unit, parsed.divisible)
+    if parsed.qty is None:
+        thing = Thing(concepts, unit=parsed.unit, divisible=parsed.divisible)
+    else:
+        thing = Thing(concepts, parsed.qty, parsed.unit, step=parsed.step,
+                      min=parsed.min)
     return Part(thing, notes, addresses)
 
 
@@ -1205,10 +1231,15 @@ def part_line(part: Part) -> str:
     composed want's `+` line is these joined)."""
     t = part.thing
     toks = []
-    if t.unit != "unit":
-        toks.append(f"{_num(t.qty)}{t.unit}")
-    elif t.qty != 1 or t.divisible:
-        toks.append(_num(t.qty))
+    unit = "" if t.unit == "unit" else t.unit
+    default_step = 0 if unit else q(t.qty)          # what the bare spelling means
+    if unit or q(t.qty) != 1 or q(t.step) != default_step or q(t.min):
+        spelling = f"{_num(t.qty)}{unit}"
+        if q(t.step) != default_step:
+            spelling += f":{_num(t.step)}"
+        if q(t.min):
+            spelling = f"{_num(t.min)}{unit}..{spelling}"
+        toks.append(spelling)
     toks.extend(t.concepts)
     return " ".join(toks)
 
@@ -1217,7 +1248,7 @@ def _resolve_offer(session: Session, side: str, parsed: Parsed,
                    ontology: Ontology):
     """Every default and shorthand expanded into one Offer, plus the notes
     the approval block prints beside it."""
-    part = _resolve_part(session, parsed, ontology)
+    part = _resolve_part(session, parsed, ontology, side)
     return _offer_from_part(session, side, part, parsed.price, ontology,
                             valid_text=parsed.heads.get("valid"))
 
@@ -1416,7 +1447,7 @@ def cmd_draft(args, session, out):
             if "valid" in parsed.heads:
                 raise ValueError("a draft has no validity of its own — it gets the "
                                  "`valid` setting when offered")
-            parts = [_resolve_part(session, parsed, ontology)]
+            parts = [_resolve_part(session, parsed, ontology, side)]
             price = parsed.price
     else:
         # drafts joined by `+`: composition, want side only, flattening
@@ -1609,7 +1640,7 @@ def _publish(args, session: Session, out, side: str) -> int:
             return _offer_composed(session, parts, parsed.price, out, parsed.valid)
     else:
         parsed = parse_offer_tokens(args.tokens)
-    part = _resolve_part(session, parsed, session.catalogue)
+    part = _resolve_part(session, parsed, session.catalogue, side)
     offer, notes, reused = _offer_from_part(
         session, side, part, parsed.price, session.catalogue,
         valid_text=parsed.heads.get("valid"))
@@ -2194,8 +2225,10 @@ loop — the loopmarket command line (docs/plans/cli.md)
 
 Grammar (ontodag's, plus two conventions): a bare word is a category; a
 term is head(param) in ontodag's spelling — quote the parentheses in a
-shell; a bare number FIRST is the quantity (10kg = up to 10 kg divisible,
-3 = three indivisible), a bare number LAST is the price. An omitted price
+shell; a bare number FIRST is the quantity — [MIN..]QTY[UNIT][:STEP]:
+10kg = up to 10 kg divisible, 3 = three indivisible, 1000:1 = a thousand by
+the piece, 50kg..100kg:25 = a hundred kilos in 25 kg sacks, fifty at least
+(a give's floor) — and a bare number LAST is the price. An omitted price
 is your last unit price for the same thing, scaled, and marked.
 Every term is the catalogue's. A bare place (PLACE, or LAT,LON,R) is where
 the offer holds and a bare window (A..B, today..+7d) is when; from(), to(),
