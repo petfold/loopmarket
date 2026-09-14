@@ -276,10 +276,15 @@ the ABI beside the Solidity source, `scripts/deploy_registry.py`),
 and the CLI's `registry` setting with `announce` / `announced` / `fold`:
 with a registry set, every session's fold is the announced set folded
 through `Aggregator` under U8 as each book's announced owner — the
-solver-self-fold as the default read path, manifests as caches. Not yet
-run against a deployed contract: the chain backend is exercised against
-a client with web3's face (`tests/test_announce.py`); deployment and the
-live gate wait for a key with xDAI.
+solver-self-fold as the default read path, manifests as caches. **Deployed
+2026-09-14 on Gnosis at `0xD4379E494a488411D964BebDb210C0bf628d97af`** (709 bytes of code; `loop set registry
+chain:https://rpc.gnosischain.com@0xD4379E494a488411D964BebDb210C0bf628d97af`); the first announcement — a
+maker's Swarm book, `announce` from a `bee_signer` key that is also the
+transaction's sender — landed in one block and a clean session with
+nothing but the registry setting read it back with `announced`. The
+Swarm half of the live gate (the clean session opening the announced
+feed and folding it) waits on the Bee node, which was down at the time;
+the same command sequence is the gate.
 
 ### 4a. Anchoring offers on chain (recorded 2026-09-11, not adopted)
 
