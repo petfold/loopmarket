@@ -22,7 +22,7 @@ from .schema import (
 from .federation import Aggregator, Manifest, Omission, audit_manifest
 from .ontology import Ontology
 from .registry import OfferRegistry, PartialLoopError, swarm_offer_book
-from .matching import Leg, Match, candidate_matches, check_composition, check_match, check_parts, parts_legs
+from .matching import Leg, Match, aggregate_legs, candidate_matches, check_aggregate, check_composition, check_match, check_parts, parts_legs
 from .sigs import maker_address, recover_maker, sign_offer, verify_offer_sig
 from .dimensions import DimensionIndex, candidate_matches_indexed
 from .graph import Circulation, ExchangeGraph, Loop, find_circulations
@@ -34,7 +34,7 @@ __version__ = "0.8.0"
 __all__ = [
     "GIVE", "WANT", "ASK", "BID", "GeoDisc", "Offer", "Parts", "Thing", "TimeWindow",
     "Tokens", "give", "want", "ask", "bid", "q", "rat",
-    "check_parts", "parts_legs",
+    "check_parts", "parts_legs", "check_aggregate", "aggregate_legs",
     "Aggregator", "Manifest", "Omission", "audit_manifest", "Ontology", "OfferRegistry",
     "PartialLoopError", "swarm_offer_book",
     "Match", "candidate_matches", "check_match",

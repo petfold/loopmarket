@@ -367,8 +367,13 @@ stands. `examples/delivery.loop`,
 `matching.check_parts`/`parts_legs`, fills naming each part's give with
 the quantity taken, the CLI publishing `+` lines; the give floor as
 `Thing.min` and the granularity as `Thing.step`, U9's rationals
-throughout (`tests/test_v4_record.py`). Open: partial fills of divisible
-gives (the stepped clearing regime), aggregation by quantity.
+throughout (`tests/test_v4_record.py`). **Partial fills and aggregation
+by quantity built the same evening** (`tests/test_partial_fills.py`,
+`tests/test_aggregation.py`): a fill takes the want's quantity, the
+remainder stays open under per-loop fill keys, U11 catches an oversold
+give; the stepped regime is the exact one, no rounding; the six lifters
+clear as one aggregated leg with explicit shares. Open: the LP/ILP
+selection over competing sets.
 
 **Shape.** The result is not a cycle and does not decompose into cycles:
 the buyer has one inflow (the composed thing) and k outflows (the split

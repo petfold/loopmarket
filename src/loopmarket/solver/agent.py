@@ -37,7 +37,7 @@ import time as _time
 from dataclasses import dataclass, field
 
 from ..graph import Circulation, ExchangeGraph, Loop, find_circulations
-from ..matching import Leg, candidate_matches, composed_legs, parts_legs
+from ..matching import Leg, aggregate_legs, candidate_matches, composed_legs, parts_legs
 from ..ontology import Ontology
 from ..registry import OfferRegistry
 from ..clearing import LoopProposal, Receipt, Clearing
@@ -62,7 +62,9 @@ class SolverAgent:
         catalogue declares operators and the book composes any leg, the
         circulation hunt over the offers the cycles left (`graph.
         find_circulations`), simple legs, operator-composed legs and the
-        legs of composed wants (`parts_legs`, v4) together."""
+        legs of composed wants (`parts_legs`, v4) and aggregated legs
+        (`aggregate_legs`: several gives of one thing adding up to one
+        want) together."""
         now = int(_time.time()) if now is None else now
         root, book = self.registry.snapshot()
         offers = list(book.offers(now=now))
@@ -76,7 +78,8 @@ class SolverAgent:
         used = {oid for loop in loops for oid in loop.offer_ids}
         rest = [o for o in offers if o.offer_id not in used]
         composed = list(composed_legs(rest, self.ontology, now=now, available=available)) \
-            + list(parts_legs(rest, self.ontology, now=now, available=available))
+            + list(parts_legs(rest, self.ontology, now=now, available=available)) \
+            + list(aggregate_legs(rest, self.ontology, now=now, available=available))
         if composed and len(loops) < self.max_loops_per_step:
             legs = composed + [Leg.from_match(m) for m in matches
                                if not ({m.give.offer_id, m.want.offer_id} & used)]

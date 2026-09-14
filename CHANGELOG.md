@@ -11,6 +11,13 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Aggregation by quantity** (`P2-loop-selection.md` §10, the six lifters).
+  One want of one thing met by several gives of it: `Leg.quantities`
+  carries the shares (and enters the leg's key), `check_aggregate` is the
+  exact check, `aggregate_legs` the deterministic depth-first baseline
+  search — largest shares first, smaller multiples of a step after — wired
+  into the agent; clearing re-derives the split; the fill names every give
+  with its share. `tests/test_aggregation.py`.
 - **Partial fills of divisible gives.** A fill takes exactly the want's
   quantity and the remainder stays open for the next loop:
   `OfferRegistry.available`/`taken`/`loops_of`/`availability`, matching

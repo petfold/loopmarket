@@ -160,6 +160,11 @@ class Leg:
 
     want: Offer
     gives: tuple[Offer, ...]
+    #: An aggregated leg's shares (P2-loop-selection.md §10, the six lifters,
+    #: 2026-09-14): what each give contributes to one want of one thing, the
+    #: shares summing to the want's quantity. None for every other leg, whose
+    #: quantities `taken` derives.
+    quantities: tuple[Fraction, ...] | None = None
 
     @classmethod
     def from_match(cls, m: Match) -> "Leg":
@@ -175,6 +180,8 @@ class Leg:
         for a composed want, the want's quantity for the thing of a simple
         or operator-composed leg, the whole run for an operator (it moves a
         lot rather than being one). What the fill records."""
+        if self.quantities is not None:
+            return self.quantities[i]
         if self.parts:
             return q(self.want.parts[i].qty)
         if i == 0:
@@ -204,7 +211,13 @@ class Leg:
 
     @property
     def key(self) -> str:
-        return f"{'+'.join(g.offer_id for g in self.gives)}>{self.want.offer_id}"
+        """The sort key and the leg's identity under `loop_id`: the gives,
+        the want, and for an aggregated leg the shares (the same gives split
+        differently are a different clearing decision)."""
+        base = f"{'+'.join(g.offer_id for g in self.gives)}>{self.want.offer_id}"
+        if self.quantities is None:
+            return base
+        return base + "@" + ",".join(str(x) for x in self.quantities)
 
 
 def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
@@ -270,6 +283,93 @@ def check_parts(want: Offer, gives: Iterable[Offer], ontology: Ontology,
         if not ontology.satisfies(g.thing.concepts, part.concepts):
             return None
     return Leg(want, gives)
+
+
+def check_aggregate(want: Offer, gives: Iterable[Offer], quantities: Iterable,
+                    ontology: Ontology, *, now: int, available=None) -> Leg | None:
+    """The exact check of an aggregated leg (`P2-loop-selection.md` §10, the
+    six lifters, 2026-09-14): one want of one thing met by several gives of
+    it, each contributing a share — every give passes the gates against the
+    want but for quantity, satisfies its concepts, has its unit, and may
+    give its share (`Thing.takes`, within what is left of it); the shares
+    sum to the want's quantity. Clearing re-runs this (U3)."""
+    gives, quantities = tuple(gives), tuple(q(x) for x in quantities)
+    if want.composed or len(gives) < 2 or len(gives) != len(quantities):
+        return None
+    if len({g.offer_id for g in gives}) != len(gives):
+        return None
+    if sum(quantities, Fraction(0)) != q(want.thing.qty):
+        return None
+    for g, share in zip(gives, quantities):
+        if not _gates(g, want, ontology, now=now, quantity=False):
+            return None
+        left = None if available is None else available.get(g.offer_id)
+        if g.thing.unit != want.thing.unit or not g.thing.takes(share, left):
+            return None
+        if not ontology.satisfies(g.thing.concepts, want.thing.concepts):
+            return None
+    return Leg(want, gives, quantities)
+
+
+def aggregate_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,
+                   available=None, max_gives: int = 6,
+                   max_alternatives: int = 8) -> Iterator[Leg]:
+    """Baseline aggregation search: for every simple want no single give
+    serves, the gives of its thing in id order, each contributing a share it
+    may give — the most first (its whole remainder, or the largest multiple
+    of its step within what the want still needs), then smaller multiples,
+    never below its floor — depth-first until the shares sum to the want's
+    quantity: the first such set, at most `max_gives` gives, checked
+    exactly. Deterministic (U6); polynomial only because the pool and the
+    alternatives per give are bounded — the recall benchmark a smarter
+    aggregating species must beat."""
+    offers = list(offers)
+    gives = sorted((o for o in offers if o.kind == GIVE), key=lambda o: o.offer_id)
+    for w in sorted((o for o in offers if o.kind == WANT and not o.composed),
+                    key=lambda o: o.offer_id):
+        if any(check_match(g, w, ontology, now=now, available=available) for g in gives):
+            continue                   # one give reaches: nothing to add up
+        pool = [g for g in gives
+                if _gates(g, w, ontology, now=now, quantity=False)
+                and g.thing.unit == w.thing.unit
+                and ontology.satisfies(g.thing.concepts, w.thing.concepts)]
+        need = q(w.thing.qty)
+
+        def shares(g: Offer, r: Fraction) -> list[Fraction]:
+            """What `g` may contribute towards `r`, largest first: its whole
+            remainder or the multiples of its step within `r` (at most
+            `max_alternatives`), each above its floor."""
+            left = q(g.thing.qty) if available is None else \
+                min(q(g.thing.qty), available.get(g.offer_id, q(g.thing.qty)))
+            cap = min(left, r)
+            s = q(g.thing.step)
+            if s == 0:
+                return [cap] if cap > 0 and g.thing.takes(cap, left) else []
+            out, t, n = [], (cap // s) * s, 0
+            while t > 0 and n < max_alternatives:
+                if g.thing.takes(t, left):
+                    out.append(t)
+                    n += 1
+                t -= s
+            return out
+
+        def dfs(start: int, r: Fraction, chosen: list, taken: list):
+            if r == 0:
+                return chosen, taken
+            if len(chosen) >= max_gives:
+                return None
+            for i in range(start, len(pool)):
+                for t in shares(pool[i], r):
+                    found = dfs(i + 1, r - t, chosen + [pool[i]], taken + [t])
+                    if found is not None:
+                        return found
+            return None
+
+        found = dfs(0, need, [], [])
+        if found is not None and len(found[0]) >= 2:
+            leg = check_aggregate(w, found[0], found[1], ontology, now=now, available=available)
+            if leg is not None:
+                yield leg
 
 
 def parts_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,

@@ -266,13 +266,23 @@ clearing (U3). `parts_legs(offers, ontology, *, now, limit=64)` is the
 baseline search: per part the gives that serve it, every combination of
 distinct gives checked exactly, deterministic order.
 
-### `Leg(want: Offer, gives: tuple[Offer, ...])` — frozen
+### `check_aggregate(want, gives, quantities, ontology, *, now, available=None) -> Leg | None`
+The exact check of an aggregated leg (the six lifters, 2026-09-14): one
+want of one thing met by several gives of it, each contributing a share it
+may give (`Thing.takes`, within what is left of it), the shares summing to
+the want's quantity. `aggregate_legs(offers, ontology, *, now,
+available=None, max_gives=6, max_alternatives=8)` is the deterministic
+depth-first baseline search, largest shares first.
+
+### `Leg(want: Offer, gives: tuple[Offer, ...], quantities=None)` — frozen
 One want met by one or more gives — the hyperedge of `P2-loop-selection.md`
 §10/§11. `Leg.from_match(m)`; `.head` (the buyer), `.tails` (the givers),
 `.offer_ids`, `.simple` (one give), `.key` (`give+give>want`, the sort key),
-`.parts` (a composed want's leg), `.taken(i)` (the quantity taken from give
-`i`: the part's, the want's, or an operator's whole run), `.value_given(i)`
-(its unit price times that quantity — what the giver is owed).
+`.parts` (a composed want's leg), `.quantities` (an aggregated leg's shares;
+they enter `.key`, so another split is another decision), `.taken(i)` (the
+quantity taken from give `i`: its share, the part's, the want's, or an
+operator's whole run), `.value_given(i)` (its unit price times that
+quantity — what the giver is owed).
 
 ### `check_composition(want, gives, ontology, *, now) -> Leg | None`
 The exact check of a composed leg (2026-09-13): the first give is the

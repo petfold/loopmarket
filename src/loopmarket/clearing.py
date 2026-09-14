@@ -27,7 +27,7 @@ from typing import Protocol
 
 from .graph import Circulation, Loop
 from .schema import q, rat
-from .matching import check_composition, check_match, check_parts
+from .matching import check_aggregate, check_composition, check_match, check_parts
 from .ontology import Ontology
 from .registry import OfferRegistry
 
@@ -175,7 +175,10 @@ class MockClearing:
         for leg in loop.legs:
             fresh_want = self.registry.get(leg.want.offer_id)
             fresh_gives = [self.registry.get(g.offer_id) for g in leg.gives]
-            if fresh_want.composed:
+            if leg.quantities is not None:
+                ok = check_aggregate(fresh_want, fresh_gives, leg.quantities, self.ontology,
+                                     now=now, available=available)
+            elif fresh_want.composed:
                 ok = check_parts(fresh_want, fresh_gives, self.ontology, now=now,
                                  available=available)
             elif leg.simple:
