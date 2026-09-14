@@ -9,6 +9,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-14
+
+The operator's argument is its want: `transport(small-item weight(..8kg))`
+on the courier's give is what the courier accepts, matched want-within-
+give against the wanter's `transport(bicycle)`; the term is ontodag's graph
+kind (0.26.1). Breaking: `declare_operator` takes the category and its two
+ends. Needs ontodag 0.26.1.
+
 ### Added
 
 - **An operator's argument is its want** (Peter, 2026-09-13 evening: *the
