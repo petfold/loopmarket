@@ -6,8 +6,10 @@
 Prints the contract address; the setting is then
 `loop set registry chain:https://rpc.gnosischain.com@0xADDRESS`. The
 ABI readers use is `loopmarket.announce.ABI`, kept beside the source so
-no reader needs a compiler. Gnosis: ~5 s blocks, gas ~0.2 gwei in xDAI —
-deployment is well under a cent; one announcement is about the same.
+no reader needs a compiler. Deploy on the EVM chain Swarm settles postage
+on (Gnosis today: ~5 s blocks, gas ~0.2 gwei in xDAI — deployment well
+under a cent, one announcement about the same); the contract has nothing
+chain-specific in it.
 """
 
 import os

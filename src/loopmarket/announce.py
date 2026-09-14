@@ -3,8 +3,8 @@
 A book is a Swarm feed named by (owner, topic), and knowing that pair is
 the whole of discovery. Until 2026-09-14 the plan carried two channels —
 GSOC, a Swarm-native single-owner chunk mined into an aggregator's
-neighbourhood, and a registry event on Gnosis Chain as its permanent
-fallback. Peter dropped GSOC: an announcement is per *book*, not per
+neighbourhood, and a registry event on the EVM chain Swarm settles on as
+its permanent fallback. Peter dropped GSOC: an announcement is per *book*, not per
 offer (a maker says "my book is here" a handful of times, ever), so there
 is no volume to optimise; the chain is what a censored announcement would
 be detected against, so the chain is the channel; and GSOC's receivers
@@ -18,14 +18,26 @@ retractions. Three backends behind one protocol, chosen by spec the way
 books are (`rs:` / `swarm:`):
 
 - `chain:RPC_URL@CONTRACT` — the `LoopBookRegistry` contract
-  (`contracts/LoopBookRegistry.sol`) on Gnosis Chain or any EVM chain,
-  read with `eth_getLogs`, written by the maker's own transaction so
-  `msg.sender` is the owner. Needs the `chain` extra (web3); imported
-  lazily inside this path, never at module import (boundary B2).
+  (`contracts/LoopBookRegistry.sol`) on an EVM chain, read with
+  `eth_getLogs`, written by the maker's own transaction so `msg.sender`
+  is the owner. Needs the `chain` extra (web3); imported lazily inside
+  this path, never at module import (boundary B2). Nothing here names a
+  chain: the contract is two events of plain Solidity, the ordering is
+  block number and log index, and the chain id comes from the node. The
+  deployment follows Swarm's own settlement chain (Gnosis today), so a
+  maker holds one wallet — the gas token they already buy postage with.
+  Should that chain change, the registry is redeployed and a setting
+  moves; the union below carries the cutover.
 - `file:PATH` — a JSON-lines log on disk: several sessions on one
   machine discover each other's `rs:` books without a chain, the dev
   stand-in `rs:` is for Swarm.
 - `memory:[NAME]` — in-process, for tests and demos.
+
+Several specs, comma-separated, are one channel (`UnionAnnouncements`):
+the announced set is the union, and an owner announced on more than one
+is read from the *last-listed* channel that has them — so a newer chain
+is listed last, makers announce on both for a while (`announce` writes to
+every member), and readers watching both see no cutover.
 
 An announcement names a *book spec without its owner* (`swarm:TOPIC`,
 or `rs:PATH` on the file backend); a reader opens it as `swarm:TOPIC@OWNER`
@@ -236,12 +248,46 @@ class ChainAnnouncements:
         self._send(self._contract().functions.retract())
 
 
+class UnionAnnouncements:
+    """Several channels read as one: per owner, the announcement from the
+    last-listed member that has one (list the newer chain last); writes go
+    to every member, so a maker moving chains announces on both with one
+    command and retracts from both with one."""
+
+    def __init__(self, members: list):
+        if not members:
+            raise ValueError("a union of channels needs at least one")
+        self.members = list(members)
+
+    def announced(self) -> list[Announcement]:
+        standing: dict[str, Announcement] = {}
+        for member in self.members:
+            for ann in member.announced():
+                standing[ann.owner] = ann
+        return [ann for _owner, ann in sorted(standing.items())]
+
+    def announce(self, book: str, role: str = MAKER, *,
+                 owner: str | None = None) -> Announcement:
+        last = None
+        for member in self.members:
+            last = member.announce(book, role, owner=owner)
+        return last
+
+    def retract(self, *, owner: str | None = None) -> None:
+        for member in self.members:
+            member.retract(owner=owner)
+
+
 _MEMORY: dict[str, MemoryAnnouncements] = {}
 
 
 def open_announcements(spec: str, *, key: str | None = None) -> Announcements:
     """`chain:RPC_URL@CONTRACT`, `file:PATH`, or `memory:[NAME]` (one shared
-    log per name in this process)."""
+    log per name in this process); several, comma-separated, are a
+    `UnionAnnouncements` (the newer chain last)."""
+    specs = [s.strip() for s in spec.split(",") if s.strip()]
+    if len(specs) > 1:
+        return UnionAnnouncements([open_announcements(s, key=key) for s in specs])
     if spec.startswith("chain:"):
         rpc, _, contract = spec[6:].rpartition("@")
         if not rpc or not contract:

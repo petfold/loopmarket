@@ -20,7 +20,11 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   `contracts/LoopBookRegistry.sol`, its event log read with
   `eth_getLogs`, announcements sent as the maker's own transaction so
   `msg.sender` is the feed-signing owner; web3 behind the new `chain`
-  extra, lazy), `file:PATH` (sessions on one machine), `memory:`.
+  extra, lazy), `file:PATH` (sessions on one machine), `memory:`; several
+  comma-separated specs are one channel (`UnionAnnouncements`, per owner
+  the last-listed wins, writes go to all) so a move to another EVM chain
+  is a setting, not a change — nothing in contract or code names a chain;
+  the deployment follows the chain Swarm settles postage on.
   `Aggregator.subscribe(channel, open_book)` folds exactly the announced
   set; `audit_manifest(expected=channel.announced())` reports a book
   announced and never folded as an omission with an absence proof, so

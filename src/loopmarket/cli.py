@@ -91,9 +91,10 @@ _SETTINGS = {
     "registry": _Setting(
         "LOOP_REGISTRY", "", "--registry SPEC",
         "the announcement channel: chain:RPC_URL@CONTRACT (the "
-        "LoopBookRegistry on Gnosis), file:PATH (sessions on one machine), "
-        "memory:; every announced book is folded into every answer, as its "
-        "announced owner's"),
+        "LoopBookRegistry on the EVM chain Swarm settles on), file:PATH "
+        "(sessions on one machine), memory:; several comma-separated are "
+        "one channel, the newer chain last; every announced book is folded "
+        "into every answer, as its announced owner's"),
     "maker": _Setting(
         "LOOP_MAKER", "", "--maker NAME",
         "my identity; the signer's address when bee_signer is set and the "

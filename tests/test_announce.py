@@ -164,3 +164,25 @@ def test_chain_logs_decode_to_the_standing_set():
     spec = open_announcements("chain:http://rpc:8545@0xC0")
     assert isinstance(spec, ChainAnnouncements) and spec.rpc_url == "http://rpc:8545" \
         and spec.contract_address == "0xC0"
+
+
+def test_several_channels_read_as_one_the_newer_listed_last():
+    """A chain move is a setting: makers announce on both channels with one
+    command, readers watching both see one set, and where an owner stands
+    on both the last-listed channel wins."""
+    from loopmarket.announce import UnionAnnouncements
+    old, new = MemoryAnnouncements(), MemoryAnnouncements()
+    old.announce("swarm:a-old", owner="0xA")
+    old.announce("swarm:b", owner="0xB")
+    new.announce("swarm:a-new", owner="0xA")
+    union = UnionAnnouncements([old, new])
+    assert [(a.owner, a.book) for a in union.announced()] == [("0xA", "swarm:a-new"), ("0xB", "swarm:b")]
+    union.announce("swarm:c", owner="0xC")                 # written to both
+    assert [a.owner for a in old.announced()] == ["0xA", "0xB", "0xC"]
+    assert [a.owner for a in new.announced()] == ["0xA", "0xC"]
+    union.retract(owner="0xA")                             # from both
+    assert [a.owner for a in union.announced()] == ["0xB", "0xC"]
+    both = open_announcements("memory:u1, memory:u2")
+    assert isinstance(both, UnionAnnouncements) and len(both.members) == 2
+    with pytest.raises(ValueError):
+        UnionAnnouncements([])

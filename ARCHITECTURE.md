@@ -389,8 +389,10 @@ model, and settlement atomicity must never rest on the feed CAS. The
 real network; it is the write-authority shape that does not survive
 multi-writer production. With federation come the decided mechanics
 (`docs/plans/P1-federated-book.md`): the maker's announcement as one
-registry event on Gnosis (`announce.py`, since 2026-09-14 the only
-channel — GSOC dropped, §4 there); the aggregator (anyone who folds the
+registry event on the EVM chain Swarm settles on — Gnosis today
+(`announce.py`, since 2026-09-14 the only channel — GSOC dropped, §4
+there; chain-independent by construction, several chains read as one
+union); the aggregator (anyone who folds the
 announced set) publishing a manifest tuple {book_root, provenance_root,
 announcement_root} (the announcement element 2026-08-21: the folded
 input-set commitment that makes aggregator completeness provable — T14;
@@ -595,7 +597,7 @@ solver's identity. `MockSettlement.submit`:
    single new root.
 
 The interface (`Settlement.submit(proposal) → Receipt`) is the stable
-boundary. The P2 on-chain backend keeps its shape: a Gnosis Chain contract
+boundary. The P2 on-chain backend keeps its shape: a contract on the EVM chain Swarm settles on (Gnosis today)
 receives the loop plus **inclusion proofs** that each offer is present under
 the pinned book root.
 

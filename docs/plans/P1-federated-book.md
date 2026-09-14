@@ -4,7 +4,8 @@ Status: design, 2026-08-07. Decided here: one book per maker under the
 maker's own feed and signer, maker = feed-owner address; two-layer offer
 authenticity (U8) with detached signatures and fold-time `origin/` records;
 fill determinism and loop-granularity merge (U11); the registry event on
-Gnosis as the one announcement channel (GSOC dropped 2026-09-14, §4);
+the EVM chain Swarm settles on as the one announcement channel (GSOC
+dropped 2026-09-14, §4);
 the aggregator — anyone who folds the announced set — publishing the manifest tuple
 `{book_root, provenance_root, index_root, announcement_root}` (the
 fourth element added 2026-08-21); stamp TTL as the hard
@@ -197,7 +198,8 @@ cautionary tale: derived state conflicts on every concurrent write.
 ## 4. Announcements: the registry event is the channel (decided 2026-09-14)
 
 A maker must be discoverable: "my book is (owner, topic)". **The channel
-is one transaction on Gnosis Chain** to the `LoopBookRegistry` contract
+is one transaction on the EVM chain Swarm settles on** (Gnosis today) to
+the `LoopBookRegistry` contract
 (`contracts/LoopBookRegistry.sol`): `announce(book, role)` emits
 `Announce(msg.sender, book, role)`, `retract()` ends it, and the standing
 set is the event log read with `eth_getLogs`, latest per owner
@@ -206,11 +208,35 @@ owner — the same secp256k1 key that signs the maker's Swarm feed — so
 the announcement authenticates the book it names: U8's primary layer,
 with no separate key registry. `book` is the spec without its owner
 (`swarm:TOPIC`); a reader opens `swarm:TOPIC@OWNER`. ~5 s blocks, gas
-~0.2 gwei in xDAI: sub-cent per announcement, and a maker announces a
-handful of times, ever — the announcement is the *book*, not the offer;
-offers change inside the feed. Makers need a little xDAI beside the BZZ
-they already hold for postage, and discovery is tied to Gnosis, where
-P2's clearing contract lands anyway. Two more backends behind the same
+~0.2 gwei in xDAI on Gnosis: sub-cent per announcement, and a maker
+announces a handful of times, ever — the announcement is the *book*, not
+the offer; offers change inside the feed. Makers need a little of the
+chain's gas token beside the BZZ they already hold for postage.
+
+**Chain independence (2026-09-14).** Nothing here is specific to one
+chain: the contract is two events of plain Solidity that runs unchanged
+on any EVM chain, ordering is block number and log index, the chain id
+comes from the node, and the Python side knows the chain as one setting
+(`chain:RPC_URL@CONTRACT`). The one coupling is deliberate and is
+Swarm's, not ours: the registry lives on **the chain Swarm settles
+postage on**, so a maker holds one wallet and one gas token. If that
+chain ever changes, the registry is redeployed there and a setting
+moves. Three provisions keep the move a non-event: (i) the `registry`
+setting takes **several channels**, comma-separated, read as one
+(`UnionAnnouncements`: per owner the last-listed channel wins, so the
+newer chain is listed last; `announce` writes to every member) — makers
+announce on both for a while and readers watching both see no cutover;
+(ii) the cost numbers are prose, not code — a per-book announcement is
+~25k gas anywhere, cents to a few dollars on Ethereum L1 and sub-cent on
+any L2, still fine for "a handful of times, ever", while §4a's optional
+per-offer anchoring is what an L1 would price out, which is why it is
+optional; (iii) **finality depth** — announcements need only order, and
+two announcements by one owner swapped by a reorg are harmless, but the
+withdraw-vs-clear race that §4a's anchoring and P2's clearing settle by
+transaction order does care (seconds on Gnosis, soft confirmations plus
+an L1 wait on an L2, ~13 minutes on L1) — so confirmations-before-a-log-
+counts becomes a reader-side setting when anchoring lands, never an
+assumption baked into the code. Two more backends behind the same
 protocol, chosen by spec the way books are: `file:PATH` (sessions on one
 machine discover each other's `rs:` books — the dev stand-in, as `rs:` is
 for Swarm) and `memory:` (tests, demos).

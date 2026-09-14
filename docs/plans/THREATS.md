@@ -605,7 +605,7 @@ just the attack.
 byte-identical `book_root`s in any fold order, so divergence between
 manifests is evidence, not opinion. Omission is provable, never merely
 suspected: announcements have a censorship-resistant ground truth (the
-Gnosis registry event — the one channel since 2026-09-14, GSOC dropped;
+registry event on the EVM chain Swarm settles on — the one channel since 2026-09-14, GSOC dropped;
 `P1-federated-book.md` §4), maker books are public
 feeds, and recordstore absence proofs demonstrate "offer X is absent
 from root R" mechanically while X sits on its maker's feed. Since
