@@ -861,8 +861,8 @@ def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, m
     who names the bicycle matches the courier who names the class — the
     argument is the courier's want (Peter, 2026-09-13)."""
     _od_with_prelude(tmp_path / "city.od",
-                     [("operator", []), ("category-dimension", ["dimension"]),
-                      ("transport", ["category-dimension", "operator"]),
+                     [("operator", []), ("graph-dimension", ["dimension"]),
+                      ("transport", ["graph-dimension", "operator"]),
                       ("operator-input", []), ("operator-output", []),
                       ("from", ["geo", "operator-input"]),
                       ("to", ["geo", "operator-output"]),

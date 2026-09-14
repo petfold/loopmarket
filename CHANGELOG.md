@@ -27,9 +27,9 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   transport want now matches the courier in `check_match`. New facade
   methods `operator_of`, `argument`, `ends`, `accepts`; the CLI rejoins a
   term's tokens while a parenthesis is open. The term is ontodag's
-  **category kind** (#19, asked and landed the same evening, ontodag
-  0.26.0 — the pin moves): `declare_operator` puts the category under
-  `category-dimension` as well as `operator`, ontodag canonicalises the
+  **graph kind** (#19, asked and landed the same evening, ontodag
+  0.26.1 — the pin moves): `declare_operator` puts the category under
+  `graph-dimension` as well as `operator`, ontodag canonicalises the
   argument (sorted, deduplicated; a redundant constraint such as
   `transport(bicycle small-item)` refused, an unknown one failing closed)
   and orders two such terms by the graph, and a give whose argument the
@@ -48,8 +48,8 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   give's moves are read off the ends it names (`ends`), and an operator
   give is recognised by its operator term, not by carrying two role terms.
   The seeds (`triangle.od`, `delivery.od`, the demos) declare
-  `category-dimension dimension`, `transport category-dimension operator`
-  and `storage category-dimension operator`. Pin `ontodag>=0.26.0`.
+  `graph-dimension dimension`, `transport graph-dimension operator`
+  and `storage graph-dimension operator`. Pin `ontodag>=0.26.1`.
 
 - **Composition search: only where needed, and up to two hops** (Peter's
   follow-up questions, 2026-09-13). `composed_legs` no longer composes an

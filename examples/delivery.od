@@ -33,10 +33,10 @@ size dominance-dimension
 # matches want-within-give, the operator's own want (Peter, 2026-09-13). The
 # solver composes such a give with the thing's give to satisfy a want at the
 # output coordinate.
-category-dimension dimension
+graph-dimension dimension
 operator
-transport category-dimension operator
-storage category-dimension operator
+transport graph-dimension operator
+storage graph-dimension operator
 from geo operator-input
 to geo operator-output
 depart time operator-input

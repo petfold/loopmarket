@@ -160,7 +160,7 @@ class GeoDisc:
 def canonical_term(concept: str) -> str:
     """One spelling per term (U2): a conjunction inside a term's parentheses
     — an operator's argument, `transport(small-item weight(..8kg))`, a term
-    of ontodag's category kind — has its constraints sorted and
+    of ontodag's graph kind — has its constraints sorted and
     deduplicated the way ontodag canonicalises it, so the two orders are
     one offer id, as the concepts of a Thing are sorted. Syntactic only
     (the schema has no catalogue): the constraints themselves are spelled
@@ -169,7 +169,7 @@ def canonical_term(concept: str) -> str:
     if "(" not in concept or " " not in concept or not concept.endswith(")"):
         return concept
     try:
-        return _dims.canonicalize(concept, _dims.KIND_CATEGORY)
+        return _dims.canonicalize(concept, _dims.KIND_GRAPH)
     except ValueError:
         return concept
 

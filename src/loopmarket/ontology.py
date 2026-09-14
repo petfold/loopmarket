@@ -63,8 +63,8 @@ A head the want does not name constrains nothing; a coordinate the give
 does not state puts it in no cone of that head (an internet service has no
 place, and does not serve a want at a door). Ontodag is intersection; all
 three relations are `is_below`, and the seed decides the direction. The
-operator term itself is ontodag's: a head of the *category kind*
-(`category-dimension`, ontodag #19, 0.26.0) takes a conjunction of
+operator term itself is ontodag's: a head of the *graph kind*
+(`graph-dimension`, ontodag #19, 0.26.0) takes a conjunction of
 constraints on the graph as its parameter, canonicalises it (sorted,
 deduplicated, a redundant constraint refused, an unknown one failing
 closed) and orders two such terms by the graph; this module only reads
@@ -225,12 +225,12 @@ class Ontology:
         """Declare operators: {category: (input head, output head)} —
         `{"transport": ("from", "to"), "storage": ("depart", "arrive")}`.
         The category goes under `operator` and under ontodag's
-        `category-dimension` kind (so `transport(small-item weight(..8kg))`
+        `graph-dimension` kind (so `transport(small-item weight(..8kg))`
         is a term the graph orders, ontodag #19; the kind is declared under
         `dimension` if the catalogue lacks it), the two heads — roles of
         one dimension — under `operator-input` and `operator-output`:
-        `odag put category-dimension dimension`, `odag put transport
-        category-dimension operator`, `odag put from geo operator-input`,
+        `odag put graph-dimension dimension`, `odag put transport
+        graph-dimension operator`, `odag put from geo operator-input`,
         `odag put to geo operator-output`. Which dimension
         a give moves along is read off the give itself (the ends it names),
         so the category is not tied to a dimension here. Seed vocabulary;
@@ -239,7 +239,7 @@ class Ontology:
         category, because its argument is what it accepts.)"""
         for category, (inp, out) in operators.items():
             kind = self.head_kind(category)
-            if kind not in (None, _dims.KIND_CATEGORY) or category in _dims.KINDS:
+            if kind not in (None, _dims.KIND_GRAPH) or category in _dims.KINDS:
                 raise ValueError(
                     f"{category!r} is a {kind} head: an operator is a "
                     f"category whose argument is what it accepts")
@@ -249,13 +249,13 @@ class Ontology:
                 raise ValueError(
                     f"{inp!r}/{out!r}: an operator's ends are two roles of one "
                     f"dimension, the one it moves a thing along")
-            if kind is None:            # `transport(...)` is a term of the category kind
-                if _dims.KIND_CATEGORY not in self.dag.nodes:
+            if kind is None:            # `transport(...)` is a term of the graph kind
+                if _dims.KIND_GRAPH not in self.dag.nodes:
                     if _dims.DIMENSION_ROOT not in self.dag.nodes:
                         from ontodag.prelude import apply as apply_prelude
                         apply_prelude(self.dag)
-                    self.dag.put(_dims.KIND_CATEGORY, [_dims.DIMENSION_ROOT])
-                self.dag.put(category, [_dims.KIND_CATEGORY])
+                    self.dag.put(_dims.KIND_GRAPH, [_dims.DIMENSION_ROOT])
+                self.dag.put(category, [_dims.KIND_GRAPH])
             if OPERATOR not in self.dag.nodes:
                 self.dag.put(OPERATOR, [])
             if not self.dag.is_below(category, OPERATOR):

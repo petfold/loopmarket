@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "ontodag>=0.26.0",        # catalogue: subsumption, dimensions, is_below, role heads
+    "ontodag>=0.26.1",        # catalogue: subsumption, dimensions, is_below, role heads
                               # taking nodes, overlaps/meet, get(overlapping=, items_only=)
                               # (issues #14/#15/#16, 0.25.0); the CLI
     "recordstore>=0.16.0",   # the book: canonical versioned KV, merge, snapshots,

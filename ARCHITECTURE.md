@@ -488,8 +488,8 @@ two ends, `operators()` is gone (a give's moves are read off the ends it
 names, `Ontology.ends`), the operator give is recognised by its term, not
 by carrying two role terms, and a direct transport want matches the courier
 in `check_match` without composition. The term itself is ontodag's: the
-ask (#19) landed the same evening as the *category kind* (ontodag 0.26.0,
-registry 4.2) — a head under `category-dimension` takes a conjunction of
+ask (#19) landed the same evening as the *graph kind* (ontodag 0.26.1,
+registry 4.2) — a head under `graph-dimension` takes a conjunction of
 constraints on the graph, canonicalised (sorted, deduplicated, a redundant
 constraint refused, an unknown one failing closed) and ordered by the
 graph; `declare_operator` declares the category under that kind, the
