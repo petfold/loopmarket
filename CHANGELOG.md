@@ -9,6 +9,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-09-14
+
+The v4 record — exact rationals (U9), `step` and `min` in place of
+`divisible`, wants of `Parts`, fills with quantities — and the registry
+contract deployed on Gnosis with the live read-path gate passed. Every
+offer id changes, as any record bump does; v1–v3 records re-encode byte
+for byte and the v3 form stays available with `v=3`.
+
 ### Added
 
 - **The v4 record** (decided with Peter and built 2026-09-14; the plans'

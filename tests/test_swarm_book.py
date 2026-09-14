@@ -22,6 +22,7 @@ from loopmarket import (
     give, want,
 )
 from loopmarket.registry import swarm_offer_book
+from loopmarket.schema import q
 
 BEE_API = os.environ.get("BEE_API")
 BEE_BATCH = os.environ.get("BEE_BATCH")
@@ -98,7 +99,7 @@ class TestTriangleOnLiveSwarmBook(unittest.TestCase):
         self.assertEqual(len(cleared), 1, receipts)
         loop_record = registry.store.get(f"loop/{cleared[0].loop_id}")
         self.assertEqual(len(loop_record["legs"]), 3)
-        self.assertGreater(loop_record["surplus"], 0)
+        self.assertGreater(q(loop_record["surplus"]), 0)     # a `n/d` string since v4
 
         # Scorched-earth follow: a brand-new registry over the same feed —
         # no shared Python state, the head comes back from the network.
