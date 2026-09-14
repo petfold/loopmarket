@@ -281,10 +281,15 @@ solver-self-fold as the default read path, manifests as caches. **Deployed
 chain:https://rpc.gnosischain.com@0xD4379E494a488411D964BebDb210C0bf628d97af`); the first announcement — a
 maker's Swarm book, `announce` from a `bee_signer` key that is also the
 transaction's sender — landed in one block and a clean session with
-nothing but the registry setting read it back with `announced`. The
-Swarm half of the live gate (the clean session opening the announced
-feed and folding it) waits on the Bee node, which was down at the time;
-the same command sequence is the gate.
+nothing but the registry setting read it back with `announced`. **The
+whole gate passed the same evening** once the Bee node was back: the
+maker's `give piano-lesson 100` on the announced `swarm:` book (1m18s, a
+Bee 2.8.2 light node), then a clean session with nothing but the
+registry setting — `announced` listed the book, `offers` showed the
+offer read from the maker's feed, `fold` printed its root — 1m03s for
+the three commands together, feed lookups dominating as ever. No peer
+was configured anywhere: discovery came from the chain, the bytes from
+Swarm, the fold from the reader. The read path is real.
 
 ### 4a. Anchoring offers on chain (recorded 2026-09-11, not adopted)
 

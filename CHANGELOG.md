@@ -15,8 +15,11 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   (2026-09-14). `loop set registry chain:https://rpc.gnosischain.com@0xD4379E494a488411D964BebDb210C0bf628d97af`;
   `loop announce` from a `bee_signer` key sends the transaction as that
   key, and a session with only the registry setting reads the announced
-  set back with `announced`. The contract header is a plain comment now
-  (solc read `@OWNER` in the NatSpec text as a tag).
+  set back with `announced`; with the Bee node up, the same clean
+  session read the maker's offer from the announced Swarm feed with
+  `offers` and printed the fold's root with `fold` — the read-path gate,
+  live, no peer configured anywhere. The contract header is a plain
+  comment now (solc read `@OWNER` in the NatSpec text as a tag).
 
 ## [0.7.0] — 2026-09-14
 
