@@ -18,3 +18,4 @@ docs/talk/slides/*.nav
 docs/talk/slides/*.out
 docs/talk/slides/*.snm
 docs/talk/slides/*.toc
+*.local.md
