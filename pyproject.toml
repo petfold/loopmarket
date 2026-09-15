@@ -45,6 +45,9 @@ sig = ["eth-keys", "eth-hash[pycryptodome]", "coincurve", "cryptography"]
 # event log read with eth_getLogs, announcements sent as the maker's own
 # transaction. Imported lazily inside the chain: path only (boundary B2).
 chain = ["web3>=6"]
+# Compiling and running the contracts on a local EVM (the trie-proof
+# verifier's tests, gas measurement, deployment): py-solc-x downloads solc.
+evm = ["web3>=6", "py-solc-x", "eth-tester[py-evm]"]
 test = ["pytest"]
 
 [project.scripts]

@@ -9,6 +9,18 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Added
+
+- **The on-chain trie-proof verifier** (P2 clearing, step one; decided
+  with Peter 2026-09-15: an optimistic beat with a structural verifier on
+  chain, fills recorded by the contract). `contracts/TrieProofVerifier.sol`
+  verifies recordstore's proofs (sha256 addressing) on the EVM with no
+  JSON parser — sha256 per node, the child for the next key byte read
+  after `"XX":"` — inclusion with the value blob, and absence.
+  `tests/test_trie_verifier.py` compiles it with py-solc-x and runs it on
+  eth-tester against real book proofs (new `evm` extra). Measured: 1.2–1.6 M
+  gas per inclusion, 0.64 M per absence on three-node paths.
+
 ## [0.9.0] — 2026-09-15
 
 The v4 record put to work: the quantity token carries a give's floor and

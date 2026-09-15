@@ -75,6 +75,28 @@ favorable terms: rationale 2 (proofs about a copy) would dissolve, leaving
 only the gas benchmark and dependency-vetting conditions. Check POT's
 property set again at P2 contract-design time, not before.
 
+**Built 2026-09-15: the on-chain half of the trie proofs.**
+`contracts/TrieProofVerifier.sol` verifies recordstore's
+`recordstore-trie-proof` v1 (sha256 addressing) on the EVM, mirroring
+`verify_proof` step for step: sha256 per node over the exact bytes, the
+child for the next key byte found as the 64 hex characters after `"XX":"`
+— the one place that pattern can occur in a canonical node — so no JSON
+parser; absence is the walk ending where the key would live. Tested
+against real book proofs on a local EVM (`tests/test_trie_verifier.py`,
+the `evm` extra; every tampering refused). **Measured gas** over a
+40-offer book, three-node paths: 1.2–1.6 M per inclusion (the value blob
+hashed too), 0.64 M per absence — about a tenth of a cent on Gnosis at
+1 gwei, cents on an L2, tenths of a dollar on Ethereum L1. Ten times the
+research estimate: byte-wise scanning of ~250-byte JSON nodes dominates,
+not hashing. Two ways down, in order: assembly word-wise scanning in the
+verifier (several-fold), and a compact node encoding from recordstore
+(filed upstream 2026-09-15 — not an existing feature; its roadmap's
+C-track sketches a POT-format *second* encoding and notes the on-chain
+half as what POT would add, but no binary encoding of the radix trie
+itself). Under the P2 design these costs fall only on a challenged leg,
+never on the happy path. The Swarm (BMT, keccak) addressing is the next
+verifier variant; books on Swarm carry that scheme.
+
 ## 2. The envelope policy, adopted wholesale
 
 Every proof-bearing artifact this repo emits uses ontodag's certificate
