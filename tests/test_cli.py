@@ -637,6 +637,7 @@ def test_set_is_durable_validated_and_fails_closed(env):
 
 
 def test_odag_config_is_inherited_for_shared_settings(env, tmp_path, monkeypatch):
+    monkeypatch.delenv("BEE_API", raising=False)   # the shell may carry the live node; this test is about precedence below env
     monkeypatch.delenv("LOOP_CATALOGUE")
     odag_home = tmp_path / "odag"
     odag_home.mkdir(exist_ok=True)

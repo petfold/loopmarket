@@ -9,6 +9,13 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-09-15
+
+The v4 record put to work: the quantity token carries a give's floor and
+step, a divisible give is filled in part and its remainder stays open, and
+several gives of one thing add up to one want. Live Bee gates and the
+whole suite green with the node up.
+
 ### Added
 
 - **Aggregation by quantity** (`P2-loop-selection.md` §10, the six lifters).
