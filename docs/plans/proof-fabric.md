@@ -330,14 +330,19 @@ two consumers, shared conformance tests.
 
 ## Open problems
 
-- **Certificates replacing U3 re-derivation (the doctrine fork).** §4 keeps
-  certificates additive; the on-chain path will pressure them to become
-  substitutive, because a contract *cannot* re-derive against a live book.
-  Unresolved: whether "verified proof + absence-of-fill against a pinned
-  root" is U3-equivalent or U3-weaker, and what freshness guarantee replaces
-  "the *current* book" when the verifier is a contract. Discussion agenda
-  item; work package: P2 settlement design (`P2-batch-auction.md`),
-  revising this document.
+- **Certificates replacing U3 re-derivation (the doctrine fork) — resolved
+  in shape 2026-09-15 (Peter).** The contract verifies what it can compute
+  from the anchored root and the record bytes — inclusion, unfilled (its
+  own fill set), pins, quantities on step/floor/remainder, potentials by
+  cross-multiplication (`contracts/LoopVerifier.sol`) — and the semantic
+  half, fits-within over the pinned catalogue, is *optimistic*: any reader
+  re-derives a cleared leg off chain deterministically, and a wrong match
+  is a challenge the arbiter (factbond's adjudication, P3) decides within
+  the window (`contracts/BeatClearing.sol`). Freshness: the beat pins one
+  book root and the contract's fill set is the authority on "unfilled", so
+  "the current book" is the anchored root plus the chain. Certificates
+  stay additive and unused on chain; the remaining question is the
+  arbiter's mechanics, factbond's.
 - **Publication of the anchored root (added 2026-09-10).** Anchoring
   `book_root` on chain proves nothing about whether the blobs under it
   were ever released; a withholding aggregator (T14) passes every proof

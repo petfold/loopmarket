@@ -9,6 +9,16 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-09-15
+
+P2 clearing on chain: recordstore's trie proofs verified on the EVM, the
+structural half of a leg verified from the anchored root and the record
+bytes, and the optimistic beat — one outcome per beat with a bond, a
+challenge window, fills recorded at finalization — deployed on Gnosis and
+posted to from `loop propose`. Contracts, the Python client and the CLI
+verbs; the semantic half stays optimistic with an arbiter hook. Needs
+ontodag 0.26.1; the `evm` extra runs the contract tests.
+
 ### Added
 
 - **The on-chain trie-proof verifier** (P2 clearing, step one; decided

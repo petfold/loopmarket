@@ -60,7 +60,7 @@ PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery,
 
 The script publishes the smallest nontrivial book — a piano teacher, a
 market gardener and a bicycle mechanic, no pair of whom can trade — and
-`loops && clear` finds, verifies and clears the triangle at a 12% surplus:
+`loops && clearing` finds, verifies and clears the triangle at a 12% surplus:
 fifteen lines of `set maker`, `give piano-lesson amara_flat 100`,
 `examples/delivery.loop` clears a *circulation*: the grocer's box at the
 shop plus the courier's run to the door as one composed leg (2026-09-13),
@@ -111,7 +111,21 @@ reconstructing the cleared world from (address, topic) alone. Since
 2026-09-04 the federation demo adopts ontodag's `core` pack as the
 catalogue and includes a censoring aggregator: `audit_manifest` convicts
 it from its own manifest with absence proofs, and a solver folding the
-announced maker books itself recovers the honest fold (T14).
+announced maker books itself recovers the honest fold (T14). Since
+2026-09-14 discovery is one registry event on the chain Swarm settles on
+(`LoopBookRegistry`, deployed on Gnosis): `loop announce` says "my book is
+here", and every session with the `registry` setting folds the announced
+books itself under the admission rules — the read path needs no
+aggregator to trust; the v4 record carries exact rationals (U9), a
+thing's `step` and `min`, wants of several parts, fills with the
+quantity taken, partial fills of divisible gives and aggregation by
+quantity. Since 2026-09-15 clearing reaches the chain: recordstore's trie
+proofs verified on the EVM (`contracts/TrieProofVerifier.sol`), the
+structural half of a leg verified from the anchored root and the record
+bytes (`LoopVerifier.sol`), and the optimistic beat (`BeatClearing.sol`,
+deployed on Gnosis) — one outcome per beat with a bond, a challenge
+window, fills recorded on chain at finalization — posted to from
+`loop propose`; the semantic half stays optimistic with an arbiter hook.
 Alpha; interfaces will move.
 
 **Designed (2026-08-07):** most of what loopmarket *is* now lives as a
