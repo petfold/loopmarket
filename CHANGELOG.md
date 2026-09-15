@@ -46,6 +46,9 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   and the chain the commitments; the CLI gains the `beat` setting,
   `propose` and `finalize BEAT`; the compiled ABI ships in
   `contracts/abi/BeatClearing.json`. `tests/test_beat_client.py`.
+- **The beat contract is deployed** on Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08` (bond 0.01
+  xDAI, window 720 blocks); `loop propose` posted the triangle as beat 1
+  the same day, six fills, in five seconds.
 
 ## [0.9.0] — 2026-09-15
 

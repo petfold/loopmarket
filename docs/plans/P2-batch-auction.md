@@ -97,6 +97,17 @@ EVM: submit 0.57 M gas (two legs, four fills), a challenge that
 re-verifies one leg 3.7 M, finalize 0.28 M. The sealed-proposal and
 scoring machinery of §3–§7 sits *in front of* this contract and is not
 built; today one submitter posts one outcome. `tests/test_beat_clearing.py`.
+**Deployed 2026-09-15 on Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`** (bond 0.01 xDAI, window 720
+blocks ≈ one hour, arbiter the deployer's key until factbond's
+adjudication): `loop set beat chain:https://rpc.gnosischain.com@0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`.
+**Live gate the same day:** a pinned catalogue in a record store, three
+makers' local books announced through a file registry, and `loop propose`
+cleared the triangle into the solver's clearing book and posted it as
+beat 1 — six fills, the key as submitter — in five seconds; the contract
+read it back. What is not built: a `challenge` verb (the CLI does not yet
+keep the submission it posted; a challenger rebuilds it from the clearing
+book's loop record and the snapshot), and the sealed-proposal beat in
+front of the contract.
 
 ## 3. Sealed proposals
 
