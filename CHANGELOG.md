@@ -29,6 +29,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   the canonical bytes by pattern. Measured ~3.5 M gas per one-give leg.
   Composed wants are not on chain yet. `tests/test_loop_verifier.py` feeds
   it real proposals from the Python clearing.
+- **The optimistic beat contract** (step three): `contracts/BeatClearing.sol`
+  — one outcome per beat posted as commitments with a bond; a challenge
+  re-verifies one leg on chain against its committed hash and, if it
+  fails, cancels the beat and pays the challenger (an out-of-gas
+  verification is a refusal, not a conviction); after the window anyone
+  finalizes and the contract records the fills exactly — the chain as the
+  authority on what is filled; an arbiter address may cancel for what the
+  contract cannot compute. Measured: submit 0.57 M, challenge 3.7 M,
+  finalize 0.28 M gas. `tests/test_beat_clearing.py`.
 
 ## [0.9.0] — 2026-09-15
 

@@ -81,6 +81,23 @@ Four phases (decided 2026-08, lands with P2):
    (3 blocks on Gnosis in CoW's auctions); winning and missing it is §7's
    `missingScore` event and decays the solver's successRate standing.
 
+**Built 2026-09-15, the optimistic shape (decided with Peter the same
+day): `contracts/BeatClearing.sol`.** One outcome per beat: the submitter
+posts the beat's pins, the keccak of every leg, the fills the legs imply
+and the potentials, with a bond; during a window of `windowBlocks` anyone
+re-verifies one leg on chain by supplying its full data — checked against
+the committed hash, then `LoopVerifier` — and a leg that fails cancels the
+beat and pays the bond to the challenger, while an out-of-gas
+verification is a refusal, never a conviction; after the window anyone
+finalizes and the contract records the fills exactly, so the chain is the
+authority on what is filled (`filled(offer)` as `n/d`). The semantic half
+— does the give fit the want — is the arbiter's: an address (factbond's
+adjudication, P3) that may cancel within the window. Measured on a local
+EVM: submit 0.57 M gas (two legs, four fills), a challenge that
+re-verifies one leg 3.7 M, finalize 0.28 M. The sealed-proposal and
+scoring machinery of §3–§7 sits *in front of* this contract and is not
+built; today one submitter posts one outcome. `tests/test_beat_clearing.py`.
+
 ## 3. Sealed proposals
 
 A loop proposal is fully specified by offer ids and rates: once visible it
