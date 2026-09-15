@@ -1,0 +1,163 @@
+"""The on-chain structural verifier of a leg (P2 clearing, step two,
+2026-09-15): real proposals from the Python clearing, fed to
+`contracts/LoopVerifier.sol` on a local EVM — every offer's canonical bytes
+and trie proof, the quantities taken, the potentials — verify; and each
+thing the contract can refuse, it refuses: a record that does not hash to
+its id, an offer outside the root, a non-v4 record, a pin mismatch, a
+quantity off the step or over what is left, potentials that do not
+balance. Skips without the `evm` extra."""
+
+import os
+from fractions import Fraction
+
+import pytest
+from ontodag import OntoDAG
+
+solcx = pytest.importorskip("solcx")
+pytest.importorskip("eth_tester")
+from web3 import Web3, EthereumTesterProvider  # noqa: E402
+from recordstore import MemoryBytesStore, RecordStore  # noqa: E402
+
+from loopmarket import (  # noqa: E402
+    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, q, want,
+)
+
+HERE = os.path.dirname(__file__)
+NOW = 5_000
+V = dict(valid=TimeWindow(0, 1_000_000))
+
+
+@pytest.fixture(scope="module")
+def face():
+    solcx.install_solc("0.8.24")
+    compiled = solcx.compile_files([os.path.join(HERE, "..", "contracts", "LoopVerifier.sol")],
+                                   output_values=["abi", "bin"], solc_version="0.8.24",
+                                   optimize=True, optimize_runs=200, via_ir=True,
+                                   allow_paths=os.path.join(HERE, "..", "contracts"))
+    artifact = next(v for k, v in compiled.items() if k.endswith("LoopVerifierFace"))
+    w3 = Web3(EthereumTesterProvider())
+    w3.eth.default_account = w3.eth.accounts[0]
+    c = w3.eth.contract(abi=artifact["abi"], bytecode=artifact["bin"])
+    receipt = w3.eth.wait_for_transaction_receipt(c.constructor().transact())
+    return w3, w3.eth.contract(address=receipt["contractAddress"], abi=artifact["abi"])
+
+
+def _cleared_book():
+    """A book with pins, a cleared triangle including a partial fill of a
+    divisible give, and the loop record clearing wrote."""
+    cat = Ontology(OntoDAG()).load({"apple": [], "lesson": [], "repair": []})
+    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    offers = [
+        give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins),        # 2/kg, by 5 kg
+        want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins),
+        give("b1", Thing(("lesson",)), 80, **V, **pins),
+        want("farm", Thing(("lesson",)), 85, **V, **pins),
+    ]
+    book.publish_many(offers); book.commit()
+    root = book.store.root
+    agent = SolverAgent(registry=book, ontology=cat, clearing=MockClearing(book, cat, clock=lambda: NOW),
+                        solver_id="t")
+    # the proposal is what clearing accepted; verify it against the PRE-clearing root
+    snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
+    receipts = agent.step(now=NOW)
+    assert [r.accepted for r in receipts] == [True]
+    rec = book.store.get(f"loop/{receipts[0].loop_id}")
+    return snapshot, root, rec, pins
+
+
+def _rat(text):
+    f = Fraction(text)
+    return (f.numerator, f.denominator)
+
+
+def _leg_args(snapshot, rec, leg):
+    def proof(oid):
+        p = snapshot.store.prove("offer/" + oid)
+        return (bytes.fromhex(oid), bytes.fromhex(p["value"]), [bytes.fromhex(n) for n in p["nodes"]])
+    return (proof(leg["want"]), [proof(g) for g in leg["gives"]], [_rat(t) for t in leg["taken"]])
+
+
+def _beat(root, pins):
+    return (bytes.fromhex(root), bytes.fromhex(pins["ontology_root"]),
+            pins["registry_version"].encode(), pins["contract_version"].encode())
+
+
+def test_a_cleared_loop_verifies_leg_by_leg(face):
+    w3, verifier = face
+    snapshot, root, rec, pins = _cleared_book()
+    makers = list(rec["potentials"])
+    verifier.functions.setPotentials([m.encode() for m in makers],
+                                     [_rat(rec["potentials"][m])[0] for m in makers],
+                                     [_rat(rec["potentials"][m])[1] for m in makers]).transact()
+    gas = []
+    for leg in rec["legs"]:
+        args = _leg_args(snapshot, rec, leg)
+        want_maker, give_makers = verifier.functions.verifyLeg(_beat(root, pins), args).call()
+        assert want_maker.decode() == snapshot.get(leg["want"]).maker
+        assert [m.decode() for m in give_makers] == [snapshot.get(g).maker for g in leg["gives"]]
+        gas.append(verifier.functions.verifyLeg(_beat(root, pins), args).estimate_gas())
+    print("\ngas per leg (one give each):", gas)
+
+
+def test_every_structural_fault_is_refused(face):
+    w3, verifier = face
+    snapshot, root, rec, pins = _cleared_book()
+    makers = list(rec["potentials"])
+    verifier.functions.setPotentials([m.encode() for m in makers],
+                                     [_rat(rec["potentials"][m])[0] for m in makers],
+                                     [_rat(rec["potentials"][m])[1] for m in makers]).transact()
+    leg = next(l for l in rec["legs"] if l["taken"] == ["40"])           # the apples leg
+    beat = _beat(root, pins)
+    good = _leg_args(snapshot, rec, leg)
+    assert verifier.functions.verifyLeg(beat, good).call()
+
+    def refused(args, beat_=beat, match=None):
+        with pytest.raises(Exception) as exc:
+            verifier.functions.verifyLeg(beat_, args).call()
+        if match:
+            assert match in str(exc.value), str(exc.value)
+
+    want_p, gives_p, taken = good
+    # a record altered by a byte no longer hashes to its id
+    gid, grec, gnodes = gives_p[0]
+    i = grec.index(b'"nonce":') + 8                                   # a digit inside the record
+    tampered = grec[:i] + bytes([grec[i] ^ 1]) + grec[i + 1:]
+    refused((want_p, [(gid, tampered, gnodes)], taken), match="hash")
+    refused((want_p, [(gid, grec[:-1] + b" ", gnodes)], taken), match="envelope")
+    # off the 5 kg step; more than the whole give; below a floor is the same gate
+    refused((want_p, gives_p, [(42, 1)]), match="step")
+    refused((want_p, gives_p, [(105, 1)]), match="left")
+    # the contract has already recorded 70 kg filled: 40 more is too much
+    verifier.functions.setFilled(gid, 70, 1).transact()
+    refused((want_p, gives_p, taken), match="left")
+    verifier.functions.setFilled(gid, 0, 1).transact()
+    # pins: the beat names another catalogue root, registry, contract
+    refused(good, beat_=(bytes.fromhex(root), bytes(32), b"4.2", b"0.1"), match="ontology pin")
+    refused(good, beat_=(bytes.fromhex(root), bytes.fromhex("ab" * 32), b"5.0", b"0.1"), match="registry pin")
+    # another book root: the proof does not hash there
+    refused(good, beat_=(bytes(32), bytes.fromhex("ab" * 32), b"4.2", b"0.1"))
+    # potentials that do not balance: the buyer's potential too small
+    verifier.functions.setPotentials([b"b1", b"farm"], [1, 1], [10, 1]).transact()
+    refused(good, match="balance")
+    # a v3 record is not verifiable on chain
+    snap3, root3, rec3, _ = _cleared_book_v3()
+    leg3 = next(l for l in rec3["legs"] if len(l["gives"]) == 1)
+    refused(_leg_args(snap3, rec3, leg3), beat_=_beat(root3, pins), match="v4")
+
+
+def _cleared_book_v3():
+    cat = Ontology(OntoDAG()).load({"apple": [], "lesson": []})
+    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    offers = [give("farm", Thing(("apple",), 40, "kg"), 80, v=3, **V, **pins),
+              want("b1", Thing(("apple",), 40, "kg"), 90, v=3, **V, **pins),
+              give("b1", Thing(("lesson",)), 80, v=3, **V, **pins),
+              want("farm", Thing(("lesson",)), 85, v=3, **V, **pins)]
+    book.publish_many(offers); book.commit()
+    root = book.store.root
+    snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
+    agent = SolverAgent(registry=book, ontology=cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+    receipts = agent.step(now=NOW)
+    assert receipts and receipts[0].accepted
+    return snapshot, root, book.store.get(f"loop/{receipts[0].loop_id}"), pins

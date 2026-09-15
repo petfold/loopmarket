@@ -97,6 +97,23 @@ itself). Under the P2 design these costs fall only on a challenged leg,
 never on the happy path. The Swarm (BMT, keccak) addressing is the next
 verifier variant; books on Swarm carry that scheme.
 
+**Step two, the same day: `contracts/LoopVerifier.sol`** — the structural
+half of clearing for one leg: each offer's trie value blob (recordstore's
+`{"rsv":1,"val":…}` envelope, checked byte for byte and sliced) hashes to
+its id and sits under the beat's book root; the record is v4 and its pins
+equal the beat's; the want is a want and each give a give with no maker on
+both sides; each quantity taken is within the give, on its step, at or
+above its floor and within what the contract has recorded as unfilled;
+and the potentials balance the leg — the lot times the buyer's potential
+covering the sum of unit price times quantity times each giver's — by
+cross-multiplication of exact rationals, no division. Fields are read from
+the canonical bytes by pattern (`"gives":{` before `"maker":"` before
+`"wants":{`). **Measured: ~3.5 M gas per one-give leg**, two proofs and
+the arithmetic included. Not yet on chain: composed wants (`parts`), whose
+per-part quantities the verifier would read from the record. Tested with
+real proposals from the Python clearing, every structural fault refused
+(`tests/test_loop_verifier.py`).
+
 ## 2. The envelope policy, adopted wholesale
 
 Every proof-bearing artifact this repo emits uses ontodag's certificate

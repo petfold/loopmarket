@@ -20,6 +20,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   `tests/test_trie_verifier.py` compiles it with py-solc-x and runs it on
   eth-tester against real book proofs (new `evm` extra). Measured: 1.2–1.6 M
   gas per inclusion, 0.64 M per absence on three-node paths.
+- **The on-chain loop verifier** (step two): `contracts/LoopVerifier.sol`
+  verifies the structural half of one leg — the value envelope and the
+  record's hash against its id, inclusion under the beat's root, v4 and
+  the pins, sides and makers, each quantity taken within the give and on
+  its step and floor and within what is unfilled, and the potentials
+  balancing the leg by exact cross-multiplication — reading fields from
+  the canonical bytes by pattern. Measured ~3.5 M gas per one-give leg.
+  Composed wants are not on chain yet. `tests/test_loop_verifier.py` feeds
+  it real proposals from the Python clearing.
 
 ## [0.9.0] — 2026-09-15
 
