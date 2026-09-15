@@ -95,6 +95,11 @@ _SETTINGS = {
         "(sessions on one machine), memory:; several comma-separated are "
         "one channel, the newer chain last; every announced book is folded "
         "into every answer, as its announced owner's"),
+    "beat": _Setting(
+        "LOOP_BEAT", "", "--beat SPEC",
+        "the clearing contract: chain:RPC_URL@CONTRACT (BeatClearing); "
+        "`propose` posts each cleared loop as a beat, `finalize BEAT` records "
+        "its fills after the window"),
     "maker": _Setting(
         "LOOP_MAKER", "", "--maker NAME",
         "my identity; the signer's address when bee_signer is set and the "
@@ -2079,6 +2084,52 @@ def cmd_loops(args, session, out):
     return 0 if loops else 1
 
 
+def _beat_client(session):
+    from .beat import BeatClient
+    spec = _configured("beat")
+    if not spec or not spec.startswith("chain:"):
+        raise ValueError("no clearing contract: `loop set beat chain:RPC_URL@CONTRACT`")
+    rpc, _, address = spec[6:].rpartition("@")
+    return BeatClient(rpc, address, key=_configured("bee_signer") or None)
+
+
+def cmd_propose(args, session, out):
+    """Clear locally as `clearing` does and post every accepted loop as one
+    beat on the clearing contract (P2, 2026-09-15): the book keeps the data,
+    the chain the commitments and — after `finalize` — the fills. The
+    bee_signer key pays the bond and is the submitter."""
+    from .clearing import ChainClearing
+    now = session.now
+    if _peer_specs() or _configured("registry"):
+        session.book.absorb(session.fold())
+        session.book.commit()
+    book, ontology = session.book, session.catalogue
+    agent = SolverAgent(book, ontology,
+                        ChainClearing(book, ontology, beat_client=_beat_client(session),
+                                      clock=lambda: now),
+                        solver_id="loop-cli", min_surplus=0.0)
+    receipts = agent.step(now=now)
+    posted = 0
+    for r in receipts:
+        if r.accepted:
+            posted += 1
+            print(f"posted {r.reason}: loop {r.loop_id[:16]}…", file=out)
+        else:
+            print(f"rejected {r.loop_id[:16]}…: {r.reason}", file=_err())
+    if posted:
+        print(f"book root {book.store.root}", file=out)
+    return 0 if posted else 1
+
+
+def cmd_finalize(args, session, out):
+    """Record a beat's fills on chain once its challenge window has closed."""
+    client = _beat_client(session)
+    receipt = client.finalize(int(args.beat))
+    state = client.beat(int(args.beat))
+    print(f"finalized beat {args.beat}: {state['fills']} fills, gas {receipt['gasUsed']}", file=out)
+    return 0
+
+
 def cmd_clearing(args, session, out):
     """Run the clearing house locally: MockClearing over the fold, fills
     committed to my book. Named for what it does; `clear` means delete on
@@ -2224,6 +2275,8 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop fold                  fold the announced books and peers myself; print the root
   loop loops                 profitable loops on a snapshot (exit 1: none)
   loop clearing              run the clearing house locally over the fold (exit 1: none)
+  loop propose               clear locally and post each loop as a beat on the clearing contract
+  loop finalize BEAT         record a beat's fills on chain after its window
   loop status                roots, counts, settings in force
   loop set [KEY [VALUE]]     show / change a durable setting
   loop export | import [FILE]   offers as JSON lines of canonical records
@@ -2334,6 +2387,11 @@ def build_parser():
     _add_output_flags(p)
     p.set_defaults(func=cmd_watch)
 
+    p = sub.add_parser("propose", add_help=False)
+    p.set_defaults(func=cmd_propose)
+    p = sub.add_parser("finalize", add_help=False)
+    p.add_argument("beat")
+    p.set_defaults(func=cmd_finalize)
     p = sub.add_parser("announce", add_help=False)
     p.add_argument("--role", choices=("maker", "clearing"), default=None)
     p.set_defaults(func=cmd_announce)

@@ -38,6 +38,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   authority on what is filled; an arbiter address may cancel for what the
   contract cannot compute. Measured: submit 0.57 M, challenge 3.7 M,
   finalize 0.28 M gas. `tests/test_beat_clearing.py`.
+- **The beat from Python** (step four): `beat.submission(proposal,
+  snapshot)` builds what the contract commits to — leg hashes over the ABI
+  encoding, fills, potentials, pins — and `BeatClient` submits, challenges,
+  finalizes and reads `filled`; `clearing.ChainClearing` runs
+  `MockClearing`'s checklist and posts the beat, the book keeping the data
+  and the chain the commitments; the CLI gains the `beat` setting,
+  `propose` and `finalize BEAT`; the compiled ABI ships in
+  `contracts/abi/BeatClearing.json`. `tests/test_beat_client.py`.
 
 ## [0.9.0] — 2026-09-15
 

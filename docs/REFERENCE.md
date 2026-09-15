@@ -407,6 +407,15 @@ node `potentials`. A simple cycle's record is byte-identical to before.
 
 ---
 
+## 8b. `loopmarket.beat` — the beat on chain (P2, 2026-09-15)
+
+| name | one line |
+|---|---|
+| `submission(proposal, snapshot) -> Submission` | pure: every leg as `LoopVerifier.Leg` (value blobs and trie paths under the snapshot's root, quantities taken as `n/d`), `leg_hashes` = keccak of each leg's ABI encoding, `fills`, `makers`/`potentials`, `pins`; refuses a snapshot that is not the proposal's book root |
+| `BeatClient(rpc_url, address, *, key=None, client=None)` | `.bond()`, `.submit(sub) -> (beat, receipt)`, `.challenge(beat, index, sub) -> reason`, `.finalize(beat)`, `.filled(offer_id) -> Fraction`, `.beat(beat) -> dict`; web3 lazy (`chain` extra) |
+| `abi()` | the compiled `BeatClearing` (ABI, bytecode) from `contracts/abi/BeatClearing.json` |
+| `clearing.ChainClearing(registry, ontology, *, beat_client, ...)` | `MockClearing`'s checklist, then the beat posted; the receipt's `reason` is `beat N` |
+
 ## 9. `loopmarket.solver.agent` — the baseline species
 
 ### `SolverAgent(registry, ontology, clearing, solver_id="solver-0", min_surplus=0.005, max_loops_per_step=10)`

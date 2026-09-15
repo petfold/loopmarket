@@ -208,3 +208,64 @@ class MockClearing:
         self.registry.mark_filled(proposal.fills(), lid, proposal.to_record())
         root = self.registry.commit()
         return Receipt(True, lid, book_root=root)
+
+
+class ChainClearing(MockClearing):
+    """`MockClearing` whose accepted proposals are also posted as beats on
+    `BeatClearing` (P2, 2026-09-15). The book is the data — the loop record
+    and the fills land in this clearing's own book exactly as before, after
+    the full U3 re-derivation — and the chain holds the commitments and,
+    once the window closes and someone finalizes, the fills. A proposal the
+    local re-derivation rejects never reaches the chain; one the chain
+    refuses (a bond short, a node down) is rejected here too, so the book
+    and the chain never disagree about what was cleared. The receipt's
+    `reason` carries the beat id on acceptance."""
+
+    def __init__(self, registry, ontology, *, beat_client, snapshot_of=None, **kw):
+        super().__init__(registry, ontology, **kw)
+        self.beat_client = beat_client
+        self.snapshot_of = snapshot_of or (lambda root: OfferRegistry(
+            type(registry.store).at(root, registry.store.blobs)))
+        self.beats: dict[str, int] = {}
+
+    def submit(self, proposal: LoopProposal) -> Receipt:
+        from .beat import submission
+        lid = proposal.circulation.loop_id
+        try:
+            sub = submission(proposal, self.snapshot_of(proposal.book_root))
+        except Exception as exc:  # noqa: BLE001 — the proposal's evidence cannot be built
+            return Receipt(False, lid, f"beat: {exc}")
+        # the local checklist first, without committing
+        rehearsal = MockClearing(self.registry, self.ontology, min_surplus=self.min_surplus,
+                                 require_per_node=self.require_per_node, clock=self.clock,
+                                 verifiable_oracles=self.verifiable_oracles)
+        rehearsal.registry = _Dry(self.registry)
+        verdict = rehearsal.submit(proposal)
+        if not verdict.accepted:
+            return verdict
+        try:
+            beat, _receipt = self.beat_client.submit(sub)
+        except Exception as exc:  # noqa: BLE001
+            return Receipt(False, lid, f"beat refused: {exc}")
+        receipt = super().submit(proposal)
+        if receipt.accepted:
+            self.beats[lid] = beat
+            return Receipt(True, lid, f"beat {beat}", receipt.book_root)
+        return receipt
+
+
+class _Dry:
+    """A registry that reads through and swallows writes: `MockClearing`'s
+    checklist run to the end without committing anything."""
+
+    def __init__(self, registry):
+        self._r = registry
+
+    def __getattr__(self, name):
+        return getattr(self._r, name)
+
+    def mark_filled(self, *a, **k):
+        pass
+
+    def commit(self, *a, **k):
+        return self._r.store.root
