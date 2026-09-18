@@ -137,7 +137,7 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   outcome — one candidate, the solver's own loop winning over the reserve
   bid — posted it as beat 2 on the clearing contract and recorded it on
   `SealedBeat`; a fresh session read the recorded outcome and `challenge 2`
-  answered *verifies*. The two earlier live beats surfaced the two fixes
+  answered *verifies*; finalized after its window (six fills, 383 k gas). The two earlier live beats surfaced the two fixes
   above it: a fold computed under the book's addressing, and the chain's
   fills subtracted by the hunt and the checklist.
 
