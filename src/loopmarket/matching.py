@@ -87,7 +87,7 @@ def _major_skew(a: str, b: str) -> bool:
 
 def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
            quantity: bool = True, thing: Thing | None = None,
-           available=None) -> bool:
+           available=None, taken=None) -> bool:
     """Everything `check_match` decides before meaning: kinds and makers,
     the record line, validity, the v1/v2 fields, quantity and unit (skipped
     for an operator give, which moves a lot rather than being one), pins.
@@ -100,9 +100,16 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
     # admissibility by declaration (v5, 2026-09-18): each side's requirement
     # of a counterparty — a bond floor, accepted witness types — must be met
     # by the other side's declaration; unmet is refused, fail closed (U7)
-    for mine, other in ((give, want), (want, give)):
-        if mine.requires is not None and not mine.requires.met_by(other):
-            return False
+    # the give's bond is reserved per fill: the share for what this leg takes
+    # (the wanted quantity, an aggregated share, or — an operator's run, a
+    # whole give — everything); the want is taken whole
+    wanted = thing if thing is not None else (None if want.composed else want.thing)
+    give_taken = taken if taken is not None else \
+        (q(wanted.qty) if (quantity and wanted is not None) else q(give.thing.qty))
+    if want.requires is not None and not want.requires.met_by(give, taken=give_taken):
+        return False
+    if give.requires is not None and not give.requires.met_by(want):
+        return False
     if not (give.valid.is_open_at(now) and want.valid.is_open_at(now)):
         return False
     if give.v < 3:
@@ -307,7 +314,7 @@ def check_aggregate(want: Offer, gives: Iterable[Offer], quantities: Iterable,
     if sum(quantities, Fraction(0)) != q(want.thing.qty):
         return None
     for g, share in zip(gives, quantities):
-        if not _gates(g, want, ontology, now=now, quantity=False):
+        if not _gates(g, want, ontology, now=now, quantity=False, taken=share):
             return None
         left = None if available is None else available.get(g.offer_id)
         if g.thing.unit != want.thing.unit or not g.thing.takes(share, left):

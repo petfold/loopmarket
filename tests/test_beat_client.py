@@ -412,7 +412,7 @@ def test_a_v5_book_posts_and_verifies(chain):
     cat.load({"apple": [], "lesson": []}); cat.commit()
     pins = cat.pins
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
-    book.publish_many([give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins, bond=2, v=5),
+    book.publish_many([give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins, bond=5, v=5),   # 40 of 100 reserve 2
                        want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins, bond=1, requires=Requires(bond=1)),
                        give("b1", Thing(("lesson",)), 80, **V, **pins, bond=1, v=5),
                        want("farm", Thing(("lesson",)), 85, **V, **pins, bond=2, requires=Requires(bond="1/2"))])

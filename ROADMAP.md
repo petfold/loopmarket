@@ -108,7 +108,7 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       and the record bytes, ~3.7 M gas; 6.3 M for a two-part composed leg), `BeatClearing.sol` (one outcome
       per beat with a bond, a challenge window, fills recorded at
       finalization, an arbiter hook for the semantic half) — deployed on
-      Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`, redeployed 2026-09-18 at `0x1277B4906b6Aab4dF806dd85c5ED980135C12931` with the Swarm-addressing pin, that evening at `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf` with composed wants, and late that evening at `0x6699A442630356fcBB4E0DFbD67c2E6D5550F7Ea` with the v5 record's declared requirements; `beat.py`,
+      Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`, redeployed 2026-09-18 at `0x1277B4906b6Aab4dF806dd85c5ED980135C12931` with the Swarm-addressing pin, that evening at `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf` with composed wants, and late that evening at `0x6699A442630356fcBB4E0DFbD67c2E6D5550F7Ea` with the v5 record's declared requirements and at `0xe5699BE764CE66209b29D25c22413feffD63433A` with the bond reserved per fill; `beat.py`,
       `ChainClearing`, `loop propose` / `finalize`; beat 1 posted live
       and finalized (2026-09-18).
 - [x] **Anchored ids versus proofs** (DECIDED 2026-09-15 with the contract
@@ -122,7 +122,7 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       (numeraire-free score U14, the fairness filter with the baseline as
       reserve bid, deterministic offer-disjoint selection, every revealed
       loop re-derived first), `commit`/`reveal`/`outcome`/`sealed`.
-      Deployed on Gnosis at `0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5` (redeployed at `0x2014e7D3A097a709c3d27Df67617dcF9879A2A2A` with the v5 clearing contract); live the same evening
+      Deployed on Gnosis at `0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5` (redeployed at `0x2014e7D3A097a709c3d27Df67617dcF9879A2A2A`, then `0x79493a82F36B9EEABDE974044020F72055Bf4A32`, with the v5 clearing contracts); live the same evening
       (commit, reveal, outcome, record; the winner posted and verified from
       a fresh session). Still open there: Shutter
       threshold encryption as the sealing (§3's primary), solver bonds
@@ -175,8 +175,13 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       built 2026-09-18, [P2-loop-selection §4a](docs/plans/P2-loop-selection.md)):
       the v5 record's `requires` (a bond floor, accepted witness types)
       gates matching off chain and verifies on chain; `set bond`,
-      `set require_bond`. Open beneath it: the escrow that holds a declared
-      bond, who receives a slashed one, a history requirement (U12).
+      `set require_bond`, `set require_early`; a bond reserved per fill
+      (2026-09-18, Peter). Who receives a slashed bond: the working
+      doctrine of [P3 §3a](docs/plans/P3-guarantee-coupling.md) (obligations
+      stand, the floor is liquidated damages, early notice is cheaper, the
+      solver repairs first). Open beneath it: the escrow that holds a
+      declared bond, the declaration and repair records, partial
+      performance, a history requirement (U12).
 
 ## P4 — staged privacy · [plan](docs/plans/P4-privacy.md)
 

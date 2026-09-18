@@ -165,19 +165,46 @@ vegetables), the six lifters with one and with two missing, the courier
 who never carried the box the grocer delivered to the shop — all settle
 under 1–7 with nobody innocent touched.
 
-**Open, for Peter.** (a) *One bond, several fills:* a divisible give's
-one bond backs every loop that takes part of it; the candidate rule is a
-share reserved per fill in proportion to the quantity taken, with the
-admissibility gate comparing the share rather than the whole bond — a
-change to today's gate. (b) *Early notice:* a giver who knows in time
-that it will fail could declare so before the window at a lower
-liquidated amount, since the wanter can then reroute calmly — two floors
-in the requirement, early notice and no-show; a lever to offer, not
-assume. (c) *Partial performance* (the ride twenty minutes late): today's
-witness types are binary; degrees of default are the adjudicator's.
-(d) *The timing of the payout:* the escrow pays on the oracle's verdict
-at the end of the leg's window, disputable within a window — the
-optimistic shape the beat already has.
+**Decided the same evening (Peter), and built where the record and the
+gate are concerned:**
+
+8. **A bond is reserved per fill.** A give's one bond backs every loop
+   that takes part of it; each fill reserves bond × taken / quantity, and
+   the admissibility gate compares that share with the wanter's floor —
+   off chain (`Requires.met_by(taken=)`, through every check) and on chain
+   (`LoopVerifier`, "bond share below the counterparty's requirement").
+   A want, an indivisible give and an operator's whole run reserve the
+   whole bond. A 100 kg give with bond 10 reserves 4 for a 40 kg want.
+9. **Early notice is cheaper, by design.** The requirement carries a
+   second floor, `early` (v5; `set require_early`), owed instead of the
+   no-show floor when the giver declares before the leg's handover window
+   that it will not perform. The giver is motivated to declare as early
+   as it knows, because the fix is expected to be cheaper early than at
+   the last minute — and cheaper for the giver too, as the next rule says.
+10. **The solver repairs first; the wanter hears of it only if it must.**
+   On a declaration the solver tries at once to fix the circulation — a
+   replacement leg paid in the bond's asset from the reserved share (the
+   bridge of rule 6). If the fix is found in time and its price is within
+   the reserved share, only that price is taken from the bond and the
+   wanter need not act: the leg is served, its counterparty changed, and
+   `watch` shows the change. A cheap fix early is the giver's best case,
+   which is the incentive. If no fix is found quickly, the wanter is told
+   quickly — the declaration, the floor it is owed (`early` or the no-show
+   floor as the timing says), and, when the solver has one, a
+   pre-computed fix offered as an optional draft want the wanter may
+   accept or discard. From the moment it is told the wanter is under no
+   obligation to take the fix: it may already have arranged its own way
+   outside loopmarket.
+
+**Still open.** *Partial performance* (the ride twenty minutes late):
+today's witness types are binary; degrees of default are the
+adjudicator's. *The timing of the payout:* the escrow pays on the oracle's
+verdict at the end of the leg's window, disputable within a window — the
+optimistic shape the beat already has. *"Quickly"* in rule 10 is a
+parameter the solver and the leg's window fix between them, not yet
+chosen. The declaration record itself (`cancel/<offer>/<loop>` in the
+giver's book, the book being the channel as for handoffs) and the repair
+draft are settlement machinery that lands with the escrow.
 
 ## 4. The leg-oracle roster (consumed here, owned there)
 

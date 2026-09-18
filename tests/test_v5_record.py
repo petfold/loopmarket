@@ -80,11 +80,14 @@ def test_matching_refuses_a_leg_that_fails_either_sides_requirement():
     from loopmarket import Parts
     night = want("b", Parts((Thing(("ticket",), 2), Thing(("transport",), 1, "run"))), 60, **V,
                  requires=Requires(bond=1))
-    theatre = give("th", Thing(("ticket",), 10, step=1), 200, **V, bond=1, v=5)
+    theatre = give("th", Thing(("ticket",), 10, step=1), 200, **V, bond=5, v=5)   # 2 of 10 reserve 1
     driver = give("dr", Thing(("transport",), 1, "run"), 15, **V, bond="1/4", v=5)
     assert check_parts(night, (theatre, driver), cat, now=NOW) is None
     assert check_parts(night, (theatre, give("dr", Thing(("transport",), 1, "run"), 15, **V, bond=1, v=5)),
                        cat, now=NOW) is not None
+    thin = give("th", Thing(("ticket",), 10, step=1), 200, **V, bond=1, v=5)      # 2 of 10 reserve 1/5: refused
+    assert check_parts(night, (thin, give("dr", Thing(("transport",), 1, "run"), 15, **V, bond=1, v=5)),
+                       cat, now=NOW) is None
 
 
 def test_the_solver_never_proposes_an_inadmissible_loop_and_clearing_refuses_one():
@@ -111,3 +114,28 @@ def test_the_solver_never_proposes_an_inadmissible_loop_and_clearing_refuses_one
     verdict = MockClearing(book, cat, clock=lambda: NOW).rehearse(
         LoopProposal(forged, book.store.root, cat.root, "t", NOW))
     assert not verdict.accepted and "already filled" in verdict.reason or "fails re-verification" in verdict.reason
+
+
+def test_the_bond_is_reserved_per_fill_and_the_early_floor_rides_v5():
+    """A give's bond backs every fill of it: a 100 kg give with bond 10
+    reserves 4 for a 40 kg want, so a floor of 4 is met and 5 is not; a
+    want and an indivisible give are taken whole. The early-notice floor
+    lies between 0 and the no-show floor and round-trips."""
+    cat = _cat()
+    farm = give("f", Thing(("apple",), 100, "kg", step=5), 200, **V, bond=10, v=5)
+    assert check_match(farm, want("b", Thing(("apple",), 40, "kg"), 90, **V, requires=Requires(bond=4)), cat, now=NOW)
+    assert check_match(farm, want("b", Thing(("apple",), 40, "kg"), 90, **V, requires=Requires(bond=5)), cat, now=NOW) is None
+    assert check_match(farm, want("b", Thing(("apple",), 100, "kg"), 220, **V, requires=Requires(bond=10)), cat, now=NOW)
+    # aggregated shares reserve by share; an operator's whole run reserves the whole bond
+    evening = want("b", Thing(("ticket",), 2), 60, **V, requires=Requires(bond=1))
+    t = give("t", Thing(("ticket",), 4, step=1), 80, **V, bond=2, v=5)          # 2 of 4 reserve 1
+    u = give("u", Thing(("ticket",), 4, step=1), 80, **V, bond=2, v=5)
+    assert check_aggregate(evening, [t, u], [1, 1], cat, now=NOW) is None         # 1 of 4 reserves 1/2 each
+    assert check_aggregate(want("b", Thing(("ticket",), 4), 120, **V, requires=Requires(bond=1)), [t, u], [2, 2],
+                           cat, now=NOW) is not None
+    r = Requires(bond=4, early=1, oracles=("countersign",))
+    o = want("b", Thing(("apple",), 40, "kg"), 90, **V, requires=r)
+    assert Offer.from_record(o.to_record()).requires == r and o.to_record()["requires"]["early"] == "1"
+    assert Requires(bond=4).to_record() == {"bond": "4", "oracles": []}            # no early key unless given
+    with pytest.raises(ValueError, match="between 0 and"):
+        Requires(bond=4, early=5)

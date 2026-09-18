@@ -111,8 +111,8 @@ library LoopVerifier {
             }
             // admissibility by declaration (v5, 2026-09-18): each side's
             // requirement of a counterparty is met by the other's declaration
-            _requireMeets(want, g);
-            _requireMeets(g, want);
+            _requireMeetsShare(want, g, t);              // the give's bond reserved per fill
+            _requireMeets(g, want);                      // the want is taken whole
             total = _add(total, t);
             // value owed to the giver: (amount / qty) * taken * e[giver]
             Rat memory unitPrice = _div(g.amount, g.qty);
@@ -211,10 +211,24 @@ library LoopVerifier {
         f.reqOracles = list;
     }
 
+    /// The want's requirement against a give whose bond backs every fill of
+    /// it: the share reserved for this fill is bond × taken / qty (Peter,
+    /// 2026-09-18), compared by cross-multiplication.
+    function _requireMeetsShare(Facts memory requirer, Facts memory give, Rat memory taken) private pure {
+        if (!requirer.requiring) return;
+        Rat memory share = give.qty.n == 0 ? give.bond : _div(_mul(give.bond, taken), give.qty);
+        require(_geq(share, requirer.reqBond), "bond share below the counterparty's requirement");
+        _requireOracle(requirer, give);
+    }
+
     /// `requirer`'s declared requirement of a counterparty, against `other`'s declaration.
     function _requireMeets(Facts memory requirer, Facts memory other) private pure {
         if (!requirer.requiring) return;
         require(_geq(other.bond, requirer.reqBond), "bond below the counterparty's requirement");
+        _requireOracle(requirer, other);
+    }
+
+    function _requireOracle(Facts memory requirer, Facts memory other) private pure {
         if (requirer.reqOracles.length > 2) {                 // not "[]": a list of accepted types
             bytes memory quoted = abi.encodePacked('"', other.oracle, '"');
             require(_indexBytes(requirer.reqOracles, quoted, 0) != type(uint256).max,

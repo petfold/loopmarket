@@ -124,9 +124,13 @@ _SETTINGS = {
         "a declaration until P3's escrow holds it)"),
     "require_bond": _Setting(
         "LOOP_REQUIRE_BOND", "", "--require-bond AMOUNT",
-        "the least bond a counterparty must declare for a leg through my "
+        "the least bond a counterparty must reserve for a leg through my "
         "offer — admissibility by declaration (v5 record, 2026-09-18); "
-        "unmet, the leg is never matched"),
+        "unmet, the leg is never matched; on a no-show it is mine"),
+    "require_early": _Setting(
+        "LOOP_REQUIRE_EARLY", "", "--require-early AMOUNT",
+        "what a counterparty owes me instead if it declares before the "
+        "leg's window that it will not perform (at most require_bond)"),
     "interval": _Setting(
         "LOOP_INTERVAL", "30s", "--interval DURATION",
         "how often `watch` polls the fold"),
@@ -1151,8 +1155,9 @@ def render_offer(offer: Offer) -> str:
     if offer.requires is not None and not offer.requires.empty:
         req = offer.requires
         lines.insert(-2, f"  requires bond {_num(req.bond)}"
+                     + (f"  early {_num(req.early)}" if req.early is not None else "")
                      + (f"  oracle {' '.join(req.oracles)}" if req.oracles else "")
-                     + "  (of every counterparty; unmet is never matched)")
+                     + "  (of every counterparty, per fill; unmet is never matched)")
     return "\n".join(lines)
 
 
@@ -1361,8 +1366,9 @@ def _guarantees() -> dict:
     out: dict = {}
     if _configured("bond"):
         out["bond"] = q(_configured("bond"))           # a typed decimal is the decimal it prints as (U9)
-    if _configured("require_bond"):
-        out["requires"] = Requires(bond=q(_configured("require_bond")))
+    if _configured("require_bond") or _configured("require_early"):
+        out["requires"] = Requires(bond=q(_configured("require_bond") or 0),
+                                   early=q(_configured("require_early")) if _configured("require_early") else None)
     if "requires" in out or isinstance(out.get("bond"), Fraction):
         out["v"] = 5
     return out
@@ -2556,7 +2562,7 @@ def cmd_set(args, session, out):
         parse_now(value)
     if args.key == "valid":
         validity(value, 0)
-    if args.key in ("bond", "require_bond") and value:
+    if args.key in ("bond", "require_bond", "require_early") and value:
         try:
             amount = q(value)
         except Exception as exc:              # noqa: BLE001

@@ -275,7 +275,29 @@ def test_a_v5_leg_verifies_and_an_unmet_requirement_is_convicted(face):
     beat = _beat(root, pins)
     want_maker, gives = verifier.functions.verifyLeg(beat, leg(bonded)).call()
     assert want_maker == b"b" and gives == [b"s"]
-    for g, why in ((poor, "bond below"), (legacy, "bond below"), (fussy, "witness type not accepted")):
+    for g, why in ((poor, "bond (share )?below"), (legacy, "bond (share )?below"), (fussy, "witness type not accepted")):
         with pytest.raises(Exception, match=why):
             verifier.functions.verifyLeg(beat, leg(g)).call()
     print("\ngas for a v5 leg with a requirement:", verifier.functions.verifyLeg(beat, leg(bonded)).estimate_gas())
+
+
+def test_the_share_reserved_for_a_partial_fill_is_what_the_chain_compares(face):
+    """The farm's 100 kg with bond 10 reserves 4 for a 40 kg want: a floor
+    of 4 verifies, a floor of 5 is convicted as a share below the requirement."""
+    from loopmarket import Requires
+    w3, verifier = face
+    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    for floor, ok in ((4, True), (5, False)):
+        book = OfferRegistry(RecordStore(MemoryBytesStore()))
+        farm = give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins, bond=10, v=5)
+        b1 = want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins, bond=1, requires=Requires(bond=floor))
+        book.publish_many([farm, b1]); book.commit()
+        snapshot = OfferRegistry(RecordStore.at(book.store.root, book.store.blobs))
+        verifier.functions.setPotentials([b"farm", b"b1"], [1, 1], [1, 1]).transact()
+        args = _leg_args(snapshot, None, {"want": b1.offer_id, "gives": [farm.offer_id], "taken": ["40"]})
+        beat = _beat(book.store.root, pins)
+        if ok:
+            assert verifier.functions.verifyLeg(beat, args).call()[0] == b"b1"
+        else:
+            with pytest.raises(Exception, match="bond share below"):
+                verifier.functions.verifyLeg(beat, args).call()

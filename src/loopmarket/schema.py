@@ -344,31 +344,52 @@ class Requires:
     records say, and the escrow will make the declaration true. A v5
     form: the record bump that carries it also spells `bond` as `n/d`."""
 
-    bond: Fraction = Fraction(0)        # the least bond a counterparty must carry
+    bond: Fraction = Fraction(0)        # the floor on a no-show: the wanter's whole reliance
     oracles: tuple[str, ...] = ()       # witness types accepted; () accepts any
+    #: The floor when the giver declares before the leg's handover window
+    #: that it will not perform (Peter, 2026-09-18: early notice is cheaper,
+    #: so the giver is motivated to give it). None: the no-show floor.
+    early: Fraction | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "bond", q(self.bond))
         object.__setattr__(self, "oracles", tuple(sorted(set(self.oracles))))
+        if self.early is not None:
+            object.__setattr__(self, "early", q(self.early))
+            if not 0 <= self.early <= self.bond:
+                raise ValueError("the early-notice floor lies between 0 and the no-show floor")
         if self.bond < 0:
             raise ValueError("a bond floor is non-negative")
 
     @property
     def empty(self) -> bool:
-        return self.bond == 0 and not self.oracles
+        return self.bond == 0 and not self.oracles and self.early is None
 
-    def met_by(self, other: "Offer") -> bool:
-        """Does `other`'s declaration satisfy this requirement?"""
-        if q(other.bond) < self.bond:
+    def met_by(self, other: "Offer", *, taken=None) -> bool:
+        """Does `other`'s declaration satisfy this requirement? A bond backs
+        every fill of its offer and is *reserved per fill* in proportion to
+        the quantity taken (Peter, 2026-09-18): the share compared is
+        bond × taken / quantity — the whole bond for a want, an
+        indivisible give or an operator's whole run."""
+        share = q(other.bond)
+        if taken is not None and not other.composed:
+            whole = q(other.thing.qty)
+            if whole > 0:
+                share = share * q(taken) / whole
+        if share < self.bond:
             return False
         return not self.oracles or other.oracle in self.oracles
 
     def to_record(self) -> dict[str, Any]:
-        return {"bond": rat(self.bond), "oracles": list(self.oracles)}
+        rec = {"bond": rat(self.bond), "oracles": list(self.oracles)}
+        if self.early is not None:
+            rec["early"] = rat(self.early)
+        return rec
 
     @classmethod
     def from_record(cls, rec: dict[str, Any]) -> "Requires":
-        return cls(q(rec["bond"]), tuple(rec["oracles"]))
+        return cls(q(rec["bond"]), tuple(rec["oracles"]),
+                   q(rec["early"]) if "early" in rec else None)
 
 
 # -------------------------------------------------------------------------- offer

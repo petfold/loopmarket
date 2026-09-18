@@ -1005,10 +1005,12 @@ def test_bond_and_require_bond_settings_make_a_v5_offer(loop, monkeypatch):
     run.ok("set", "require_bond", "1")
     code, out, err = run("set", "require_bond", "-1")
     assert code != 0 and "non-negative" in err
+    run.ok("set", "require_early", "0.25")
     out = run.ok("give", "apple", "home", "5")
-    assert "terms    bond 0.5" in out and "requires bond 1" in out and "v5" in out
+    assert "terms    bond 0.5" in out and "requires bond 1  early 0.25" in out and "v5" in out
     offer = next(o for o in run.session.book.offers(include_filled=True))
-    assert offer.v == 5 and offer.bond == 1 / 2 and offer.requires.bond == 1
+    assert offer.v == 5 and offer.bond == 1 / 2 and offer.requires.bond == 1 and offer.requires.early == 1 / 4
+    monkeypatch.setenv("LOOP_REQUIRE_EARLY", ""); run.ok("set", "require_early", "")
     monkeypatch.setenv("LOOP_BOND", ""); monkeypatch.setenv("LOOP_REQUIRE_BOND", "")
     run.ok("set", "bond", ""); run.ok("set", "require_bond", "")
     out = run.ok("want", "apple", "home", "6")
