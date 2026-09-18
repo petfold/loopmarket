@@ -110,6 +110,38 @@ endogenous spread leg (`P2-batch-auction.md` §7).
   within the window.
 - `THREATS.md`: buyout churn, priced by the target.
 
+## 7. Strategies outside, primitives inside (Peter, 2026-09-18)
+
+The solver options above — which loops to break, whether an entrant's bid
+covers the prices, when to re-clear, the auctions — **stay outside
+loopmarket**, in solver species (circulator and its kin): solvers propose,
+clearing verifies, loopmarket imports no strategy. What loopmarket owes them
+is a small set of primitives, in this order:
+
+1. **The delta proposal** (pure Python; first). A proposal is legs to add
+   *and fills to release*, verified as one thing by `MockClearing` and
+   `ChainClearing`: every released fill exists; the maker of a released
+   fill is re-served by the new legs or paid its neutral point; the new
+   legs verify as always with the released capacity counted available;
+   the commit is atomic — fills moved and added under one root. Today's
+   proposal is the case with no releases. This alone makes the Pareto
+   re-match (§4) possible for an external solver.
+2. **Two records.** `loop/<new>` naming the loops it supersedes, and
+   `release/<offer>/<loop>` carrying who paid what to whom — distinct from
+   a fill and from a failure (U12's statistics stay clean). U11's check
+   learns that a superseded loop's fill may be absent when a successor
+   fill or a release stands in its place.
+3. **One contract verb, no money in it.** A beat may name unfinalized
+   beats it supersedes; at its finalization those are cancelled, their
+   pending fills dropped, their bonds returned. Checks: the same pins, not
+   finalized, within the window. The verifier already reads the neutral
+   point from a v5 record; nothing new is parsed.
+4. **The paid release is the escrow's** (P3, factbond). The escrow holds
+   the payer's bid, pays the maker's key, and calls one authorized
+   `release(offer, loop)` on the clearing contract — the arbiter hook's
+   shape — so the clearing contract's checks stay few and the money lives
+   in the contract built to hold it.
+
 ## Open problems
 
 - **The payment channel** for §5: who holds the entrant's bid, when it is
