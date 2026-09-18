@@ -171,6 +171,11 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
 - [ ] Witness-edge emission as derived telemetry at settlement
       re-verification; settlement-attached insurance under the indemnity
       principle; the leg-oracle coupling. Design, 2026-08-07.
+- [ ] Bonds and performance risk in the beat's objective (raised by
+      Peter 2026-09-18, [P2-loop-selection §4a](docs/plans/P2-loop-selection.md)):
+      the normative selection scores nominal surplus; decide admissibility
+      by declared counterparty requirements, a risk-weighted objective from
+      pinned sources, or the status quo — with the escrow bump.
 
 ## P4 — staged privacy · [plan](docs/plans/P4-privacy.md)
 

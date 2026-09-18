@@ -104,37 +104,52 @@ def disjoint_capacity(items: Iterable[Item]) -> dict:
 # The objective
 # --------------------------------------------------------------------------- #
 
-def weight(item: Item, prior=0):
+def weight(item: Item, prior=0, factor=None):
     """One loop's contribution: (1 + gain) as an exact factor when the
-    prior is 0, else q(L) · ln(1 + gain) as a decimal."""
+    prior is 0 and no factor is given, else q(L) · ln(1 + gain) as a
+    decimal, with q(L) = (1 − prior)^legs · factor(item).
+
+    `factor` is the hook of `P2-loop-selection.md` §4a: a dimensionless
+    performance factor in (0, 1] per candidate — from a member's bond
+    against its doctrine size, from delivered history under U12 — that
+    weighs the loop's expected benefit when performance risk is allowed
+    into the beat's objective. Nothing sets it today; U14 admits only
+    dimensionless quantities here, and a normative objective may read it
+    only from pinned data."""
     prior = q(prior)
-    if prior == 0:
+    if prior == 0 and factor is None:
         return 1 + item.gain
     with localcontext() as ctx:
         ctx.prec = PRECISION
         g = Decimal(item.gain.numerator) / Decimal(item.gain.denominator)
         qf = ((1 - prior) ** item.legs)
-        return (Decimal(qf.numerator) / Decimal(qf.denominator)) * (1 + g).ln()
+        w = (Decimal(qf.numerator) / Decimal(qf.denominator)) * (1 + g).ln()
+        if factor is not None:
+            f = q(factor(item))
+            if not 0 < f <= 1:
+                raise ValueError("a performance factor lies in (0, 1]")
+            w *= Decimal(f.numerator) / Decimal(f.denominator)
+        return w
 
 
-def objective(items: Iterable[Item], prior=0):
+def objective(items: Iterable[Item], prior=0, factor=None):
     """The score of a set: Π (1 + gain) exactly, or Σ q · ln(1 + gain)."""
     prior = q(prior)
-    if prior == 0:
+    if prior == 0 and factor is None:
         total = Fraction(1)
         for it in items:
             total *= 1 + it.gain
         return total
     with localcontext() as ctx:
         ctx.prec = PRECISION
-        return sum((weight(it, prior) for it in items), Decimal(0))
+        return sum((weight(it, prior, factor) for it in items), Decimal(0))
 
 
-def order_key(items: Iterable[Item], prior=0) -> tuple:
+def order_key(items: Iterable[Item], prior=0, factor=None) -> tuple:
     """§8's total order, as a key that sorts the best set first: higher
     score, fewer legs, then the smaller sorted tuple of item keys."""
     items = list(items)
-    score = objective(items, prior)
+    score = objective(items, prior, factor)
     return (-score, sum(it.legs for it in items), tuple(sorted(it.key for it in items)))
 
 
@@ -153,22 +168,22 @@ def _take(item: Item, remaining: dict) -> dict:
     return out
 
 
-def greedy(items: list, capacity: dict, prior=0) -> list:
+def greedy(items: list, capacity: dict, prior=0, factor=None) -> list:
     """The deterministic greedy: by weight (then key), each taken if it
     still fits. What the baseline's disjoint extraction becomes with
     capacities; the fallback above the exact threshold, and the reserve
     bid's floor (§3)."""
     remaining = dict(capacity)
     chosen = []
-    for it in sorted(items, key=lambda it: (-weight(it, prior), it.key)):
+    for it in sorted(items, key=lambda it: (-weight(it, prior, factor), it.key)):
         if _fits(it, remaining):
             chosen.append(it)
             remaining = _take(it, remaining)
     return sorted(chosen, key=lambda it: it.key)
 
 
-def pack(items: Iterable[Item], capacity: dict, *, prior=0, exact_up_to: int = EXACT_UP_TO,
-         budget: int = BUDGET) -> Packing:
+def pack(items: Iterable[Item], capacity: dict, *, prior=0, factor=None,
+         exact_up_to: int = EXACT_UP_TO, budget: int = BUDGET) -> Packing:
     """The feasible set of `items` worth most under `capacity` (offer id ->
     quantity available; an offer absent from it has none). Exact by branch
     and bound while there are at most `exact_up_to` items and within
@@ -183,12 +198,13 @@ def pack(items: Iterable[Item], capacity: dict, *, prior=0, exact_up_to: int = E
             infeasible[it.key] = f"takes more of offer {short[0][:12]} than is left"
         else:
             feasible.append(it)
-    fallback = greedy(feasible, capacity, prior)
+    fallback = greedy(feasible, capacity, prior, factor)
     if len(feasible) > exact_up_to:
         return Packing(fallback, False, infeasible)
+    exact_product = prior == 0 and factor is None
     # branch and bound, depth-first in the total order; the bound is the
     # score with every remaining item added (each weight is positive)
-    if prior == 0:
+    if exact_product:
         suffix = [Fraction(1)] * (len(feasible) + 1)
         for i in range(len(feasible) - 1, -1, -1):
             suffix[i] = suffix[i + 1] * (1 + feasible[i].gain)
@@ -197,13 +213,13 @@ def pack(items: Iterable[Item], capacity: dict, *, prior=0, exact_up_to: int = E
             ctx.prec = PRECISION
             suffix = [Decimal(0)] * (len(feasible) + 1)
             for i in range(len(feasible) - 1, -1, -1):
-                suffix[i] = suffix[i + 1] + weight(feasible[i], prior)
-    best = [fallback, order_key(fallback, prior)]
+                suffix[i] = suffix[i + 1] + weight(feasible[i], prior, factor)
+    best = [fallback, order_key(fallback, prior, factor)]
     nodes = [0]
     exhausted = [False]
 
     def bound(score, i):
-        return score * suffix[i] if prior == 0 else score + suffix[i]
+        return score * suffix[i] if exact_product else score + suffix[i]
 
     def dfs(i: int, chosen: list, remaining: dict, score):
         nodes[0] += 1
@@ -211,7 +227,7 @@ def pack(items: Iterable[Item], capacity: dict, *, prior=0, exact_up_to: int = E
             exhausted[0] = True
             return
         if i == len(feasible):
-            key = order_key(chosen, prior)
+            key = order_key(chosen, prior, factor)
             if key < best[1]:
                 best[0], best[1] = list(chosen), key
             return
@@ -220,12 +236,12 @@ def pack(items: Iterable[Item], capacity: dict, *, prior=0, exact_up_to: int = E
         it = feasible[i]
         if _fits(it, remaining):
             dfs(i + 1, chosen + [it], _take(it, remaining),
-                score * (1 + it.gain) if prior == 0 else score + weight(it, prior))
+                score * (1 + it.gain) if exact_product else score + weight(it, prior, factor))
             if exhausted[0]:
                 return
         dfs(i + 1, chosen, remaining, score)
 
-    dfs(0, [], dict(capacity), Fraction(1) if prior == 0 else Decimal(0))
+    dfs(0, [], dict(capacity), Fraction(1) if exact_product else Decimal(0))
     if exhausted[0]:
         return Packing(fallback, False, infeasible)
     return Packing(sorted(best[0], key=lambda it: it.key), True, infeasible)

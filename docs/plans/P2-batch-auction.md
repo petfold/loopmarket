@@ -262,6 +262,13 @@ clear within what is left of it — a give with room for both trades is not
 made worse off by the second, it clears more at its own price. Wants and
 indivisible offers compete as before. `auction.fairness_filter(capacity=)`.
 
+**References are nominal (noted 2026-09-18).** An offer's reference is the
+best *nominal* gain any candidate offers it; performance risk — the
+counterparty's bond, its delivered history — does not enter, so the
+filter protects nominal outcomes and a lemons leg at the best rate sets
+the reference. Whether references become *expected* outcomes is
+`P2-loop-selection.md` §4a's open decision.
+
 ## 6. Winner selection
 
 Selection consumes the packing problem of `P2-loop-selection.md`

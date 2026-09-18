@@ -215,3 +215,20 @@ def test_item_of_reads_a_circulation():
     assert it.takes[offers[0].offer_id] == 40 and it.takes[offers[1].offer_id] == 40      # the give by the want's quantity, the want whole
     assert it.takes[offers[2].offer_id] == 1 and it.takes[offers[3].offer_id] == 1
     assert it.legs == 2 and it.gain == loop.surplus and it.key[0] == loop.loop_id and it.key[2] == "x"
+
+
+def test_a_performance_factor_weighs_the_expected_benefit_when_given():
+    """§4a's hook: a dimensionless factor per candidate — nothing sets it
+    today. Two exclusive loops, the flakier one richer: nominal surplus
+    picks it; a factor halving its weight picks the other; the packer's
+    order and fallbacks are the same code either way."""
+    rich = _item("rich", {"x": 1, "y": 1}, 2, "12/100")
+    safe = _item("safe", {"x": 1, "z": 1}, 2, "10/100")
+    cap = {k: Fraction(1) for k in "xyz"}
+    assert [it.key[0] for it in pack([rich, safe], cap).chosen] == ["rich"]
+    flaky = lambda it: Fraction(1, 2) if it.key[0] == "rich" else Fraction(1)
+    assert [it.key[0] for it in pack([rich, safe], cap, factor=flaky).chosen] == ["safe"]
+    assert weight(rich, 0, flaky) < weight(safe, 0, flaky) and objective([rich], 0, flaky) == weight(rich, 0, flaky)
+    with pytest.raises(ValueError, match="performance factor"):
+        weight(rich, 0, lambda it: Fraction(3, 2))
+    assert [it.key[0] for it in pack([rich, safe], cap, factor=flaky, exact_up_to=1).chosen] == ["safe"]  # the greedy weighs it too

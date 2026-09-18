@@ -195,6 +195,28 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   shared give) and a beat test of the capacity rule. Not built: chains
   (§5), netting (§7), priors from data, cycle cancelling as a species.
 
+- **Bonds and performance risk in the beat's objective — registered**
+  (Peter's question, 2026-09-18 evening; `docs/plans/P2-loop-selection.md`
+  §4a, cross-noted in the batch-auction plan §5, P3 §5, THREATS T7, the
+  roadmap's P3 and factbond's coupling document). The corpus prices
+  failure to *clear* in selection and failure to *perform* solver-side
+  only (premium-weighted edges), while the offer's own `bond` is carried,
+  not weighed — so winner determination, the fairness filter and the
+  reserve bid score nominal surplus and a lemons leg at the best rate wins
+  the beat against a bonded alternative. §4a lays out a member's expected
+  benefit (π · the thing + (1 − π) · compensation, both moved by the
+  bond), the numeraire wall (U14 admits only dimensionless factors), the
+  three routes — admissibility by a maker's declared counterparty
+  requirements (the first candidate: fail-closed, deterministic,
+  F6-clean, a record field for the escrow bump), a risk-weighted
+  objective from pinned sources only, or the status quo — the gaming
+  mirror (bond-bought priority), and the decisions left to the escrow
+  bump. `selection.weight(factor=)` is the hook: a dimensionless per-item
+  factor in (0, 1] that weighs a candidate's expected benefit through the
+  same order and fallbacks; nothing sets it yet. factbond is asked for the
+  doctrine size per leg, a pinned adjudication-outcome record, and who
+  receives a slashed bond.
+
 ### Live gate, 2026-09-18
 
 The challenger from a fresh session. Three makers' `rs:` books announced

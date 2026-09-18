@@ -346,11 +346,22 @@ discipline.
 **Residual.** Cold start: no loss data, so wide priors tax honest
 newcomers exactly as hard as lemons — the broker surface and bridge
 species are the sanctioned on-ramp (`adoption-and-thickness.md`); the
-premium feed's inputs are attackable via T2 until volume exists.
+premium feed's inputs are attackable via T2 until volume exists. *Added
+2026-09-18:* the defense above is solver-side; the **beat** — winner
+determination, the fairness filter, the reserve bid (`P2-loop-selection.md`,
+built that day) — scores nominal surplus, so the lemons leg at the best
+rate wins the beat and sets every reference even when a bonded
+alternative exists; and should bonds ever weigh in the objective, the
+mirror vector is **bond-bought priority** — capital, not quality, buying
+selection — not farmable as a statistic (U12/U13 stand) but a bias to be
+chosen knowingly. Both registered as `P2-loop-selection.md` §4a.
 
 **Tripwire.** Realized loss/dispute rate of cheapest-decile legs vs the
 book median pages at > 3× (initial); acceptance-limit saturation
-concentrated on new makers (measures the cold-start tax).
+concentrated on new makers (measures the cold-start tax); once bonds are
+enforced, the loss rate of *winning* legs against that of proposals the
+beat rejected (does the beat select the lemons?), and the share of beats
+won by the top bond decile (does capital buy priority?).
 
 **Work package.** `P3-guarantee-coupling.md` §5; fee mechanics with
 `P2-batch-auction.md`.

@@ -8,7 +8,8 @@ chains admitted receive-before-give only until the bond fabric exists;
 pre-commit netting under maker-declared tolerances, one netting domain per
 beat; lexicographic tie-breaking extending U6; composition on the want side only — one want, many unconditional gives, the buyer pays once and clearing splits (§10, 2026-09-07; declared parts first and a give-side *floor* instead of give-side parts, 2026-09-12); the cleared object is a value-conserving *circulation* in a generalized flow network with hyper-legs — cycles are its smallest case, clearing prices are its node potentials, cycle cancelling its classical solver (§11, 2026-09-07). Open here: chain atomicity
 across beats; failure-prior cold start and its wash-loop interaction; the
-mixed divisible/indivisible decomposition; tolerance semantics under U9.
+mixed divisible/indivisible decomposition; tolerance semantics under U9;
+bonds and performance risk in the beat's objective (§4a, 2026-09-18).
 
 This document names the optimization problem P0 deliberately dodged:
 choosing *which set* of loops settles in a beat, not finding *a* loop.
@@ -157,6 +158,113 @@ token amount or external price enters. Three consequences:
   And p_o prices failure to *settle*, not failure to *perform* —
   performance risk is P3's risk-priced routing
   (`P3-guarantee-coupling.md`).
+
+## 4a. Performance risk, bonds and the beat's objective (raised by Peter, 2026-09-18 — open)
+
+Peter's question, on the evening selection landed: *how can the best set
+of loops be chosen when bonds are not part of the calculation — a high
+bond makes a leg more likely to succeed and changes the expected benefit,
+a low bond makes the loop more likely to fail?* It is relevant, and the
+corpus answers only half of it. What the plans hold today:
+
+- §4's prior p_o prices failure to **clear** — an offer filled by an
+  earlier beat, expired, withdrawn, refused at re-verification. It says
+  in so many words that it does *not* price failure to **perform**.
+- Performance risk is `P3-guarantee-coupling.md` §5's: **risk-priced
+  routing**, solver-side — edge weight `rate × (1 − expected-loss
+  premium)` from the pool's loss experience, per-maker acceptance limits,
+  quarantine of the unproven. That shapes *which loops a solver proposes*.
+- The maker's own `bond` rides in every offer record (`schema.Offer`:
+  carried, not enforced until P3's escrow), and factbond's doctrine sizes
+  a bond to adjudication cost plus reliance, never to notional.
+
+**The gap, stated plainly.** The *beat-side* objective — winner
+determination (`P2-batch-auction.md` §6), the fairness filter (§5 there)
+and the reserve bid — scores nominal surplus and clearing-failure priors
+only. A proposal through an unbonded, never-delivered maker at 12 % beats
+a proposal through bonded, proven makers at 10 %, and the filter protects
+nominal not expected outcomes. Risk-priced routing does not close this: a
+solver that routes around lemons wins nothing for it at the beat, and the
+reserve bid does not route around them at all. So the *normative* notion
+of "best set" ignores exactly what Peter names. Nothing decided here yet;
+what follows is the structure of the decision.
+
+**What a member's expected benefit is.** Per leg, with π the probability
+the giver performs and the bond what the counterparty recovers if not:
+π · (the thing, at the loop's gain) + (1 − π) · (compensation − what was
+given away unpaid). A high bond raises π (the incentive — skin in the
+game) *and* the compensation (the indemnity); a low bond lowers both.
+Compensation is paid in the bond's asset, not in the thing wanted, so
+even full indemnity is a worse outcome than performance; and under U14
+("numeraire-free scoring") the bond's amount and the loop's gain share
+no unit — so **only dimensionless quantities may enter the objective**:
+a probability, or a ratio of the bond to a reference size in the same
+asset. This is the same wall `P3-guarantee-coupling.md` §3 registers as
+"the honest denomination of reliance".
+
+**Three ways performance risk can enter, and their constraints.**
+
+1. **Admissibility by declaration** (the first candidate, in the
+   project's own style — "declare in the direction you know", no
+   tolerance parameter). A maker states in its offer the guarantees it
+   requires of a counterparty: a minimum bond in the bond's asset, an
+   oracle type it accepts, perhaps a minimum delivered history; the
+   matching gates refuse a leg that does not meet them (U7's shape:
+   fail closed). Then every admissible loop is acceptable to each member
+   by that member's own word, the beat needs no risk weight to *protect*
+   anyone, and the reserve bid honours the requirements for free because
+   it hunts only admissible legs. Numeraire-free (a threshold compared in
+   its own asset), deterministic (all in the record), F6-clean (no
+   factbond state, only the maker's statement and the counterparty's
+   bond). Cost: a record field — a U2 bump — that should ride P3's
+   escrow bump so `bond` means something the day the requirement does.
+2. **A risk-weighted objective.** §4's q(L) generalises from
+   Π_o (1 − p_o) to a product of per-leg factors that also carry
+   performance: score(S) = Σ_L q_clear(L) · Σ_legs π_leg · gain_share.
+   Where π_leg may come from, in order of how soon it is honest: (i) the
+   giver's bond as a *ratio to factbond's doctrine size* for that leg
+   (dimensionless; a monotone map to a probability is a parameter nobody
+   has chosen); (ii) delivered history under U12 — adjudicated failures
+   recorded in the clearing books are pinned data, so a statistic from
+   them is replicable; (iii) the pool's premium feed — off-book (F6:
+   factbond state never enters canonical knowledge), so solver-side only
+   until a pinned feed exists. The fairness filter must then compare
+   *expected* outcomes: an offer's reference is its best expected gain,
+   which may be a lower-nominal loop through bonded counterparties.
+   `selection.weight` is where a per-item factor enters (a callable,
+   dimensionless, in (0, 1]); the packer, the order and the fallbacks are
+   unchanged by it.
+3. **Solver-side only** — the status quo of §5 in P3: proposals carry the
+   risk view, the beat stays nominal. Honest to record as a choice, with
+   its consequence: the beat cannot tell a safe set from a risky one, and
+   the reserve bid routes through lemons (T7).
+
+**Gaming, if weights enter.** A bond-weighted objective sells priority
+for capital. That is not wash-loop pollution — a bond is the maker's own
+capital at risk, not a statistic anyone can farm (U12/U13 stand) — but it
+is a bias toward the capitalised that the essay's design should choose
+knowingly, and a ring that bonds its own loops buys priority at only the
+opportunity cost of the capital. History-based π stays T8's surface;
+U12's rule (settled, cost-borne loops only; adjudicated failures
+subtract) is the guard. Registered in `THREATS.md` T7 as the beat-side
+residual.
+
+**Determinism.** Whatever enters the normative objective must be
+computable by every replica from pinned data (U4/U6/U10): offer records
+(the bond, a declared requirement) qualify; adjudication outcomes in
+clearing books qualify once they exist; premiums do not until pinned.
+
+**Decisions this leaves to Peter, at P3's kickoff with the escrow bump:**
+(a) the declared-requirement field and what it may name (bond floor,
+oracle type, history); (b) whether the beat's objective weighs π at all,
+and from which pinned source; (c) the map from bond ratio to π, or the
+ruling that bonds are thresholds only; (d) whether the reserve bid may
+ever propose a leg below a member's declared requirement (this document
+says no); (e) how compensation in the bond's asset is accounted beside a
+numeraire-free gain — possibly not at all, with (a) carrying the whole
+weight. factbond is asked for the doctrine size per leg and a pinned
+adjudication-outcome record (`factbond/docs/plans/loopmarket-coupling.md`,
+open problems).
 
 ## 5. Chains alongside cycles, and who may give first
 
@@ -693,6 +801,15 @@ which they must use.
   Blocks: netting entering the settlement path.
 
 ## Open problems
+
+**Bonds and performance risk in the beat's objective (raised 2026-09-18).**
+§4a: the normative selection scores nominal surplus and clearing-failure
+priors; performance risk is solver-side and bonds are carried, not
+weighed. Decide admissibility by declaration versus a risk-weighted
+objective versus the status quo, the pinned sources any weight may use,
+and the numeraire-free form of compensation. Work package: this document
+with `P3-guarantee-coupling.md` §5 and factbond's coupling document, at
+P3's escrow bump.
 
 **Chain atomicity across beats.** One-commit atomicity and U11 have no
 chain analogue; a chain record with per-segment atomic fills and

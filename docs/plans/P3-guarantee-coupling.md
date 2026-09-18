@@ -258,6 +258,19 @@ credit-network precedent:
   balance. Fee mechanics land with `P2-batch-auction.md` and obey U13
   (*wash-loop budget-balance by construction, fees external-asset only*).
 
+**Beat-side, the half this section does not cover (Peter, 2026-09-18).**
+Premium-weighted edges shape what a solver *proposes*; the beat's winner
+determination, fairness filter and reserve bid score nominal surplus and
+clearing-failure priors (`P2-loop-selection.md` §4), so a safer proposal
+earns nothing at the beat and the reserve bid routes through lemons. The
+question — admissibility by a maker's declared counterparty requirements
+(minimum bond, oracle type; a record field riding this phase's escrow
+bump), a risk-weighted objective from pinned sources only, or the status
+quo — is registered as `P2-loop-selection.md` §4a and decided with the
+escrow bump. The bond's own semantics needed for either: factbond's
+doctrine size per leg, and who receives a slashed bond (the harmed
+counterparty under the indemnity principle, or adjudication).
+
 Two statistical disciplines guard the feed itself. First, U12
 (*reward/reputation statistics count settled fee-paid loops only*): a wash
 loop is graph-indistinguishable from a real one — every legitimate loop *is*
