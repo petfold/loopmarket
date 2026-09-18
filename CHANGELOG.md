@@ -254,6 +254,20 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   fill set across a redeploy is registered as an open problem
   (`proof-fabric.md`).
 
+- **Who receives a slashed bond — working doctrine** (Peter's examples,
+  2026-09-18 late; `docs/plans/P3-guarantee-coupling.md` §3a). Cleared
+  obligations stand and the failed leg is replaced by a payment; the
+  wanter's required floor is liquidated damages, declared to cover its
+  whole reliance — payments to the innocent counterparties of the same
+  leg, the substitute, the inconvenience — so bonds on gives will be high
+  and every give of an all-or-nothing leg covers the whole loss alone;
+  adjudication comes off the top and the remainder returns to the
+  defaulter; several defaulters split the one loss by their shares;
+  repair is the wanter's choice, a replacement leg paid in the bond's
+  asset from the payout; claims are staked. Open for Peter: a bond
+  reserved per fill of a divisible give, an early-notice tier, partial
+  performance.
+
 ### Live gate, 2026-09-18
 
 The challenger from a fresh session. Three makers' `rs:` books announced

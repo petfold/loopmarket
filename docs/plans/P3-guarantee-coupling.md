@@ -109,6 +109,76 @@ rule (assessment stake > 5× the claim) is the same principle in production.
 The pool's per-edge loss experience flows back as §5's premium feed — the
 P3 "aggregated risk markets feeding rate premia" line item, made concrete.
 
+## 3a. The slashed bond: who receives it (working doctrine, Peter's examples, 2026-09-18)
+
+Admissibility by declaration (`P2-loop-selection.md` §4a, the v5 record)
+makes a maker's *required* floor the load-bearing number, and Peter's
+examples the same evening fixed what happens when a bonded give fails.
+The doctrine, in the order the examples forced it:
+
+1. **Cleared obligations stand; the failed leg is replaced by a payment.**
+   The ride to the airport does not come; the wanter still gives its
+   lesson, the next maker still gives its vegetables, the defaulter keeps
+   what the loop owed it and pays with its bond. Excusing the wanter's
+   give would hurt the next maker and unwind the loop — one dead leg
+   killing the cycle, which the bond exists to prevent. Clearing stays
+   final (U12: delivery adds no credit; failure subtracts here).
+2. **The required floor is liquidated damages.** On an adjudicated
+   default of give G to want W, W receives its own `requires.bond`
+   floor — agreed in advance by both, G by matching an offer that
+   demanded it — and proves nothing beyond the default. Numeraire-free:
+   compared and paid in the bond's asset, never converted (U14).
+3. **The floor is the wanter's whole reliance, in three named parts:**
+   payments it still makes to the innocent counterparties of the same leg
+   (five lifters who came, priced in personal tokens only the wanter can
+   put an xDAI figure on); the substitute (the taxi); and the
+   inconvenience — the wait in the rain, the phone in the hand, the risk
+   of standing on the street, none of which an oracle can measure. Set
+   the floor low and the wanter bears the difference; set it high and
+   fewer gives are admissible. Declared in the direction the wanter
+   knows. A consequence Peter named: **bonds on gives will be high**, and
+   for an all-or-nothing leg every give's bond must cover the whole loss
+   on its own — which is what the per-give gate already enforces.
+4. **Adjudication comes off the top, the remainder returns.** The
+   adjudication-cost part of the bond (factbond's floor) goes to whoever
+   adjudicated; an undisputed no-show costs nothing; whatever exceeds the
+   floor and the cost goes back to the defaulter — damages, not
+   punishment (CoW's slashing record; factbond's sizing doctrine).
+5. **Several defaulters, one loss.** Two of six lifters fail: the floor
+   is collected once, split among the defaulters in proportion to their
+   shares of the leg, and each bond's remainder returns to its owner.
+6. **Repair is the wanter's choice, never imposed.** After the verdict
+   the wanter's want re-enters the book unfilled with the payout as its
+   budget; a solver may propose a replacement leg *paid in the bond's
+   asset* — the essay's bridge, since the wanter's own give is already
+   committed and no personal-token leg would cancel — and the wanter
+   accepts the repaired circulation or takes the payout and calls the
+   taxi. A repair costing less than the floor returns nothing to the
+   defaulter: otherwise refusing a cheap repair would pay, and the floor
+   is the wanter's by agreement.
+7. **Claims are staked.** The wanter stakes to claim a default; a
+   rejected claim pays the giver from the stake (factbond's dispute
+   ladder, the frivolous-claim guard).
+
+Worked: the 2-cycle (lesson for ride), the 3-cycle (ride, lesson,
+vegetables), the six lifters with one and with two missing, the courier
+who never carried the box the grocer delivered to the shop — all settle
+under 1–7 with nobody innocent touched.
+
+**Open, for Peter.** (a) *One bond, several fills:* a divisible give's
+one bond backs every loop that takes part of it; the candidate rule is a
+share reserved per fill in proportion to the quantity taken, with the
+admissibility gate comparing the share rather than the whole bond — a
+change to today's gate. (b) *Early notice:* a giver who knows in time
+that it will fail could declare so before the window at a lower
+liquidated amount, since the wanter can then reroute calmly — two floors
+in the requirement, early notice and no-show; a lever to offer, not
+assume. (c) *Partial performance* (the ride twenty minutes late): today's
+witness types are binary; degrees of default are the adjudicator's.
+(d) *The timing of the payout:* the escrow pays on the oracle's verdict
+at the end of the leg's window, disputable within a window — the
+optimistic shape the beat already has.
+
 ## 4. The leg-oracle roster (consumed here, owned there)
 
 Primary home: `factbond/docs/plans/evidence-policy.md` — admissibility
