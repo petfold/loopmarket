@@ -250,8 +250,9 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   *verifies* from a fresh session, v5 legs on chain. The same run showed
   what a redeploy is: a fresh fill authority — the two earlier rounds'
   offers, filled on the previous contracts, cleared again as beats 1 and
-  2 on the new one. Migrating a fill set across a redeploy is registered
-  as an open problem (`proof-fabric.md`).
+  2 on the new one; all three finalized after their windows. Migrating a
+  fill set across a redeploy is registered as an open problem
+  (`proof-fabric.md`).
 
 ### Live gate, 2026-09-18
 
