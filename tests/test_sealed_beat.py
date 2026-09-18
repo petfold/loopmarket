@@ -98,8 +98,12 @@ def test_the_reserve_bid_beats_a_ring_that_withholds_the_good_loop():
     root, snapshot, good, worse = _two_loops(cat, book)
     result = outcome(7, [("0xring", bundle_bytes([worse]))], snapshot, cat, now=NOW,
                      baseline=baseline_proposals(snapshot, cat, now=NOW))
-    assert [c.loop_id for c in result.winners] == [good.circulation.loop_id]
-    assert result.winners[0].solver == "baseline" and worse.circulation.loop_id in result.dropped
+    # the farm's 100 kg has room for both 40 kg loops (selection packs the
+    # remainder, 2026-09-18): the reserve bid's loop clears beside the ring's,
+    # and it is the reserve's — nobody revealed it
+    by_loop = {c.loop_id: c for c in result.winners}
+    assert set(by_loop) == {good.circulation.loop_id, worse.circulation.loop_id}
+    assert by_loop[good.circulation.loop_id].solver == "baseline" and result.dropped == {}
     # a proposal for another root, or one that fails re-derivation, is rejected with its reason
     stale = LoopProposal(worse.loop, "00" * 32, cat.root, "b", NOW)
     r2 = outcome(8, [("0xb", bundle_bytes([stale]))], snapshot, cat, now=NOW)
@@ -132,7 +136,9 @@ def test_the_memory_beat_keeps_the_phases():
     assert beat.phase(0) == CLOSED and beat.current() == 1
     result = outcome(0, beat.revealed(0), snapshot, cat, now=NOW,
                      baseline=baseline_proposals(snapshot, cat, now=NOW))
-    assert [c.loop_id for c in result.winners] == [good.circulation.loop_id] and result.winners[0].solver == "0xa"
+    by_loop = {c.loop_id: c for c in result.winners}
+    assert set(by_loop) == {good.circulation.loop_id, worse.circulation.loop_id}   # room for both in 100 kg
+    assert by_loop[good.circulation.loop_id].solver == "0xa" and by_loop[worse.circulation.loop_id].solver == "0xb"
     a.record(0, result.revealed_set, result.winners_hash)
     b.record(0, result.revealed_set, result.winners_hash)            # the same derivation: no dispute
     assert beat.outcome(0)["submitter"] == "0xa" and beat.disputes == []
@@ -200,16 +206,18 @@ def test_commit_reveal_outcome_and_record_on_chain(chain):
     assert dict(revealed)[a.solver] == da
     tester.mine_blocks(a.window(beat)[2] - a.block())
     assert a.phase(beat) == CLOSED
-    # the outcome: a's good loop wins, b's is dropped; posted to BeatClearing, recorded
+    # the outcome: both loops fit the farm's 100 kg and both win; each is
+    # posted to BeatClearing as its own beat and verifies; recorded once
     result = outcome(beat, revealed, snapshot, cat, now=NOW, baseline=baseline_proposals(snapshot, cat, now=NOW))
-    assert [c.loop_id for c in result.winners] == [good.circulation.loop_id]
-    assert worse.circulation.loop_id in result.dropped
+    assert {c.loop_id for c in result.winners} == {good.circulation.loop_id, worse.circulation.loop_id}
+    assert result.dropped == {}
     beats = BeatClient("", clearing_addr, key=keys[0], client=w3)
     clearing = ChainClearing(book, cat, beat_client=beats, clock=lambda: NOW)
-    receipt = clearing.submit(result.winners[0].proposal)
-    assert receipt.accepted and receipt.reason.startswith("beat ")
-    posted = int(receipt.reason.split()[1])
-    assert challenge_beat(beats, posted, [book], cat, now=NOW).verifies
+    for c in result.winners:
+        receipt = clearing.submit(c.proposal)
+        assert receipt.accepted and receipt.reason.startswith("beat "), receipt.reason
+        posted = int(receipt.reason.split()[1])
+        assert challenge_beat(beats, posted, [book], cat, now=NOW).verifies
     a.record(beat, result.revealed_set, result.winners_hash)
     assert a.outcome(beat)["submitter"] == a.solver and a.outcome(beat)["winners"] == result.winners_hash
     # a second submitter deriving the same records nothing new; a different derivation is a dispute
@@ -287,3 +295,28 @@ def test_the_cli_commits_reveals_and_derives_the_outcome(chain, tmp_path, monkey
     assert "outcome recorded by loop-cli" in out
     code, out, _ = run("beats")
     assert "open until block" in out
+
+
+def test_the_beat_packs_a_shared_divisible_give_up_to_its_remainder():
+    """Two solvers each reveal a loop through the farm's apples; with 100 kg
+    the farm has room for both 40 kg fills and both win — the better loop is
+    no displacement for the worse, so the fairness filter keeps it — and
+    with 50 kg only the better loop wins and the worse is dropped for
+    giving the farm less than its alternative."""
+    cat = _pinned()
+    for qty, expect in ((100, 2), (50, 1)):
+        pins = cat.pins
+        book = OfferRegistry(RecordStore(MemoryBytesStore()))
+        offers = [give("farm", Thing(("apple",), qty, "kg", step=5), 2 * qty, **V, **pins),
+                  want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins), give("b1", Thing(("lesson",)), 80, **V, **pins),
+                  want("farm", Thing(("lesson",)), 85, **V, **pins),
+                  want("b2", Thing(("apple",), 40, "kg"), 84, **V, **pins), give("b2", Thing(("repair",)), 80, **V, **pins),
+                  want("farm", Thing(("repair",)), 81, **V, **pins)]
+        book.publish_many(offers); book.commit()
+        root, snapshot, good, worse = _two_loops(cat, book)
+        result = outcome(3, [("0xa", bundle_bytes([good])), ("0xb", bundle_bytes([worse]))], snapshot, cat, now=NOW)
+        assert len(result.winners) == expect, (qty, result.dropped)
+        if expect == 2:
+            assert {c.solver for c in result.winners} == {"0xa", "0xb"} and result.dropped == {}
+        else:
+            assert result.winners[0].solver == "0xa" and worse.circulation.loop_id in result.dropped

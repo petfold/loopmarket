@@ -127,9 +127,17 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       a fresh session). Still open there: Shutter
       threshold encryption as the sealing (§3's primary), solver bonds
       through factbond (§8), the endogenous spread leg (§7).
-- [ ] **Loop selection** · [plan](docs/plans/P2-loop-selection.md) — the
-      LP/ILP selection over *competing* sets; the baseline hunts and clears
-      the first feasible circulation.
+- [x] **Loop selection** (DONE 2026-09-18) · [plan](docs/plans/P2-loop-selection.md):
+      `selection.pack` — the packing over candidate loops under the
+      offers' capacities (an indivisible offer or a want once, a divisible
+      give shared up to its remainder), exact by branch and bound below
+      N\* within a deterministic budget, the greedy beyond, §8's total
+      order, the failure prior as a parameter (G3 not yet open); the
+      baseline enumerates every simple cycle over the match multigraph
+      (`graph.enumerate_cycles`, the §6 recall-gap fix, gate G1 met) and
+      packs; the beat selects through the same packer with the fairness
+      filter read against displacement. Not built: chains (G4), netting
+      (G5), priors from data, cycle cancelling as a species.
 - [x] **The `challenge` verb** (DONE 2026-09-18): the CLI keeps no copy of
       what it posted — a challenger rebuilds the submission from the
       submitter's announced clearing book's loop record and the snapshot

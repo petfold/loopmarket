@@ -161,6 +161,40 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   take it; the CLI passes the clearing contract's `filled` to `loops`,
   `commit`, `propose` and `outcome` whenever `beat` is set.
 
+- **Loop selection** (P2, `docs/plans/P2-loop-selection.md` §1–§4, §6,
+  §8; 2026-09-18 evening). `src/loopmarket/selection.py`: a candidate loop
+  is an `Item` — what it takes from each offer (a want whole, a give by
+  the leg's quantity), its legs, its gain — and `pack` chooses the set
+  worth most under the offers' capacities: an indivisible offer or a want
+  once, a divisible give shared up to what is left of it (U11's oversold
+  rule, seen from the front). Exact by depth-first branch and bound up to
+  N\* = 24 candidates within a 200 000-node budget — a function of the
+  instance, never the clock (U6) — and the deterministic greedy beyond;
+  ties in §8's total order (score, fewer legs, sorted loop ids, canonical
+  legs). The objective is §4's failure-aware expected surplus with the
+  prior as one uninformative constant (gate G3 not yet open): at its
+  default 0 plain log surplus compared as the exact product of (1 + gain);
+  a positive prior is a length penalty evaluated in fixed-precision
+  decimal, whose `ln` is correctly rounded by specification. **The
+  recall-gap fix (§6, gate G1 — ruled required for the reserve bid):**
+  `graph.enumerate_cycles` walks the whole match multigraph, every
+  parallel match an edge, and judges every simple cycle up to `max_legs`
+  on its own surplus and per-node feasibility, in a canonical order with a
+  `complete` flag when its cap cut it; the loop the best-rate reduction
+  lost and the loop the threshold masked are both found. The baseline
+  (`SolverAgent.find_loops`) now enumerates candidates — cycles, and the
+  circulation hunt's composed sets — and packs them under what is left of
+  every offer, so two wants of one divisible give clear in one step and
+  the better loop wins a tight give; Bellman–Ford's extraction tops up
+  only when the enumeration was cut. The beat (`auction.select`) packs
+  through the same function with capacities, and the fairness filter
+  reads an offer's reference against displacement: a better loop through
+  a divisible give with room for both is no alternative to the second.
+  `tests/test_selection.py` (brute force over 150 random instances,
+  determinism, size and budget fallbacks, the prior, both §6 cases, the
+  shared give) and a beat test of the capacity rule. Not built: chains
+  (§5), netting (§7), priors from data, cycle cancelling as a species.
+
 ### Live gate, 2026-09-18
 
 The challenger from a fresh session. Three makers' `rs:` books announced

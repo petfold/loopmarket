@@ -19,12 +19,15 @@ pinning one book root. After the beat closes anyone derives the outcome:
      the baseline's included — and a loop giving some member less than its
      reference is discarded, so a loop wins only if every member does at
      least as well as it could elsewhere this beat;
-  4. selection (§6): offer-disjoint packing maximising the numeraire-free
-     score, the product of (1 + gain) over the winning loops — Σ log
-     surplus, dimensionless, invariant to any maker's unit (U14) — exact
-     over subsets while the survivors are few, greedy by gain otherwise;
-     ties break by loop_id then proposal hash, so every replica lands on
-     the same winners (U6 extended to the beat).
+  4. selection (§6, `selection.py`): the packing worth most under the
+     offers' capacities — an indivisible offer or a want once, a divisible
+     give shared up to what is left of it — by the numeraire-free score,
+     the product of (1 + gain) over the winning loops (Σ log surplus,
+     dimensionless, invariant to any maker's unit, U14); exact while the
+     survivors are few, greedy beyond, ties in `P2-loop-selection.md`
+     §8's total order, so every replica lands on the same winners (U6
+     extended to the beat). The fairness filter reads its references
+     against displacement under the same capacities.
 
 The winners go to `BeatClearing` loop by loop through `ChainClearing`
 (each independently verified, offer-disjoint so never conflicting) and
@@ -47,12 +50,12 @@ import json
 import secrets
 from dataclasses import dataclass, field
 from fractions import Fraction
-from itertools import combinations
 
 from .beat import proposal_from_record
 from .clearing import LoopProposal, MockClearing
 from .registry import OfferRegistry
 from .schema import q
+from .selection import Item, disjoint_capacity, item_of, pack
 
 try:
     from recordstore import canonical_bytes
@@ -63,7 +66,6 @@ except ImportError:  # pragma: no cover
 
 COMMIT, REVEAL, CLOSED, PENDING = 0, 1, 2, 3
 PHASES = {COMMIT: "commit", REVEAL: "reveal", CLOSED: "closed", PENDING: "pending"}
-EXACT_UP_TO = 12       # survivors enumerated exhaustively up to this many
 
 
 # --------------------------------------------------------------------------- #
@@ -124,6 +126,11 @@ class Candidate:
         from eth_hash.auto import keccak
         return (self.loop_id, keccak(self.source).hex() if self.source else "")
 
+    @property
+    def item(self) -> Item:
+        """The packer's view: what this loop takes from each offer."""
+        return item_of(self.proposal.circulation, self.key[1])
+
 
 def score(candidates) -> Fraction:
     """The numeraire-free score of an outcome (U14): Π (1 + gain) over its
@@ -145,48 +152,50 @@ def references(candidates) -> dict[str, Fraction]:
     return best
 
 
-def fairness_filter(candidates) -> tuple[list[Candidate], dict[str, str]]:
+def fairness_filter(candidates, capacity: dict | None = None) -> tuple[list[Candidate], dict[str, str]]:
     """Discard every candidate that gives some member less than that
-    member's reference (§5). Returns (survivors, {loop_id: reason})."""
-    ref = references(candidates)
+    member's reference (§5). Returns (survivors, {loop_id: reason}).
+
+    With `capacity` (offer id -> what is left of it; selection's own
+    constraint, 2026-09-18) the reference is read against displacement: a
+    better loop through the same offer is the member's alternative only if
+    the two cannot both clear within the offer's capacity — a divisible
+    give with room for both trades is not made worse off by the second,
+    it clears more at its own price — so only competing candidates set
+    the reference. Without capacity every shared offer competes."""
     survivors, dropped = [], {}
     for c in candidates:
-        worse = [oid for oid in c.offers if c.gain < ref[oid]]
+        worse = None
+        for oid in sorted(c.offers):
+            mine = c.item.takes[oid]
+            for other in candidates:
+                if other is c or oid not in other.offers or other.gain <= c.gain:
+                    continue
+                if capacity is not None and other.item.takes[oid] + mine <= capacity.get(oid, Fraction(0)):
+                    continue                    # room for both: no displacement
+                worse = (oid, other.gain)
+                break
+            if worse:
+                break
         if worse:
             dropped[c.loop_id] = (f"offer {worse[0][:12]} does better elsewhere this beat "
-                                  f"({float(ref[worse[0]]):.4f} > {float(c.gain):.4f})")
+                                  f"({float(worse[1]):.4f} > {float(c.gain):.4f})")
         else:
             survivors.append(c)
     return survivors, dropped
 
 
-def select(survivors) -> list[Candidate]:
-    """The offer-disjoint set of survivors with the highest score (§6):
-    every subset while there are at most EXACT_UP_TO survivors, greedy by
-    gain beyond that; ties by the candidates' keys. Deterministic."""
-    ordered = sorted(survivors, key=lambda c: c.key)
-    if len(ordered) <= EXACT_UP_TO:
-        best, best_score, best_keys = [], Fraction(0), None
-        for r in range(1, len(ordered) + 1):
-            for combo in combinations(ordered, r):
-                seen: set = set()
-                ok = True
-                for c in combo:
-                    if seen & c.offers:
-                        ok = False; break
-                    seen |= c.offers
-                if not ok:
-                    continue
-                s = score(combo)
-                keys = tuple(c.key for c in combo)
-                if s > best_score or (s == best_score and (best_keys is None or keys < best_keys)):
-                    best, best_score, best_keys = list(combo), s, keys
-        return best
-    chosen, taken = [], set()
-    for c in sorted(ordered, key=lambda c: (-c.gain, c.key)):
-        if not (taken & c.offers):
-            chosen.append(c); taken |= c.offers
-    return sorted(chosen, key=lambda c: c.key)
+def select(survivors, capacity: dict | None = None) -> list[Candidate]:
+    """The set of survivors worth most (§6): `selection.pack` over the
+    offers' capacities — an indivisible offer or a want once, a divisible
+    give shared up to what is left of it (offer-disjoint when no capacity
+    is given) — exactly while the survivors are few, greedily beyond, in
+    `P2-loop-selection.md` §8's total order. Deterministic."""
+    survivors = list(survivors)
+    items = {c.item.key: c for c in survivors}
+    cap = capacity if capacity is not None else disjoint_capacity([c.item for c in survivors])
+    packing = pack([c.item for c in survivors], cap)
+    return [items[it.key] for it in packing.chosen]
 
 
 # --------------------------------------------------------------------------- #
@@ -257,8 +266,13 @@ def outcome(beat: int, revealed, snapshot: OfferRegistry, ontology, *, now: int,
     unique: dict[str, Candidate] = {}
     for c in sorted(candidates, key=lambda c: (c.solver == "baseline", c.key)):
         unique.setdefault(c.loop_id, c)
-    survivors, dropped = fairness_filter(list(unique.values()))
-    winners = select(survivors)
+    # what is left of every offer the candidates touch: the book's remainder
+    # less the chain's fills — selection's constraint, and the filter's
+    # notion of displacement
+    touched = sorted({oid for c in unique.values() for oid in c.offers})
+    capacity = clearing.available(touched)
+    survivors, dropped = fairness_filter(list(unique.values()), capacity)
+    winners = select(survivors, capacity)
     return Outcome(beat, root, revealed_set_hash(revealed), winners, rejected, dropped, len(unique))
 
 

@@ -19,6 +19,30 @@ that unlock bridge donors), `P1-federated-book.md` (the per-maker books
 whose merge feeds a beat), and `THREATS.md` (T1/T2/T3/T8 all touch
 selection). ARCHITECTURE.md §7 records the arithmetic this builds on.
 
+**Built 2026-09-18 — `src/loopmarket/selection.py`, `graph.enumerate_cycles`,
+the baseline and the beat both selecting through them.** What stands:
+selection is a packing over candidate loops under the offers' capacities
+(§1–§2: an indivisible offer or a want once, a divisible give shared up to
+what is left of it — the same constraint U11 checks after the fact);
+exact by depth-first branch and bound up to `exact_up_to` candidates
+(N\* = 24 by default) within a deterministic node budget, the greedy
+beyond (§3; the fallback is a function of the instance, never the clock);
+the failure-aware objective with an uninformative prior parameter that
+defaults to plain log surplus compared as the exact product of (1 +
+gain), a positive prior evaluated in fixed-precision decimal whose `ln`
+is correctly rounded (§4, gate G3 not yet open); §8's total order as one
+key; §6's recall gap fixed by enumerating every simple cycle over the
+match multigraph and judging each on its own surplus and per-node
+feasibility (gate G1: the enumerator finds the loop the best-rate
+reduction lost and the loop the threshold masked; a property test packs
+150 random instances against brute force). The flow LP's own regime —
+quantities that scale — does not arise while fills are the wants' own
+quantities (decided 2026-09-14), so one formulation covers both sides of
+§2's table and the LP relaxation is only a bound; the "mixed
+decomposition" open problem below is moot under that rule. Not built:
+chains (§5, G4), netting (§7, G5), priors from data (G3), cycle cancelling
+as a species (§11 item 1).
+
 ## 1. Selection is packing, not search
 
 The baseline (`graph.py`) answers "does a profitable cycle exist?" —
@@ -631,19 +655,29 @@ which they must use.
 
 ## Gates
 
-- **G1 — recall gap resolved.** Fixes for best-rate reduction and
+- **G1 — recall gap resolved. MET 2026-09-18:** `graph.enumerate_cycles`
+  walks the match multigraph (every parallel match an edge), judges every
+  cycle on its own surplus, and the packer selects; `tests/test_selection.py`
+  holds the best-rate and the threshold-masking cases and the brute-force
+  property test. The reserve bid's promotion (`P2-batch-auction.md` §8) has
+  its precondition. Fixes for best-rate reduction and
   `min_surplus` masking land, or recall-complete book shapes are exactly
   characterized; either way a property test compares baseline extraction
   against exhaustive small-instance packing over randomized books, with
   zero silent losses (or losses only outside the characterized shapes).
   Blocks: the reserve-bid promotion in `P2-batch-auction.md`.
-- **G2 — exact-selection threshold pinned.** N\* measured on the shared
+- **G2 — exact-selection threshold pinned.** *Interim 2026-09-18:* N\* = 24
+  candidates and a 200 000-node branch-and-bound budget, both deterministic
+  functions of the instance (`selection.EXACT_UP_TO`, `selection.BUDGET`);
+  the harness measurement below replaces them. N\* measured on the shared
   simulation harness (`factbond/docs/plans/phase0-simulation.md`): the
   largest instance where exact winner determination completes within 10%
   of the beat budget at the 99th percentile. Fallback triggers on
   instance size, never wall-clock. Blocks: exact selection going
   normative.
-- **G3 — failure priors go live.** p_o computed only from U12-compliant
+- **G3 — failure priors go live.** *2026-09-18:* the objective takes the
+  prior as a parameter (`prior`, one constant for every offer — the
+  uninformative form), default 0; nothing sets it from data yet. p_o computed only from U12-compliant
   statistics (settled fee-paid loops), above a pinned minimum sample
   count per offer class; below it the uninformative prior applies.
   Blocks: any prior-weighted selection. Unblocked by fees landing
@@ -672,7 +706,11 @@ exactly when prior-farming (T1, T2, T8) is cheapest; the interaction of
 prior updates with U12 needs an explicit update rule with an adversarial
 analysis. Work package: `P2-batch-auction.md` with `THREATS.md`.
 
-**The mixed divisible/indivisible decomposition.** Routing divisible legs
+**The mixed divisible/indivisible decomposition — moot since 2026-09-18
+under fixed-quantity fills:** while every fill is the want's own quantity,
+every candidate is all-or-nothing and one packing with per-offer
+capacities covers both regimes; the question returns only if wants ever
+scale. Routing divisible legs
 to the flow LP and indivisible legs to the packing ILP is decided; how
 the two share offers appearing in both regimes — and whether the combined
 solution stays within the fairness filter — is not worked out. Work

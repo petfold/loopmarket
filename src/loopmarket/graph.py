@@ -216,6 +216,73 @@ class ExchangeGraph:
 
 
 # --------------------------------------------------------------------------- #
+# Every simple cycle, over the whole match multigraph (the recall-gap fix)
+# --------------------------------------------------------------------------- #
+
+def enumerate_cycles(matches: Iterable[Match], *, max_legs: int = 5, limit: int = 2000,
+                     min_surplus=0) -> tuple[list[Loop], bool]:
+    """Every simple cycle of makers through `matches` up to `max_legs`
+    legs, as `Loop`s, in a canonical order — the candidates a packer
+    chooses among (`selection.py`). Returns (loops, complete): `complete`
+    is False when `limit` cycles were reached before the enumeration
+    ended, the deterministic signal that the search was cut.
+
+    Why not Bellman–Ford: `ExchangeGraph` keeps one edge per (giver,
+    receiver) — the best rate — and a discarded parallel edge can pair a
+    different give and want of the same makers whose lots pass the
+    per-node feasibility the best-rate pairing fails; and the threshold
+    test on the one cycle Bellman–Ford certifies masks a qualifying cycle
+    elsewhere (`P2-loop-selection.md` §6, gate G1 — the fix the reserve
+    bid's promotion was ruled to require). Here every parallel match is
+    an edge, every cycle is judged on its own product, and a cycle is a
+    candidate when its surplus reaches `min_surplus` and it is feasible
+    to clear — potentials exist, and its legs cancel per node when any is
+    indivisible, the gate clearing applies (U3).
+
+    Each cycle is emitted once, rooted at its lexicographically smallest
+    maker, walking only larger makers; edges out of a maker are visited in
+    sorted order (receiver, give id, want id), so the same book yields the
+    same list on every replica (U6). Exponential in the worst case and
+    bounded by `max_legs` and `limit`, like `find_circulations`."""
+    out: dict[str, list[Match]] = {}
+    for m in matches:
+        if m.giver == m.receiver:
+            continue
+        out.setdefault(m.giver, []).append(m)
+    for edges in out.values():
+        edges.sort(key=lambda m: (m.receiver, m.give.offer_id, m.want.offer_id))
+    makers = sorted(out)
+    found: list[Loop] = []
+    complete = True
+
+    def admit(path: list[Match]) -> None:
+        loop = Loop(tuple(path))
+        if loop.surplus < min_surplus:
+            return
+        circ = Circulation.from_loop(loop)
+        if not circ.feasible or (not loop.all_divisible and not loop.per_node_ok):
+            return
+        found.append(loop)
+
+    def dfs(start: str, at: str, path: list[Match], seen: set[str]) -> bool:
+        for m in out.get(at, []):
+            if len(found) >= limit:
+                return False
+            if m.receiver == start:
+                admit(path + [m])
+            elif m.receiver > start and m.receiver not in seen and len(path) + 1 < max_legs:
+                if not dfs(start, m.receiver, path + [m], seen | {m.receiver}):
+                    return False
+        return True
+
+    for start in makers:
+        if not dfs(start, start, [], {start}):
+            complete = False
+            break
+    return found, complete
+
+
+# --------------------------------------------------------------------------- #
 # Circulations: legs, some composed, balanced at every maker
 # --------------------------------------------------------------------------- #
 

@@ -32,13 +32,16 @@ pipeline and (P2) to floor the auction as its reserve bid.
 
 from __future__ import annotations
 
+from fractions import Fraction
+
 import logging
 import time as _time
 from dataclasses import dataclass, field
 
-from ..graph import Circulation, ExchangeGraph, Loop, find_circulations
+from ..graph import Circulation, ExchangeGraph, Loop, find_circulations, enumerate_cycles
 from ..matching import Leg, aggregate_legs, candidate_matches, composed_legs, parts_legs
 from ..schema import q
+from ..selection import item_of, pack, weight
 from ..ontology import Ontology
 from ..registry import OfferRegistry
 from ..clearing import LoopProposal, Receipt, Clearing
@@ -58,17 +61,33 @@ class SolverAgent:
     #: offer id -> quantity the chain has recorded as taken (`BeatClearing.
     #: filled`), or None: a spent offer is not hunted through (2026-09-18).
     chain_fills: object = None
+    #: Selection (P2-loop-selection.md, 2026-09-18): every simple cycle up
+    #: to `max_legs` legs is a candidate (`graph.enumerate_cycles`, at most
+    #: `cycle_limit` of them), the composed sets beside them, and the packer
+    #: chooses the set worth most under the offers' capacities — exactly up
+    #: to `exact_up_to` candidates within `pack_budget` nodes, greedily
+    #: beyond; `failure_prior` is §4's uninformative prior (0: log surplus).
+    max_legs: int = 5
+    cycle_limit: int = 2000
+    exact_up_to: int = 24
+    pack_budget: int = 200_000
+    failure_prior: object = 0
 
     def find_loops(self, *, now: int | None = None
                    ) -> tuple[str, list[Loop | Circulation]]:
-        """Steps 1-5: returns (book_root, profitable disjoint loops and
-        circulations). Simple cycles first, by Bellman-Ford; then, when the
-        catalogue declares operators and the book composes any leg, the
-        circulation hunt over the offers the cycles left (`graph.
-        find_circulations`), simple legs, operator-composed legs and the
-        legs of composed wants (`parts_legs`, v4) and aggregated legs
-        (`aggregate_legs`: several gives of one thing adding up to one
-        want) together."""
+        """Steps 1-5: returns (book_root, the loops and circulations
+        selected). Candidates first: every simple cycle over the match
+        multigraph up to `max_legs` (`graph.enumerate_cycles` — recall
+        complete up to its caps, the fix of `P2-loop-selection.md` §6;
+        Bellman–Ford's extraction only tops it up when the enumeration was
+        cut), and, when the catalogue declares operators and the book
+        composes any leg, the circulation hunt (`graph.find_circulations`)
+        over simple legs, operator-composed legs, the legs of composed
+        wants (`parts_legs`, v4) and aggregated legs (`aggregate_legs`).
+        Then selection (`selection.pack`): the set worth most under what is
+        left of every offer — an indivisible offer or a want once, a
+        divisible give shared up to its remainder — exactly while the
+        candidates are few, greedily beyond, in §8's total order (U6)."""
         now = int(_time.time()) if now is None else now
         root, book = self.registry.snapshot()
         offers = list(book.offers(now=now))
@@ -88,25 +107,35 @@ class SolverAgent:
             offers = kept
         matches = list(candidate_matches(offers, self.ontology, now=now,
                                          available=available))
-        graph = ExchangeGraph.from_matches(matches)
-        loops: list[Loop | Circulation] = graph.find_profitable_loops(
-            min_surplus=self.min_surplus, limit=self.max_loops_per_step
-        )
-        used = {oid for loop in loops for oid in loop.offer_ids}
-        rest = [o for o in offers if o.offer_id not in used]
-        composed = list(composed_legs(rest, self.ontology, now=now, available=available)) \
-            + list(parts_legs(rest, self.ontology, now=now, available=available)) \
-            + list(aggregate_legs(rest, self.ontology, now=now, available=available))
-        if composed and len(loops) < self.max_loops_per_step:
-            legs = composed + [Leg.from_match(m) for m in matches
-                               if not ({m.give.offer_id, m.want.offer_id} & used)]
-            loops.extend(find_circulations(
-                legs, min_surplus=self.min_surplus,
-                limit=self.max_loops_per_step - len(loops)))
+        cycles, complete = enumerate_cycles(matches, max_legs=self.max_legs,
+                                            limit=self.cycle_limit, min_surplus=self.min_surplus)
+        candidates: dict[str, Loop | Circulation] = {c.loop_id: c for c in cycles}
+        if not complete:
+            # the enumeration was cut: what Bellman-Ford certifies is added
+            graph = ExchangeGraph.from_matches(matches)
+            for loop in graph.find_profitable_loops(min_surplus=self.min_surplus,
+                                                    limit=self.max_loops_per_step):
+                candidates.setdefault(loop.loop_id, loop)
+        composed = list(composed_legs(offers, self.ontology, now=now, available=available)) \
+            + list(parts_legs(offers, self.ontology, now=now, available=available)) \
+            + list(aggregate_legs(offers, self.ontology, now=now, available=available))
+        if composed:
+            legs = composed + [Leg.from_match(m) for m in matches]
+            for circ in find_circulations(legs, min_surplus=self.min_surplus,
+                                          limit=self.max_loops_per_step):
+                candidates.setdefault(circ.loop_id, circ)
+        capacity = {o.offer_id: (Fraction(1) if o.composed else available[o.offer_id])
+                    for o in offers}
+        packing = pack([item_of(c) for c in candidates.values()], capacity,
+                       prior=self.failure_prior, exact_up_to=self.exact_up_to,
+                       budget=self.pack_budget)
+        chosen = sorted(packing.chosen, key=lambda it: (-weight(it, self.failure_prior), it.key))
+        loops: list[Loop | Circulation] = [it.payload for it in chosen[: self.max_loops_per_step]]
         log.info(
-            "root=%s offers=%d matches=%d composed=%d loops=%d",
-            root[:12] if root else "-", len(offers), len(matches),
-            len(composed), len(loops),
+            "root=%s offers=%d matches=%d cycles=%d%s composed=%d candidates=%d selected=%d%s",
+            root[:12] if root else "-", len(offers), len(matches), len(cycles),
+            "" if complete else "(cut)", len(composed), len(candidates), len(loops),
+            "" if packing.exact else " (greedy)",
         )
         return root, loops
 

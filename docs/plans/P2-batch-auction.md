@@ -255,6 +255,13 @@ selection. The deterministic baseline is loopmarket's free EBBO oracle —
 every replica computes the canonical reference score from the pinned root,
 so "did the winners beat the obvious solution" is verifiable by anyone.
 
+**Capacity refinement, 2026-09-18 (built with selection).** An offer's
+reference is read against *displacement*: a better loop through a
+divisible give is the give's alternative only if the two cannot both
+clear within what is left of it — a give with room for both trades is not
+made worse off by the second, it clears more at its own price. Wants and
+indivisible offers compete as before. `auction.fairness_filter(capacity=)`.
+
 ## 6. Winner selection
 
 Selection consumes the packing problem of `P2-loop-selection.md`
@@ -287,6 +294,12 @@ in the order the proposer chose, the first would write its fills and the
 second would revert on the fill check — a winner decided by builder
 ordering, not by surplus. That model is what the beat replaces; the
 leg-level fill check survives only as the safety net under U3.
+
+**Built 2026-09-18:** `auction.select` is `selection.pack` over the offers'
+capacities (`P2-loop-selection.md`): exact branch and bound up to N\*
+candidates within a deterministic budget, the greedy beyond, ties in that
+document's §8 order — so the beat packs a divisible give's remainder
+across loops instead of treating every shared offer as a conflict.
 
 ## 7. Solver rewards
 
@@ -349,7 +362,11 @@ deviation is profitable and invisible), and the transaction-fee-mechanism
 impossibility results (arXiv 2402.08564) mean the goal is resistance,
 priced and monitored — not proof.
 
-**Precondition (unresolved).** `ExchangeGraph` keeps only the best rate per
+**Precondition — resolved 2026-09-18 (gate G1 of `P2-loop-selection.md`):
+the baseline enumerates every simple cycle over the match multigraph and
+packs, so the reserve bid has no charted blind spot from the best-rate
+reduction or the threshold test.** The original statement, for the
+record: `ExchangeGraph` keeps only the best rate per
 ordered pair; a lower-rate parallel edge can satisfy per-node feasibility
 where the best-rate edge fails. A reserve bid with silent recall gaps
 weakens the collusion defense exactly where it matters — a ring profits in
