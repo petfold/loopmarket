@@ -9,6 +9,35 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Added
+
+- **The `challenge` verb — the optimistic beat gets its challenger**
+  (P2, 2026-09-18). The CLI keeps no copy of what `propose` posted: the
+  book is the channel. `loop challenge BEAT [LEG] [--check] [--book SPEC]`
+  reads the beat from the contract (pins, the committed leg and potential
+  hashes, the window), finds the `loop/` record behind it — in the
+  submitter's announced clearing book (the beat's `msg.sender` is the
+  announcing key, U8), or `--book`, or my own — by rebuilding the
+  submission from the record and the snapshot at the beat's book root and
+  hashing to exactly the commitments (`beat.find_evidence`,
+  `proposal_from_record`, `commitment`); re-derives every leg off chain
+  with the checklist that cleared it (`MockClearing.verify_leg`, factored
+  out of `submit`; `rehearse` runs the whole checklist without
+  committing) against what the snapshot *and the chain* leave of each
+  give; asks the contract's own verifier for its verdict on each leg for
+  free (`BeatClient.verdict`: `verifyLegExternal` through `eth_call` sent
+  as the contract itself, funded by a state override where the node has
+  one); and sends the challenge only for a leg the contract would convict
+  — the beat cancelled, the bond the challenger's. A fault only the
+  off-chain check sees (a give that does not fit the want, an expired
+  window, a withdrawn offer) is reported as the arbiter's, and no gas is
+  spent on it; a beat with no record anywhere is reported as unverifiable
+  (exit 2). `loop beats [--open]` lists the beats and their state.
+  `tests/test_beat_client.py`: an honest beat verifies and nothing is
+  sent; a structural forgery (105 kg of a 100 kg give) is convicted from
+  the forger's own record and the bond paid; a semantic fault is reported
+  and kept off chain; the CLI end to end on a local EVM.
+
 ## [0.10.0] — 2026-09-15
 
 P2 clearing on chain: recordstore's trie proofs verified on the EVM, the

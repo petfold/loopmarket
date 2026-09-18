@@ -98,8 +98,9 @@ _SETTINGS = {
     "beat": _Setting(
         "LOOP_BEAT", "", "--beat SPEC",
         "the clearing contract: chain:RPC_URL@CONTRACT (BeatClearing); "
-        "`propose` posts each cleared loop as a beat, `finalize BEAT` records "
-        "its fills after the window"),
+        "`propose` posts each cleared loop as a beat, `challenge BEAT` "
+        "re-verifies one from its record, `finalize BEAT` records its fills "
+        "after the window"),
     "maker": _Setting(
         "LOOP_MAKER", "", "--maker NAME",
         "my identity; the signer's address when bee_signer is set and the "
@@ -2130,6 +2131,111 @@ def cmd_finalize(args, session, out):
     return 0
 
 
+def _beat_state_line(state: dict) -> str:
+    if state["cancelled"]:
+        phase = "cancelled"
+    elif state["finalized"]:
+        phase = "finalized"
+    elif state["open"]:
+        phase = f"open until block {state['window_end']}"
+    else:
+        phase = "window closed, not finalized"
+    return (f"beat {state['beat']} by {state['submitter']} root {state['book_root'][:16]}… "
+            f"{state['fills']} fills, {phase}")
+
+
+def cmd_beats(args, session, out):
+    """Every beat on the clearing contract, first to last: who posted it,
+    under which book root, how many fills, and where it stands — what a
+    challenger reads before choosing one."""
+    client = _beat_client(session)
+    beats = client.beats()
+    for state in beats:
+        if args.open and not state["open"]:
+            continue
+        print(_beat_state_line(state), file=out)
+    return 0 if beats else 1
+
+
+def _evidence_books(session, state: dict, spec: str | None):
+    """Where a beat's loop record may be: the book named, else the
+    submitter's announced books (the clearing role first — `msg.sender` of
+    the beat is the feed-signing key that announces, U8) and then my own
+    (I may be the submitter, or hold its fold)."""
+    if spec:
+        return [_open_book(spec)]
+    books = []
+    if _configured("registry"):
+        mine = sorted((ann for ann in session.announcements.announced()
+                       if ann.owner.lower() == state["submitter"].lower()),
+                      key=lambda ann: ann.role != "clearing")
+        for ann in mine:
+            try:
+                books.append(_open_book(ann.spec()))
+            except Exception as exc:            # noqa: BLE001 — their postage, not our omission
+                print(f"loop: {ann.owner}: {exc}", file=_err())
+    books.append(session.book)
+    return books
+
+
+def cmd_challenge(args, session, out):
+    """Verify a beat as a challenger and act on it (P2, 2026-09-18). The
+    loop record behind the beat is found in the submitter's clearing book
+    (or `--book SPEC`) by hashing to the beat's commitments; every leg is
+    re-derived off chain under my catalogue (U3, the same checklist that
+    cleared it) and put to the contract's own verifier for free; a leg the
+    contract would convict is challenged — the beat cancelled, the bond
+    mine — unless `--check`. A fault only the off-chain check sees is
+    reported as the arbiter's: the contract does not compute it. With LEG,
+    that leg is challenged whatever the dry run says. Exit 0: the beat
+    verifies, or was cancelled by this challenge; 1: a fault stands that
+    was not acted on; 2: no evidence."""
+    from .beat import challenge_beat
+    client = _beat_client(session)
+    state = client.beat(int(args.beat))
+    print(_beat_state_line(state), file=out)
+    books = _evidence_books(session, state, args.book)
+    now = session.now if _configured("now") else None
+    index = int(args.leg) if args.leg is not None else None
+    result = challenge_beat(client, int(args.beat), books, session.catalogue, now=now,
+                            index=index, send=not args.check)
+    if result.evidence is None:
+        print(f"no evidence: no loop record under root {state['book_root'][:16]}… hashes to "
+              f"the beat's commitments in {len(books)} book(s) — the contract cannot "
+              f"convict what nobody has seen; do not rely on this beat", file=_err())
+        return 2
+    rec, book = result.evidence.record, result.evidence.snapshot
+    print(f"loop {rec['loop_id'][:16]}… surplus {100 * float(q(rec['surplus'])):.2f}%, "
+          f"solver {rec.get('solver', '?')}", file=out)
+    for verdict, leg in zip(result.legs, rec["legs"]):
+        gives = [book.get(g) for g in leg.get("gives", [leg["give"]])]
+        off = "holds" if verdict.local is None else verdict.local
+        on = verdict.chain or "no verdict (the node would not run the call)"
+        print(f"  [{verdict.index}] {_leg_line(gives, book.get(leg['want']))}", file=out)
+        print(f"      off chain: {off}", file=out)
+        print(f"      on chain:  {on}", file=out)
+    if result.overall and result.overall != "no evidence" \
+            and not any(v.local for v in result.legs):
+        print(f"  the set: {result.overall}", file=out)
+    if result.sent is not None:
+        print(f"challenged leg {result.sent}: {result.reason}", file=out)
+        if result.cancelled:
+            print(f"beat {args.beat} cancelled; the bond is the challenger's", file=out)
+            return 0
+        print(f"beat {args.beat} stands", file=out)
+        return 0 if result.verifies else 1
+    if result.verifies:
+        print(f"beat {args.beat} verifies", file=out)
+        return 0
+    if any(v.convicts for v in result.legs):
+        why = "not sent (--check)" if args.check else "not sent: the window is closed"
+        print(f"a leg the contract would convict — {why}", file=out)
+        return 1
+    print("a fault the contract does not compute — the arbiter's (P3), not a challenge",
+          file=out)
+    return 1
+
+
 def cmd_clearing(args, session, out):
     """Run the clearing house locally: MockClearing over the fold, fills
     committed to my book. Named for what it does; `clear` means delete on
@@ -2276,6 +2382,10 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop loops                 profitable loops on a snapshot (exit 1: none)
   loop clearing              run the clearing house locally over the fold (exit 1: none)
   loop propose               clear locally and post each loop as a beat on the clearing contract
+  loop beats [--open]        the beats on the contract: submitter, root, fills, state
+  loop challenge BEAT [LEG] [--check] [--book SPEC]
+                             re-verify a beat from its loop record, off chain and by the
+                             contract's own verifier; convict a leg it would fail
   loop finalize BEAT         record a beat's fills on chain after its window
   loop status                roots, counts, settings in force
   loop set [KEY [VALUE]]     show / change a durable setting
@@ -2392,6 +2502,15 @@ def build_parser():
     p = sub.add_parser("finalize", add_help=False)
     p.add_argument("beat")
     p.set_defaults(func=cmd_finalize)
+    p = sub.add_parser("beats", add_help=False)
+    p.add_argument("--open", action="store_true")
+    p.set_defaults(func=cmd_beats)
+    p = sub.add_parser("challenge", add_help=False)
+    p.add_argument("beat")
+    p.add_argument("leg", nargs="?", default=None)
+    p.add_argument("--check", action="store_true")
+    p.add_argument("--book", default=None)
+    p.set_defaults(func=cmd_challenge)
     p = sub.add_parser("announce", add_help=False)
     p.add_argument("--role", choices=("maker", "clearing"), default=None)
     p.set_defaults(func=cmd_announce)

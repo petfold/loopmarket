@@ -105,10 +105,22 @@ makers' local books announced through a file registry, and `loop propose`
 cleared the triangle into the solver's clearing book and posted it as
 beat 1 — six fills, the key as submitter — in five seconds; the contract
 read it back, and after the window `loop finalize 1` recorded the six
-fills on chain (2026-09-18, 383 k gas), the bond returning. What is not built: a `challenge` verb (the CLI does not yet
-keep the submission it posted; a challenger rebuilds it from the clearing
-book's loop record and the snapshot), and the sealed-proposal beat in
-front of the contract.
+fills on chain (2026-09-18, 383 k gas), the bond returning. **The
+challenger, built 2026-09-18** (`loop challenge BEAT [LEG] [--check]
+[--book SPEC]`, `loop beats`): the CLI keeps no copy of what it posted —
+the book is the channel — so a challenger reads the beat's pins and
+commitments from the contract, finds the `loop/` record in the
+submitter's announced clearing book (the beat's `msg.sender` is the
+announcing key), rebuilds the submission from the record and the snapshot
+at the beat's root and requires it to hash to exactly the commitments,
+re-derives every leg off chain with the clearing checklist and puts each
+to the contract's own verifier through `eth_call` sent as the contract
+(free), and sends the challenge only for a leg the contract would
+convict. The semantic half is reported as the arbiter's and costs no gas;
+a beat with no record anywhere is reported as unverifiable — the
+publication gap of `proof-fabric.md`'s open problem, which the bond alone
+deters until Swarm's storer receipts can be demanded. What is not built:
+the sealed-proposal beat in front of the contract.
 
 ## 3. Sealed proposals
 

@@ -104,3 +104,182 @@ def test_chain_clearing_posts_and_finalize_records_fills(chain):
     client.finalize(beat)
     assert client.filled(apples.offer_id) == 40 and client.beat(beat)["finalized"]
     assert agent.step(now=NOW) == []
+
+
+# --------------------------------------------------------------------------- #
+# The challenger (2026-09-18): evidence rebuilt from the loop record, the
+# off-chain re-derivation, the contract's own verdict for free, the challenge
+# --------------------------------------------------------------------------- #
+
+from loopmarket.beat import challenge_beat, commitment, find_evidence, proposal_from_record  # noqa: E402
+
+
+def _posted(chain):
+    """A book cleared through `ChainClearing`: the beat on chain, the loop
+    record in the book — the shape a challenger meets."""
+    w3, address, key = chain
+    cat, book = _book()
+    client = BeatClient("", address, key=key, client=w3)
+    agent = SolverAgent(book, cat, clearing=ChainClearing(book, cat, beat_client=client, clock=lambda: NOW),
+                        solver_id="t", min_surplus=0.0)
+    receipts = agent.step(now=NOW)
+    beat = int(receipts[0].reason.split()[1])
+    return cat, book, client, beat, receipts[0].loop_id
+
+
+def test_an_honest_beat_verifies_from_its_record_and_nothing_is_sent(chain):
+    w3, address, key = chain
+    cat, book, client, beat, loop_id = _posted(chain)
+    state = client.beat(beat)
+    assert state["book_root"] == book.store.get(f"loop/{loop_id}")["book_root"] and state["open"]
+    # the record alone rebuilds exactly what was committed
+    ev = find_evidence(state, [book])
+    assert ev is not None and ev.record["loop_id"] == loop_id
+    assert commitment(ev.submission) == (state["legs_hash"], state["potentials_hash"])
+    assert proposal_from_record(ev.record, ev.snapshot).circulation.loop_id == loop_id
+    # every leg holds off chain and on: the contract's verdict costs no transaction
+    result = challenge_beat(client, beat, [book], cat, now=NOW)
+    assert result.verifies and result.sent is None and not result.cancelled
+    assert [v.chain for v in result.legs] == ["leg verifies"] * 2
+    assert all(v.local is None for v in result.legs) and result.overall is None
+    # a fresh session with no book has nothing to check against
+    empty = OfferRegistry(RecordStore(MemoryBytesStore()))
+    assert challenge_beat(client, beat, [empty], cat, now=NOW).overall == "no evidence"
+    # and a wrong catalogue cannot judge the semantic half, says so, sends nothing
+    other = Ontology.persistent(RecordStore(MemoryBytesStore())); other.load({"pear": []}); other.commit()
+    off = challenge_beat(client, beat, [book], other, now=NOW)
+    assert off.overall == "ontology pin mismatch" and off.sent is None and not off.verifies
+
+
+def test_a_structural_forgery_is_convicted_and_the_bond_paid(chain):
+    """The submitter's record claims 105 kg of a 100 kg give and the beat
+    commits to it: the challenger rebuilds that very submission from the
+    record, the dry run convicts the leg, the challenge cancels the beat."""
+    w3, address, key = chain
+    cat, book = _book()
+    root = book.store.root
+    snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
+    agent = SolverAgent(book, cat, clearing=None, solver_id="t", min_surplus=0.0)
+    _r, loops = agent.find_loops(now=NOW)
+    from loopmarket.clearing import LoopProposal
+    rec = LoopProposal(loops[0], root, cat.root, "t", NOW).to_record()
+    forged = dict(rec, legs=[dict(l, taken=["105"]) if l["taken"] == ["40"] else l for l in rec["legs"]])
+    from loopmarket.beat import legs_from_record
+    from loopmarket.graph import Circulation
+    circ = Circulation(legs_from_record(forged, snapshot))
+    forged["loop_id"] = circ.loop_id                                  # the forger is at least consistent
+    forgery = LoopProposal(circ, root, cat.root, "t", NOW)
+    sub = submission(forgery, snapshot, potentials={m: e for m, e in rec["potentials"].items()})
+    submitter = BeatClient("", address, key=key, client=w3)
+    beat, _ = submitter.submit(sub)
+    # the forger's clearing book: U11 refuses an oversold fill at a registry
+    # commit, so the forger writes the record through the store itself
+    book.store.put(f"loop/{circ.loop_id}", forged); book.store.commit()
+    challenger_key = w3.provider.ethereum_tester.backend.account_keys[1].to_hex()
+    challenger = BeatClient("", address, key=challenger_key, client=w3)
+    before = w3.eth.get_balance(w3.eth.accounts[1])
+    result = challenge_beat(challenger, beat, [book], cat, now=NOW)
+    bad = next(v for v in result.legs if v.convicts)
+    assert "left" in bad.chain and bad.local and "fails" in bad.local
+    assert result.sent == bad.index and "left" in result.reason and result.cancelled
+    assert w3.eth.get_balance(w3.eth.accounts[1]) > before
+    assert not challenger.beat(beat)["open"]
+
+
+def test_a_semantic_fault_is_reported_as_the_arbiters_and_nothing_is_sent(chain):
+    """Pears offered against a want of apples, priced so the potentials
+    balance: the structural half holds, so the contract says the leg
+    verifies; the off-chain re-derivation refuses it. The challenger
+    reports the fault and keeps its gas — that half is the arbiter's."""
+    w3, address, key = chain
+    cat = Ontology.persistent(RecordStore(MemoryBytesStore()))
+    cat.load({"apple": [], "pear": [], "lesson": []}); cat.commit()
+    pins = cat.pins
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    offers = [give("farm", Thing(("pear",), 40, "kg"), 80, **V, **pins),
+              want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins),
+              give("b1", Thing(("lesson",)), 80, **V, **pins),
+              want("farm", Thing(("lesson",)), 85, **V, **pins)]
+    book.publish_many(offers); book.commit()
+    root = book.store.root
+    snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
+    from loopmarket.clearing import LoopProposal
+    from loopmarket.graph import Circulation
+    from loopmarket.matching import Leg
+    circ = Circulation((Leg(offers[1], (offers[0],)), Leg(offers[3], (offers[2],))))
+    proposal = LoopProposal(circ, root, cat.root, "forger", NOW)
+    assert MockClearing(book, cat, clock=lambda: NOW).rehearse(proposal).reason.startswith("leg fails")
+    client = BeatClient("", address, key=key, client=w3)
+    beat, _ = client.submit(submission(proposal, snapshot))
+    book.mark_filled(proposal.fills(), circ.loop_id, proposal.to_record()); book.commit()
+    result = challenge_beat(client, beat, [book], cat, now=NOW)
+    assert result.evidence is not None and not result.verifies
+    assert [v.chain for v in result.legs] == ["leg verifies"] * 2
+    assert any(v.local and v.local.startswith("leg fails") for v in result.legs)
+    assert result.sent is None and client.beat(beat)["open"]
+    # the challenger may still insist on a leg; the contract answers, the beat stands
+    forced = challenge_beat(client, beat, [book], cat, now=NOW, index=0)
+    assert forced.sent == 0 and forced.reason == "leg verifies" and not forced.cancelled
+
+
+def test_the_cli_posts_lists_challenges_and_finalizes(chain, tmp_path, monkeypatch):
+    """`loop propose` posts the beat from a pinned rs: catalogue; `beats`
+    lists it; `challenge 1` finds the loop record in my own book (the
+    clearing book, no registry set), re-derives, asks the contract, sends
+    nothing on a sound beat; after the window `finalize 1` records the fills."""
+    from ontodag import __main__ as odag
+    from ontodag.prelude import apply as apply_prelude
+    from loopmarket import cli
+    w3, address, key = chain
+    monkeypatch.setenv("LOOP_HOME", str(tmp_path / "loop"))
+    monkeypatch.setenv("ONTODAG_HOME", str(tmp_path / "odag"))
+    monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'book'}")
+    monkeypatch.setenv("LOOP_CONFIRM", "off")
+    monkeypatch.setenv("LOOP_NOW", str(NOW))
+    monkeypatch.setenv("LOOP_BEAT", f"chain:test@{address}")
+    for var in ("LOOP_REGISTRY", "LOOP_PEERS", "BEE_SIGNER"):
+        monkeypatch.delenv(var, raising=False)
+    cli._OVERRIDES.clear()
+    spec = f"rs:{tmp_path / 'cat'}"
+    cat = odag.Session(odag._normalize_spec(spec))
+    apply_prelude(cat.dag)
+    for name in ("apple", "lesson"):
+        cat.dag.put(name, [])
+    cat.save()
+    monkeypatch.setenv("LOOP_CATALOGUE", spec)
+    monkeypatch.setattr(cli, "_beat_client", lambda session: BeatClient("", address, key=key, client=w3))
+
+    def run(*argv):
+        import io
+        out, err = io.StringIO(), io.StringIO()
+        code = cli.dispatch(list(argv), cli.Session(), out, err)
+        return code, out.getvalue(), err.getvalue()
+
+    monkeypatch.setenv("LOOP_MAKER", "farm")
+    assert run("give", "100kg:5", "apple", "200")[0] == 0
+    assert run("want", "lesson", "85")[0] == 0
+    monkeypatch.setenv("LOOP_MAKER", "b1")
+    assert run("want", "40kg", "apple", "90")[0] == 0
+    assert run("give", "lesson", "80")[0] == 0
+    code, out, err = run("propose")
+    assert code == 0 and "posted beat " in out, (out, err)
+    beat = int(out.split("posted beat ")[1].split(":")[0])
+    code, out, _ = run("beats", "--open")
+    assert code == 0 and f"beat {beat} by" in out and "open until block" in out
+    code, out, err = run("challenge", str(beat))
+    assert code == 0, (out, err)
+    assert out.count("off chain: holds") == 2 and out.count("on chain:  leg verifies") == 2
+    assert f"beat {beat} verifies" in out and "challenged" not in out
+    # a leg named explicitly is put to the contract even so; the beat stands
+    code, out, _ = run("challenge", str(beat), "0")
+    assert code == 0 and "challenged leg 0: leg verifies" in out and f"beat {beat} stands" in out
+    # a book that never saw the record has no evidence
+    code, out, err = run("challenge", str(beat), "--book", f"rs:{tmp_path / 'stranger'}")
+    assert code == 2 and "no evidence" in err
+    w3.provider.ethereum_tester.mine_blocks(WINDOW + 1)
+    code, out, _ = run("challenge", str(beat), "--check")
+    assert code == 0 and "window closed" in out
+    code, out, _ = run("finalize", str(beat))
+    assert code == 0 and f"finalized beat {beat}: 4 fills" in out
+    code, out, _ = run("beats")
+    assert f"beat {beat} by" in out and "finalized" in out

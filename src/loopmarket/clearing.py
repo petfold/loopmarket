@@ -173,26 +173,9 @@ class MockClearing:
         #    left of every give (a partial fill's remainder)
         available = {oid: self.registry.available(oid) for oid in loop.offer_ids}
         for leg in loop.legs:
-            fresh_want = self.registry.get(leg.want.offer_id)
-            fresh_gives = [self.registry.get(g.offer_id) for g in leg.gives]
-            if leg.quantities is not None:
-                ok = check_aggregate(fresh_want, fresh_gives, leg.quantities, self.ontology,
-                                     now=now, available=available)
-            elif fresh_want.composed:
-                ok = check_parts(fresh_want, fresh_gives, self.ontology, now=now,
-                                 available=available)
-            elif leg.simple:
-                ok = check_match(fresh_gives[0], fresh_want, self.ontology, now=now,
-                                 available=available)
-            else:
-                ok = check_composition(fresh_want, fresh_gives, self.ontology, now=now,
-                                       available=available)
-            if ok is None:
-                return reject(
-                    f"leg fails re-verification: "
-                    f"{'+'.join(g.offer_id[:8] for g in leg.gives)}"
-                    f" -> {leg.want.offer_id[:8]}"
-                )
+            reason = self.verify_leg(leg, now=now, available=available)
+            if reason:
+                return reject(reason)
 
         # 3. the arithmetic: potentials exist (a simple cycle: product > 1)
         #    with the required uniform gain, and the indivisible gate
@@ -208,6 +191,44 @@ class MockClearing:
         self.registry.mark_filled(proposal.fills(), lid, proposal.to_record())
         root = self.registry.commit()
         return Receipt(True, lid, book_root=root)
+
+    def verify_leg(self, leg, *, now: int, available: dict) -> str | None:
+        """Re-derive one leg from this clearing's book and ontology — the
+        exact check for its shape: `check_aggregate` for explicit shares,
+        `check_parts` for a composed want, `check_match` for one give,
+        `check_composition` for a thing moved by operators — against what
+        `available` says fills have left of each give. None when the leg
+        holds, else the reason. The unit of U3, and of a challenger's
+        re-derivation (beat.py): the same code that cleared a leg is what
+        convicts it."""
+        fresh_want = self.registry.get(leg.want.offer_id)
+        fresh_gives = [self.registry.get(g.offer_id) for g in leg.gives]
+        if leg.quantities is not None:
+            ok = check_aggregate(fresh_want, fresh_gives, leg.quantities, self.ontology,
+                                 now=now, available=available)
+        elif fresh_want.composed:
+            ok = check_parts(fresh_want, fresh_gives, self.ontology, now=now,
+                             available=available)
+        elif leg.simple:
+            ok = check_match(fresh_gives[0], fresh_want, self.ontology, now=now,
+                             available=available)
+        else:
+            ok = check_composition(fresh_want, fresh_gives, self.ontology, now=now,
+                                   available=available)
+        if ok is None:
+            return (f"leg fails re-verification: "
+                    f"{'+'.join(g.offer_id[:8] for g in leg.gives)}"
+                    f" -> {leg.want.offer_id[:8]}")
+        return None
+
+    def rehearse(self, proposal: LoopProposal) -> Receipt:
+        """The whole checklist, nothing committed: the verdict a proposal
+        would get here. `ChainClearing` runs it before posting a beat; a
+        challenger runs it against the beat's snapshot."""
+        dry = MockClearing(_Dry(self.registry), self.ontology, min_surplus=self.min_surplus,
+                           require_per_node=self.require_per_node, clock=self.clock,
+                           verifiable_oracles=self.verifiable_oracles)
+        return dry.submit(proposal)
 
 
 class ChainClearing(MockClearing):
@@ -236,11 +257,7 @@ class ChainClearing(MockClearing):
         except Exception as exc:  # noqa: BLE001 — the proposal's evidence cannot be built
             return Receipt(False, lid, f"beat: {exc}")
         # the local checklist first, without committing
-        rehearsal = MockClearing(self.registry, self.ontology, min_surplus=self.min_surplus,
-                                 require_per_node=self.require_per_node, clock=self.clock,
-                                 verifiable_oracles=self.verifiable_oracles)
-        rehearsal.registry = _Dry(self.registry)
-        verdict = rehearsal.submit(proposal)
+        verdict = self.rehearse(proposal)
         if not verdict.accepted:
             return verdict
         try:

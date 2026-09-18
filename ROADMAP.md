@@ -120,9 +120,14 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
 - [ ] **Loop selection** · [plan](docs/plans/P2-loop-selection.md) — the
       LP/ILP selection over *competing* sets; the baseline hunts and clears
       the first feasible circulation.
-- [ ] A `challenge` verb: the CLI does not keep the submission it posted;
-      a challenger rebuilds it from the clearing book's loop record and the
-      snapshot.
+- [x] **The `challenge` verb** (DONE 2026-09-18): the CLI keeps no copy of
+      what it posted — a challenger rebuilds the submission from the
+      submitter's announced clearing book's loop record and the snapshot
+      at the beat's root, hashing to the beat's commitments; re-derives
+      every leg off chain (U3) and by the contract's own verifier for free
+      (`eth_call` as the contract); sends only what the contract would
+      convict; reports the semantic half as the arbiter's and a beat with
+      no record as unverifiable. `loop beats` lists the beats.
 - [ ] The BMT (keccak) variant of the trie verifier, for books on Swarm
       (`addressing: "swarm"`); a compact node encoding asked upstream
       (recordstore issue #1) would cut the gas several-fold.
