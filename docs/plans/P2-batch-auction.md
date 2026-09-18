@@ -132,7 +132,10 @@ BMT verifier followed the same day** (`SwarmAddress.sol`; the beat pins
 its root's addressing scheme) and the contract was redeployed at
 `0x1277B4906b6Aab4dF806dd85c5ED980135C12931`, so a Swarm clearing book's beat verifies — live
 that evening: beat 1 on the new contract, *verifies* from a fresh session.
-What is not built: the sealed-proposal beat in front of the contract.
+Composed wants followed the same evening (`LoopVerifier` reads `Parts`;
+redeployed at `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf`, the triangle gate passing on it
+the same hour). What is not built: the
+sealed-proposal beat in front of the contract.
 
 ## 3. Sealed proposals
 

@@ -338,3 +338,34 @@ def test_a_beat_from_a_swarm_addressed_book_posts_and_verifies(chain, tmp_path):
     assert state["addressing"] == "swarm"
     result = challenge_beat(client, beat, [book], cat, now=NOW)
     assert result.verifies and [v.chain for v in result.legs] == ["leg verifies"] * 2
+
+
+def test_a_beat_with_a_composed_want_posts_and_verifies(chain):
+    """Composed wants on chain (2026-09-18): the evening — two tickets and a
+    transport as one want — clears through `ChainClearing`, the pre-bond
+    dry run passes (the contract checks give i hands over part i), and the
+    challenger's dry run says every leg verifies."""
+    from loopmarket import Parts
+    w3, address, key = chain
+    cat = Ontology.persistent(RecordStore(MemoryBytesStore()))
+    cat.load({"ticket": [], "transport": [], "lesson": []}); cat.commit()
+    pins = cat.pins
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    book.publish_many([
+        want("buyer", Parts((Thing(("ticket",), 2), Thing(("transport",), 1, "run"))), 60, **V, **pins),
+        give("theatre", Thing(("ticket",), 10, step=1), 200, **V, **pins),
+        give("driver", Thing(("transport",), 1, "run"), 15, **V, **pins),
+        give("buyer", Thing(("lesson",)), 30, nonce=1, **V, **pins),
+        give("buyer", Thing(("lesson",)), 30, nonce=2, **V, **pins),
+        want("theatre", Thing(("lesson",)), 42, **V, **pins),
+        want("driver", Thing(("lesson",)), 31, **V, **pins)])
+    book.commit()
+    client = BeatClient("", address, key=key, client=w3)
+    agent = SolverAgent(book, cat, clearing=ChainClearing(book, cat, beat_client=client, clock=lambda: NOW),
+                        solver_id="t", min_surplus=0.0)
+    receipts = agent.step(now=NOW)
+    assert receipts and receipts[0].accepted, receipts[0].reason
+    beat = int(receipts[0].reason.split()[1])
+    assert client.beat(beat)["fills"] == 7                       # 3 wants + 4 gives, tickets in part
+    result = challenge_beat(client, beat, [book], cat, now=NOW)
+    assert result.verifies and [v.chain for v in result.legs] == ["leg verifies"] * 3

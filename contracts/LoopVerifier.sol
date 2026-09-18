@@ -16,14 +16,18 @@ import "./TrieProofVerifier.sol";
 ///     no maker on both sides of one leg;
 ///   * the quantity taken from each give is within its quantity, on its
 ///     step, at or above its floor, and within what is still unfilled
-///     (partial fills are exact: no rounding, ever — U9);
+///     (partial fills are exact: no rounding, ever — U9); the thing's give
+///     (or the aggregated gives together) hands over the want's quantity
+///     in the want's unit, and for a composed want (v4 `Parts`, since
+///     2026-09-18) give i hands over part i's quantity in its unit;
 ///   * the potentials balance the leg: the lot the buyer pays, times the
 ///     buyer's potential, covers the sum over gives of unit price times
 ///     quantity taken times the giver's potential — by cross-multiplication
 ///     of exact rationals, no division anywhere.
 /// What it cannot check is whether each give's thing fits within the want
-/// (`Ontology.satisfies` over the pinned catalogue): that half stays
-/// optimistic — any reader re-derives it off chain and challenges.
+/// (`Ontology.satisfies` over the pinned catalogue), nor which give among
+/// operators is the thing: that half stays optimistic — any reader
+/// re-derives it off chain and challenges.
 /// Fields are read from the record bytes by pattern, never by parsing JSON:
 /// the record is canonical (sorted keys, no whitespace), so `"gives":{`
 /// precedes `"maker":"` precedes `"wants":{`, and inside a side the keys
@@ -54,10 +58,13 @@ library LoopVerifier {
     struct Facts {
         bytes maker;
         bool isGive;               // the thing side is `gives`
-        Rat qty;                   // the thing's quantity (a want: what is wanted)
+        Rat qty;                   // the thing's quantity (a want: what is wanted; 0/1 for parts)
         Rat step;
         Rat min;
         Rat amount;                // the tokens side
+        bytes unit;                // the thing's unit (empty for parts)
+        Rat[] parts;               // a composed want's part quantities, in the record's order
+        bytes[] partUnits;         // and their units
     }
 
     /// Verify one leg. `filled(id)` answers what the contract has already
@@ -73,11 +80,16 @@ library LoopVerifier {
         require(leg.gives.length >= 1 && leg.gives.length == leg.taken.length, "leg shape");
         want = _verifyOffer(beat, leg.want);
         require(!want.isGive, "the head of a leg is a want");
+        bool composed = want.parts.length > 0;
+        // a composed want (v4 `Parts`, on chain since 2026-09-18): give i serves
+        // part i, whole — the quantity taken is the part's, in the part's unit
+        if (composed) require(leg.gives.length == want.parts.length, "one give per part");
         gives = new Facts[](leg.gives.length);
         // the buyer's side of the balance: amount * e[head]
         Rat memory eHead = potential(want.maker);
         Rat memory lhs = _mul(want.amount, eHead);
         Rat memory rhs = Rat(0, 1);
+        Rat memory total = Rat(0, 1);
         for (uint256 i = 0; i < leg.gives.length; i++) {
             Facts memory g = _verifyOffer(beat, leg.gives[i]);
             require(g.isGive, "a tail of a leg is a give");
@@ -85,10 +97,23 @@ library LoopVerifier {
             Rat memory t = leg.taken[i];
             require(t.n > 0 && t.d > 0, "taken must be positive");
             _requireTakes(g, t, filled(leg.gives[i].id));
+            if (composed) {
+                require(_eq(t, want.parts[i]), "taken is not the part's quantity");
+                require(_bytesEq(g.unit, want.partUnits[i]), "the part's unit");
+            }
+            total = _add(total, t);
             // value owed to the giver: (amount / qty) * taken * e[giver]
             Rat memory unitPrice = _div(g.amount, g.qty);
             rhs = _add(rhs, _mul(_mul(unitPrice, t), potential(g.maker)));
             gives[i] = g;
+        }
+        if (!composed) {
+            // the want's own quantity is what the thing's give (give 0, or the
+            // aggregated gives together) hands over, in the want's unit; which
+            // give is the thing among operators is the semantic half's question
+            require(_eq(leg.taken[0], want.qty) || _eq(total, want.qty),
+                    "taken is not the want's quantity");
+            require(_bytesEq(gives[0].unit, want.unit), "the want's unit");
         }
         require(_geq(lhs, rhs), "potentials do not balance the leg");
     }
@@ -125,17 +150,57 @@ library LoopVerifier {
         require(g < m && m < w, "record shape");
         f.maker = _stringAt(r, m + 9);
         bool givesIsThing = _index(r, '"type":"thing"', g) < w && _index(r, '"type":"thing"', g) > g;
-        // exactly one side is a thing (U1); a composed want is not verifiable here yet
-        require(_index(r, '"type":"parts"', 0) == type(uint256).max, "parts: not yet on chain");
+        // exactly one side is a thing or the parts of one (U1); parts are want-side only
+        bool composed = _index(r, '"type":"parts"', w) != type(uint256).max;
+        require(_index(r, '"type":"parts"', 0) >= w, "parts on the give side");
         uint256 thingStart = givesIsThing ? g : w;
         uint256 thingEnd = givesIsThing ? w : r.length;
         uint256 tokensStart = givesIsThing ? w : g;
         uint256 tokensEnd = givesIsThing ? r.length : m;
         f.isGive = givesIsThing;
+        f.amount = _ratField(r, '"amount":"', tokensStart, tokensEnd);
+        if (composed) {
+            require(!givesIsThing, "two things in one offer");
+            (f.parts, f.partUnits) = _parts(r, w, r.length);
+            f.qty = Rat(0, 1); f.step = Rat(0, 1); f.min = Rat(0, 1);
+            return f;
+        }
         f.qty = _ratField(r, '"qty":"', thingStart, thingEnd);
         f.step = _ratField(r, '"step":"', thingStart, thingEnd);
         f.min = _ratField(r, '"min":"', thingStart, thingEnd);
-        f.amount = _ratField(r, '"amount":"', tokensStart, tokensEnd);
+        f.unit = _unitField(r, thingStart, thingEnd);
+    }
+
+    /// The parts of a composed want, `"parts":[{"concepts":[...],"min":..,
+    /// "qty":..,"step":..,"unit":..},...]` (sorted keys): each part starts
+    /// at its `{"concepts":` and ends at the next one's, or the side's end.
+    function _parts(bytes memory r, uint256 from, uint256 to)
+        private pure returns (Rat[] memory qtys, bytes[] memory units)
+    {
+        uint256 count = 0;
+        uint256 at = _index(r, '{"concepts":', from);
+        while (at != type(uint256).max && at < to) { count++; at = _index(r, '{"concepts":', at + 1); }
+        require(count >= 2, "a composed want has at least two parts");
+        qtys = new Rat[](count);
+        units = new bytes[](count);
+        uint256 start = _index(r, '{"concepts":', from);
+        for (uint256 i = 0; i < count; i++) {
+            uint256 next = _index(r, '{"concepts":', start + 1);
+            uint256 end = (next == type(uint256).max || next > to) ? to : next;
+            qtys[i] = _ratField(r, '"qty":"', start, end);
+            units[i] = _unitField(r, start, end);
+            start = next;
+        }
+    }
+
+    function _unitField(bytes memory r, uint256 from, uint256 to) private pure returns (bytes memory) {
+        uint256 at = _index(r, '"unit":"', from);
+        require(at != type(uint256).max && at < to, "missing unit");
+        return _stringAt(r, at + 8);
+    }
+
+    function _eq(Rat memory a, Rat memory b) private pure returns (bool) {
+        return a.n * b.d == b.n * a.d;
     }
 
     /// `Thing.takes(taken, available)`: within what is left, at or above

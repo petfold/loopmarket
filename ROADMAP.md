@@ -105,10 +105,10 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       fills recorded by the contract): `TrieProofVerifier.sol`
       (recordstore's proofs on the EVM, 1.2–1.6 M gas per inclusion under sha256, 1.0–1.2 M under Swarm's BMT addressing since 2026-09-18),
       `LoopVerifier.sol` (one leg's structural half from the anchored root
-      and the record bytes, ~3.5 M gas), `BeatClearing.sol` (one outcome
+      and the record bytes, ~3.7 M gas; 6.3 M for a two-part composed leg), `BeatClearing.sol` (one outcome
       per beat with a bond, a challenge window, fills recorded at
       finalization, an arbiter hook for the semantic half) — deployed on
-      Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`, redeployed 2026-09-18 at `0x1277B4906b6Aab4dF806dd85c5ED980135C12931` with the Swarm-addressing pin; `beat.py`,
+      Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`, redeployed 2026-09-18 at `0x1277B4906b6Aab4dF806dd85c5ED980135C12931` with the Swarm-addressing pin and, that evening, at `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf` with composed wants; `beat.py`,
       `ChainClearing`, `loop propose` / `finalize`; beat 1 posted live
       and finalized (2026-09-18).
 - [x] **Anchored ids versus proofs** (DECIDED 2026-09-15 with the contract
@@ -143,9 +143,12 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       book, *verifies* from a fresh session. Redeployed on Gnosis at `0x1277B4906b6Aab4dF806dd85c5ED980135C12931`. A compact node
       encoding asked upstream (recordstore issue #1) would still cut the
       gas several-fold.
-- [ ] Composed wants (`Parts`) verified on chain; today `LoopVerifier`
-      refuses them and the beat carries only simple, operator-composed and
-      aggregated legs.
+- [x] **Composed wants (`Parts`) verified on chain** (DONE 2026-09-18):
+      give i hands over part i's quantity in its unit, one give per part;
+      and the want-quantity rule for plain legs (the thing's give, or the
+      aggregated gives together, hand over the want's quantity in its
+      unit). Redeployed on Gnosis at `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf`; the
+      triangle gate passed on it the same hour.
 - [ ] A want-side floor (the partial-fill question mirrored).
 
 ## P3 — the guarantee fabric · [plan](docs/plans/P3-guarantee-coupling.md)

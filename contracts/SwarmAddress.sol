@@ -79,7 +79,7 @@ library SwarmAddress {
         for (uint256 i = 0; i < count; i++) {
             bytes32 word;
             uint256 at = start + i * SEGMENT;
-            assembly { word := mload(add(add(data, 32), at)) }
+            assembly ("memory-safe") { word := mload(add(add(data, 32), at)) }
             uint256 have = len - i * SEGMENT;
             if (have < SEGMENT) {                             // zero-pad the tail segment
                 word = word & bytes32(~((uint256(1) << (8 * (SEGMENT - have))) - 1));

@@ -70,7 +70,29 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   retry behind it), and a fresh session's `loop challenge 1` found the
   record through the announcement, read it from Swarm, held every leg off
   chain and heard "leg verifies" from the contract on each — the beat
-  stands, exit 0. Finalization waits for its window.
+  stands, exit 0; finalized after its window (six fills, 384 k gas).
+
+- **Composed wants on chain** (P2, 2026-09-18 evening). `LoopVerifier`
+  reads a v4 `Parts` want — the `"parts":[...]` array, each part's
+  quantity and unit from its own `{"concepts":...}` object — and verifies
+  the composed leg's structural half: one give per part, the quantity
+  taken from give i exactly part i's, in part i's unit, on top of the
+  per-give step/floor/remainder and the potentials; parts on the give side
+  refuse (U1). **The want-quantity rule** came with it for plain legs: the
+  thing's give (give 0, or the aggregated gives together) hands over the
+  want's quantity in the want's unit — a submitter taking two tickets for
+  a want of one lesson, or a run for a lesson, is convicted structurally
+  now; which give among operators is the thing stays the semantic half's.
+  Measured: 6.3 M gas for a two-part composed leg, 3.7 M for a one-give leg
+  under the new checks. `tests/test_loop_verifier.py` on the evening
+  (two tickets and a transport, cleared by the Python clearing) with every
+  new refusal; `tests/test_beat_client.py` posts it as a beat through
+  `ChainClearing` and the challenger verifies it. **Redeployed on Gnosis at
+  `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf`** (bond 0.01 xDAI, window 720 blocks, arbiter the
+  deployer's key); `0x1277B4906b6Aab4dF806dd85c5ED980135C12931` keeps the morning's beat 1.
+  Live at once: a fresh Swarm clearing book posted the triangle as beat 1
+  on it in one attempt and a fresh session's `challenge 1` answered
+  *verifies*.
 
 ### Live gate, 2026-09-18
 

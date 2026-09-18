@@ -122,7 +122,7 @@ and the potentials balance the leg — the lot times the buyer's potential
 covering the sum of unit price times quantity times each giver's — by
 cross-multiplication of exact rationals, no division. Fields are read from
 the canonical bytes by pattern (`"gives":{` before `"maker":"` before
-`"wants":{`). **Measured: ~3.5 M gas per one-give leg**, two proofs and
+`"wants":{`). **Measured: ~3.5 M gas per one-give leg** (3.7 M since the 2026-09-18 want-quantity and unit checks; 6.3 M for a two-part composed leg), two proofs and
 the arithmetic included. Not yet on chain: composed wants (`parts`), whose
 per-part quantities the verifier would read from the record. Tested with
 real proposals from the Python clearing, every structural fault refused
