@@ -11,7 +11,7 @@ The conceptual background is the "Loop Economy" essay (offers, loops, bridges, b
 ## The stack and its direction
 
 ```
-loopmarket  →  ontodag (>=0.26.1)  →  recordstore (>=0.16.0)  →  Swarm (optional)
+loopmarket  →  ontodag (>=0.26.1)  →  recordstore (>=0.20.3)  →  Swarm (optional)
 ```
 
 - **ontodag** (github.com/petfold/ontodag): the shared catalogue. One query primitive — intersection of descendant cones, `get(terms, items_only=True)` (Peter, 2026-09-12: *ontodag is based on intersection*; a want is the wider cone, a give the narrower — an overlap query mode was built and withdrawn that day). `Ontology` in `src/loopmarket/ontology.py` is a thin matching-oriented facade (`covers`, `satisfies` over `OntoDAG.is_below`) and the place where pinned catalogue roots surface. Identity at ontodag's public boundary is the *name* (plain strings accepted anywhere an `Item` is). **Pin (2026-09-13):** `ontodag>=0.26.1` — the release that carries the graph kind (#19: `transport(small-item weight(..8kg))` as a term the graph orders), after 0.25.0's #14, #15, #16.

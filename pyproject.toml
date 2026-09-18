@@ -28,7 +28,7 @@ dependencies = [
     "ontodag>=0.26.1",        # catalogue: subsumption, dimensions, is_below, role heads
                               # taking nodes, overlaps/meet, get(overlapping=, items_only=)
                               # (issues #14/#15/#16, 0.25.0); the CLI
-    "recordstore>=0.16.0",   # the book: canonical versioned KV, merge, snapshots,
+    "recordstore>=0.20.3",   # the book: canonical versioned KV, merge, snapshots,
                              # diff/merge_delta (O(divergence) folds), prove/verify_proof
 ]
 
