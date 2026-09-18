@@ -92,7 +92,7 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   deployer's key); `0x1277B4906b6Aab4dF806dd85c5ED980135C12931` keeps the morning's beat 1.
   Live at once: a fresh Swarm clearing book posted the triangle as beat 1
   on it in one attempt and a fresh session's `challenge 1` answered
-  *verifies*.
+  *verifies*; finalized after its window (six fills, 383 k gas).
 
 ### Live gate, 2026-09-18
 
