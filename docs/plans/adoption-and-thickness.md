@@ -482,3 +482,22 @@ hatch — is already the T14 defense.
   broker API are decided designs with dated markers; every vertical can fail
   its gates and be abandoned — G1 and G4 exist so abandonment is a
   pre-registered outcome, not an embarrassment.
+
+## DEX interfaces (added 2026-09-18, Peter)
+
+DEXes will need loopmarket interfaces, the Ethereum ecosystem first and other
+chains later. The framing that costs least: a DEX pool is an **exchange
+operator** — the operator that moves a thing along the denomination
+dimension, named in `P2-loop-selection.md` §10 beside transport (place) and
+storage (time). By the contract-maker rule (`P3-release-and-reclearing.md`
+§5a) a pool is a maker: it signs by state and announces its own book; its
+standing give is `exchange(from(ETH) to(DAI))` at the pool's current rate,
+reposted each beat by a relayer so that dynamic pricing quantizes to the beat
+as the doctrine requires. It takes no personal tokens; its margin is in the
+rate. What loopmarket must add is operator machinery that derives the
+output's *quantity and denomination* from a rate argument, where today's
+operators derive a place or a time. Inbound, that gives every loop access
+to on-chain liquidity as bridge legs; outbound, loopmarket books read as
+intents by external solvers is the open order struct of `P2-batch-auction.md`
+§3. Nothing chain-specific stands in the way of other EVM chains; non-EVM
+follows the contracts.

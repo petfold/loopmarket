@@ -209,6 +209,22 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
 
 ---
 
+## Later — interfaces
+
+- [ ] **DEX interfaces, Ethereum ecosystem first** (Peter, 2026-09-18):
+      a DEX pool as an **exchange operator** — the denomination-moving
+      operator of [P2-loop-selection §10](docs/plans/P2-loop-selection.md)
+      beside transport (place) and storage (time) — that is a loopmarket
+      maker by the contract-maker rule (signs by state), its standing give
+      `exchange(from(A) to(B))` at the pool's rate, reposted each beat so
+      pricing quantizes to the beat; needs the operator machinery to derive
+      an output *quantity and denomination* from a rate, where today it
+      derives a place or a time. The other direction — loopmarket books read
+      as intents by external solvers — is the open order struct of
+      [P2-batch-auction §3](docs/plans/P2-batch-auction.md). Other chains
+      once the (chain-agnostic) contracts are deployed there; non-EVM later.
+      Framing in [adoption-and-thickness.md](docs/plans/adoption-and-thickness.md).
+
 ## Cross-cutting plans
 
 Not phases — they constrain every phase, and each is at design as of
