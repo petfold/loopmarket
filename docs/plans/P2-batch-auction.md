@@ -137,6 +137,20 @@ redeployed at `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf`, the triangle gate pa
 the same hour). What is not built: the
 sealed-proposal beat in front of the contract.
 
+**Built 2026-09-18 evening, the commit-reveal form: `contracts/SealedBeat.sol`
+and `src/loopmarket/auction.py`.** Beats on a fixed cadence (`period`,
+`commitBlocks`), one commitment per solver per beat, reveals emitted, the
+outcome recorded once (a divergent record a `Disputed` event); a proposal
+is a bundle of loop records pinning one root; `outcome` re-derives every
+revealed loop (U3), adds the baseline as reserve bid (§8), applies §5's
+filter and §6's selection, posts winners to `BeatClearing` loop by loop
+and records `auction/<beat>` in the clearing book. Deployed on Gnosis at
+`0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5` (240-block beats, 120 to commit, outcomes to `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf`). The
+beat's root is the outcome submitter's fold — proposals pinning another
+root are rejected; anchoring the cutoff root to a block is the
+publication open problem of `proof-fabric.md`. Not built: Shutter (§3's
+primary), bonds (§8), the spread leg (§7).
+
 ## 3. Sealed proposals
 
 A loop proposal is fully specified by offer ids and rates: once visible it

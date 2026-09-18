@@ -94,6 +94,44 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   on it in one attempt and a fresh session's `challenge 1` answered
   *verifies*; finalized after its window (six fills, 383 k gas).
 
+- **The sealed-proposal beat** (P2, `docs/plans/P2-batch-auction.md`
+  §2–§6, 2026-09-18 evening). `contracts/SealedBeat.sol` in front of
+  `BeatClearing`: beats on a fixed cadence from deployment (`period`
+  blocks, the first `commitBlocks` the commit phase, the rest the reveal
+  phase); one commitment — keccak256(proposal || salt) — per solver per
+  beat, never replaced; the reveal emits the proposal bytes, so the
+  revealed set is the chain's and the same for every reader; `record`
+  pins the outcome a submitter derived (the hash of the revealed set it
+  read and of the winners), the first standing and a different later one
+  a visible `Disputed`. `src/loopmarket/auction.py`: a proposal is a
+  *bundle* of loop records pinning one root (`bundle_bytes`, `seal`,
+  `unbundle`); the numeraire-free score is the exact product of (1 + gain)
+  over the winning loops — Σ log surplus, invariant to any maker's unit
+  (U14); the fairness filter (§5, CIP-67 generalized to cycles) gives every
+  offer the best gain any candidate through it offers as its reference and
+  drops a loop that gives a member less; the deterministic baseline's
+  loops enter every beat as the reserve bid (§8), a revealed loop
+  outranking the reserve's copy; selection (§6) is offer-disjoint packing
+  maximising the score — exact over subsets up to twelve survivors, greedy
+  by gain beyond — with ties by loop_id then bundle hash (U6 extended to
+  the beat); `outcome` re-derives every revealed loop with the clearing
+  checklist first (U3). Winners go to `BeatClearing` loop by loop through
+  `ChainClearing` (offer-disjoint, so never conflicting) and the clearing
+  book records `auction/<beat>`. `SealedBeatClient` and `MemorySealedBeat`
+  (an in-process beat with a block counter) behind `open_sealed`. CLI: the
+  `auction` setting (`chain:RPC@CONTRACT` or `memory:`), `commit` (solve on
+  the fold, seal, keep the opening in `sealed/BEAT.json`), `reveal [BEAT]`,
+  `outcome [BEAT] [--check]`, `sealed [BEAT]`. `tests/test_sealed_beat.py`:
+  a ring that withholds the good loop loses to the reserve bid; the memory
+  and chain beats keep their phases and refuse a second commitment, an
+  early or wrong reveal; the outcome posts, verifies under `challenge`, and
+  a divergent record is a dispute; the CLI end to end. Not built: Shutter
+  threshold encryption (the plan's primary sealing, behind the same phases),
+  solver bonds (factbond, §8), the LP/ILP packing over partial-fill
+  capacity (`P2-loop-selection.md`), the endogenous spread leg (§7).
+  **Deployed on Gnosis at `0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5`** (240-block beats, 120 to commit,
+  outcomes to `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf`).
+
 ### Live gate, 2026-09-18
 
 The challenger from a fresh session. Three makers' `rs:` books announced

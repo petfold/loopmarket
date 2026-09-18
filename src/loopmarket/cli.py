@@ -101,6 +101,12 @@ _SETTINGS = {
         "`propose` posts each cleared loop as a beat, `challenge BEAT` "
         "re-verifies one from its record, `finalize BEAT` records its fills "
         "after the window"),
+    "auction": _Setting(
+        "LOOP_AUCTION", "", "--auction SPEC",
+        "the sealed-proposal beat: chain:RPC_URL@CONTRACT (SealedBeat) or "
+        "memory:; `commit` seals this session's loops for the current beat, "
+        "`reveal` opens them, `outcome BEAT` derives a closed beat's winners "
+        "and posts them to `beat`"),
     "maker": _Setting(
         "LOOP_MAKER", "", "--maker NAME",
         "my identity; the signer's address when bee_signer is set and the "
@@ -2239,6 +2245,156 @@ def cmd_challenge(args, session, out):
     return 1
 
 
+_MEMORY_SEALED = None
+
+
+def _sealed_client(session):
+    """The sealed beat named by `auction` (auction.py): a chain contract, or
+    one in-process instance per process for `memory:`."""
+    global _MEMORY_SEALED
+    from .auction import MemorySealedBeat, open_sealed
+    spec = _configured("auction")
+    if not spec:
+        raise ValueError("no sealed beat: `loop set auction chain:RPC_URL@CONTRACT` (or memory:)")
+    if spec.startswith("memory") and _MEMORY_SEALED is None:
+        _MEMORY_SEALED = MemorySealedBeat(solver=_configured("maker") or "me")
+    return open_sealed(spec, key=_configured("bee_signer") or None, memory=_MEMORY_SEALED)
+
+
+def _sealed_path(beat: int) -> str:
+    return os.path.join(_home_dir(), "sealed", f"{beat}.json")
+
+
+def cmd_commit(args, session, out):
+    """Solve on the fold and seal the loops for the current beat (P2, the
+    sealed-proposal beat, 2026-09-18): the bundle's bytes and salt stay in
+    this home (`sealed/BEAT.json`, mine to reveal), the commitment goes to
+    the sealed beat. One commitment per solver per beat. Exit 1: nothing to
+    propose."""
+    from .auction import COMMIT, PHASES, bundle_bytes, seal
+    from .clearing import LoopProposal
+    sealed = _sealed_client(session)
+    beat = sealed.current()
+    if sealed.phase(beat) != COMMIT:
+        raise ValueError(f"beat {beat} is in its {PHASES[sealed.phase(beat)]} phase; commits open "
+                         f"at block {sealed.window(beat + 1)[0]}")
+    fold = session.fold()
+    agent = SolverAgent(fold, session.catalogue, clearing=None, solver_id="loop-cli", min_surplus=0.0)
+    root, loops = agent.find_loops(now=session.now)
+    if not loops:
+        print(f"beat {beat}: nothing to propose on root {root[:16]}…", file=_err())
+        return 1
+    proposals = [LoopProposal(loop, root, session.catalogue.root, "loop-cli", session.now)
+                 for loop in loops]
+    data = bundle_bytes(proposals)
+    commitment, salt = seal(data)
+    os.makedirs(os.path.dirname(_sealed_path(beat)), exist_ok=True)
+    _write_json(_sealed_path(beat), {"beat": beat, "root": root, "proposal": data.hex(),
+                                     "salt": salt.hex(), "loops": [p.circulation.loop_id for p in proposals]})
+    sealed.commit(commitment)
+    for loop in loops:
+        _print_loop(loop, fold, out)
+    print(f"committed beat {beat}: {len(loops)} loop(s) on root {root[:16]}…, "
+          f"reveal from block {sealed.window(beat)[1]}", file=out)
+    return 0
+
+
+def cmd_reveal(args, session, out):
+    """Open this session's sealed bundle for a beat in its reveal phase (the
+    latest committed one unless BEAT is given)."""
+    from .auction import PHASES, REVEAL
+    sealed = _sealed_client(session)
+    if args.beat is not None:
+        beat = int(args.beat)
+    else:
+        home = os.path.join(_home_dir(), "sealed")
+        mine = sorted(int(f[:-5]) for f in os.listdir(home) if f.endswith(".json")) \
+            if os.path.isdir(home) else []
+        if not mine:
+            raise ValueError("nothing committed from this home")
+        beat = mine[-1]
+    kept = _read_json(_sealed_path(beat), None)
+    if not kept:
+        raise ValueError(f"no sealed bundle for beat {beat} in this home")
+    if sealed.phase(beat) != REVEAL:
+        raise ValueError(f"beat {beat} is {PHASES[sealed.phase(beat)]}; reveals run from block "
+                         f"{sealed.window(beat)[1]} to {sealed.window(beat)[2]}")
+    sealed.reveal(beat, bytes.fromhex(kept["proposal"]), bytes.fromhex(kept["salt"]))
+    print(f"revealed beat {beat}: {len(kept['loops'])} loop(s)", file=out)
+    return 0
+
+
+def cmd_sealed(args, session, out):
+    """Where the sealed beat stands: the current beat, its phase and window,
+    who committed and who revealed."""
+    from .auction import PHASES
+    sealed = _sealed_client(session)
+    beat = int(args.beat) if args.beat is not None else sealed.current()
+    start, commit_end, end = sealed.window(beat)
+    print(f"beat {beat}: {PHASES[sealed.phase(beat)]} (block {sealed.block()}; commits "
+          f"{start}..{commit_end - 1}, reveals {commit_end}..{end - 1})", file=out)
+    revealed = {s.lower() for s, _ in sealed.revealed(beat)} if sealed.phase(beat) >= 1 else set()
+    for solver in sealed.committers(beat):
+        print(f"  {solver} {'revealed' if solver.lower() in revealed else 'committed'}", file=out)
+    o = sealed.outcome(beat)
+    if o:
+        print(f"  outcome recorded by {o['submitter']}: winners {o['winners'].hex()[:16]}…", file=out)
+    return 0
+
+
+def cmd_outcome(args, session, out):
+    """Derive a closed beat's outcome and, unless `--check`, post the winners
+    to the clearing contract and record it on the sealed beat: every
+    revealed loop re-derived (U3), the baseline's loops as the reserve bid,
+    the fairness filter, deterministic selection. The beat's snapshot is
+    this session's fold. Exit 0 with winners, 1 with none, 2 when the beat
+    is still open."""
+    from .auction import CLOSED, PHASES, baseline_proposals, outcome
+    from .clearing import ChainClearing
+    sealed = _sealed_client(session)
+    beat = int(args.beat) if args.beat is not None else max(sealed.current() - 1, 0)
+    if sealed.phase(beat) != CLOSED:
+        print(f"beat {beat} is {PHASES[sealed.phase(beat)]}: closes at block {sealed.window(beat)[2]}",
+              file=_err())
+        return 2
+    now = session.now
+    if _peer_specs() or _configured("registry"):
+        session.book.absorb(session.fold())
+        session.book.commit()
+    book, ontology = session.book, session.catalogue
+    root, snapshot = book.snapshot()
+    revealed = sealed.revealed(beat)
+    result = outcome(beat, revealed, snapshot, ontology, now=now,
+                     baseline=baseline_proposals(snapshot, ontology, now=now))
+    print(f"beat {beat}: {len(revealed)} revealed, {result.candidates} candidate loop(s), "
+          f"{len(result.winners)} winner(s), score {float(result.score):.4f}", file=out)
+    for lid, why in sorted(result.rejected.items()):
+        print(f"  rejected {lid[:16]}…: {why}", file=out)
+    for lid, why in sorted(result.dropped.items()):
+        print(f"  dropped  {lid[:16]}…: {why}", file=out)
+    for c in result.winners:
+        _print_loop(c.proposal.loop, snapshot, out, prefix=f"  wins ({c.solver}) ")
+    if args.check or not result.winners:
+        return 0 if result.winners else 1
+    clearing = ChainClearing(book, ontology, beat_client=_beat_client(session), clock=lambda: now)
+    posted = []
+    for c in result.winners:
+        receipt = clearing.submit(c.proposal)
+        if receipt.accepted:
+            posted.append((c.loop_id, receipt.reason))
+            print(f"  posted {receipt.reason}: loop {c.loop_id[:16]}…", file=out)
+        else:
+            print(f"  refused {c.loop_id[:16]}…: {receipt.reason}", file=_err())
+    sealed.record(beat, result.revealed_set, result.winners_hash)
+    book.store.put(f"auction/{beat}", {"v": 1, "beat": beat, "book_root": root,
+                                       "revealed_set": result.revealed_set.hex(),
+                                       "winners": [{"loop": lid, "beat": r} for lid, r in posted],
+                                       "solver": "loop-cli"})
+    book.commit()
+    print(f"recorded beat {beat}: {len(posted)} loop(s) posted, book root {book.store.root}", file=out)
+    return 0 if posted else 1
+
+
 def cmd_clearing(args, session, out):
     """Run the clearing house locally: MockClearing over the fold, fills
     committed to my book. Named for what it does; `clear` means delete on
@@ -2390,6 +2546,11 @@ loop — the loopmarket command line (docs/plans/cli.md)
                              re-verify a beat from its loop record, off chain and by the
                              contract's own verifier; convict a leg it would fail
   loop finalize BEAT         record a beat's fills on chain after its window
+  loop commit                seal this session's loops for the current sealed beat
+  loop reveal [BEAT]         open the sealed bundle in the beat's reveal phase
+  loop outcome [BEAT] [--check]  derive a closed beat's winners (reserve bid, fairness
+                             filter, deterministic selection); post them to the clearing contract
+  loop sealed [BEAT]         the sealed beat's phase, window, committers and reveals
   loop status                roots, counts, settings in force
   loop set [KEY [VALUE]]     show / change a durable setting
   loop export | import [FILE]   offers as JSON lines of canonical records
@@ -2505,6 +2666,18 @@ def build_parser():
     p = sub.add_parser("finalize", add_help=False)
     p.add_argument("beat")
     p.set_defaults(func=cmd_finalize)
+    p = sub.add_parser("commit", add_help=False)
+    p.set_defaults(func=cmd_commit)
+    p = sub.add_parser("reveal", add_help=False)
+    p.add_argument("beat", nargs="?", default=None)
+    p.set_defaults(func=cmd_reveal)
+    p = sub.add_parser("outcome", add_help=False)
+    p.add_argument("beat", nargs="?", default=None)
+    p.add_argument("--check", action="store_true")
+    p.set_defaults(func=cmd_outcome)
+    p = sub.add_parser("sealed", add_help=False)
+    p.add_argument("beat", nargs="?", default=None)
+    p.set_defaults(func=cmd_sealed)
     p = sub.add_parser("beats", add_help=False)
     p.add_argument("--open", action="store_true")
     p.set_defaults(func=cmd_beats)

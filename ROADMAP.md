@@ -115,11 +115,16 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       design): the contract's own fill set is the authority on "unfilled",
       offers are proven under the beat's book root by trie proof; no
       per-offer anchoring is required (P1 §4a stays maker-optional).
-- [ ] **The sealed-proposal beat** in front of the contract ·
-      [plan](docs/plans/P2-batch-auction.md) §3–§7: sealed proposals
-      (Shutter on Gnosis, commit-reveal fallback), numeraire-free scoring
-      (U14), the fairness filter, winner selection, solver rewards. Today
-      one submitter posts one outcome per beat.
+- [x] **The sealed-proposal beat** in front of the contract (DONE
+      2026-09-18, the commit-reveal form) · [plan](docs/plans/P2-batch-auction.md)
+      §2–§6: `SealedBeat.sol` (fixed cadence, one commitment per solver per
+      beat, reveals emitted, the outcome recorded once), `auction.py`
+      (numeraire-free score U14, the fairness filter with the baseline as
+      reserve bid, deterministic offer-disjoint selection, every revealed
+      loop re-derived first), `commit`/`reveal`/`outcome`/`sealed`.
+      Deployed on Gnosis at `0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5`. Still open there: Shutter
+      threshold encryption as the sealing (§3's primary), solver bonds
+      through factbond (§8), the endogenous spread leg (§7).
 - [ ] **Loop selection** · [plan](docs/plans/P2-loop-selection.md) — the
       LP/ILP selection over *competing* sets; the baseline hunts and clears
       the first feasible circulation.
