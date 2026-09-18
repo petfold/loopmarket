@@ -131,6 +131,35 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   capacity (`P2-loop-selection.md`), the endogenous spread leg (§7).
   **Deployed on Gnosis at `0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5`** (240-block beats, 120 to commit,
   outcomes to `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf`).
+  **Live the same evening, on its third beat:** a Swarm clearing book
+  announced on Gnosis committed the triangle's fresh offers in the commit
+  phase, revealed them in the reveal phase, and at the close derived the
+  outcome — one candidate, the solver's own loop winning over the reserve
+  bid — posted it as beat 2 on the clearing contract and recorded it on
+  `SealedBeat`; a fresh session read the recorded outcome and `challenge 2`
+  answered *verifies*. The two earlier live beats surfaced the two fixes
+  above it: a fold computed under the book's addressing, and the chain's
+  fills subtracted by the hunt and the checklist.
+
+- **A fold is computed under the book's addressing** (2026-09-18 evening,
+  found by the sealed beat's first live run): a proposal solved on the
+  memory fold pinned a sha256 root while the Swarm clearing book held the
+  same content under a BMT root, so the revealed loop was "solved against
+  another root". `Session.fold` builds the fold in a store of the book's
+  own addressing — a scratch directory under Swarm addressing for a
+  Swarm-addressed book — so the fold's root is the root the book has once
+  it absorbs the fold, and a pinned root is one the book and the chain
+  resolve.
+- **The chain's fills are subtracted everywhere the book's remainder is
+  asked** (the second live run): a fold of twelve offers, six filled on
+  chain by a finalized beat it had never seen, proposed a loop through a
+  spent one — refused by the pre-bond dry run, but it should not have been
+  proposed. `MockClearing` takes `chain_fills` (`BeatClearing.filled`),
+  refuses an offer the chain has filled whole or down to dust and caps the
+  rest; `ChainClearing` wires it by default; `SolverAgent.chain_fills`
+  drops spent offers from the hunt; `auction.outcome` and the reserve bid
+  take it; the CLI passes the clearing contract's `filled` to `loops`,
+  `commit`, `propose` and `outcome` whenever `beat` is set.
 
 ### Live gate, 2026-09-18
 

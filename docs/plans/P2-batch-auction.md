@@ -148,8 +148,13 @@ and records `auction/<beat>` in the clearing book. Deployed on Gnosis at
 `0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5` (240-block beats, 120 to commit, outcomes to `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf`). The
 beat's root is the outcome submitter's fold — proposals pinning another
 root are rejected; anchoring the cutoff root to a block is the
-publication open problem of `proof-fabric.md`. Not built: Shutter (§3's
-primary), bonds (§8), the spread leg (§7).
+publication open problem of `proof-fabric.md`. Live the same evening on
+its third beat: commit, reveal, outcome and record from a Swarm clearing
+book, the winner posted to `BeatClearing` and *verifies* from a fresh
+session — after the first two beats taught that the fold must be computed
+under the book's addressing and that the chain's fills are the authority
+the hunt and the checklist subtract. Not built: Shutter (§3's primary),
+bonds (§8), the spread leg (§7).
 
 ## 3. Sealed proposals
 

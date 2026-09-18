@@ -122,7 +122,9 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       (numeraire-free score U14, the fairness filter with the baseline as
       reserve bid, deterministic offer-disjoint selection, every revealed
       loop re-derived first), `commit`/`reveal`/`outcome`/`sealed`.
-      Deployed on Gnosis at `0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5`. Still open there: Shutter
+      Deployed on Gnosis at `0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5`; live the same evening
+      (commit, reveal, outcome, record; the winner posted and verified from
+      a fresh session). Still open there: Shutter
       threshold encryption as the sealing (§3's primary), solver bonds
       through factbond (§8), the endogenous spread leg (§7).
 - [ ] **Loop selection** · [plan](docs/plans/P2-loop-selection.md) — the
