@@ -200,6 +200,11 @@ gate are concerned:**
    obligation to take the fix: it may already have arranged its own way
    outside loopmarket.
 
+**Read on (2026-09-18, later):** `P3-release-and-reclearing.md` — the
+floors above are the maker's *neutral points*, anyone may cancel a leg by
+paying them, and a better circulation may replace a cleared one in one
+transaction; the giver's own cancellation (rule 9) is one case of it.
+
 **Still open.** *The timing of the payout:* the escrow pays on the oracle's
 verdict at the end of the leg's window, disputable within a window — the
 optimistic shape the beat already has. *"Quickly"* in rule 10 is a

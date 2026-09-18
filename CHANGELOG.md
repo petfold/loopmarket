@@ -280,6 +280,18 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   Gnosis** for the share check: `BeatClearing` at `0xe5699BE764CE66209b29D25c22413feffD63433A`,
   `SealedBeat` at `0x79493a82F36B9EEABDE974044020F72055Bf4A32` (same parameters).
 
+- **Release prices and re-clearing — direction** (Peter, 2026-09-18 late;
+  `docs/plans/P3-release-and-reclearing.md`). The required floor is the
+  maker's true neutral point, a self-assessed buyout price anyone may pay
+  to cancel its side of a cleared leg (Harberger's device without the
+  tax; admissibility is the discipline); hysteresis by choice; a buyout is
+  a release, not a failure; re-clearing is cancel-and-replace in one
+  transaction, re-balancing every affected maker; the Pareto re-match
+  (everyone still served) owes nothing and is the first piece to build —
+  superseding loop records, a superseding beat within the window; the
+  payments are the entrant's bids in the bond's asset, never the loop's
+  surplus (U14). Nothing built yet.
+
 ### Live gate, 2026-09-18
 
 The challenger from a fresh session. Three makers' `rs:` books announced

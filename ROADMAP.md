@@ -183,6 +183,13 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       holds a declared bond, the cancellation and repair records, a
       history requirement (U12).
 
+- [ ] Release prices and re-clearing · [plan](docs/plans/P3-release-and-reclearing.md)
+      (direction, 2026-09-18): the required floor as the maker's true
+      neutral point, permissionless cancellation at that price, cancel-and-
+      replace as one transaction; first the Pareto re-match (superseding
+      loop records, a superseding beat within the window), then payments
+      through the escrow.
+
 ## P4 — staged privacy · [plan](docs/plans/P4-privacy.md)
 
 - [ ] Tier 1, with zero new cryptography: mixnet transport, Shutter-sealed
