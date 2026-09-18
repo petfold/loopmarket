@@ -175,34 +175,36 @@ gate are concerned:**
    (`LoopVerifier`, "bond share below the counterparty's requirement").
    A want, an indivisible give and an operator's whole run reserve the
    whole bond. A 100 kg give with bond 10 reserves 4 for a 40 kg want.
-9. **Early notice is cheaper, by design.** The requirement carries a
-   second floor, `early` (v5; `set require_early`), owed instead of the
-   no-show floor when the giver declares before the leg's handover window
-   that it will not perform. The giver is motivated to declare as early
-   as it knows, because the fix is expected to be cheaper early than at
-   the last minute — and cheaper for the giver too, as the next rule says.
+9. **Cancelling is cheaper than not showing, by design.** The requirement
+   carries a second floor, `cancel` (v5; `set require_cancel`), owed
+   instead of the no-show floor when the giver cancels the leg before its
+   handover window. The giver is motivated to cancel as early as it knows,
+   because the fix is expected to be cheaper early than at the last
+   minute — and cheaper for the giver too, as the next rule says. **There
+   are no degrees of default** (Peter, 2026-09-18): a ride that will be
+   twenty minutes late *cancels* and re-offers a new give with the
+   updated time, which the wanter or the solver's repair takes or not;
+   the witness stays binary, performed or not.
 10. **The solver repairs first; the wanter hears of it only if it must.**
-   On a declaration the solver tries at once to fix the circulation — a
+   On a cancellation the solver tries at once to fix the circulation — a
    replacement leg paid in the bond's asset from the reserved share (the
    bridge of rule 6). If the fix is found in time and its price is within
    the reserved share, only that price is taken from the bond and the
    wanter need not act: the leg is served, its counterparty changed, and
    `watch` shows the change. A cheap fix early is the giver's best case,
    which is the incentive. If no fix is found quickly, the wanter is told
-   quickly — the declaration, the floor it is owed (`early` or the no-show
+   quickly — the cancellation, the floor it is owed (`cancel` or the no-show
    floor as the timing says), and, when the solver has one, a
    pre-computed fix offered as an optional draft want the wanter may
    accept or discard. From the moment it is told the wanter is under no
    obligation to take the fix: it may already have arranged its own way
    outside loopmarket.
 
-**Still open.** *Partial performance* (the ride twenty minutes late):
-today's witness types are binary; degrees of default are the
-adjudicator's. *The timing of the payout:* the escrow pays on the oracle's
+**Still open.** *The timing of the payout:* the escrow pays on the oracle's
 verdict at the end of the leg's window, disputable within a window — the
 optimistic shape the beat already has. *"Quickly"* in rule 10 is a
 parameter the solver and the leg's window fix between them, not yet
-chosen. The declaration record itself (`cancel/<offer>/<loop>` in the
+chosen. The cancellation record itself (`cancel/<offer>/<loop>` in the
 giver's book, the book being the channel as for handoffs) and the repair
 draft are settlement machinery that lands with the escrow.
 

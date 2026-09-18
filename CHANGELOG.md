@@ -268,13 +268,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   built:** a bond is **reserved per fill** — `Requires.met_by(taken=)`
   compares bond × taken / quantity in every matching check and
   `LoopVerifier` convicts "bond share below the counterparty's
-  requirement"; the requirement carries an **`early` floor** (v5; `set
-  require_early`) owed when the giver declares before the leg's window;
+  requirement"; the requirement carries a **`cancel` floor** (v5; `set
+  require_cancel`) owed when the giver cancels the leg before its window
+  — a late ride cancels and re-offers with the new time, so there are no
+  degrees of default;
   and the repair protocol (P3 §3a rules 8–10): the solver fixes the
   circulation first from the reserved share, the wanter is told only when
   no quick fix exists, offered a pre-computed fix as an optional draft,
-  and is under no obligation from the moment it is told. Open: partial
-  performance, the payout's timing, what "quickly" is. **Redeployed on
+  and is under no obligation from the moment it is told. Open: the
+  payout's timing, what "quickly" is. **Redeployed on
   Gnosis** for the share check: `BeatClearing` at `0xe5699BE764CE66209b29D25c22413feffD63433A`,
   `SealedBeat` at `0x79493a82F36B9EEABDE974044020F72055Bf4A32` (same parameters).
 

@@ -346,24 +346,26 @@ class Requires:
 
     bond: Fraction = Fraction(0)        # the floor on a no-show: the wanter's whole reliance
     oracles: tuple[str, ...] = ()       # witness types accepted; () accepts any
-    #: The floor when the giver declares before the leg's handover window
-    #: that it will not perform (Peter, 2026-09-18: early notice is cheaper,
-    #: so the giver is motivated to give it). None: the no-show floor.
-    early: Fraction | None = None
+    #: The floor owed when the counterparty *cancels* the leg before its
+    #: handover window instead of not showing (Peter, 2026-09-18: a
+    #: cancellation is cheaper than a no-show, so the giver is motivated to
+    #: cancel as early as it knows; a ride that will be late cancels and
+    #: re-offers with the new time). None: the no-show floor applies.
+    cancel: Fraction | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "bond", q(self.bond))
         object.__setattr__(self, "oracles", tuple(sorted(set(self.oracles))))
-        if self.early is not None:
-            object.__setattr__(self, "early", q(self.early))
-            if not 0 <= self.early <= self.bond:
-                raise ValueError("the early-notice floor lies between 0 and the no-show floor")
+        if self.cancel is not None:
+            object.__setattr__(self, "cancel", q(self.cancel))
+            if not 0 <= self.cancel <= self.bond:
+                raise ValueError("the cancellation floor lies between 0 and the no-show floor")
         if self.bond < 0:
             raise ValueError("a bond floor is non-negative")
 
     @property
     def empty(self) -> bool:
-        return self.bond == 0 and not self.oracles and self.early is None
+        return self.bond == 0 and not self.oracles and self.cancel is None
 
     def met_by(self, other: "Offer", *, taken=None) -> bool:
         """Does `other`'s declaration satisfy this requirement? A bond backs
@@ -382,14 +384,14 @@ class Requires:
 
     def to_record(self) -> dict[str, Any]:
         rec = {"bond": rat(self.bond), "oracles": list(self.oracles)}
-        if self.early is not None:
-            rec["early"] = rat(self.early)
+        if self.cancel is not None:
+            rec["cancel"] = rat(self.cancel)
         return rec
 
     @classmethod
     def from_record(cls, rec: dict[str, Any]) -> "Requires":
         return cls(q(rec["bond"]), tuple(rec["oracles"]),
-                   q(rec["early"]) if "early" in rec else None)
+                   q(rec["cancel"]) if "cancel" in rec else None)
 
 
 # -------------------------------------------------------------------------- offer

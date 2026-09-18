@@ -175,13 +175,13 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       built 2026-09-18, [P2-loop-selection §4a](docs/plans/P2-loop-selection.md)):
       the v5 record's `requires` (a bond floor, accepted witness types)
       gates matching off chain and verifies on chain; `set bond`,
-      `set require_bond`, `set require_early`; a bond reserved per fill
+      `set require_bond`, `set require_cancel`; a bond reserved per fill
       (2026-09-18, Peter). Who receives a slashed bond: the working
       doctrine of [P3 §3a](docs/plans/P3-guarantee-coupling.md) (obligations
-      stand, the floor is liquidated damages, early notice is cheaper, the
-      solver repairs first). Open beneath it: the escrow that holds a
-      declared bond, the declaration and repair records, partial
-      performance, a history requirement (U12).
+      stand, the floor is liquidated damages, cancelling is cheaper than a
+      no-show, the solver repairs first). Open beneath it: the escrow that
+      holds a declared bond, the cancellation and repair records, a
+      history requirement (U12).
 
 ## P4 — staged privacy · [plan](docs/plans/P4-privacy.md)
 

@@ -116,10 +116,10 @@ def test_the_solver_never_proposes_an_inadmissible_loop_and_clearing_refuses_one
     assert not verdict.accepted and "already filled" in verdict.reason or "fails re-verification" in verdict.reason
 
 
-def test_the_bond_is_reserved_per_fill_and_the_early_floor_rides_v5():
+def test_the_bond_is_reserved_per_fill_and_the_cancel_floor_rides_v5():
     """A give's bond backs every fill of it: a 100 kg give with bond 10
     reserves 4 for a 40 kg want, so a floor of 4 is met and 5 is not; a
-    want and an indivisible give are taken whole. The early-notice floor
+    want and an indivisible give are taken whole. The cancellation floor
     lies between 0 and the no-show floor and round-trips."""
     cat = _cat()
     farm = give("f", Thing(("apple",), 100, "kg", step=5), 200, **V, bond=10, v=5)
@@ -133,9 +133,9 @@ def test_the_bond_is_reserved_per_fill_and_the_early_floor_rides_v5():
     assert check_aggregate(evening, [t, u], [1, 1], cat, now=NOW) is None         # 1 of 4 reserves 1/2 each
     assert check_aggregate(want("b", Thing(("ticket",), 4), 120, **V, requires=Requires(bond=1)), [t, u], [2, 2],
                            cat, now=NOW) is not None
-    r = Requires(bond=4, early=1, oracles=("countersign",))
+    r = Requires(bond=4, cancel=1, oracles=("countersign",))
     o = want("b", Thing(("apple",), 40, "kg"), 90, **V, requires=r)
-    assert Offer.from_record(o.to_record()).requires == r and o.to_record()["requires"]["early"] == "1"
-    assert Requires(bond=4).to_record() == {"bond": "4", "oracles": []}            # no early key unless given
+    assert Offer.from_record(o.to_record()).requires == r and o.to_record()["requires"]["cancel"] == "1"
+    assert Requires(bond=4).to_record() == {"bond": "4", "oracles": []}            # no cancel key unless given
     with pytest.raises(ValueError, match="between 0 and"):
-        Requires(bond=4, early=5)
+        Requires(bond=4, cancel=5)
