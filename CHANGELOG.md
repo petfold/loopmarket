@@ -37,6 +37,35 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   sent; a structural forgery (105 kg of a 100 kg give) is convicted from
   the forger's own record and the bond paid; a semantic fault is reported
   and kept off chain; the CLI end to end on a local EVM.
+- **The submitter asks the contract before paying the bond.**
+  `ChainClearing.submit` runs every leg of the submission through the
+  contract's verifier by the same free `eth_call` (`BeatClient.verdict_of`,
+  under the submission's own pins) after the local checklist and before
+  `submit`; a leg the contract would convict is a rejection naming the
+  reason, and no beat is posted. Found live the same day (below): an
+  honest beat from a Swarm-addressed clearing book was convictable.
+
+### Live gate, 2026-09-18
+
+The challenger from a fresh session. Three makers' `rs:` books announced
+on a file channel; the clearing session on a fresh Swarm feed announced
+itself on the Gnosis registry as `clearing` (owner = the chain key) and
+`loop propose` posted the triangle as **beat 2** from that Swarm book. A
+session sharing nothing with it but the chain and the Bee node — an
+empty book, its own copy of the pinned catalogue, the chain registry only,
+no key — ran `loop challenge 2`: the announced set gave the submitter's
+clearing book, the loop record was read from Swarm, rebuilt and hashed to
+the beat's commitments, every leg re-derived off chain and held, and the
+contract's verifier answered **"node hash mismatch"** on every leg: the
+Swarm-addressed book proves under BMT roots the deployed sha256 verifier
+cannot check (the roadmap's unbuilt BMT variant), so the honest beat was
+convictable by anyone. Sent with a key, the challenge cancelled beat 2 on
+chain and the bond went to the challenger (24 s end to end). Until the BMT
+verifier exists, beats are posted from `rs:` (sha256) clearing books, and
+the pre-bond dry run above refuses the rest. The gate also surfaced
+recordstore's cold feed probe raising at one transient 500 (three
+`propose` runs in a row failed in the first commit to a fresh feed);
+fixed as recordstore 0.20.3 (the probe retries with backoff, like `get`).
 
 ## [0.10.0] — 2026-09-15
 

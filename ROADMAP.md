@@ -64,8 +64,11 @@ aggregator that cannot lie about what it folded.
       (`audit_manifest(expected=)`), so aggregators are caches, not
       trusted by agreeing with each other. Live gate passed the same day
       (maker and reader on one machine).
-- [ ] The read path from a second machine: live-Swarm announced books
-      folded by a session that shares nothing with the publisher.
+- [x] The read path from a fresh session (DONE 2026-09-18, one machine,
+      two sessions sharing nothing but the chain and the Bee node): the
+      challenger read the announced set from Gnosis, opened the
+      submitter's Swarm clearing book read-only and rebuilt beat 2's
+      evidence from it. A second *machine* remains untried.
 - [ ] Two-layer offer authenticity (U8) hardened beyond the demo path:
       detached signatures and fold-time `origin/` records as the plan
       specifies; the detached signature in EIP-712 typed-data form so a
@@ -127,10 +130,18 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       every leg off chain (U3) and by the contract's own verifier for free
       (`eth_call` as the contract); sends only what the contract would
       convict; reports the semantic half as the arbiter's and a beat with
-      no record as unverifiable. `loop beats` lists the beats.
-- [ ] The BMT (keccak) variant of the trie verifier, for books on Swarm
-      (`addressing: "swarm"`); a compact node encoding asked upstream
-      (recordstore issue #1) would cut the gas several-fold.
+      no record as unverifiable. `loop beats` lists the beats. Live the
+      same day: beat 2, posted from a Swarm clearing book, convicted and
+      cancelled on Gnosis from a fresh session (see the BMT item below);
+      the submitter now asks the verifier before paying the bond.
+- [ ] **The BMT (keccak) variant of the trie verifier**, for books on Swarm
+      (`addressing: "swarm"`) — now the blocker for clearing from a Swarm
+      book: the 2026-09-18 live gate posted an honest beat from a Swarm
+      clearing book and the sha256 verifier convicted it ("node hash
+      mismatch"); since that day `ChainClearing` refuses to post what the
+      contract would convict, so beats come from `rs:` clearing books until
+      this lands. A compact node encoding asked upstream (recordstore
+      issue #1) would cut the gas several-fold.
 - [ ] Composed wants (`Parts`) verified on chain; today `LoopVerifier`
       refuses them and the beat carries only simple, operator-composed and
       aggregated legs.

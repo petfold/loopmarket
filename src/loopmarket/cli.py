@@ -2197,8 +2197,9 @@ def cmd_challenge(args, session, out):
     books = _evidence_books(session, state, args.book)
     now = session.now if _configured("now") else None
     index = int(args.leg) if args.leg is not None else None
+    can_send = bool(_configured("bee_signer"))
     result = challenge_beat(client, int(args.beat), books, session.catalogue, now=now,
-                            index=index, send=not args.check)
+                            index=index, send=not args.check and can_send)
     if result.evidence is None:
         print(f"no evidence: no loop record under root {state['book_root'][:16]}… hashes to "
               f"the beat's commitments in {len(books)} book(s) — the contract cannot "
@@ -2228,7 +2229,9 @@ def cmd_challenge(args, session, out):
         print(f"beat {args.beat} verifies", file=out)
         return 0
     if any(v.convicts for v in result.legs):
-        why = "not sent (--check)" if args.check else "not sent: the window is closed"
+        why = "not sent (--check)" if args.check else \
+            "not sent: the window is closed" if not result.state["open"] else \
+            "not sent: sending needs a key (set bee_signer)"
         print(f"a leg the contract would convict — {why}", file=out)
         return 1
     print("a fault the contract does not compute — the arbiter's (P3), not a challenge",

@@ -260,6 +260,17 @@ class ChainClearing(MockClearing):
         verdict = self.rehearse(proposal)
         if not verdict.accepted:
             return verdict
+        # then the contract's own verifier on every leg, for free (eth_call):
+        # a beat it would convict is never posted — the bond would be anyone's.
+        # Live 2026-09-18: a Swarm-addressed clearing book proves under BMT
+        # roots the sha256 verifier cannot check ("node hash mismatch"), so
+        # its honest beat was convictable; the BMT verifier is not built.
+        for i in range(len(sub.legs)):
+            reason = self.beat_client.verdict_of(sub, i)
+            if reason not in (None, "leg verifies"):
+                hint = " (a Swarm-addressed book: the contract verifies sha256 roots)" \
+                    if reason == "node hash mismatch" else ""
+                return Receipt(False, lid, f"the contract would convict leg {i}: {reason}{hint}")
         try:
             beat, _receipt = self.beat_client.submit(sub)
         except Exception as exc:  # noqa: BLE001

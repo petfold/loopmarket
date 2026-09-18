@@ -360,16 +360,25 @@ class BeatClient:
 
     def verdict(self, state: dict, index: int, sub: Submission,
                 *, gas: int = 12_000_000) -> str | None:
-        """What the contract's verifier says about leg `index`, without a
-        transaction: `verifyLegExternal` run through `eth_call` with the
-        contract itself as sender (the only sender it accepts), against
-        the chain's current fills. "leg verifies", or the revert reason —
-        the same string a challenge would put in its event — so a
-        challenger sees the outcome before paying for it; None when the
-        node would not run the call (never a conviction)."""
-        c = self.contract()
+        """What the contract's verifier says about leg `index` of a posted
+        beat, without a transaction — see `verdict_of`."""
         pins = (bytes.fromhex(state["book_root"]), bytes.fromhex(state["ontology_root"]),
                 state["registry_version"].encode(), state["contract_version"].encode())
+        return self.verdict_of(sub, index, pins=pins, gas=gas)
+
+    def verdict_of(self, sub: Submission, index: int, *, pins=None,
+                   gas: int = 12_000_000) -> str | None:
+        """What the contract's verifier says about leg `index` of a
+        submission, without a transaction: `verifyLegExternal` run through
+        `eth_call` with the contract itself as sender (the only sender it
+        accepts), against the chain's current fills, under `pins` (the
+        submission's own by default — so a submitter asks *before* paying a
+        bond, and a challenger asks under the beat's). "leg verifies", or
+        the revert reason — the same string a challenge would put in its
+        event; None when the node would not run the call (never a
+        conviction)."""
+        c = self.contract()
+        pins = sub.pins if pins is None else pins
         fn = c.functions.verifyLegExternal(pins, sub.legs[index], sub.makers, sub.potentials)
         w3 = self._web3()
         params = {"from": self.address, "gas": gas}

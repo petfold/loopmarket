@@ -119,8 +119,18 @@ to the contract's own verifier through `eth_call` sent as the contract
 convict. The semantic half is reported as the arbiter's and costs no gas;
 a beat with no record anywhere is reported as unverifiable — the
 publication gap of `proof-fabric.md`'s open problem, which the bond alone
-deters until Swarm's storer receipts can be demanded. What is not built:
-the sealed-proposal beat in front of the contract.
+deters until Swarm's storer receipts can be demanded. **Live the same
+day:** the clearing session on a Swarm feed, announced on Gnosis as
+`clearing`, posted the triangle as beat 2; a fresh session found the
+record through the announcement, read it from Swarm, held every leg off
+chain and heard "node hash mismatch" from the contract on each — the
+Swarm-addressed book's BMT proofs against the sha256 verifier — and,
+given a key, cancelled the beat and took the bond in 24 s. Consequence
+built the same day: `ChainClearing` runs the contract's verifier on every
+leg (free) before paying a bond and refuses what it would convict; until
+the BMT verifier exists, beats come from `rs:` clearing books. What is
+not built: the BMT verifier, and the sealed-proposal beat in front of the
+contract.
 
 ## 3. Sealed proposals
 

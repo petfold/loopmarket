@@ -9,6 +9,7 @@ import os
 
 import pytest
 
+from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
@@ -237,8 +238,9 @@ def test_the_cli_posts_lists_challenges_and_finalizes(chain, tmp_path, monkeypat
     monkeypatch.setenv("LOOP_CONFIRM", "off")
     monkeypatch.setenv("LOOP_NOW", str(NOW))
     monkeypatch.setenv("LOOP_BEAT", f"chain:test@{address}")
-    for var in ("LOOP_REGISTRY", "LOOP_PEERS", "BEE_SIGNER"):
+    for var in ("LOOP_REGISTRY", "LOOP_PEERS"):
         monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("BEE_SIGNER", key)              # sending a challenge needs a key
     cli._OVERRIDES.clear()
     spec = f"rs:{tmp_path / 'cat'}"
     cat = odag.Session(odag._normalize_spec(spec))
@@ -283,3 +285,29 @@ def test_the_cli_posts_lists_challenges_and_finalizes(chain, tmp_path, monkeypat
     assert code == 0 and f"finalized beat {beat}: 4 fills" in out
     code, out, _ = run("beats")
     assert f"beat {beat} by" in out and "finalized" in out
+
+
+def test_a_beat_the_contract_would_convict_is_never_posted(chain):
+    """The submitter asks the contract's verifier before paying the bond
+    (live finding 2026-09-18: a Swarm-addressed clearing book's honest beat
+    was convictable under the sha256 verifier). Here the catalogue is
+    unpinned: the local checklist accepts ('' == ''), the contract's pin
+    check does not — so the receipt names the conviction and no beat exists."""
+    w3, address, key = chain
+    cat = Ontology(OntoDAG()).load({"apple": [], "lesson": []})
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    pins = dict(ontology_root="", registry_version="4.2", contract_version="0.1")
+    book.publish_many([give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins),
+                       want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins),
+                       give("b1", Thing(("lesson",)), 80, **V, **pins),
+                       want("farm", Thing(("lesson",)), 85, **V, **pins)])
+    book.commit()
+    client = BeatClient("", address, key=key, client=w3)
+    before = len(client.beats())
+    agent = SolverAgent(book, cat, clearing=ChainClearing(book, cat, beat_client=client, clock=lambda: NOW),
+                        solver_id="t", min_surplus=0.0)
+    receipts = agent.step(now=NOW)
+    assert len(receipts) == 1 and not receipts[0].accepted
+    assert receipts[0].reason.startswith("the contract would convict leg 0: "), receipts[0].reason
+    assert len(client.beats()) == before                        # nothing posted, no bond spent
+    assert not any(book.is_filled(o.offer_id) for o in book.offers(include_filled=True))
