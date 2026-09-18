@@ -351,7 +351,11 @@ premium feed's inputs are attackable via T2 until volume exists. *Added
 determination, the fairness filter, the reserve bid (`P2-loop-selection.md`,
 built that day) — scores nominal surplus, so the lemons leg at the best
 rate wins the beat and sets every reference even when a bonded
-alternative exists; and should bonds ever weigh in the objective, the
+alternative exists — **answered the same evening by admissibility by
+declaration (Peter's ruling; `P2-loop-selection.md` §4a, the v5 record):
+a maker states the bond floor and witness types it requires of any
+counterparty and no leg below them is ever matched, so the lemons leg
+reaches the beat only where every member let it**; and should bonds ever weigh in the objective, the
 mirror vector is **bond-bought priority** — capital, not quality, buying
 selection — not farmable as a statistic (U12/U13 stand) but a bias to be
 chosen knowingly. Both registered as `P2-loop-selection.md` §4a.

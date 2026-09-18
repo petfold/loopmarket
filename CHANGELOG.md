@@ -217,6 +217,42 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   doctrine size per leg, a pinned adjudication-outcome record, and who
   receives a slashed bond.
 
+- **Admissibility by declaration — the v5 record** (Peter's ruling on the
+  question above, 2026-09-18 evening). `schema.Requires(bond, oracles)`:
+  what a maker requires of any counterparty on a leg through its offer — a
+  bond floor in the bond's own asset (no numeraire enters, U14) and the
+  witness types it accepts (empty: any). It rides every v5 offer as
+  `requires`, and the maker's own `bond` is an exact rational there (U9);
+  passing `requires` to `give`/`want` selects v5 as `service`/`where`
+  selected v2; v4 records re-encode byte for byte and refuse a `requires`
+  key; a v5 record without one is refused. `matching._gates` refuses a leg
+  unless each side's requirement is met by the other side's declaration,
+  fail closed (U7), in every check — so no inadmissible leg is ever a
+  candidate, the reserve bid honours requirements for free, and the
+  clearing checklist refuses what a solver hand-builds. `LoopVerifier`
+  accepts v4 and v5, reads the declared bond and the requirement, and
+  convicts an unmet floor ("bond below the counterparty's requirement") or
+  an unaccepted witness type structurally; a v4 counterparty declares no
+  rational bond and fails any floor above zero. CLI: `set bond AMOUNT` and
+  `set require_bond AMOUNT` (validated non-negative), shown in the render
+  as `requires`. Until P3's escrow a bond is a declaration the gate
+  compares; the escrow makes it true. `tests/test_v5_record.py`, the
+  verifier's convictions, a v5 book through the beat, the CLI settings.
+  Not built: an accepted-oracles setting in the CLI (the API has it), a
+  history requirement (needs U12 statistics), the escrow. **Redeployed on
+  Gnosis:** `BeatClearing` at `0x6699A442630356fcBB4E0DFbD67c2E6D5550F7Ea` (v4 and v5 legs;
+  bond 0.01 xDAI, window 720) and `SealedBeat` at `0x2014e7D3A097a709c3d27Df67617dcF9879A2A2A`
+  pointing at it (240-block beats, 120 to commit); the earlier addresses
+  keep their beats as history. **Live at once:** three makers declared a
+  bond of 1 and required 1 of every counterparty, a fourth offered the
+  better-priced repair with no bond — it was never matched — and the
+  bonded triangle posted as beat 3 from a fresh Swarm clearing book and
+  *verifies* from a fresh session, v5 legs on chain. The same run showed
+  what a redeploy is: a fresh fill authority — the two earlier rounds'
+  offers, filled on the previous contracts, cleared again as beats 1 and
+  2 on the new one. Migrating a fill set across a redeploy is registered
+  as an open problem (`proof-fabric.md`).
+
 ### Live gate, 2026-09-18
 
 The challenger from a fresh session. Three makers' `rs:` books announced

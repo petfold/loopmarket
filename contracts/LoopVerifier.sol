@@ -11,7 +11,10 @@ import "./TrieProofVerifier.sol";
 ///   * each offer's bytes hash to its id (U2) and sit under the book root
 ///     (a sha256 root, or a Swarm reference for a book on Swarm — the
 ///     beat says which, `Beat.addressing`, since 2026-09-18);
-///   * each offer is a v4 record whose pins equal the beat's (U10);
+///   * each offer is a v4 or v5 record whose pins equal the beat's (U10);
+///   * a v5 record's requirement of a counterparty — a bond floor, the
+///     witness types it accepts — is met by the other side's declaration
+///     (admissibility by declaration, 2026-09-18);
 ///   * the want is a want, every give a give, makers as the leg claims,
 ///     no maker on both sides of one leg;
 ///   * the quantity taken from each give is within its quantity, on its
@@ -65,6 +68,11 @@ library LoopVerifier {
         bytes unit;                // the thing's unit (empty for parts)
         Rat[] parts;               // a composed want's part quantities, in the record's order
         bytes[] partUnits;         // and their units
+        Rat bond;                  // the maker's declared bond (0/1 on a record without a rational one)
+        bytes oracle;              // the witness type the maker settles against
+        bool requiring;            // a v5 record with a counterparty requirement
+        Rat reqBond;               // the least bond a counterparty must declare
+        bytes reqOracles;          // the accepted witness types, as the record's JSON array; "[]" any
     }
 
     /// Verify one leg. `filled(id)` answers what the contract has already
@@ -101,6 +109,10 @@ library LoopVerifier {
                 require(_eq(t, want.parts[i]), "taken is not the part's quantity");
                 require(_bytesEq(g.unit, want.partUnits[i]), "the part's unit");
             }
+            // admissibility by declaration (v5, 2026-09-18): each side's
+            // requirement of a counterparty is met by the other's declaration
+            _requireMeets(want, g);
+            _requireMeets(g, want);
             total = _add(total, t);
             // value owed to the giver: (amount / qty) * taken * e[giver]
             Rat memory unitPrice = _div(g.amount, g.qty);
@@ -136,7 +148,8 @@ library LoopVerifier {
         require(TrieProofVerifier.verifyInclusion(beat.bookRoot, key, p.nodes, blob, beat.addressing),
                 "offer not under the book root");
         // version and pins
-        require(_hasExact(r, bytes('"v":4')), "not a v4 record");
+        bool v5 = _hasExact(r, bytes('"v":5'));
+        require(v5 || _hasExact(r, bytes('"v":4')), "not a v4 or v5 record");
         require(_hasExact(r, abi.encodePacked('"ontology_root":"', _hex(beat.ontologyRoot), '"')),
                 "ontology pin");
         require(_hasExact(r, abi.encodePacked('"registry_version":"', beat.registryVersion, '"')),
@@ -149,6 +162,7 @@ library LoopVerifier {
         uint256 w = _index(r, '"wants":{', m);
         require(g < m && m < w, "record shape");
         f.maker = _stringAt(r, m + 9);
+        _guarantees(r, f, v5, g);
         bool givesIsThing = _index(r, '"type":"thing"', g) < w && _index(r, '"type":"thing"', g) > g;
         // exactly one side is a thing or the parts of one (U1); parts are want-side only
         bool composed = _index(r, '"type":"parts"', w) != type(uint256).max;
@@ -169,6 +183,43 @@ library LoopVerifier {
         f.step = _ratField(r, '"step":"', thingStart, thingEnd);
         f.min = _ratField(r, '"min":"', thingStart, thingEnd);
         f.unit = _unitField(r, thingStart, thingEnd);
+    }
+
+    /// The maker's own bond and witness type, and — on a v5 record — what it
+    /// requires of a counterparty: `"requires":{"bond":"n/d","oracles":[..]}`
+    /// sits between `"registry_version"` and `"v"` (sorted keys). A record
+    /// without a rational bond (v4's float) declares none.
+    function _guarantees(bytes memory r, Facts memory f, bool v5, uint256 givesAt) private pure {
+        uint256 oracleAt = _index(r, '"oracle":"', 0);
+        require(oracleAt != type(uint256).max, "missing oracle");
+        f.oracle = _stringAt(r, oracleAt + 10);
+        uint256 bondAt = _index(r, '"bond":"', 0);
+        f.bond = (v5 && bondAt != type(uint256).max && bondAt < givesAt)
+            ? _ratField(r, '"bond":"', 0, givesAt) : Rat(0, 1);
+        if (!v5) return;
+        uint256 reqAt = _index(r, '"requires":{', 0);
+        require(reqAt != type(uint256).max, "v5: missing requires");
+        uint256 reqEnd = _index(r, '"v":5', reqAt);
+        f.requiring = true;
+        f.reqBond = _ratField(r, '"bond":"', reqAt, reqEnd);
+        uint256 listAt = _index(r, '"oracles":[', reqAt);
+        require(listAt != type(uint256).max && listAt < reqEnd, "v5: missing oracles");
+        uint256 close = listAt + 10;
+        while (close < reqEnd && r[close] != ']') close++;
+        bytes memory list = new bytes(close + 1 - (listAt + 10));
+        for (uint256 i = 0; i < list.length; i++) list[i] = r[listAt + 10 + i];
+        f.reqOracles = list;
+    }
+
+    /// `requirer`'s declared requirement of a counterparty, against `other`'s declaration.
+    function _requireMeets(Facts memory requirer, Facts memory other) private pure {
+        if (!requirer.requiring) return;
+        require(_geq(other.bond, requirer.reqBond), "bond below the counterparty's requirement");
+        if (requirer.reqOracles.length > 2) {                 // not "[]": a list of accepted types
+            bytes memory quoted = abi.encodePacked('"', other.oracle, '"');
+            require(_indexBytes(requirer.reqOracles, quoted, 0) != type(uint256).max,
+                    "witness type not accepted by the counterparty");
+        }
     }
 
     /// The parts of a composed want, `"parts":[{"concepts":[...],"min":..,

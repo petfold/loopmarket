@@ -159,7 +159,31 @@ token amount or external price enters. Three consequences:
   performance risk is P3's risk-priced routing
   (`P3-guarantee-coupling.md`).
 
-## 4a. Performance risk, bonds and the beat's objective (raised by Peter, 2026-09-18 — open)
+## 4a. Performance risk, bonds and the beat's objective (raised by Peter, 2026-09-18 — DECIDED the same evening: admissibility by declaration)
+
+**Ruling (Peter, 2026-09-18): route 1 below — admissibility by
+declaration. Built the same evening as the v5 record.** `schema.Requires`
+(a bond floor in the bond's asset; the witness types accepted, empty for
+any) rides every v5 offer as `requires`, and the maker's own `bond` is an
+exact rational there; a requirement makes an offer v5 (`give`/`want`
+select the version as they did for v2's fields), v4 records re-encode
+byte for byte. `matching._gates` refuses a leg unless each side's
+requirement is met by the other side's declaration — every check
+(`check_match`, composed, parts, aggregated legs) goes through it, so the
+enumerator never produces an inadmissible cycle, the reserve bid honours
+every requirement for free, and the clearing checklist refuses what a
+solver hand-builds (U3). `LoopVerifier` reads v5, the declared bond and
+the requirement, and convicts an unmet floor or an unaccepted witness type
+structurally ("bond below the counterparty's requirement", "witness type
+not accepted"), so the rule holds on chain. CLI: `set bond` and `set
+require_bond`; the render shows `requires`. Until P3's escrow a
+counterparty's bond is its declaration: the gate compares what the
+records say and the escrow will make the declaration true — the day it
+lands, clearing checks the bond exists the way it checks fills on chain.
+Routes 2 and 3 below stay as the record of the alternatives; a
+risk-weighted objective remains available to solvers privately and to a
+later ruling through `selection.weight(factor=)`.
+
 
 Peter's question, on the evening selection landed: *how can the best set
 of loops be chosen when bonds are not part of the calculation — a high
@@ -802,14 +826,12 @@ which they must use.
 
 ## Open problems
 
-**Bonds and performance risk in the beat's objective (raised 2026-09-18).**
-§4a: the normative selection scores nominal surplus and clearing-failure
-priors; performance risk is solver-side and bonds are carried, not
-weighed. Decide admissibility by declaration versus a risk-weighted
-objective versus the status quo, the pinned sources any weight may use,
-and the numeraire-free form of compensation. Work package: this document
-with `P3-guarantee-coupling.md` §5 and factbond's coupling document, at
-P3's escrow bump.
+**Bonds and performance risk in the beat's objective — DECIDED
+2026-09-18 (Peter): admissibility by declaration, built as the v5 record
+(§4a).** Still open beneath it: the escrow that makes a declared bond
+true (P3), who receives a slashed bond, a minimum-history requirement
+(needs U12 statistics), and whether the beat ever weighs a risk factor on
+top (`selection.weight(factor=)` is ready; nothing sets it).
 
 **Chain atomicity across beats.** One-commit atomicity and U11 have no
 chain analogue; a chain record with per-segment atomic fills and

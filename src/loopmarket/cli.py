@@ -118,6 +118,15 @@ _SETTINGS = {
     "valid": _Setting(
         "LOOP_VALID", "30d", "--valid DURATION",
         "how long my offers stand (a duration, or an absolute window)"),
+    "bond": _Setting(
+        "LOOP_BOND", "", "--bond AMOUNT",
+        "the bond I declare on every offer I publish (in the bond's asset; "
+        "a declaration until P3's escrow holds it)"),
+    "require_bond": _Setting(
+        "LOOP_REQUIRE_BOND", "", "--require-bond AMOUNT",
+        "the least bond a counterparty must declare for a leg through my "
+        "offer — admissibility by declaration (v5 record, 2026-09-18); "
+        "unmet, the leg is never matched"),
     "interval": _Setting(
         "LOOP_INTERVAL", "30s", "--interval DURATION",
         "how often `watch` polls the fold"),
@@ -1134,11 +1143,16 @@ def render_offer(offer: Offer) -> str:
         f"  valid    {_span(offer.valid)}",
         f"           local {_span(offer.valid, _local)}",
         f"  pins     {pins}",
-        f"  terms    bond {_num(offer.bond)}  oracle {offer.oracle}  "
+        f"  terms    bond {_num(q(offer.bond))}  oracle {offer.oracle}  "
         f"arbitrator {offer.arbitrator or '-'}",
         f"  nonce    {offer.nonce}",
         f"  offer_id {offer.offer_id}",
     ]
+    if offer.requires is not None and not offer.requires.empty:
+        req = offer.requires
+        lines.insert(-2, f"  requires bond {_num(req.bond)}"
+                     + (f"  oracle {' '.join(req.oracles)}" if req.oracles else "")
+                     + "  (of every counterparty; unmet is never matched)")
     return "\n".join(lines)
 
 
@@ -1335,8 +1349,23 @@ def _offer_from_part(session: Session, side: str, part: Part, price,
     nonce = now * 1000 + sum(1 for o in session.book.offers(include_filled=True)
                              if o.maker == maker)
     make = give if side == GIVE else want
-    offer = make(maker, thing, price, valid=valid, nonce=nonce, **ontology.pins)
+    offer = make(maker, thing, price, valid=valid, nonce=nonce, **ontology.pins, **_guarantees())
     return offer, notes, reused
+
+
+def _guarantees() -> dict:
+    """The `bond` and `require_bond` settings as offer fields: a declared
+    bond, and a counterparty requirement — which makes the offer a v5
+    record (`schema.Requires`). Nothing set: the v4 record as before."""
+    from .schema import Requires
+    out: dict = {}
+    if _configured("bond"):
+        out["bond"] = q(_configured("bond"))           # a typed decimal is the decimal it prints as (U9)
+    if _configured("require_bond"):
+        out["requires"] = Requires(bond=q(_configured("require_bond")))
+    if "requires" in out or isinstance(out.get("bond"), Fraction):
+        out["v"] = 5
+    return out
 
 
 def _age(seconds: int) -> str:
@@ -1569,7 +1598,7 @@ def _composed_offer(session: Session, parts: list[Part], price,
                          "(there is no price memory for a composition)")
     valid = validity(valid_text or _configured("valid"), session.now)
     offer = want(session.maker, Parts(tuple(p.thing for p in parts)), price,
-                 valid=valid, **session.catalogue.pins)
+                 valid=valid, **session.catalogue.pins, **_guarantees())
     notes = [f"part {i}: {note}" for i, p in enumerate(parts, 1) for note in p.notes]
     return offer, notes
 
@@ -2527,6 +2556,13 @@ def cmd_set(args, session, out):
         parse_now(value)
     if args.key == "valid":
         validity(value, 0)
+    if args.key in ("bond", "require_bond") and value:
+        try:
+            amount = q(value)
+        except Exception as exc:              # noqa: BLE001
+            raise ValueError(f"{args.key} is an amount: {exc}") from None
+        if amount < 0:
+            raise ValueError(f"{args.key} is a non-negative amount")
     if args.key == "terms":
         for term in shlex.split(value):
             # a name is checked when an offer uses it (fails closed, U7);

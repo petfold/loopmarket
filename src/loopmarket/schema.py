@@ -327,6 +327,50 @@ ASK = GIVE     # order-book synonyms, kept for familiarity
 BID = WANT
 
 
+# --------------------------------------------------------------- requirements
+
+@dataclass(frozen=True, slots=True)
+class Requires:
+    """What a maker requires of any counterparty on a leg through this
+    offer — admissibility by declaration (decided by Peter 2026-09-18,
+    `docs/plans/P2-loop-selection.md` §4a): a floor on the counterparty's
+    `bond` (in the bond's asset, compared in that asset, so no numeraire
+    enters — U14), and the witness types it accepts (`oracle`; empty means
+    any). Matching refuses a leg that does not meet the requirement,
+    fail-closed like vocabulary (U7), so every admissible loop is
+    acceptable to each member by its own word and the beat's selection
+    needs no risk weight to protect anyone. Until P3's escrow a
+    counterparty's `bond` is its declaration; the gate compares what the
+    records say, and the escrow will make the declaration true. A v5
+    form: the record bump that carries it also spells `bond` as `n/d`."""
+
+    bond: Fraction = Fraction(0)        # the least bond a counterparty must carry
+    oracles: tuple[str, ...] = ()       # witness types accepted; () accepts any
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "bond", q(self.bond))
+        object.__setattr__(self, "oracles", tuple(sorted(set(self.oracles))))
+        if self.bond < 0:
+            raise ValueError("a bond floor is non-negative")
+
+    @property
+    def empty(self) -> bool:
+        return self.bond == 0 and not self.oracles
+
+    def met_by(self, other: "Offer") -> bool:
+        """Does `other`'s declaration satisfy this requirement?"""
+        if q(other.bond) < self.bond:
+            return False
+        return not self.oracles or other.oracle in self.oracles
+
+    def to_record(self) -> dict[str, Any]:
+        return {"bond": rat(self.bond), "oracles": list(self.oracles)}
+
+    @classmethod
+    def from_record(cls, rec: dict[str, Any]) -> "Requires":
+        return cls(q(rec["bond"]), tuple(rec["oracles"]))
+
+
 # -------------------------------------------------------------------------- offer
 
 @dataclass(frozen=True, slots=True)
@@ -349,9 +393,12 @@ class Offer:
     service: TimeWindow | None = None
     where: GeoDisc | None = None
     ontology_root: str = ""       # pinned catalogue version (recordstore root)
-    bond: float = 0.0
+    bond: Any = 0.0               # the maker's own bond (v1–v4 a float; v5 an exact rational, U9)
     oracle: str = "countersign"   # witness type the leg will settle against
     arbitrator: str = ""          # named in advance, like a jurisdiction clause
+    # v5 (2026-09-18): what the maker requires of a counterparty — a bond
+    # floor and the witness types it accepts; None on every earlier record.
+    requires: Requires | None = None
     nonce: int = field(default_factory=lambda: int(_time.time() * 1000))
     # v2 widens the pins (planned U10): the dimension registry participates
     # in canonical reduction, so an ontology root without its REGISTRY_VERSION
@@ -364,6 +411,8 @@ class Offer:
     # in the conjunction as role terms — and `valid` may be open-ended.
     # v4 (2026-09-14): exact numbers as `n/d` strings (U9), `step` and
     # `min` on a thing in place of `divisible`, and a want may be `Parts`.
+    # v5 (2026-09-18): `requires` — admissibility by declaration — and the
+    # maker's `bond` as an exact rational. A v4 offer re-encodes as v4.
     v: int = 4                    # record version; identity includes it
 
     def __post_init__(self) -> None:
@@ -377,10 +426,16 @@ class Offer:
             raise ValueError(
                 "uniform offer form: the token side must be the maker's own token"
             )
-        if self.bond < 0:
+        if q(self.bond) < 0:
             raise ValueError("bond must be non-negative")
-        if self.v not in (1, 2, 3, 4):
+        if self.v not in (1, 2, 3, 4, 5):
             raise ValueError(f"unknown offer record version: {self.v!r}")
+        if self.v < 5 and self.requires is not None:
+            raise ValueError("a counterparty requirement is a v5 form")
+        if self.v >= 5:
+            object.__setattr__(self, "bond", q(self.bond))
+            if self.requires is None:
+                object.__setattr__(self, "requires", Requires())
         if self.v < 2 and (self.registry_version or self.contract_version):
             raise ValueError("registry/contract pins are v2 fields")
         if isinstance(self.gives, Parts):
@@ -471,11 +526,13 @@ class Offer:
             "wants": side(self.wants),
             "valid": self.valid.to_record(),
             "ontology_root": self.ontology_root,
-            "bond": self.bond,
+            "bond": rat(self.bond) if self.v >= 5 else self.bond,
             "oracle": self.oracle,
             "arbitrator": self.arbitrator,
             "nonce": self.nonce,
         }
+        if self.v >= 5:
+            rec["requires"] = self.requires.to_record()
         if self.v < 3:
             rec["service"] = self.service.to_record()
             rec["where"] = self.where.to_record()
@@ -494,8 +551,12 @@ class Offer:
         vocabulary.
         """
         v = rec.get("v")
-        if v not in (1, 2, 3, 4):
+        if v not in (1, 2, 3, 4, 5):
             raise ValueError(f"unknown offer record version: {v!r}")
+        if v < 5 and "requires" in rec:
+            raise ValueError("a counterparty requirement is a v5 form")
+        if v >= 5 and "requires" not in rec:
+            raise ValueError("a v5 offer record carries requires")
         if v >= 3 and ("service" in rec or "where" in rec):
             # a field this version does not define is meaning we cannot
             # read: refuse, as for an unknown version — never drop it
@@ -528,9 +589,10 @@ class Offer:
             service=TimeWindow(*rec["service"]) if v < 3 else None,
             where=GeoDisc(*rec["where"]) if v < 3 else None,
             ontology_root=rec.get("ontology_root", ""),
-            bond=rec.get("bond", 0.0),
+            bond=q(rec["bond"]) if v >= 5 else rec.get("bond", 0.0),
             oracle=rec.get("oracle", "countersign"),
             arbitrator=rec.get("arbitrator", ""),
+            requires=Requires.from_record(rec["requires"]) if v >= 5 else None,
             nonce=rec["nonce"],
             registry_version=rec.get("registry_version", ""),
             contract_version=rec.get("contract_version", ""),
@@ -554,6 +616,8 @@ def _field_form(service, where, kw: dict[str, Any]) -> dict[str, Any]:
     current record, whose spacetime is in the conjunction."""
     if (service is not None or where is not None) and "v" not in kw:
         kw = dict(kw, v=2)
+    if kw.get("requires") is not None and "v" not in kw:
+        kw = dict(kw, v=5)              # a requirement is a v5 form
     return dict(kw, service=service, where=where)
 
 

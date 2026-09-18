@@ -16,6 +16,7 @@ Ontology.persistent over a swarm_store), never a requirement of the model.
 """
 
 from .schema import (
+    Requires,
     ASK, BID, GIVE, WANT, GeoDisc, Offer, Parts, Thing, TimeWindow, Tokens,
     ask, bid, give, q, rat, want,
 )
@@ -32,6 +33,7 @@ from .solver.agent import SolverAgent
 __version__ = "0.10.0"
 
 __all__ = [
+    "Requires",
     "GIVE", "WANT", "ASK", "BID", "GeoDisc", "Offer", "Parts", "Thing", "TimeWindow",
     "Tokens", "give", "want", "ask", "bid", "q", "rat",
     "check_parts", "parts_legs", "check_aggregate", "aggregate_legs",

@@ -370,6 +370,15 @@ two consumers, shared conformance tests.
   against the cutoff without trusting the aggregator's provenance. Until
   then the self-hosted pinning node and chain-as-authority remain the
   mitigation. Owner: P2 contract design, watching Bee.
+- **The fill authority across a redeploy (added 2026-09-18).** Fills live
+  in the clearing contract that recorded them; a redeployed contract knows
+  none of them, so offers cleared under the previous contract are
+  clearable again — seen live the day the beat contract was redeployed
+  three times, when two earlier rounds' offers cleared again as fresh
+  beats. Until a migration exists (the old contract's fill set read as the
+  new one's floor, or offers pinning the contract they clear under),
+  redeploy only with the book's cleared offers withdrawn or expired, and
+  treat each address's fills as its own. Owner: P2 contract design.
 - **POT mirroring fidelity.** If G4 fires, the POT root and the recordstore
   root describe the same book through different trees; the proof that they
   agree (every key, both directions) is itself a non-monotone completeness

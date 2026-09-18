@@ -244,3 +244,38 @@ def test_a_composed_want_verifies_leg_by_leg(face):
                         and snapshot.get(l["want"]).maker == "theatre")
     w3_, _g3, _t3 = _leg_args(snapshot, rec, theatre_want)
     refused((w3_, [gives_p[1]], [(1, 1)]), "the want's unit")                   # the driver's run for a lesson
+
+
+# --------------------------------------------------------------------------- #
+# Admissibility by declaration on chain (v5, 2026-09-18)
+# --------------------------------------------------------------------------- #
+
+def test_a_v5_leg_verifies_and_an_unmet_requirement_is_convicted(face):
+    """The buyer requires a bond of 1 and settles by countersign; the bonded
+    seller's leg verifies on chain; a leg through an under-bonded seller, or
+    a seller that accepts only lockers, is convicted structurally."""
+    from loopmarket import Requires
+    w3, verifier = face
+    cat = Ontology(OntoDAG()).load({"apple": [], "lesson": []})
+    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    buyer = want("b", Thing(("apple",), 3), 15, **V, **pins, bond=1, requires=Requires(bond=1))
+    bonded = give("s", Thing(("apple",), 3), 12, **V, **pins, bond=1, v=5)
+    poor = give("p", Thing(("apple",), 3), 12, **V, **pins, bond="1/2", v=5)
+    fussy = give("f", Thing(("apple",), 3), 12, **V, **pins, bond=1, requires=Requires(oracles=("locker",)))
+    legacy = give("l", Thing(("apple",), 3), 12, **V, **pins)                 # v4: a float bond, so none
+    ret = [give("b", Thing(("lesson",)), 10, **V, **pins, bond=1, v=5), want("s", Thing(("lesson",)), 11, **V, **pins, v=5)]
+    book.publish_many([buyer, bonded, poor, fussy, legacy, *ret]); book.commit()
+    root = book.store.root
+    snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
+    verifier.functions.setPotentials([b"b", b"s", b"p", b"f", b"l"], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1]).transact()
+
+    def leg(g):
+        return _leg_args(snapshot, None, {"want": buyer.offer_id, "gives": [g.offer_id], "taken": ["3"]})
+    beat = _beat(root, pins)
+    want_maker, gives = verifier.functions.verifyLeg(beat, leg(bonded)).call()
+    assert want_maker == b"b" and gives == [b"s"]
+    for g, why in ((poor, "bond below"), (legacy, "bond below"), (fussy, "witness type not accepted")):
+        with pytest.raises(Exception, match=why):
+            verifier.functions.verifyLeg(beat, leg(g)).call()
+    print("\ngas for a v5 leg with a requirement:", verifier.functions.verifyLeg(beat, leg(bonded)).estimate_gas())

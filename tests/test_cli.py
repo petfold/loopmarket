@@ -994,3 +994,22 @@ def test_a_fold_is_computed_under_the_books_addressing(env, tmp_path, monkeypatc
     # and a sha256 book still folds in memory
     plain = OfferRegistry(RecordStore(DirBytesStore(str(tmp_path / "plain"))))
     assert cli._addressing_of(plain) == "sha256"
+
+
+def test_bond_and_require_bond_settings_make_a_v5_offer(loop, monkeypatch):
+    """`set bond` declares my bond on every offer; `set require_bond` the
+    floor I demand of a counterparty — the offer becomes a v5 record and
+    the render says so; a negative amount is refused at `set`."""
+    run = loop
+    run.ok("set", "bond", "0.5")
+    run.ok("set", "require_bond", "1")
+    code, out, err = run("set", "require_bond", "-1")
+    assert code != 0 and "non-negative" in err
+    out = run.ok("give", "apple", "home", "5")
+    assert "terms    bond 0.5" in out and "requires bond 1" in out and "v5" in out
+    offer = next(o for o in run.session.book.offers(include_filled=True))
+    assert offer.v == 5 and offer.bond == 1 / 2 and offer.requires.bond == 1
+    monkeypatch.setenv("LOOP_BOND", ""); monkeypatch.setenv("LOOP_REQUIRE_BOND", "")
+    run.ok("set", "bond", ""); run.ok("set", "require_bond", "")
+    out = run.ok("want", "apple", "home", "6")
+    assert "v4" in out and "requires" not in out

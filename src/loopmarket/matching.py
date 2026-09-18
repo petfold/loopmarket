@@ -97,6 +97,12 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
         return False
     if (give.v >= 3) != (want.v >= 3):
         return False
+    # admissibility by declaration (v5, 2026-09-18): each side's requirement
+    # of a counterparty — a bond floor, accepted witness types — must be met
+    # by the other side's declaration; unmet is refused, fail closed (U7)
+    for mine, other in ((give, want), (want, give)):
+        if mine.requires is not None and not mine.requires.met_by(other):
+            return False
     if not (give.valid.is_open_at(now) and want.valid.is_open_at(now)):
         return False
     if give.v < 3:

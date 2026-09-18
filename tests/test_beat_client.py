@@ -400,3 +400,28 @@ def test_the_chains_fills_are_subtracted_by_the_hunt_and_the_checklist(chain):
     verdict = ChainClearing(fresh, cat2, beat_client=client, clock=lambda: NOW).submit(proposal)
     assert not verdict.accepted and verdict.reason.startswith("filled on chain")
     assert len(client.beats()) == beat                            # nothing posted
+
+
+def test_a_v5_book_posts_and_verifies(chain):
+    """Admissibility by declaration reaches the chain: a book whose offers
+    declare bonds and require them clears, posts, and the challenger's dry
+    run says every leg verifies under the redeployed verifier."""
+    from loopmarket import Requires
+    w3, address, key = chain
+    cat = Ontology.persistent(RecordStore(MemoryBytesStore()))
+    cat.load({"apple": [], "lesson": []}); cat.commit()
+    pins = cat.pins
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    book.publish_many([give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins, bond=2, v=5),
+                       want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins, bond=1, requires=Requires(bond=1)),
+                       give("b1", Thing(("lesson",)), 80, **V, **pins, bond=1, v=5),
+                       want("farm", Thing(("lesson",)), 85, **V, **pins, bond=2, requires=Requires(bond="1/2"))])
+    book.commit()
+    client = BeatClient("", address, key=key, client=w3)
+    agent = SolverAgent(book, cat, clearing=ChainClearing(book, cat, beat_client=client, clock=lambda: NOW),
+                        solver_id="t", min_surplus=0.0)
+    receipts = agent.step(now=NOW)
+    assert receipts and receipts[0].accepted, receipts[0].reason
+    beat = int(receipts[0].reason.split()[1])
+    result = challenge_beat(client, beat, [book], cat, now=NOW)
+    assert result.verifies and [v.chain for v in result.legs] == ["leg verifies"] * 2
