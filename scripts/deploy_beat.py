@@ -6,7 +6,7 @@
 
 Prints the contract address; the setting is then
 `loop set beat chain:https://rpc.gnosischain.com@0xADDRESS`. The artifact
-is `contracts/abi/BeatClearing.json` (solc 0.8.24 via IR, optimizer 200
+is `loopmarket/contracts/BeatClearing.json` (inside the package) (solc 0.8.24 via IR, optimizer 200
 runs), so this needs no compiler. `BOND_XDAI` is what a submitter locks per
 beat and a successful challenger wins; `WINDOW_BLOCKS` the challenge
 window (Gnosis: ~5 s blocks, 720 ≈ one hour); `ARBITER` the address that

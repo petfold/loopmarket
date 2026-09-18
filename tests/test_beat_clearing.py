@@ -6,21 +6,32 @@ the window anyone finalizes and the contract records the fills exactly,
 so the chain is the authority on what is filled. Skips without the `evm`
 extra."""
 
+import importlib.util
 import os
 from fractions import Fraction
 
 import pytest
 from ontodag import OntoDAG
 
-solcx = pytest.importorskip("solcx")
-pytest.importorskip("eth_tester")
-from eth_abi import encode  # noqa: E402
-from web3 import Web3, EthereumTesterProvider  # noqa: E402
-from recordstore import MemoryBytesStore, RecordStore  # noqa: E402
+from recordstore import MemoryBytesStore, RecordStore
 
-from loopmarket import (  # noqa: E402
+from loopmarket import (
     MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
 )
+
+
+# The contract tests need the `evm` extra (py-solc-x, eth-tester, web3). They
+# skip PER TEST when it is absent, so every environment collects the same
+# number of tests and the README's count holds in CI and on a laptop alike.
+_HAVE_EVM = all(importlib.util.find_spec(m) for m in ("solcx", "eth_tester", "web3"))
+pytestmark = pytest.mark.skipif(not _HAVE_EVM, reason="needs the evm extra: pip install 'loopmarket[evm]'")
+
+
+def _evm():
+    """The optional toolchain, imported only inside a running test."""
+    import solcx
+    from web3 import EthereumTesterProvider, Web3
+    return solcx, Web3, EthereumTesterProvider
 
 HERE = os.path.dirname(__file__)
 NOW = 5_000
@@ -33,6 +44,7 @@ WINDOW = 5
 
 @pytest.fixture(scope="module")
 def chain():
+    solcx, Web3, EthereumTesterProvider = _evm()
     solcx.install_solc("0.8.24")
     compiled = solcx.compile_files([os.path.join(HERE, "..", "contracts", "BeatClearing.sol")],
                                    output_values=["abi", "bin"], solc_version="0.8.24",
@@ -68,6 +80,8 @@ def _rat(text):
 
 
 def _legs(snapshot, rec):
+    from eth_abi import encode
+    from web3 import Web3
     def proof(oid):
         p = snapshot.store.prove("offer/" + oid)
         return (bytes.fromhex(oid), bytes.fromhex(p["value"]), [bytes.fromhex(n) for n in p["nodes"]])
@@ -133,6 +147,8 @@ def test_a_bad_leg_is_challenged_and_the_bond_goes_to_the_challenger(chain):
     apples = next(i for i, l in enumerate(rec["legs"]) if l["taken"] == ["40"])
     want_p, gives_p, _ = legs[apples]
     legs[apples] = (want_p, gives_p, [(105, 1)])                    # forged: 105 kg of a 100 kg give
+    from eth_abi import encode
+    from web3 import Web3
     hashes = [Web3.keccak(encode([LEG_TYPE], [leg])) for leg in legs]
     fills = [(f[0], 105, 1) if f[0] == gives_p[0][0] else f for f in fills]
     tx = beat.functions.submit(_pins(root), hashes, fills, makers, potentials).transact({"value": BOND})

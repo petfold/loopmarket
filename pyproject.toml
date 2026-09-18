@@ -56,6 +56,11 @@ test = ["pytest"]
 loop = "loopmarket.cli:main"
 loopmarket = "loopmarket.cli:main"
 
+[tool.setuptools.package-data]
+# The compiled BeatClearing artifact (ABI + bytecode) ships in the wheel so
+# an installed client can talk to the deployed contract (beat.abi()).
+loopmarket = ["contracts/*.json"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

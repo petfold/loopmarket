@@ -6,22 +6,35 @@ proofs from a real book root verify, every tampering is refused, and the
 gas per proof is printed so the numbers are measured, not estimated.
 Skips without the `evm` extra (`pip install 'loopmarket[evm]'`)."""
 
+import importlib.util
 import os
 
 import pytest
 
-solcx = pytest.importorskip("solcx")
-pytest.importorskip("eth_tester")
-from web3 import Web3, EthereumTesterProvider  # noqa: E402
-from recordstore import MemoryBytesStore, RecordStore, verify_proof  # noqa: E402
+from recordstore import MemoryBytesStore, RecordStore, verify_proof
 
-from loopmarket import OfferRegistry, Thing, TimeWindow, give  # noqa: E402
+from loopmarket import OfferRegistry, Thing, TimeWindow, give
+
+
+# The contract tests need the `evm` extra (py-solc-x, eth-tester, web3). They
+# skip PER TEST when it is absent, so every environment collects the same
+# number of tests and the README's count holds in CI and on a laptop alike.
+_HAVE_EVM = all(importlib.util.find_spec(m) for m in ("solcx", "eth_tester", "web3"))
+pytestmark = pytest.mark.skipif(not _HAVE_EVM, reason="needs the evm extra: pip install 'loopmarket[evm]'")
+
+
+def _evm():
+    """The optional toolchain, imported only inside a running test."""
+    import solcx
+    from web3 import EthereumTesterProvider, Web3
+    return solcx, Web3, EthereumTesterProvider
 
 SOURCE = os.path.join(os.path.dirname(__file__), "..", "contracts", "TrieProofVerifier.sol")
 
 
 @pytest.fixture(scope="module")
 def face():
+    solcx, Web3, EthereumTesterProvider = _evm()
     solcx.install_solc("0.8.24")
     compiled = solcx.compile_files([SOURCE], output_values=["abi", "bin"], solc_version="0.8.24",
                                    optimize=True, optimize_runs=200, via_ir=True)

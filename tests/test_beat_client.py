@@ -4,20 +4,32 @@ contract's own `abi.encode` — and `ChainClearing` clears into the book
 and posts the beat in one motion; after the window `finalize` records the
 fills and the chain answers `filled` exactly. Skips without the `evm` extra."""
 
+import importlib.util
 import os
 
 import pytest
 
-pytest.importorskip("solcx")
-pytest.importorskip("eth_tester")
-from web3 import Web3, EthereumTesterProvider  # noqa: E402
-from recordstore import MemoryBytesStore, RecordStore  # noqa: E402
+from recordstore import MemoryBytesStore, RecordStore
 
-from loopmarket import (  # noqa: E402
+from loopmarket import (
     MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
 )
-from loopmarket.beat import BeatClient, abi, submission  # noqa: E402
-from loopmarket.clearing import ChainClearing  # noqa: E402
+from loopmarket.beat import BeatClient, abi, submission
+from loopmarket.clearing import ChainClearing
+
+
+# The contract tests need the `evm` extra (py-solc-x, eth-tester, web3). They
+# skip PER TEST when it is absent, so every environment collects the same
+# number of tests and the README's count holds in CI and on a laptop alike.
+_HAVE_EVM = all(importlib.util.find_spec(m) for m in ("solcx", "eth_tester", "web3"))
+pytestmark = pytest.mark.skipif(not _HAVE_EVM, reason="needs the evm extra: pip install 'loopmarket[evm]'")
+
+
+def _evm():
+    """The optional toolchain, imported only inside a running test."""
+    import solcx
+    from web3 import EthereumTesterProvider, Web3
+    return solcx, Web3, EthereumTesterProvider
 
 NOW = 5_000
 V = dict(valid=TimeWindow(0, 1_000_000))
@@ -26,6 +38,7 @@ BOND, WINDOW = 10 ** 16, 3
 
 @pytest.fixture(scope="module")
 def chain():
+    _solcx, Web3, EthereumTesterProvider = _evm()
     art = abi()
     w3 = Web3(EthereumTesterProvider())
     w3.eth.default_account = w3.eth.accounts[0]

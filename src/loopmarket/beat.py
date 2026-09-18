@@ -19,7 +19,6 @@ is the one canonical form both sides already share.
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass
 from fractions import Fraction
 
@@ -28,13 +27,16 @@ from .registry import OfferRegistry
 from .schema import q
 
 LEG_TYPE = "((bytes32,bytes,bytes[]),(bytes32,bytes,bytes[])[],(uint256,uint256)[])"
-_ABI_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "contracts", "abi", "BeatClearing.json")
 
 
 def abi() -> dict:
-    """The compiled contract: ABI and creation bytecode, from
-    `contracts/abi/BeatClearing.json` (solc 0.8.24, via IR)."""
-    with open(_ABI_PATH, encoding="utf-8") as fh:
+    """The compiled contract: ABI and creation bytecode, shipped inside the
+    package as `loopmarket/contracts/BeatClearing.json` (solc 0.8.24, via
+    IR, optimizer 200 runs) so an installed wheel can talk to the deployed
+    contract without a compiler or the repository."""
+    from importlib import resources
+    with resources.files("loopmarket").joinpath("contracts", "BeatClearing.json").open(
+            encoding="utf-8") as fh:
         return json.load(fh)
 
 

@@ -104,7 +104,8 @@ adjudication): `loop set beat chain:https://rpc.gnosischain.com@0xFD1022636c2f0C
 makers' local books announced through a file registry, and `loop propose`
 cleared the triangle into the solver's clearing book and posted it as
 beat 1 — six fills, the key as submitter — in five seconds; the contract
-read it back. What is not built: a `challenge` verb (the CLI does not yet
+read it back, and after the window `loop finalize 1` recorded the six
+fills on chain (2026-09-18, 383 k gas), the bond returning. What is not built: a `challenge` verb (the CLI does not yet
 keep the submission it posted; a challenger rebuilds it from the clearing
 book's loop record and the snapshot), and the sealed-proposal beat in
 front of the contract.

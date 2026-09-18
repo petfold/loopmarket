@@ -55,10 +55,13 @@ ontodag 0.26.1; the `evm` extra runs the contract tests.
   `MockClearing`'s checklist and posts the beat, the book keeping the data
   and the chain the commitments; the CLI gains the `beat` setting,
   `propose` and `finalize BEAT`; the compiled ABI ships in
-  `contracts/abi/BeatClearing.json`. `tests/test_beat_client.py`.
+  `loopmarket/contracts/BeatClearing.json` (inside the package). `tests/test_beat_client.py`.
 - **The beat contract is deployed** on Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08` (bond 0.01
   xDAI, window 720 blocks); `loop propose` posted the triangle as beat 1
-  the same day, six fills, in five seconds.
+  the same day, six fills, in five seconds; `loop finalize 1` recorded
+  them on chain after the window. The compiled artifact ships inside the
+  package (`loopmarket/contracts/BeatClearing.json`) so an installed
+  wheel talks to the contract; the README quotes CI's collected count.
 
 ## [0.9.0] — 2026-09-15
 
