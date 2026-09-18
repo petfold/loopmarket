@@ -200,7 +200,12 @@ gate are concerned:**
    obligation to take the fix: it may already have arranged its own way
    outside loopmarket.
 
-**Read on (2026-09-18, later):** `P3-release-and-reclearing.md` — the
+**Read on (2026-09-18, later):** `P3-release-and-reclearing.md` §5–§5a —
+what a bond is held *in* is revised there: the protocol names no asset; the
+wanter names the durable, escrowable categories she accepts with her own
+prices; conversion happens once at clearing on private scales; the escrow
+is a service, medium term a smart contract as a maker (a contract signs by
+state, takes no personal tokens, its condition is not a leg). Also there: the
 floors above are the maker's *neutral points*, anyone may cancel a leg by
 paying them, and a better circulation may replace a cleared one in one
 transaction; the giver's own cancellation (rule 9) is one case of it.

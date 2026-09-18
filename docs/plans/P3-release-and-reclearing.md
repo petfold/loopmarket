@@ -85,19 +85,98 @@ it needs no escrow and no payment channel:
 - *Makers:* `watch` tells each displaced maker its counterparty changed;
   handoffs are re-sealed to the new counterparty.
 
-## 5. Payments: who pays the neutral points, and in what
+## 5. Compensation: what a bond is, and what it is held in (revised the same night)
 
-"The better circulation must be sufficiently better to cover all the
-bonds" is **not computable from surplus**: surplus is numeraire-free (U14),
-the neutral points are in the bond's asset. It becomes computable once the
-payer is named: **the entrant who wants in — or a solver on its behalf —
-bids in the bond's asset**, and the re-clear is admissible when the bids
-cover every displaced maker's price under §3. Everything paid is then in one
-asset by declaration and no conversion is ever made. That is the auction
-Peter names: a position may be bought at its holder's price, and the money is
-the entrant's, never the loop's. What a solver cannot do is fund buyouts from
-the surplus of the loop it improves; its own compensation stays the
-endogenous spread leg (`P2-batch-auction.md` §7).
+Peter's corrections, in the order they came, replaced everything this
+section first said about "the bond's asset":
+
+- **A personal unit cannot be a bond.** It is internal — it cannot be paid
+  to anyone — and it is instantaneous, for the clearing that consumes it;
+  it cannot travel in time, so it cannot sit in escrow. A bond in the
+  giver's own unit would be an IOU redeemable only through the defaulter's
+  own future gives, which is the credit the bond exists to avoid; and it
+  cannot be converted without either a market in that token (U14 forbids
+  it) or a loop that happens to exist at the moment of failure.
+- **The loop is tried first.** On a failure, before anything held pays out,
+  the solver looks for a compensating circulation: the wanter receives one
+  of its own wants worth at least the lost leg plus its **switch cost**,
+  declared on the wanter's own scale, from the defaulter's other gives or
+  anyone's. All on the wanter's scale; no asset needed; not guaranteed to
+  exist when the ride does not come — so a first attempt, not the only one.
+- **Compensation is what the wanter will still want later.** A wanter's
+  ordinary wants are for now (the ice cream, already bought by then; not
+  holdable anyway); compensation is for later and must be durable and
+  holdable — a gold coin, BTC, a stablecoin, whatever *she* trusts against
+  inflation. The protocol names none of them: her requirement names the
+  asset categories she accepts, each with her price per unit on her own
+  scale, beside her neutral and cancellation points on that scale.
+- **Conversion happens once, at clearing, on private scales.** The giver's
+  deposit has a value on the giver's scale; the wanter's neutral point has
+  a value on hers and a price per unit for each asset she accepts. A leg is
+  admissible when the deposit's category falls under one she accepts
+  (the catalogue, as for any want) and the quantity reserved for this fill,
+  in the asset's own unit, covers her neutral point at her price for it.
+  Two conversions each inside one maker's scale, one comparison in the
+  asset's unit; no shared numeraire ever appears. "Later" is then no
+  conversion at all: the escrow hands over the reserved quantity of the
+  asset she named. Her one exposure is her own valuation drifting, which
+  choosing durable assets bounds.
+- **Escrowability is relative to who holds — the escrow is a service.**
+  An escrow agent is a storage operator whose output is bound to a
+  ruling; in general it is a maker with an offer: what it holds, for how
+  long, released on what condition, at what fee. **Medium term, only the
+  smart-contract agent is built** (§5a); physical custody, agents with
+  fees on their own scale and agents that can themselves fail go to the
+  end of the roadmap, where that recursion belongs.
+
+## 5a. The crypto escrow: a smart contract as a maker (medium term)
+
+Doable, with two rules where a contract differs from a keyed maker:
+
+1. **A contract signs by state.** It has an address but no key, so it
+   cannot sign a feed or a detached offer signature (U8). It registers the
+   ids of its standing offers in its own storage from its own code, and a
+   reader authenticates an offer whose maker is a contract address against
+   that mapping instead of a signature; the record may live in anyone's
+   book. It announces its book by calling `LoopBookRegistry.announce`
+   itself (`msg.sender` is then the contract).
+2. **A contract takes no personal tokens.** A fee on its own scale would be
+   bookkeeping meaningless to code, and a zero-priced leg would put a zero
+   rate into the loop (U5). So the **fee-less contract escrow is a
+   condition on the giver's give, not a leg in the value arithmetic**: the
+   record says "this give is backed by escrow contract E holding asset A,
+   quantity Q"; clearing verifies the wanter accepts A and the quantity
+   reserved for this fill covers her neutral point; the deposit is the
+   giver's obligation at settlement. A contract that charges an on-chain
+   fee is a bridge leg and comes later.
+
+The contract is small: `deposit(loop, fill, token, amount)` by the giver's
+key; `release(loop, fill)` on the arbiter's ruling of failure, paying the
+wanter's key the reserved quantity (the cancellation quantity if the giver
+cancelled before the window); `refund` on the wanter's countersignature of
+delivery, or after the window with no claim. The wanter's key is the one it
+announces and signs with, so payouts have a destination without a new
+identity. Reservation per fill and the cancellation quantity are its
+bookkeeping by construction; `BeatClearing` gains a verdict hook the escrow
+listens to, the arbiter hook's shape. **No conditional leg shape in
+clearing**: the release is the escrow's settlement behaviour, not a branch
+in the circulation.
+
+**What the v5 record becomes — held until this is read:** the giver's
+`bond` = (asset category, quantity, escrow contract), marked as backing and
+never clearable as a give; the wanter's `requires` = neutral point,
+cancellation point (both on her scale), and the accepted asset categories
+each with her price per unit. Matching and the verifier's quantity check
+move onto the reserved asset quantity.
+
+## 5b. Payments for buyouts
+
+The entrant's bid for a buyout (§2–§3) is paid the same way: in an asset the
+displaced maker accepts, through the escrow, or in kind through the loop
+(§5, the switch cost) — never from the surplus of the loop it improves
+(U14). What a solver cannot do is fund buyouts from that surplus; its own
+compensation stays the endogenous spread leg (`P2-batch-auction.md` §7).
+
 
 ## 6. What this changes in the corpus
 
@@ -136,11 +215,12 @@ is a small set of primitives, in this order:
    pending fills dropped, their bonds returned. Checks: the same pins, not
    finalized, within the window. The verifier already reads the neutral
    point from a v5 record; nothing new is parsed.
-4. **The paid release is the escrow's** (P3, factbond). The escrow holds
-   the payer's bid, pays the maker's key, and calls one authorized
-   `release(offer, loop)` on the clearing contract — the arbiter hook's
-   shape — so the clearing contract's checks stay few and the money lives
-   in the contract built to hold it.
+4. **The paid release is the escrow's** (P3; the crypto escrow of §5a).
+   The escrow holds the payer's bid in an asset the payee accepts, pays
+   the maker's key, and calls one authorized `release(offer, loop)` on the
+   clearing contract — the arbiter hook's shape — so the clearing
+   contract's checks stay few and the money lives in the contract built to
+   hold it.
 
 ## Open problems
 
@@ -151,13 +231,16 @@ is a small set of primitives, in this order:
   payment; the fill authority learns to un-fill.
 - **The neutral point under partial fills:** the reserved share per fill
   (§3a rule 8) is what a buyout pays for that fill.
+- **Physical escrow** — custodians of goods, agents with fees on their own
+  scale, agents that can fail — is deferred to the end of the roadmap.
 - **Timing:** a re-clear during a leg's handover window pays the no-show
   price; the boundary is the window's start.
 
 ## What this document does not promise
 
-- It does not price anything in personal tokens against the bond's asset;
-  every payment here is in one asset by the payee's declaration.
+- It never prices a personal unit against any asset; every payment is in
+  an asset the payee named, at the payee's own price, converted once at
+  clearing; the protocol names no asset.
 - It does not weaken clearing's finality: a release is a recorded,
   paid transfer, not an undo.
 - The Pareto re-match is the only part claimed buildable without the

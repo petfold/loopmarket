@@ -183,12 +183,23 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       holds a declared bond, the cancellation and repair records, a
       history requirement (U12).
 
+- [ ] The crypto escrow (medium term) · [plan §5a](docs/plans/P3-release-and-reclearing.md):
+      a smart contract as a maker — signs by state, takes no personal
+      tokens, its holding a condition on the giver's give, not a leg;
+      `deposit`/`release`/`refund` and a verdict hook on the clearing
+      contract; the wanter names the durable asset categories she accepts
+      with her own prices, conversion once at clearing. Holds the v5
+      `bond`/`requires` change until read.
 - [ ] Release prices and re-clearing · [plan](docs/plans/P3-release-and-reclearing.md)
       (direction, 2026-09-18): the required floor as the maker's true
       neutral point, permissionless cancellation at that price, cancel-and-
       replace as one transaction; first the Pareto re-match (superseding
       loop records, a superseding beat within the window), then payments
       through the escrow.
+
+- [ ] **Physical escrow — end of the roadmap:** custodians of goods,
+      escrow agents with fees on their own scale, agents that can themselves
+      fail (the recursion), deferred by Peter 2026-09-18.
 
 ## P4 — staged privacy · [plan](docs/plans/P4-privacy.md)
 

@@ -292,6 +292,22 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   payments are the entrant's bids in the bond's asset, never the loop's
   surplus (U14). Nothing built yet.
 
+- **What a bond is held in — direction** (Peter, 2026-09-18 night;
+  `P3-release-and-reclearing.md` §5–§5a, P3 §3a, factbond's coupling
+  document). A personal unit cannot be a bond (internal, instantaneous,
+  unescrowable); the protocol names no asset; the wanter names the
+  durable, escrowable categories she accepts with her prices per unit on
+  her own scale, beside her neutral and cancellation points; conversion
+  happens once at clearing on private scales and "later" is a transfer of
+  the reserved quantity; the loop is tried first as compensation (the
+  switch cost, in kind). The escrow is a service; medium term only the
+  smart-contract agent: a contract signs by state (its registered offer
+  ids), takes no personal tokens, and its holding is a condition on the
+  giver's give rather than a leg (U5 stays), with `deposit`/`release`/
+  `refund` and a verdict hook on the clearing contract; physical escrow
+  goes to the roadmap's end. The v5 `bond`/`requires` change is held until
+  read.
+
 ### Live gate, 2026-09-18
 
 The challenger from a fresh session. Three makers' `rs:` books announced
