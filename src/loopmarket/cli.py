@@ -499,6 +499,34 @@ def _open_book(spec: str) -> OfferRegistry:
     raise ValueError(f"{spec}: a book is rs:PATH or swarm:TOPIC[@OWNER]")
 
 
+def _addressing_of(registry: OfferRegistry) -> str:
+    """The scheme the book's roots are in — `sha256` for a directory or
+    memory store, `swarm` for a book on Swarm or a Swarm-addressed mirror.
+    recordstore names it privately for proof envelopes; the same answer is
+    what a fold must be built under (a public accessor is asked upstream)."""
+    try:
+        from recordstore.recordstore import _addressing_name
+        return _addressing_name(registry.store.blobs)
+    except Exception:                       # noqa: BLE001 — an unknown store: sha256, the default
+        return "sha256"
+
+
+def _fold_blobs(book: OfferRegistry):
+    """The bytes store a fold is computed in: the *book's* addressing, so the
+    fold's root is the root the book has once it absorbs the fold — equal
+    content, equal reference — and a proposal solved on the fold pins a
+    root the clearing book and the chain resolve. A memory store is sha256
+    only, so a Swarm-addressed book folds in a scratch directory under
+    Swarm addressing (found live 2026-09-18: a sealed proposal pinning the
+    memory fold's sha256 root was "solved against another root" beside the
+    Swarm clearing book's BMT root of the same content)."""
+    from recordstore import DirBytesStore, MemoryBytesStore
+    if _addressing_of(book) == "swarm":
+        import tempfile
+        return DirBytesStore(tempfile.mkdtemp(prefix="loop-fold-"), addressing="swarm")
+    return MemoryBytesStore()
+
+
 class Session:
     """Everything a command may need, opened lazily (odag's rule: `help`
     and `set` must work with the node down)."""
@@ -534,7 +562,7 @@ class Session:
             return self.book
         from recordstore import MemoryBytesStore, RecordStore
 
-        folded = OfferRegistry(RecordStore(MemoryBytesStore()))
+        folded = OfferRegistry(RecordStore(_fold_blobs(self.book)))
         folded.absorb(self.book)
         if registry:
             from .federation import Aggregator

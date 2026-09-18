@@ -967,3 +967,30 @@ def test_announced_books_are_the_read_path(env, tmp_path, monkeypatch):
     stranger.commit()
     open_announcements(registry).announce(f"rs:{tmp_path / 'stranger'}", owner="mallory")
     assert len(run.ok("offers", "--raw").splitlines()) == 6      # mallory's forged amara offer is not in
+
+
+def test_a_fold_is_computed_under_the_books_addressing(env, tmp_path, monkeypatch):
+    """A Swarm-addressed book folds under Swarm addressing, so the fold's
+    root is the book's own once it absorbs the fold — the root a sealed
+    proposal pins and the clearing book resolves (live finding 2026-09-18:
+    a memory fold's sha256 root beside the Swarm book's BMT root of the
+    same content)."""
+    from recordstore import DirBytesStore, FilePointer, RecordStore
+    from loopmarket import OfferRegistry, Thing, TimeWindow, give, want
+
+    def swarm_book(path):
+        return OfferRegistry(RecordStore(DirBytesStore(str(path / "blobs"), addressing="swarm"),
+                                         pointer=FilePointer(str(path / "root"))))
+    mine, peer = swarm_book(tmp_path / "mine"), swarm_book(tmp_path / "peer")
+    peer.publish(give("farm", Thing(("apple",), 3), 9, valid=TimeWindow(0))); peer.commit()
+    monkeypatch.setattr(cli, "_open_book",
+                        lambda spec: mine if spec == "rs:mine" else peer)
+    monkeypatch.setenv("LOOP_BOOK", "rs:mine")
+    monkeypatch.setenv("LOOP_PEERS", "rs:peer")
+    fold = cli.Session().fold()
+    assert cli._addressing_of(fold) == "swarm" and cli._addressing_of(peer) == "swarm"
+    mine.absorb(fold); mine.commit()
+    assert mine.store.root == fold.store.root                 # equal content, equal reference
+    # and a sha256 book still folds in memory
+    plain = OfferRegistry(RecordStore(DirBytesStore(str(tmp_path / "plain"))))
+    assert cli._addressing_of(plain) == "sha256"
