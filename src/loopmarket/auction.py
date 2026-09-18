@@ -224,12 +224,14 @@ def revealed_set_hash(revealed) -> bytes:
 
 
 def outcome(beat: int, revealed, snapshot: OfferRegistry, ontology, *, now: int,
-            baseline=None, min_surplus=0) -> Outcome:
+            baseline=None, min_surplus=0, chain_fills=None) -> Outcome:
     """Derive a closed beat's outcome from `revealed` ([(solver, bytes)]) over
-    the beat's snapshot: rebuild and re-derive every loop (U3), add the
-    baseline's loops as the reserve bid, filter, select."""
+    the beat's snapshot: rebuild and re-derive every loop (U3, the chain's
+    fills subtracted when `chain_fills` answers them), add the baseline's
+    loops as the reserve bid, filter, select."""
     root = snapshot.store.root
-    clearing = MockClearing(snapshot, ontology, min_surplus=min_surplus, clock=lambda: now)
+    clearing = MockClearing(snapshot, ontology, min_surplus=min_surplus, clock=lambda: now,
+                            chain_fills=chain_fills)
     candidates, rejected = [], {}
     for solver, data in sorted(revealed, key=lambda r: r[0].lower()):
         try:
@@ -261,11 +263,12 @@ def outcome(beat: int, revealed, snapshot: OfferRegistry, ontology, *, now: int,
 
 
 def baseline_proposals(snapshot: OfferRegistry, ontology, *, now: int, solver="baseline",
-                       min_surplus=0) -> list[LoopProposal]:
+                       min_surplus=0, chain_fills=None) -> list[LoopProposal]:
     """The deterministic baseline's loops on the snapshot — the reserve bid
-    every replica can compute (U6)."""
+    every replica can compute (U6) — past what the chain has filled."""
     from .solver.agent import SolverAgent
-    agent = SolverAgent(snapshot, ontology, clearing=None, solver_id=solver, min_surplus=min_surplus)
+    agent = SolverAgent(snapshot, ontology, clearing=None, solver_id=solver, min_surplus=min_surplus,
+                        chain_fills=chain_fills)
     root, loops = agent.find_loops(now=now)
     return [LoopProposal(loop, root, ontology.root, solver, now) for loop in loops]
 

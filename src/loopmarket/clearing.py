@@ -26,6 +26,8 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .graph import Circulation, Loop
+from fractions import Fraction
+
 from .schema import q, rat
 from .matching import check_aggregate, check_composition, check_match, check_parts
 from .ontology import Ontology
@@ -123,13 +125,47 @@ class MockClearing:
 
     def __init__(self, registry: OfferRegistry, ontology: Ontology, *,
                  min_surplus: float = 0.0, require_per_node: bool = True,
-                 clock=_time.time, verifiable_oracles=VERIFIABLE_ORACLES):
+                 clock=_time.time, verifiable_oracles=VERIFIABLE_ORACLES,
+                 chain_fills=None):
         self.registry = registry
         self.ontology = ontology
         self.min_surplus = min_surplus
         self.require_per_node = require_per_node
         self.clock = clock  # injectable for tests / deterministic replay
         self.verifiable_oracles = frozenset(verifiable_oracles)
+        #: offer id -> quantity the chain has recorded as taken (`BeatClearing.
+        #: filled`), or None. The chain is the fill authority once a beat is
+        #: finalized, and a book that never folded that clearing's fills does
+        #: not know (live 2026-09-18: a fold of twelve offers, six spent on chain,
+        #: proposed a loop through a spent one) — so what the chain has taken is
+        #: subtracted from what the book says is left, everywhere the checklist
+        #: asks.
+        self.chain_fills = chain_fills
+
+    def available(self, offer_ids) -> dict:
+        """What may still be taken from each offer: the book's remainder,
+        less what the chain has recorded (a composed want is whole or gone)."""
+        out = {}
+        for oid in offer_ids:
+            left = self.registry.available(oid)
+            if self.chain_fills is not None:
+                offer = self.registry.get(oid)
+                on_chain = q(self.chain_fills(oid))
+                if offer.composed:
+                    left = Fraction(0) if on_chain > 0 else left
+                else:
+                    left = min(left, q(offer.thing.qty) - on_chain)
+            out[oid] = left
+        return out
+
+    def filled_on_chain(self, offer) -> bool:
+        """Has the chain recorded this offer as taken whole, or down to dust?"""
+        if self.chain_fills is None:
+            return False
+        on_chain = q(self.chain_fills(offer.offer_id))
+        if offer.composed:
+            return on_chain > 0
+        return offer.thing.exhausted(q(offer.thing.qty) - on_chain)
 
     def submit(self, proposal: LoopProposal) -> Receipt:
         loop = proposal.circulation
@@ -162,6 +198,8 @@ class MockClearing:
                 return reject(f"unknown offer: {oid[:12]}")
             if self.registry.is_filled(oid):
                 return reject(f"already filled: {oid[:12]}")
+            if self.filled_on_chain(offer):
+                return reject(f"filled on chain: {oid[:12]}")
             if self.registry.is_withdrawn(oid):
                 return reject(f"withdrawn: {oid[:12]}")
             if offer.oracle not in self.verifiable_oracles:
@@ -171,7 +209,7 @@ class MockClearing:
         #    composed leg is re-composed (`check_composition`) from the
         #    current book, operators included, against what fills have
         #    left of every give (a partial fill's remainder)
-        available = {oid: self.registry.available(oid) for oid in loop.offer_ids}
+        available = self.available(loop.offer_ids)
         for leg in loop.legs:
             reason = self.verify_leg(leg, now=now, available=available)
             if reason:
@@ -227,7 +265,7 @@ class MockClearing:
         challenger runs it against the beat's snapshot."""
         dry = MockClearing(_Dry(self.registry), self.ontology, min_surplus=self.min_surplus,
                            require_per_node=self.require_per_node, clock=self.clock,
-                           verifiable_oracles=self.verifiable_oracles)
+                           verifiable_oracles=self.verifiable_oracles, chain_fills=self.chain_fills)
         return dry.submit(proposal)
 
 
@@ -243,6 +281,7 @@ class ChainClearing(MockClearing):
     `reason` carries the beat id on acceptance."""
 
     def __init__(self, registry, ontology, *, beat_client, snapshot_of=None, **kw):
+        kw.setdefault("chain_fills", beat_client.filled)     # the chain is the fill authority
         super().__init__(registry, ontology, **kw)
         self.beat_client = beat_client
         self.snapshot_of = snapshot_of or (lambda root: OfferRegistry(

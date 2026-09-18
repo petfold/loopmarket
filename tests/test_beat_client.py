@@ -369,3 +369,34 @@ def test_a_beat_with_a_composed_want_posts_and_verifies(chain):
     assert client.beat(beat)["fills"] == 7                       # 3 wants + 4 gives, tickets in part
     result = challenge_beat(client, beat, [book], cat, now=NOW)
     assert result.verifies and [v.chain for v in result.legs] == ["leg verifies"] * 3
+
+
+def test_the_chains_fills_are_subtracted_by_the_hunt_and_the_checklist(chain):
+    """A fold that never saw a clearing's fills still knows what the chain
+    has filled (live finding 2026-09-18): after a beat finalizes, a fresh
+    copy of the same offers is not hunted through, and a proposal through
+    them is refused as filled on chain before any bond is at risk."""
+    w3, address, key = chain
+    cat, book = _book()
+    client = BeatClient("", address, key=key, client=w3)
+    agent = SolverAgent(book, cat, clearing=ChainClearing(book, cat, beat_client=client, clock=lambda: NOW),
+                        solver_id="t", min_surplus=0.0)
+    receipts = agent.step(now=NOW)
+    beat = int(receipts[0].reason.split()[1])
+    w3.provider.ethereum_tester.mine_blocks(WINDOW + 1)
+    client.finalize(beat)
+    # the same offers in a book that knows nothing of that clearing
+    cat2 = Ontology.persistent(RecordStore(MemoryBytesStore())); cat2.load({"apple": [], "lesson": []}); cat2.commit()
+    assert cat2.root == cat.root
+    fresh = OfferRegistry(RecordStore(MemoryBytesStore()))
+    fresh.publish_many(list(book.offers(include_filled=True))); fresh.commit()
+    blind = SolverAgent(fresh, cat2, clearing=None, solver_id="t", min_surplus=0.0)
+    _r, loops = blind.find_loops(now=NOW)
+    assert len(loops) == 1                                        # the book alone would propose it
+    aware = SolverAgent(fresh, cat2, clearing=None, solver_id="t", min_surplus=0.0, chain_fills=client.filled)
+    assert aware.find_loops(now=NOW)[1] == []                     # the chain says: spent
+    from loopmarket.clearing import LoopProposal
+    proposal = LoopProposal(loops[0], fresh.store.root, cat2.root, "t", NOW)
+    verdict = ChainClearing(fresh, cat2, beat_client=client, clock=lambda: NOW).submit(proposal)
+    assert not verdict.accepted and verdict.reason.startswith("filled on chain")
+    assert len(client.beats()) == beat                            # nothing posted

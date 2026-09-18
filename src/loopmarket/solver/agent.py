@@ -38,6 +38,7 @@ from dataclasses import dataclass, field
 
 from ..graph import Circulation, ExchangeGraph, Loop, find_circulations
 from ..matching import Leg, aggregate_legs, candidate_matches, composed_legs, parts_legs
+from ..schema import q
 from ..ontology import Ontology
 from ..registry import OfferRegistry
 from ..clearing import LoopProposal, Receipt, Clearing
@@ -54,6 +55,9 @@ class SolverAgent:
     min_surplus: float = 0.005       # don't bother below half a percent
     max_loops_per_step: int = 10
     receipts: list[Receipt] = field(default_factory=list)
+    #: offer id -> quantity the chain has recorded as taken (`BeatClearing.
+    #: filled`), or None: a spent offer is not hunted through (2026-09-18).
+    chain_fills: object = None
 
     def find_loops(self, *, now: int | None = None
                    ) -> tuple[str, list[Loop | Circulation]]:
@@ -69,6 +73,19 @@ class SolverAgent:
         root, book = self.registry.snapshot()
         offers = list(book.offers(now=now))
         available = book.availability(offers)      # partial fills leave remainders
+        if self.chain_fills is not None:           # and the chain's fills are the authority
+            kept = []
+            for o in offers:
+                on_chain = q(self.chain_fills(o.offer_id))
+                if o.composed:
+                    if on_chain > 0:
+                        continue
+                else:
+                    available[o.offer_id] = min(available[o.offer_id], q(o.thing.qty) - on_chain)
+                    if o.thing.exhausted(available[o.offer_id]):
+                        continue
+                kept.append(o)
+            offers = kept
         matches = list(candidate_matches(offers, self.ontology, now=now,
                                          available=available))
         graph = ExchangeGraph.from_matches(matches)

@@ -2112,7 +2112,7 @@ def cmd_loops(args, session, out):
     is profitable, so `loop loops && loop clear` reads naturally."""
     fold = session.fold()
     agent = SolverAgent(fold, session.catalogue, clearing=None,
-                        solver_id="loop-cli", min_surplus=0.0)
+                        solver_id="loop-cli", min_surplus=0.0, chain_fills=_chain_fills(session))
     root, loops = agent.find_loops(now=session.now)
     for loop in loops:
         _print_loop(loop, fold, out)
@@ -2128,6 +2128,16 @@ def _beat_client(session):
     return BeatClient(rpc, address, key=_configured("bee_signer") or None)
 
 
+def _chain_fills(session):
+    """`BeatClearing.filled` when a clearing contract is set — the fill
+    authority the hunt and the checklist subtract from what the book says
+    is left — else None (2026-09-18: a fold that never saw a clearing's
+    fills proposed a loop through an offer the chain had already filled)."""
+    if not (_configured("beat") or "").startswith("chain:"):
+        return None
+    return _beat_client(session).filled
+
+
 def cmd_propose(args, session, out):
     """Clear locally as `clearing` does and post every accepted loop as one
     beat on the clearing contract (P2, 2026-09-15): the book keeps the data,
@@ -2139,10 +2149,10 @@ def cmd_propose(args, session, out):
         session.book.absorb(session.fold())
         session.book.commit()
     book, ontology = session.book, session.catalogue
+    client = _beat_client(session)
     agent = SolverAgent(book, ontology,
-                        ChainClearing(book, ontology, beat_client=_beat_client(session),
-                                      clock=lambda: now),
-                        solver_id="loop-cli", min_surplus=0.0)
+                        ChainClearing(book, ontology, beat_client=client, clock=lambda: now),
+                        solver_id="loop-cli", min_surplus=0.0, chain_fills=client.filled)
     receipts = agent.step(now=now)
     posted = 0
     for r in receipts:
@@ -2307,7 +2317,8 @@ def cmd_commit(args, session, out):
         raise ValueError(f"beat {beat} is in its {PHASES[sealed.phase(beat)]} phase; commits open "
                          f"at block {sealed.window(beat + 1)[0]}")
     fold = session.fold()
-    agent = SolverAgent(fold, session.catalogue, clearing=None, solver_id="loop-cli", min_surplus=0.0)
+    agent = SolverAgent(fold, session.catalogue, clearing=None, solver_id="loop-cli", min_surplus=0.0,
+                        chain_fills=_chain_fills(session))
     root, loops = agent.find_loops(now=session.now)
     if not loops:
         print(f"beat {beat}: nothing to propose on root {root[:16]}…", file=_err())
@@ -2392,8 +2403,9 @@ def cmd_outcome(args, session, out):
     book, ontology = session.book, session.catalogue
     root, snapshot = book.snapshot()
     revealed = sealed.revealed(beat)
-    result = outcome(beat, revealed, snapshot, ontology, now=now,
-                     baseline=baseline_proposals(snapshot, ontology, now=now))
+    fills = _chain_fills(session)
+    result = outcome(beat, revealed, snapshot, ontology, now=now, chain_fills=fills,
+                     baseline=baseline_proposals(snapshot, ontology, now=now, chain_fills=fills))
     print(f"beat {beat}: {len(revealed)} revealed, {result.candidates} candidate loop(s), "
           f"{len(result.winners)} winner(s), score {float(result.score):.4f}", file=out)
     for lid, why in sorted(result.rejected.items()):
