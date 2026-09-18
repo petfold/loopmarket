@@ -103,12 +103,12 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
 - [x] **The contracts** (DONE 2026-09-15, 0.10.0; decided with Peter the
       same day: an optimistic beat with a structural verifier on chain,
       fills recorded by the contract): `TrieProofVerifier.sol`
-      (recordstore's proofs on the EVM, 1.2–1.6 M gas per inclusion),
+      (recordstore's proofs on the EVM, 1.2–1.6 M gas per inclusion under sha256, 1.0–1.2 M under Swarm's BMT addressing since 2026-09-18),
       `LoopVerifier.sol` (one leg's structural half from the anchored root
       and the record bytes, ~3.5 M gas), `BeatClearing.sol` (one outcome
       per beat with a bond, a challenge window, fills recorded at
       finalization, an arbiter hook for the semantic half) — deployed on
-      Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`; `beat.py`,
+      Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`, redeployed 2026-09-18 at `0x1277B4906b6Aab4dF806dd85c5ED980135C12931` with the Swarm-addressing pin; `beat.py`,
       `ChainClearing`, `loop propose` / `finalize`; beat 1 posted live
       and finalized (2026-09-18).
 - [x] **Anchored ids versus proofs** (DECIDED 2026-09-15 with the contract
@@ -134,14 +134,15 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       same day: beat 2, posted from a Swarm clearing book, convicted and
       cancelled on Gnosis from a fresh session (see the BMT item below);
       the submitter now asks the verifier before paying the bond.
-- [ ] **The BMT (keccak) variant of the trie verifier**, for books on Swarm
-      (`addressing: "swarm"`) — now the blocker for clearing from a Swarm
-      book: the 2026-09-18 live gate posted an honest beat from a Swarm
-      clearing book and the sha256 verifier convicted it ("node hash
-      mismatch"); since that day `ChainClearing` refuses to post what the
-      contract would convict, so beats come from `rs:` clearing books until
-      this lands. A compact node encoding asked upstream (recordstore
-      issue #1) would cut the gas several-fold.
+- [x] **The BMT (keccak) variant of the trie verifier** (DONE 2026-09-18,
+      hours after the live gate made it the blocker): `SwarmAddress.sol`
+      computes Swarm's chunk-tree address on the EVM, `TrieProofVerifier`
+      takes the addressing scheme, the beat pins it (`Beat.addressing`),
+      and a Swarm-addressed clearing book's beat posts and verifies —
+      live that evening: beat 1 on the new contract from a Swarm clearing
+      book, *verifies* from a fresh session. Redeployed on Gnosis at `0x1277B4906b6Aab4dF806dd85c5ED980135C12931`. A compact node
+      encoding asked upstream (recordstore issue #1) would still cut the
+      gas several-fold.
 - [ ] Composed wants (`Parts`) verified on chain; today `LoopVerifier`
       refuses them and the beat carries only simple, operator-composed and
       aggregated legs.

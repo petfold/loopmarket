@@ -50,17 +50,24 @@ LEG_TYPE = "((bytes32,bytes,bytes[]),(bytes32,bytes,bytes[])[],(uint256,uint256)
 def abi() -> dict:
     """The compiled contract: ABI and creation bytecode, shipped inside the
     package as `loopmarket/contracts/BeatClearing.json` (solc 0.8.24, via
-    IR, optimizer 200 runs) so an installed wheel can talk to the deployed
-    contract without a compiler or the repository."""
+    IR, optimizer 200 runs; rebuilt by `scripts/build_beat.py`) so an
+    installed wheel can talk to the deployed contract without a compiler
+    or the repository."""
     from importlib import resources
     with resources.files("loopmarket").joinpath("contracts", "BeatClearing.json").open(
             encoding="utf-8") as fh:
         return json.load(fh)
 
 
+#: The book root's addressing scheme as the contract numbers it
+#: (`LoopVerifier.Beat.addressing`, 2026-09-18): the proof envelope names it.
+ADDRESSING = {"sha256": 0, "swarm": 1}
+ADDRESSING_NAMES = {v: k for k, v in ADDRESSING.items()}
+
+
 @dataclass(frozen=True)
 class Submission:
-    pins: tuple            # (bookRoot, ontologyRoot, registryVersion, contractVersion)
+    pins: tuple            # (bookRoot, ontologyRoot, registryVersion, contractVersion, addressing)
     legs: list             # LoopVerifier.Leg tuples, in the loop record's order
     leg_hashes: list       # keccak256(abi.encode(leg)) each
     fills: list            # (offer id bytes, n, d)
@@ -79,6 +86,17 @@ def _proof(snapshot: OfferRegistry, offer_id: str):
         raise ValueError(f"offer {offer_id[:12]} is not under the snapshot's root")
     return (bytes.fromhex(offer_id), bytes.fromhex(p["value"]),
             [bytes.fromhex(n) for n in p["nodes"]])
+
+
+def _addressing(snapshot: OfferRegistry, offer_id: str) -> int:
+    """The scheme the snapshot's proofs name — sha256 for a directory or
+    memory store, Swarm's BMT for a book on Swarm or a Swarm-addressed
+    mirror — as the contract numbers it. Unknown names refuse: a beat the
+    contract cannot verify is never built."""
+    name = snapshot.store.prove("offer/" + offer_id).get("addressing")
+    if name not in ADDRESSING:
+        raise ValueError(f"the book's proofs use {name!r} addressing, which no verifier knows")
+    return ADDRESSING[name]
 
 
 def submission(proposal: LoopProposal, snapshot: OfferRegistry, *,
@@ -110,7 +128,8 @@ def submission(proposal: LoopProposal, snapshot: OfferRegistry, *,
     first = circ.legs[0].want
     pins = (bytes.fromhex(proposal.book_root),
             bytes.fromhex(proposal.ontology_root) if proposal.ontology_root else bytes(32),
-            first.registry_version.encode(), first.contract_version.encode())
+            first.registry_version.encode(), first.contract_version.encode(),
+            _addressing(snapshot, first.offer_id))
     return Submission(pins, legs, hashes, fills, [m.encode() for m in makers],
                       [_rat(potentials[m]) for m in makers])
 
@@ -341,6 +360,7 @@ class BeatClient:
                 "book_root": pins[0].hex(), "ontology_root": pins[1].hex(),
                 "registry_version": bytes(pins[2]).decode(),
                 "contract_version": bytes(pins[3]).decode(),
+                "addressing": ADDRESSING_NAMES.get(pins[4], str(pins[4])),
                 "legs_hash": bytes(b[4]), "potentials_hash": bytes(b[5]), "fills": b[6],
                 "finalized": b[7], "cancelled": b[8], "window_end": window_end,
                 "open": not b[7] and not b[8]
@@ -363,7 +383,8 @@ class BeatClient:
         """What the contract's verifier says about leg `index` of a posted
         beat, without a transaction — see `verdict_of`."""
         pins = (bytes.fromhex(state["book_root"]), bytes.fromhex(state["ontology_root"]),
-                state["registry_version"].encode(), state["contract_version"].encode())
+                state["registry_version"].encode(), state["contract_version"].encode(),
+                ADDRESSING.get(state["addressing"], 255))
         return self.verdict_of(sub, index, pins=pins, gas=gas)
 
     def verdict_of(self, sub: Submission, index: int, *, pins=None,

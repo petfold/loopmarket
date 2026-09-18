@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "./SwarmAddress.sol";
+
 /// On-chain verification of recordstore's trie proofs
-/// (`format: "recordstore-trie-proof", version: 1`, sha256 addressing) —
+/// (`format: "recordstore-trie-proof", version: 1`; sha256 addressing, or
+/// since 2026-09-18 Swarm's BMT addressing for a book whose roots are Swarm
+/// references — `SwarmAddress.sol`, chosen by the `addressing` argument the
+/// proof envelope names: 0 sha256, 1 swarm) —
 /// the P2 clearing contract's evidence layer (docs/plans/proof-fabric.md
 /// §1, §5). A proof is the raw node blobs along a key's one possible path
 /// in the canonical radix trie; each node is canonical JSON,
@@ -12,15 +17,27 @@ pragma solidity ^0.8.20;
 /// 64 hex characters after the pattern `"XX":"`, which can occur nowhere
 /// else in a node (the other keys are "p", "tn", "v"; values are hex).
 /// Verification is the hash chain over the exact bytes — sha256 per node
-/// (the EVM precompile), never a re-serialization — mirroring
+/// (the EVM precompile) or Swarm's chunk address, never a re-serialization — mirroring
 /// recordstore's `verify_proof` step for step. Absence is provable because
 /// the encoding is canonical: the walk ends where the key would live.
 library TrieProofVerifier {
+    uint8 internal constant SHA256 = 0;
+    uint8 internal constant SWARM = 1;
+
+    /// The reference of `blob` under an addressing scheme: sha256 of the
+    /// bytes, or Swarm's chunk-tree address of them.
+    function refOf(bytes memory blob, uint8 addressing) internal pure returns (bytes32) {
+        if (addressing == SHA256) return sha256(blob);
+        if (addressing == SWARM) return SwarmAddress.addressOf(blob);
+        revert("unknown addressing");
+    }
+
     /// Walk `nodes` from `root` along `key`. Returns whether the key is
-    /// present and, if so, the reference (sha256) of its value blob.
-    /// Reverts on any node that does not hash to where the walk expects it,
-    /// on a malformed node, or on a walk that ends before it concludes.
-    function verifyPath(bytes32 root, bytes memory key, bytes[] memory nodes)
+    /// present and, if so, the reference of its value blob under the same
+    /// addressing. Reverts on any node that does not hash to where the walk
+    /// expects it, on a malformed node, or on a walk that ends before it
+    /// concludes.
+    function verifyPath(bytes32 root, bytes memory key, bytes[] memory nodes, uint8 addressing)
         internal pure returns (bool present, bytes32 valueRef)
     {
         bytes32 expected = root;
@@ -29,7 +46,7 @@ library TrieProofVerifier {
         for (uint256 i = 0; i < nodes.length; i++) {
             require(!concluded, "node past conclusion");
             bytes memory node = nodes[i];
-            require(sha256(node) == expected, "node hash mismatch");
+            require(refOf(node, addressing) == expected, "node hash mismatch");
             // the prefix
             (uint256 pStart, uint256 pLen) = _find(node, '"p":"', 0);
             require(pStart != type(uint256).max, "no prefix");
@@ -70,18 +87,19 @@ library TrieProofVerifier {
     }
 
     /// Inclusion: the key is present and `value` hashes to its reference.
-    function verifyInclusion(bytes32 root, bytes memory key, bytes[] memory nodes, bytes memory value)
+    function verifyInclusion(bytes32 root, bytes memory key, bytes[] memory nodes, bytes memory value,
+                             uint8 addressing)
         internal pure returns (bool)
     {
-        (bool present, bytes32 ref) = verifyPath(root, key, nodes);
-        return present && sha256(value) == ref;
+        (bool present, bytes32 ref) = verifyPath(root, key, nodes, addressing);
+        return present && refOf(value, addressing) == ref;
     }
 
     /// Absence: the walk concludes without the key.
-    function verifyAbsence(bytes32 root, bytes memory key, bytes[] memory nodes)
+    function verifyAbsence(bytes32 root, bytes memory key, bytes[] memory nodes, uint8 addressing)
         internal pure returns (bool)
     {
-        (bool present, ) = verifyPath(root, key, nodes);
+        (bool present, ) = verifyPath(root, key, nodes, addressing);
         return !present;
     }
 
@@ -143,15 +161,19 @@ library TrieProofVerifier {
 /// A thin external face over the library, for tests and for callers that
 /// verify off-contract; the clearing contract inlines the library.
 contract TrieProofVerifierFace {
-    function verifyPath(bytes32 root, bytes memory key, bytes[] memory nodes)
+    function verifyPath(bytes32 root, bytes memory key, bytes[] memory nodes, uint8 addressing)
         external pure returns (bool, bytes32)
-    { return TrieProofVerifier.verifyPath(root, key, nodes); }
+    { return TrieProofVerifier.verifyPath(root, key, nodes, addressing); }
 
-    function verifyInclusion(bytes32 root, bytes memory key, bytes[] memory nodes, bytes memory value)
+    function verifyInclusion(bytes32 root, bytes memory key, bytes[] memory nodes, bytes memory value,
+                             uint8 addressing)
         external pure returns (bool)
-    { return TrieProofVerifier.verifyInclusion(root, key, nodes, value); }
+    { return TrieProofVerifier.verifyInclusion(root, key, nodes, value, addressing); }
 
-    function verifyAbsence(bytes32 root, bytes memory key, bytes[] memory nodes)
+    function verifyAbsence(bytes32 root, bytes memory key, bytes[] memory nodes, uint8 addressing)
         external pure returns (bool)
-    { return TrieProofVerifier.verifyAbsence(root, key, nodes); }
+    { return TrieProofVerifier.verifyAbsence(root, key, nodes, addressing); }
+
+    function swarmReference(bytes memory data) external pure returns (bytes32)
+    { return SwarmAddress.addressOf(data); }
 }

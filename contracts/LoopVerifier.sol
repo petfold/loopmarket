@@ -8,7 +8,9 @@ import "./TrieProofVerifier.sol";
 /// Given a beat — the anchored book root and the catalogue pins — and one
 /// leg of a proposed loop with every offer's canonical record bytes and
 /// trie proof, this library checks what a contract can check:
-///   * each offer's bytes hash to its id (U2) and sit under the book root;
+///   * each offer's bytes hash to its id (U2) and sit under the book root
+///     (a sha256 root, or a Swarm reference for a book on Swarm — the
+///     beat says which, `Beat.addressing`, since 2026-09-18);
 ///   * each offer is a v4 record whose pins equal the beat's (U10);
 ///   * the want is a want, every give a give, makers as the leg claims,
 ///     no maker on both sides of one leg;
@@ -34,6 +36,7 @@ library LoopVerifier {
         bytes32 ontologyRoot;      // as the offers pin it (32 bytes of the hex root)
         bytes registryVersion;     // e.g. "4.2"
         bytes contractVersion;     // e.g. "0.1"
+        uint8 addressing;          // the book root's scheme: 0 sha256, 1 Swarm (BMT) — 2026-09-18
     }
 
     struct OfferProof {
@@ -105,7 +108,7 @@ library LoopVerifier {
         for (uint256 i = 0; i < r.length; i++) r[i] = blob[head.length + i];
         require(sha256(r) == p.id, "record does not hash to its id");
         bytes memory key = abi.encodePacked("offer/", _hex(p.id));
-        require(TrieProofVerifier.verifyInclusion(beat.bookRoot, key, p.nodes, blob),
+        require(TrieProofVerifier.verifyInclusion(beat.bookRoot, key, p.nodes, blob, beat.addressing),
                 "offer not under the book root");
         // version and pins
         require(_hasExact(r, bytes('"v":4')), "not a v4 record");

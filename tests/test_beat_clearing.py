@@ -99,7 +99,7 @@ def _legs(snapshot, rec):
 
 
 def _pins(root):
-    return (bytes.fromhex(root), bytes.fromhex(PINS["ontology_root"]), b"4.2", b"0.1")
+    return (bytes.fromhex(root), bytes.fromhex(PINS["ontology_root"]), b"4.2", b"0.1", 0)
 
 
 def test_submit_challenge_and_finalize(chain):

@@ -94,8 +94,22 @@ verifier (several-fold), and a compact node encoding from recordstore
 C-track sketches a POT-format *second* encoding and notes the on-chain
 half as what POT would add, but no binary encoding of the radix trie
 itself). Under the P2 design these costs fall only on a challenged leg,
-never on the happy path. The Swarm (BMT, keccak) addressing is the next
-verifier variant; books on Swarm carry that scheme.
+never on the happy path. **The Swarm (BMT, keccak) addressing landed
+2026-09-18** (`contracts/SwarmAddress.sol`), hours after the live gate
+posted an honest beat from a Swarm clearing book and the sha256 verifier
+convicted it: the chunk address — keccak256 of the little-endian span and
+the binary Merkle root over 32-byte segments zero-padded to 4096, the
+all-zero subtrees a constant per level — and the 128-ary chunk tree above
+one chunk, mirroring swarmfs's splitter (which matches Bee's plain
+upload; erasure-coded roots differ and are not predicted). The verifier
+takes the scheme as an argument and the beat pins it (`Beat.addressing`,
+0 sha256 / 1 swarm). Measured on the local EVM: 57 k gas to address a
+400-byte blob, 277 k a full 4096-byte chunk, 321 k two chunks; a
+Swarm-addressed inclusion over a 12-offer book 1.0–1.2 M — cheaper than
+the sha256 path on the 40-offer book only because the paths are shorter;
+per node the BMT costs some 50 k more than the precompile. Verified
+against swarmfs's `content_address` at every tree shape and on a
+Swarm-addressed book's real proofs (`tests/test_trie_verifier.py`).
 
 **Step two, the same day: `contracts/LoopVerifier.sol`** — the structural
 half of clearing for one leg: each offer's trie value blob (recordstore's

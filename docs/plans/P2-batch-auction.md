@@ -99,7 +99,7 @@ scoring machinery of §3–§7 sits *in front of* this contract and is not
 built; today one submitter posts one outcome. `tests/test_beat_clearing.py`.
 **Deployed 2026-09-15 on Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`** (bond 0.01 xDAI, window 720
 blocks ≈ one hour, arbiter the deployer's key until factbond's
-adjudication): `loop set beat chain:https://rpc.gnosischain.com@0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`.
+adjudication): `loop set beat chain:https://rpc.gnosischain.com@0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`; **redeployed 2026-09-18 at `0x1277B4906b6Aab4dF806dd85c5ED980135C12931`** (the pins carry the root's addressing scheme).
 **Live gate the same day:** a pinned catalogue in a record store, three
 makers' local books announced through a file registry, and `loop propose`
 cleared the triangle into the solver's clearing book and posted it as
@@ -127,10 +127,12 @@ chain and heard "node hash mismatch" from the contract on each — the
 Swarm-addressed book's BMT proofs against the sha256 verifier — and,
 given a key, cancelled the beat and took the bond in 24 s. Consequence
 built the same day: `ChainClearing` runs the contract's verifier on every
-leg (free) before paying a bond and refuses what it would convict; until
-the BMT verifier exists, beats come from `rs:` clearing books. What is
-not built: the BMT verifier, and the sealed-proposal beat in front of the
-contract.
+leg (free) before paying a bond and refuses what it would convict. **The
+BMT verifier followed the same day** (`SwarmAddress.sol`; the beat pins
+its root's addressing scheme) and the contract was redeployed at
+`0x1277B4906b6Aab4dF806dd85c5ED980135C12931`, so a Swarm clearing book's beat verifies — live
+that evening: beat 1 on the new contract, *verifies* from a fresh session.
+What is not built: the sealed-proposal beat in front of the contract.
 
 ## 3. Sealed proposals
 

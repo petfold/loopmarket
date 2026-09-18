@@ -93,7 +93,7 @@ def _leg_args(snapshot, rec, leg):
 
 def _beat(root, pins):
     return (bytes.fromhex(root), bytes.fromhex(pins["ontology_root"]),
-            pins["registry_version"].encode(), pins["contract_version"].encode())
+            pins["registry_version"].encode(), pins["contract_version"].encode(), 0)
 
 
 def test_a_cleared_loop_verifies_leg_by_leg(face):
@@ -146,10 +146,10 @@ def test_every_structural_fault_is_refused(face):
     refused((want_p, gives_p, taken), match="left")
     verifier.functions.setFilled(gid, 0, 1).transact()
     # pins: the beat names another catalogue root, registry, contract
-    refused(good, beat_=(bytes.fromhex(root), bytes(32), b"4.2", b"0.1"), match="ontology pin")
-    refused(good, beat_=(bytes.fromhex(root), bytes.fromhex("ab" * 32), b"5.0", b"0.1"), match="registry pin")
+    refused(good, beat_=(bytes.fromhex(root), bytes(32), b"4.2", b"0.1", 0), match="ontology pin")
+    refused(good, beat_=(bytes.fromhex(root), bytes.fromhex("ab" * 32), b"5.0", b"0.1", 0), match="registry pin")
     # another book root: the proof does not hash there
-    refused(good, beat_=(bytes(32), bytes.fromhex("ab" * 32), b"4.2", b"0.1"))
+    refused(good, beat_=(bytes(32), bytes.fromhex("ab" * 32), b"4.2", b"0.1", 0))
     # potentials that do not balance: the buyer's potential too small
     verifier.functions.setPotentials([b"b1", b"farm"], [1, 1], [10, 1]).transact()
     refused(good, match="balance")

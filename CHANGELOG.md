@@ -45,6 +45,33 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   reason, and no beat is posted. Found live the same day (below): an
   honest beat from a Swarm-addressed clearing book was convictable.
 
+- **The BMT verifier: books on Swarm prove on chain** (P2, 2026-09-18,
+  the roadmap item the live gate below turned into a blocker).
+  `contracts/SwarmAddress.sol` computes Swarm's content address on the EVM
+  — keccak256 of the little-endian span and the binary Merkle root over the
+  payload's 32-byte segments zero-padded to 4096 (the all-zero subtrees a
+  constant per level, so a 400-byte record costs ~15 keccaks), and the
+  chunk tree above one chunk (leaves of 4096, intermediates of up to 128
+  references, a lone entry promoted) — mirroring swarmfs's splitter, which
+  Bee's plain upload matches. `TrieProofVerifier` takes an `addressing`
+  argument (0 sha256, 1 swarm) and hashes nodes and values under it;
+  `LoopVerifier.Beat` pins it as a fifth field, so the beat commits to the
+  scheme its root is in; `beat.submission` reads it from the proof
+  envelope. Measured: 57 k gas to address a 400-byte blob, 277 k a full
+  chunk, 321 k two chunks; a Swarm-addressed inclusion 1.0–1.2 M. Verified
+  against swarmfs's `content_address` at every tree shape (empty, partial
+  segment, one chunk, two leaves, a one-byte tail) and on a Swarm-addressed
+  book's real proofs; a beat from such a book posts and verifies.
+  **Redeployed on Gnosis at `0x1277B4906b6Aab4dF806dd85c5ED980135C12931`** (the pins ABI changed;
+  bond 0.01 xDAI, window 720 blocks, arbiter the deployer's key). The
+  artifact is rebuilt by `scripts/build_beat.py`. **Live the same evening:**
+  a fresh Swarm clearing book announced on Gnosis posted the triangle as
+  beat 1 on the new contract in one attempt (recordstore 0.20.3's probe
+  retry behind it), and a fresh session's `loop challenge 1` found the
+  record through the announcement, read it from Swarm, held every leg off
+  chain and heard "leg verifies" from the contract on each — the beat
+  stands, exit 0. Finalization waits for its window.
+
 ### Live gate, 2026-09-18
 
 The challenger from a fresh session. Three makers' `rs:` books announced
