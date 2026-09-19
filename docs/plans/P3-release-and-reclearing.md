@@ -190,12 +190,24 @@ read of the ladder. Today's two numbers are the two-point ladder: the
 
 Consequences:
 
-- **No formula for humans.** The CLI derives the default ladder from the
-  two amounts a maker already gives, linear from a default horizon (a
-  week) to the window's start; a maker who cares adds a middle point or
-  moves the horizon. That is the "automatic mechanism in the offer" with
-  nothing to compute by hand. The far end above zero *is* the mental
-  transaction cost.
+- **No formula for humans.** The CLI derives the ladder from the two
+  amounts a maker already gives. **The horizon is a fraction of the lead
+  at posting** (Peter, 2026-09-19) — the time between posting and the
+  window's start, so a performance booked two months out and a box for
+  tomorrow each get a ladder scaled to their own wait; a fixed week was
+  the wrong unit. **A few ladder types, not many**, each a fixed set of
+  knees at fractions of that span, chosen by `set ladder TYPE`:
+  `linear` (the default: the cancel amount at the horizon, the no-show
+  amount at the window, straight between), `late` (flat at the cancel
+  amount for most of the wait, rising over the last fraction — the
+  performance, where the cost arrives with the dressing-up), `early`
+  (rising over the first fraction, then flat — the chartered bus or the
+  catering, where the preparation is the cost), `flat` (the cancel
+  amount until the window, then the no-show amount). The fractions are
+  the CLI's constants, and **the record carries only the resulting
+  points**: no type name, no fraction, no formula enters the protocol,
+  and a maker who wants a shape of its own writes the points. The far end
+  above zero *is* the mental transaction cost.
 - **No new admissibility logic.** The counterparty's reserved bond must
   cover the ladder's maximum, the no-show amount — exactly what the gate
   checks today; only the payout reads the ladder.

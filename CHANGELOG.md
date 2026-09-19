@@ -312,8 +312,9 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   `P3-release-and-reclearing.md` §5c). What a cancellation costs depends
   on when: a few `(lead, amount)` points on the maker's own scale,
   interpolated linearly, read at the cancellation's lead time; the CLI
-  derives a two-point default from `require_cancel` and `require_bond`
-  over a week; the counterparty's bond covers the ladder's maximum, so the
+  derives it from `require_cancel` and `require_bond` over a horizon that
+  is a fraction of the lead at posting, in one of a few shapes (`set
+  ladder linear|late|early|flat`), the record carrying only the points; the counterparty's bond covers the ladder's maximum, so the
   gate is unchanged; fixed at clearing; symmetric. Replaces the single
   `cancel` number in the held v5 change.
 
