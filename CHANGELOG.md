@@ -9,6 +9,20 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Added
+
+- **factbond as the resolver** (2026-09-19 evening): `LoopEscrow` gains
+  the key-only `hold(bytes32)` / `resolve(bytes32, uint256)` — the
+  `subject` a generic resolver names, keccak(offer, loop), derivable from
+  the record — beside the (offer, loop) spellings; a `Reservation`
+  remembers its offer; `EscrowClient.subject`. The CLI's `resolver`
+  setting names who resolves the reservations `finalize` sends (factbond's
+  `Assertions` once deployed; a give's declared `arbitrator` wins; empty:
+  my key). `tests/test_escrow.py::test_factbond_as_the_resolver` compiles
+  factbond's contract from the sibling checkout and runs a claim on a
+  real reservation both ways — certified by timeout and paid, disputed
+  and refuted with the giver refunded — skipping without `../factbond`.
+
 ## [0.11.0] — 2026-09-19
 
 ### Added

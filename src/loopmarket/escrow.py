@@ -234,6 +234,11 @@ class EscrowClient:
         return {"wanter": r[0], "resolver": r[1], "amount": r[2], "window": (r[3], r[4]),
                 "claim_until": r[5], "held": r[6], "settled": r[7], "ladder": list(zip(r[8], r[9]))}
 
+    def subject(self, offer_id: str, loop_id: str) -> bytes:
+        """The reservation's key — the `subject` a generic resolver (factbond's
+        `Assertions`) names in a claim about this fill."""
+        return self.contract().functions.key(offer_key(offer_id), offer_key(loop_id)).call()
+
     def ladder_at(self, offer_id: str, loop_id: str, lead: int) -> int:
         return self.contract().functions.ladderAt(offer_key(offer_id), offer_key(loop_id), int(lead)).call()
 

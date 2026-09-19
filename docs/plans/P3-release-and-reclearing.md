@@ -362,7 +362,14 @@ bounded to the legs that chose it. Nothing about stakes, challenges,
 periods or fees enters loopmarket; nothing about offers, loops or ladders
 enters factbond.
 
-**Today's stand-in.** Until factbond's contract exists the resolver is one
+**Built the same evening in factbond** (`contracts/Assertions.sol`, its
+`CLAUDE.md`): the escrow's key-only `hold`/`resolve` are its consumer
+interface, no registration (the escrow's acceptance of `hold` ties the
+subject to the resolver), and loopmarket's `test_factbond_as_the_resolver`
+runs a claim on a real reservation both ways. Not yet deployed; the CLI's
+`resolver` setting takes its address when it is.
+
+**Today's stand-in.** Until factbond's contract is deployed the resolver is one
 key (the deployer's, as `BeatClearing`'s arbiter is), ruling directly
 through the same two calls; when factbond lands it takes the resolver's
 address and the escrow does not change. The declaration selects the

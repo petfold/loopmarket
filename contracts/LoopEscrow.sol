@@ -49,6 +49,7 @@ contract LoopEscrow {
     }
 
     struct Reservation {
+        bytes32 offer;      // the deposit this reservation draws on
         address wanter;     // the leg's counterparty: payouts go here
         address resolver;   // who may hold and resolve a contested claim
         uint256 amount;     // the share reserved for this fill (bond × taken / quantity)
@@ -72,8 +73,8 @@ contract LoopEscrow {
 
     event Deposited(bytes32 indexed offer, address giver, address token, uint256 amount);
     event Reserved(bytes32 indexed offer, bytes32 indexed loop, address wanter, address resolver, uint256 amount);
-    event Held(bytes32 indexed offer, bytes32 indexed loop);
-    event Settled(bytes32 indexed offer, bytes32 indexed loop, uint256 toWanter, uint256 toGiver, string how);
+    event Held(bytes32 indexed key);
+    event Settled(bytes32 indexed key, uint256 toWanter, uint256 toGiver, string how);
     event Withdrawn(bytes32 indexed offer, uint256 amount);
     event Notice(bytes32 indexed offer, uint256 block_);
     event OfferRegistered(bytes32 indexed offer);
@@ -174,7 +175,7 @@ contract LoopEscrow {
             require(ladderAmount[i] <= amount, "ladder above the reservation");
             if (i > 0) require(ladderLead[i] < ladderLead[i - 1], "ladder leads descend");
         }
-        r.wanter = wanter; r.resolver = resolver; r.amount = amount;
+        r.offer = offer; r.wanter = wanter; r.resolver = resolver; r.amount = amount;
         r.windowStart = windowStart; r.windowEnd = windowEnd; r.claimUntil = windowEnd + claimSeconds;
         r.ladderLead = ladderLead; r.ladderAmount = ladderAmount;
         reservedTotal[offer] += amount;
@@ -212,7 +213,7 @@ contract LoopEscrow {
         require(msg.sender == deposits[offer].giver, "not the giver");
         require(r.amount > 0 && !r.settled && !r.held, "not open");
         uint64 lead = block.timestamp < r.windowStart ? r.windowStart - uint64(block.timestamp) : 0;
-        _settle(offer, loop, r, lead == 0 ? r.amount : ladderAt(offer, loop, lead), "cancelled");
+        _settle(key(offer, loop), r, lead == 0 ? r.amount : ladderAt(offer, loop, lead), "cancelled");
     }
 
     /// The wanter countersigns delivery: the reservation returns to the giver now.
@@ -220,7 +221,7 @@ contract LoopEscrow {
         Reservation storage r = reservations[key(offer, loop)];
         require(msg.sender == r.wanter, "not the wanter");
         require(r.amount > 0 && !r.settled, "not open");
-        _settle(offer, loop, r, 0, "countersigned");
+        _settle(key(offer, loop), r, 0, "countersigned");
     }
 
     /// Quiet after the window: the claim period passed with no claim held,
@@ -230,41 +231,60 @@ contract LoopEscrow {
         require(r.amount > 0 && !r.settled, "not open");
         require(!r.held, "a claim is open");
         require(block.timestamp > r.claimUntil, "claim period open");
-        _settle(offer, loop, r, 0, "quiet");
+        _settle(key(offer, loop), r, 0, "quiet");
     }
 
     // ---- the resolver's two calls --------------------------------------------
+    // Two spellings of each: by (offer, loop) for people and the CLI, and by
+    // the reservation's key alone — the `subject` a generic resolver such as
+    // factbond's `Assertions` knows (its IConsumer: `hold(bytes32)`,
+    // `resolve(bytes32, uint256)`); the key is keccak(offer, loop), so the
+    // subject of a claim on a fill is derivable by anyone from the record.
+
+    function hold(bytes32 k) external {
+        _hold(k, reservations[k]);
+    }
+
+    function resolve(bytes32 k, uint256 toWanter) external {
+        _resolve(k, reservations[k], toWanter);
+    }
 
     /// A claim about this fill is open (factbond: a bonded assertion whose
     /// subject is this key): the quiet timeout stops.
     function hold(bytes32 offer, bytes32 loop) external {
-        Reservation storage r = reservations[key(offer, loop)];
+        _hold(key(offer, loop), reservations[key(offer, loop)]);
+    }
+
+    function _hold(bytes32 k, Reservation storage r) private {
         require(msg.sender == r.resolver, "not the resolver");
         require(r.amount > 0 && !r.settled, "not open");
         require(block.timestamp <= r.claimUntil, "claim period over");
         r.held = true;
-        emit Held(offer, loop);
+        emit Held(k);
     }
 
     /// The claim resolved: `toWanter` of the reservation to the wanter, the
     /// rest to the giver. The resolver's one power, bounded to this fill.
     function resolve(bytes32 offer, bytes32 loop, uint256 toWanter) external {
-        Reservation storage r = reservations[key(offer, loop)];
+        _resolve(key(offer, loop), reservations[key(offer, loop)], toWanter);
+    }
+
+    function _resolve(bytes32 k, Reservation storage r, uint256 toWanter) private {
         require(msg.sender == r.resolver, "not the resolver");
         require(r.amount > 0 && !r.settled && r.held, "no claim held");
         require(toWanter <= r.amount, "beyond the reservation");
-        _settle(offer, loop, r, toWanter, "resolved");
+        _settle(k, r, toWanter, "resolved");
     }
 
-    function _settle(bytes32 offer, bytes32 loop, Reservation storage r, uint256 toWanter, string memory how) private {
+    function _settle(bytes32 k, Reservation storage r, uint256 toWanter, string memory how) private {
         r.settled = true;
-        Deposit storage d = deposits[offer];
+        Deposit storage d = deposits[r.offer];
         d.released += r.amount;
-        reservedTotal[offer] -= r.amount;
+        reservedTotal[r.offer] -= r.amount;
         uint256 toGiver = r.amount - toWanter;
         if (toWanter > 0) _pay(d.token, payable(r.wanter), toWanter);
         if (toGiver > 0) _pay(d.token, payable(d.giver), toGiver);
-        emit Settled(offer, loop, toWanter, toGiver, how);
+        emit Settled(k, toWanter, toGiver, how);
     }
 
     // ---- the giver leaves ----------------------------------------------------

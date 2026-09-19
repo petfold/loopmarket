@@ -137,6 +137,11 @@ _SETTINGS = {
         "the escrow contract holding my deposit: chain:RPC_URL@CONTRACT "
         "(LoopEscrow; the record names the address); `deposit [ID]` funds "
         "a give's declared bond there (empty: a declaration only)"),
+    "resolver": _Setting(
+        "LOOP_RESOLVER", "", "--resolver ADDRESS",
+        "who resolves a contested claim on a deposit my clearing reserves: "
+        "factbond's Assertions contract once deployed (a give's declared "
+        "arbitrator wins); empty: my own key rules directly"),
     "escrow_claim": _Setting(
         "LOOP_ESCROW_CLAIM", "7d", "--escrow-claim DURATION",
         "how long after a leg's handover window a claim on its deposit may "
@@ -2445,7 +2450,8 @@ def cmd_finalize(args, session, out):
         return 2
     escrow = _escrow_client(session)
     proposal = proposal_from_record(ev.record, ev.snapshot)
-    reservations = reservations_for(proposal, escrow=escrow.address, resolver=escrow.account().address,
+    reservations = reservations_for(proposal, escrow=escrow.address,
+                                    resolver=_configured("resolver") or escrow.account().address,
                                     claim_seconds=duration_s(_configured("escrow_claim") or "7d"),
                                     now=session.now, span=_calendar_span)
     for r in reservations:

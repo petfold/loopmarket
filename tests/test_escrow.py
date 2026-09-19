@@ -220,3 +220,56 @@ def test_client_reads_and_the_shipped_artifact_match_the_source(chain):
             "notice", "withdraw", "held", "free", "ladderAt"} <= names
     with pytest.raises(ValueError):
         client.deposit(OFFER, 1)
+
+
+def test_factbond_as_the_resolver(chain):
+    """Custody here, adjudication in factbond (P3 §5e): a reservation whose
+    resolver is factbond's `Assertions` contract. The wanter asserts the
+    giver failed — factbond holds the reservation through the key-only
+    `hold(subject)`; undisputed, the claim certifies by timeout and factbond
+    resolves the payout; disputed and refuted, the giver gets the reservation
+    back. Skips unless the sibling factbond checkout is beside this one."""
+    import solcx
+    src = os.path.join(HERE, "..", "..", "factbond", "contracts", "Assertions.sol")
+    if not os.path.exists(src):
+        pytest.skip("needs ../factbond (contracts/Assertions.sol)")
+    w3, escrow, coin, clearing = chain
+    compiled = solcx.compile_files([src], output_values=["abi", "bin"], solc_version="0.8.24",
+                                   optimize=True, optimize_runs=200, via_ir=True,
+                                   allow_paths=os.path.dirname(src))
+    art = next(v for k, v in compiled.items() if k.endswith(":Assertions"))
+    adjudicator, treasury, giver, wanter = w3.eth.accounts[5], w3.eth.accounts[9], w3.eth.accounts[2], w3.eth.accounts[3]
+    fee, floor = 10 ** 15, 10 ** 16
+    receipt = w3.eth.wait_for_transaction_receipt(
+        w3.eth.contract(abi=art["abi"], bytecode=art["bin"]).constructor(
+            adjudicator, treasury, fee, floor, 100, 100, 7500, 5000).transact())
+    factbond = w3.eth.contract(address=receipt["contractAddress"], abi=art["abi"])
+    offer = bytes.fromhex("77" * 32)
+    escrow.functions.deposit(offer).transact({"from": giver, "value": 10 ** 18})
+    now = _now(w3)
+    quiet, refuted = bytes.fromhex("a1" * 32), bytes.fromhex("a2" * 32)
+    for loop in (quiet, refuted):
+        _reserve(escrow, clearing, offer, loop, wanter, factbond.address, 4 * 10 ** 17, now, now + 10, claim=1000)
+    # a claim on a subject the escrow never gave factbond is refused by the escrow's hold
+    subj_q = escrow.functions.key(offer, quiet).call()
+    other = escrow.functions.key(offer, bytes.fromhex("a3" * 32)).call()
+    assert "not the resolver" in _reverts(w3, factbond.functions.assert_(other, escrow.address, 1, 990), wanter, value=fee + floor)
+    # undisputed: the wanter asserts failure claiming the reservation, and after the window factbond pays it out
+    factbond.functions.assert_(subj_q, escrow.address, 4 * 10 ** 17, 990).transact({"from": wanter, "value": fee + floor})
+    id_q = factbond.functions.count().call()
+    assert escrow.functions.reservation(offer, quiet).call()[6]                    # held
+    assert "a claim is open" in _reverts(w3, escrow.functions.settle(offer, quiet), giver)
+    _advance(w3, 200)
+    before = w3.eth.get_balance(wanter)
+    factbond.functions.certify(id_q).transact({"from": w3.eth.accounts[4]})
+    assert w3.eth.get_balance(wanter) - before == 4 * 10 ** 17 + floor            # the payout, and her bond back
+    assert escrow.functions.reservation(offer, quiet).call()[7]                    # settled
+    # disputed and refuted: the giver contests, the adjudicator rules against the claim, the giver is refunded
+    subj_r = escrow.functions.key(offer, refuted).call()
+    factbond.functions.assert_(subj_r, escrow.address, 4 * 10 ** 17, 990).transact({"from": wanter, "value": fee + floor})
+    id_r = factbond.functions.count().call()
+    factbond.functions.dispute(id_r).transact({"from": giver, "value": factbond.functions.stakeFor(floor, 990).call()})
+    before = w3.eth.get_balance(giver)
+    factbond.functions.rule(id_r, False).transact({"from": adjudicator})
+    assert w3.eth.get_balance(giver) - before >= 4 * 10 ** 17                      # the reservation back, plus the slash
+    assert escrow.functions.free(offer).call() == 2 * 10 ** 17

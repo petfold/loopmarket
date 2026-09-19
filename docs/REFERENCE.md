@@ -869,6 +869,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `beat` | `LOOP_BEAT` | none | the clearing contract `chain:RPC@CONTRACT` (BeatClearing): `propose`, `beats`, `challenge`, `finalize` |
 | `auction` | `LOOP_AUCTION` | none | the sealed-proposal beat `chain:RPC@CONTRACT` (SealedBeat) or `memory:`: `commit`, `reveal`, `outcome`, `sealed` |
 | `escrow` | `LOOP_ESCROW` | none | the escrow contract `chain:RPC@CONTRACT` (LoopEscrow); the record names the address; `deposit` funds, `finalize` reserves |
+| `resolver` | `LOOP_RESOLVER` | none | who resolves a contested claim on the deposits `finalize` reserves (factbond's `Assertions`; a give's `arbitrator` wins; empty: my key) |
 | `escrow_claim` | `LOOP_ESCROW_CLAIM` | `7d` | how long after a leg's window a claim on its deposit may be opened |
 | `bond` | `LOOP_BOND` | none | my deposit on every give: an amount on my scale (deposited as `default_asset` at my price) or `QTY[UNIT] CATEGORY... VALUE` (v5) |
 | `default_asset` | `LOOP_DEFAULT_ASSET` | `xdai xDAI 1` | the asset a bare `bond` deposits and a bare `require_point` accepts, with its price per unit on my scale |
