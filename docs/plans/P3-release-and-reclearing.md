@@ -287,7 +287,11 @@ EUR needs 50 EUR; admissible. A driver holding 30 000 sat at her price of
 1/2000 per sat covers 15 on her scale; not admissible for her.
 
 **What is not in the record:** the ladder type, the horizon fraction, the
-escrow's terms (its own offer), any asset name the protocol knows.
+escrow's terms (its own offer), any asset name the protocol knows. *The
+CLI's default* (Peter, 2026-09-19): a maker who gives only numbers deposits
+and accepts the configured chain's gas token at 1 per unit on its scale —
+xDAI while Swarm settles on Gnosis, which every maker already holds for
+gas — written explicitly into the record like any other acceptance.
 
 ## 5b. Payments for buyouts
 

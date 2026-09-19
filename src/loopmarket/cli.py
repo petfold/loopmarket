@@ -124,6 +124,13 @@ _SETTINGS = {
         "`QTY[UNIT] CATEGORY... VALUE` — the asset by the grammar (quantity "
         "first), its worth to me on my scale last (v5; a declaration until "
         "the escrow of `escrow` holds it)"),
+    "default_asset": _Setting(
+        "LOOP_DEFAULT_ASSET", "xdai xDAI 1", "--default-asset 'CATEGORY UNIT PRICE'",
+        "the asset a bare-number `bond` deposits and a `require_point` with "
+        "no `require_accepts` accepts, with its price per unit on my scale: "
+        "the configured chain's gas token — xDAI at 1 while Swarm settles on "
+        "Gnosis (a CLI default; the record names it explicitly, the protocol "
+        "names no asset)"),
     "escrow": _Setting(
         "LOOP_ESCROW", "", "--escrow ADDRESS",
         "the escrow contract holding my deposit (empty: not yet deposited)"),
@@ -1414,6 +1421,7 @@ def _offer_from_part(session: Session, side: str, part: Part, price,
     make = give if side == GIVE else want
     offer = make(maker, thing, price, valid=valid, nonce=nonce, **ontology.pins,
                  **_guarantees(now, thing.concepts))
+    _check_asset_categories(offer, ontology)
     return offer, notes, reused
 
 
@@ -1427,13 +1435,23 @@ def _guarantees(now: int, concepts=()) -> dict:
     gets no ladder — a cancellation costs the point. Nothing set: v4."""
     from .schema import Acceptance, Bond, Requires, Thing
     out: dict = {}
+    default = shlex.split(_configured("default_asset") or "xdai xDAI 1")
+    if len(default) < 3:
+        raise ValueError("default_asset is `CATEGORY... UNIT PRICE`")
+    d_cat, d_unit, d_price = tuple(default[:-2]), default[-2], q(default[-1])
     dep = _configured("bond")
     if dep:
-        parsed = parse_offer_tokens(shlex.split(dep))
-        if parsed.qty is None or parsed.price is None or not parsed.concepts:
-            raise ValueError("bond is `QTY[UNIT] CATEGORY... VALUE`: the deposit by the grammar, its worth to me last")
-        out["bond"] = Bond(Thing(tuple(parsed.concepts), parsed.qty, parsed.unit or "unit"),
-                           parsed.price, _configured("escrow") or "")
+        toks = shlex.split(dep)
+        if len(toks) == 1:                         # a bare amount: the default asset, worth its amount at my price
+            amount = q(toks[0])
+            out["bond"] = Bond(Thing(d_cat, amount, d_unit), amount * d_price, _configured("escrow") or "")
+        else:
+            parsed = parse_offer_tokens(toks)
+            if parsed.qty is None or parsed.price is None or not parsed.concepts:
+                raise ValueError("bond is an amount of the default asset, or `QTY[UNIT] CATEGORY... VALUE`: "
+                                 "the deposit by the grammar, its worth to me last")
+            out["bond"] = Bond(Thing(tuple(parsed.concepts), parsed.qty, parsed.unit or "unit"),
+                               parsed.price, _configured("escrow") or "")
     point = q(_configured("require_point")) if _configured("require_point") else None
     accepts = []
     for entry in (e.strip() for e in (_configured("require_accepts") or "").split(";") if e.strip()):
@@ -1441,6 +1459,8 @@ def _guarantees(now: int, concepts=()) -> dict:
         if len(toks) < 3:
             raise ValueError(f"require_accepts entry {entry!r} is `CATEGORY... UNIT PRICE`")
         accepts.append(Acceptance(tuple(toks[:-2]), toks[-2], q(toks[-1])))
+    if point and not accepts:                      # a point with nothing named accepts the default asset
+        accepts.append(Acceptance(d_cat, d_unit, d_price))
     escrows = tuple(t for t in (_configured("require_escrows") or "").split() if t)
     if point is not None or accepts or escrows:
         ladder = ()
@@ -1453,6 +1473,22 @@ def _guarantees(now: int, concepts=()) -> dict:
     if "requires" in out or "bond" in out:
         out["v"] = 5
     return out
+
+
+def _check_asset_categories(offer, ontology) -> None:
+    """The deposit's and the acceptances' categories must be the catalogue's:
+    unknown, they would match nothing (U7) and the offer would sit unmatched
+    without a word — so refuse at publish with the name to add."""
+    names = []
+    if offer.v >= 5 and offer.bond is not None:
+        names += list(offer.bond.asset.concepts)
+    if offer.requires is not None:
+        for acc in offer.requires.accepts:
+            names += list(acc.concepts)
+    for name in names:
+        if name not in ontology.dag.nodes:
+            raise ValueError(f"asset category {name!r} is not in the catalogue: add it "
+                             f"(e.g. `odag put {name} money`), or set default_asset / require_accepts")
 
 
 def _handover_lead(concepts, now: int) -> int | None:
@@ -1714,6 +1750,7 @@ def _composed_offer(session: Session, parts: list[Part], price,
     offer = want(session.maker, Parts(tuple(p.thing for p in parts)), price,
                  valid=valid, **session.catalogue.pins,
                  **_guarantees(session.now, tuple(t for p in parts for t in p.thing.concepts)))
+    _check_asset_categories(offer, session.catalogue)
     notes = [f"part {i}: {note}" for i, p in enumerate(parts, 1) for note in p.notes]
     return offer, notes
 

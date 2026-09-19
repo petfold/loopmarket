@@ -39,6 +39,7 @@ CATALOGUE = {
     "bicycle-repair": ["repair"], "food": [], "produce": ["food"],
     "local": [], "weekly": [], "vegetable-box": ["produce", "local", "weekly"],
     "fruit": ["food"], "apple": ["fruit"], "bicycle": [],
+    "money": [], "xdai": ["money"], "stablecoin-eur": ["money"], "btc": ["money"],
 }
 
 
@@ -1030,3 +1031,24 @@ def test_guarantee_settings_make_a_v5_offer(loop, monkeypatch):
         monkeypatch.setenv("LOOP_" + key.upper(), ""); run.ok("set", key, "")
     out = run.ok("want", "apple", "home", "7")
     assert "v4" in out and "requires" not in out
+
+
+def test_the_default_asset_is_the_chains_gas_token_and_must_be_in_the_catalogue(loop, monkeypatch):
+    """A bare-number `bond` deposits xDAI and a `require_point` with nothing
+    named accepts xDAI at 1 — the configured chain's gas token, a CLI default
+    the record spells out; an asset category the catalogue lacks is refused at
+    publish rather than matching nothing."""
+    run = loop
+    run.ok("set", "bond", "5")
+    run.ok("set", "require_point", "20")
+    run.ok("set", "default_asset", "doge DOGE 1")
+    code, out, err = run("give", "apple", "home", "5")
+    assert code != 0 and "asset category 'doge' is not in the catalogue" in err
+    monkeypatch.setenv("LOOP_DEFAULT_ASSET", ""); run.ok("set", "default_asset", "")
+    out = run.ok("give", "apple", "home", "5")
+    assert "bond 5xDAI xdai worth 5" in out and "requires point 20" in out and "accepts xdai xDAI 1" in out
+    offer = next(o for o in run.session.book.offers(include_filled=True))
+    assert offer.bond.asset.concepts == ("xdai",) and offer.bond.value == 5
+    assert offer.requires.accepts[0].concepts == ("xdai",) and offer.requires.accepts[0].price == 1
+    for key in ("bond", "require_point"):
+        monkeypatch.setenv("LOOP_" + key.upper(), ""); run.ok("set", key, "")

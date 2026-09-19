@@ -344,6 +344,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   `set require_accepts 'CATEGORY... UNIT PRICE; ...'`, `set
   require_escrows`; the render shows the deposit and the requirement. The
   day-old `bond`/`requires` numbers are replaced within v5, not bumped.
+  **The default asset is the chain's gas token** (Peter, 2026-09-19): a
+  bare-number `set bond 5` deposits 5 xDAI worth 5, and a `require_point`
+  with no `require_accepts` accepts xDAI at 1 — `default_asset`, `xdai
+  xDAI 1` while Swarm settles on Gnosis, a CLI default the record spells
+  out (the protocol names no asset); an asset category the catalogue
+  lacks is refused at publish rather than matching nothing (U7).
   **Redeployed on Gnosis** for the verifier: `BeatClearing` at `0x75025e88749963B85c95f2EFB0143D76eA7169B8`,
   `SealedBeat` at `0xFB533254050087E384DEB98CAF2be4874Ba7c592` (same parameters; measured 6.4 M gas for a
   one-give v5 leg with a deposit and an acceptance table).
