@@ -200,7 +200,10 @@ gate are concerned:**
    obligation to take the fix: it may already have arranged its own way
    outside loopmarket.
 
-**Read on (2026-09-18, later):** `P3-release-and-reclearing.md` §5–§5a —
+**Read on (2026-09-18/19):** `P3-release-and-reclearing.md` §5–§5c — the
+cancellation point is a *ladder over lead time* (§5c: a few points on the
+maker's scale, linear between, read at the cancellation's lead time; the
+two amounts of rule 9 are its two-point case), and
 what a bond is held *in* is revised there: the protocol names no asset; the
 wanter names the durable, escrowable categories she accepts with her own
 prices; conversion happens once at clearing on private scales; the escrow

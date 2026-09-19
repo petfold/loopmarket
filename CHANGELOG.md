@@ -308,6 +308,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   goes to the roadmap's end. The v5 `bond`/`requires` change is held until
   read.
 
+- **The neutral point over lead time — a ladder** (Peter, 2026-09-19;
+  `P3-release-and-reclearing.md` §5c). What a cancellation costs depends
+  on when: a few `(lead, amount)` points on the maker's own scale,
+  interpolated linearly, read at the cancellation's lead time; the CLI
+  derives a two-point default from `require_cancel` and `require_bond`
+  over a week; the counterparty's bond covers the ladder's maximum, so the
+  gate is unchanged; fixed at clearing; symmetric. Replaces the single
+  `cancel` number in the held v5 change.
+
 ### Live gate, 2026-09-18
 
 The challenger from a fresh session. Three makers' `rs:` books announced

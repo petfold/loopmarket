@@ -169,6 +169,48 @@ cancellation point (both on her scale), and the accepted asset categories
 each with her price per unit. Matching and the verifier's quantity check
 move onto the reserved asset quantity.
 
+## 5c. The neutral point over lead time: a ladder (Peter, 2026-09-19)
+
+A fixed number cannot express what a cancellation costs, because the cost
+depends on *when*: a change two months out is a note in a calendar, a
+change in an hour finds the family dressed for the performance. Two parts
+of that cost Peter named — the mental transaction cost of re-planning, and
+the way plans entangle over time — both rise as the handover approaches.
+The shape that expresses it, and that a human can state in one line, is
+the one the roadmap reserves for price schedules, applied here: **a ladder
+over lead time**. The neutral point is a short list of `(lead, amount)`
+points on the maker's own scale, interpolated linearly between them and
+read at the lead time between the cancellation and the leg's handover
+window — "a week before, 5; the day before, 20; at the door, 50; in
+between, proportionally." Ordered points make it monotone by
+construction; rationals keep it exact (U9); the cancellation record's
+time is the book commit's or the chain's block, so a payout is one exact
+read of the ladder. Today's two numbers are the two-point ladder: the
+`cancel` amount is its far end, the no-show amount its near end.
+
+Consequences:
+
+- **No formula for humans.** The CLI derives the default ladder from the
+  two amounts a maker already gives, linear from a default horizon (a
+  week) to the window's start; a maker who cares adds a middle point or
+  moves the horizon. That is the "automatic mechanism in the offer" with
+  nothing to compute by hand. The far end above zero *is* the mental
+  transaction cost.
+- **No new admissibility logic.** The counterparty's reserved bond must
+  cover the ladder's maximum, the no-show amount — exactly what the gate
+  checks today; only the payout reads the ladder.
+- **Fixed at clearing.** The ladder is part of what the counterparty
+  agreed to when its bond was reserved against it; it cannot move
+  unilaterally afterwards. Before clearing, raising it is tombstone and
+  repost, and an agent that manages a maker's ladders manages its offers.
+- **Symmetric**, each side of a leg carrying its own ladder for the
+  other's cancellation; and it composes with rule 10 of §3a — the cheap
+  far end is what makes early notice worth giving.
+
+This replaces the single `cancel` number in the held v5 change: `requires`
+carries the ladder (two points by default), the no-show amount being its
+last point.
+
 ## 5b. Payments for buyouts
 
 The entrant's bid for a buyout (§2–§3) is paid the same way: in an asset the
