@@ -68,11 +68,18 @@ library LoopVerifier {
         bytes unit;                // the thing's unit (empty for parts)
         Rat[] parts;               // a composed want's part quantities, in the record's order
         bytes[] partUnits;         // and their units
-        Rat bond;                  // the maker's declared bond (0/1 on a record without a rational one)
         bytes oracle;              // the witness type the maker settles against
+        // v5 (2026-09-19, P3-release-and-reclearing.md §5d): the deposit and the requirement
+        bool deposited;            // a `bond` object is present
+        bytes depositConcepts;     // the deposit's `"concepts":[...]` array bytes (canonical, sorted)
+        bytes depositUnit;
+        Rat depositQty;
+        bool depositEscrowed;      // a non-empty escrow address
         bool requiring;            // a v5 record with a counterparty requirement
-        Rat reqBond;               // the least bond a counterparty must declare
+        Rat point;                 // the neutral point, on the requirer's own scale
+        bytes accepts;             // the `"accepts":[...]` array bytes
         bytes reqOracles;          // the accepted witness types, as the record's JSON array; "[]" any
+        bool reqEscrow;            // `"escrows"` present and non-empty
     }
 
     /// Verify one leg. `filled(id)` answers what the contract has already
@@ -109,10 +116,11 @@ library LoopVerifier {
                 require(_eq(t, want.parts[i]), "taken is not the part's quantity");
                 require(_bytesEq(g.unit, want.partUnits[i]), "the part's unit");
             }
-            // admissibility by declaration (v5, 2026-09-18): each side's
-            // requirement of a counterparty is met by the other's declaration
-            _requireMeetsShare(want, g, t);              // the give's bond reserved per fill
-            _requireMeets(g, want);                      // the want is taken whole
+            // admissibility by declaration (v5, 2026-09-18/19): each side's
+            // requirement of a counterparty is met by the other's declaration —
+            // the give's deposit reserved per fill, the want taken whole
+            _requireMeets(want, g, t, g.qty);
+            _requireMeets(g, want, Rat(1, 1), Rat(1, 1));
             total = _add(total, t);
             // value owed to the giver: (amount / qty) * taken * e[giver]
             Rat memory unitPrice = _div(g.amount, g.qty);
@@ -185,47 +193,73 @@ library LoopVerifier {
         f.unit = _unitField(r, thingStart, thingEnd);
     }
 
-    /// The maker's own bond and witness type, and — on a v5 record — what it
-    /// requires of a counterparty: `"requires":{"bond":"n/d","oracles":[..]}`
-    /// sits between `"registry_version"` and `"v"` (sorted keys). A record
-    /// without a rational bond (v4's float) declares none.
+    /// The maker's witness type; on a v5 record its deposit (`"bond":{"asset":
+    /// {"concepts":[..],"min":..,"qty":..,"step":..,"unit":".."},"escrow":"..",
+    /// "value":".."}` or `"bond":null`) and its requirement (`"requires":{
+    /// "accepts":[[[cat..],"unit","price"],..],"escrows":[..]?,"ladder":[..]?,
+    /// "oracles":[..],"point":".."}`), read from the sorted-key record bytes.
     function _guarantees(bytes memory r, Facts memory f, bool v5, uint256 givesAt) private pure {
         uint256 oracleAt = _index(r, '"oracle":"', 0);
         require(oracleAt != type(uint256).max, "missing oracle");
         f.oracle = _stringAt(r, oracleAt + 10);
-        uint256 bondAt = _index(r, '"bond":"', 0);
-        f.bond = (v5 && bondAt != type(uint256).max && bondAt < givesAt)
-            ? _ratField(r, '"bond":"', 0, givesAt) : Rat(0, 1);
         if (!v5) return;
+        uint256 bondAt = _index(r, '"bond":{', 0);
+        if (bondAt != type(uint256).max && bondAt < givesAt) {
+            f.deposited = true;
+            uint256 assetAt = _index(r, '"asset":{', bondAt);
+            uint256 conceptsAt = _index(r, '"concepts":[', assetAt);
+            uint256 close = conceptsAt + 11;
+            while (close < r.length && r[close] != ']') close++;
+            f.depositConcepts = _slice(r, conceptsAt + 11, close + 1);
+            f.depositQty = _ratField(r, '"qty":"', assetAt, givesAt);
+            uint256 unitAt = _index(r, '"unit":"', assetAt);
+            f.depositUnit = _stringAt(r, unitAt + 8);
+            uint256 escrowAt = _index(r, '"escrow":"', bondAt);
+            f.depositEscrowed = escrowAt != type(uint256).max && escrowAt < givesAt && r[escrowAt + 10] != '"';
+        }
         uint256 reqAt = _index(r, '"requires":{', 0);
         require(reqAt != type(uint256).max, "v5: missing requires");
         uint256 reqEnd = _index(r, '"v":5', reqAt);
         f.requiring = true;
-        f.reqBond = _ratField(r, '"bond":"', reqAt, reqEnd);
+        f.point = _ratField(r, '"point":"', reqAt, reqEnd);
+        uint256 accAt = _index(r, '"accepts":[', reqAt);
+        require(accAt != type(uint256).max && accAt < reqEnd, "v5: missing accepts");
+        f.accepts = _slice(r, accAt + 10, _index(r, '"oracles":[', accAt));   // up to the next key
         uint256 listAt = _index(r, '"oracles":[', reqAt);
         require(listAt != type(uint256).max && listAt < reqEnd, "v5: missing oracles");
-        uint256 close = listAt + 10;
-        while (close < reqEnd && r[close] != ']') close++;
-        bytes memory list = new bytes(close + 1 - (listAt + 10));
-        for (uint256 i = 0; i < list.length; i++) list[i] = r[listAt + 10 + i];
-        f.reqOracles = list;
+        uint256 lclose = listAt + 10;
+        while (lclose < reqEnd && r[lclose] != ']') lclose++;
+        f.reqOracles = _slice(r, listAt + 10, lclose + 1);
+        uint256 escAt = _index(r, '"escrows":[', reqAt);
+        f.reqEscrow = escAt != type(uint256).max && escAt < reqEnd && r[escAt + 11] != ']';
     }
 
-    /// The want's requirement against a give whose bond backs every fill of
-    /// it: the share reserved for this fill is bond × taken / qty (Peter,
-    /// 2026-09-18), compared by cross-multiplication.
-    function _requireMeetsShare(Facts memory requirer, Facts memory give, Rat memory taken) private pure {
+    /// `requirer`'s requirement against `other`'s declaration, `other` taking
+    /// `taken` of `whole` (a give reserves its deposit per fill; a want and an
+    /// operator's run are whole: 1/1). The structural half: the witness type
+    /// accepted; a deposit present, escrowed if one is required; and, for an
+    /// acceptance whose category list equals the deposit's *by name* (both
+    /// canonical, so equal sets are equal bytes) in the same unit, the
+    /// reserved quantity covers point / price by cross-multiplication. An
+    /// acceptance that would need subsumption to match is the semantic half's:
+    /// no entry equal by name passes here and is re-derived off chain.
+    function _requireMeets(Facts memory requirer, Facts memory other, Rat memory taken, Rat memory whole)
+        private pure
+    {
         if (!requirer.requiring) return;
-        Rat memory share = give.qty.n == 0 ? give.bond : _div(_mul(give.bond, taken), give.qty);
-        require(_geq(share, requirer.reqBond), "bond share below the counterparty's requirement");
-        _requireOracle(requirer, give);
-    }
-
-    /// `requirer`'s declared requirement of a counterparty, against `other`'s declaration.
-    function _requireMeets(Facts memory requirer, Facts memory other) private pure {
-        if (!requirer.requiring) return;
-        require(_geq(other.bond, requirer.reqBond), "bond below the counterparty's requirement");
         _requireOracle(requirer, other);
+        if (requirer.point.n == 0) return;
+        require(other.deposited, "no deposit against the counterparty's requirement");
+        require(!requirer.reqEscrow || other.depositEscrowed, "the deposit is not in an escrow");
+        // reserved = qty * taken / whole
+        Rat memory reserved = whole.n == 0 ? other.depositQty : _div(_mul(other.depositQty, taken), whole);
+        // find an acceptance equal by name and unit: [<concepts>,"<unit>","<price>"]
+        bytes memory needle = abi.encodePacked('[', other.depositConcepts, ',"', other.depositUnit, '","');
+        uint256 at = _indexBytes(requirer.accepts, needle, 0);
+        if (at == type(uint256).max) return;                    // subsumption, if any: the semantic half
+        Rat memory price = _ratField(requirer.accepts, '","', at + needle.length - 3, requirer.accepts.length);
+        // reserved >= point / price  <=>  reserved * price >= point
+        require(_geq(_mul(reserved, price), requirer.point), "deposit share below the counterparty's neutral point");
     }
 
     function _requireOracle(Facts memory requirer, Facts memory other) private pure {
@@ -339,6 +373,11 @@ library LoopVerifier {
         if (!inDen) d = 1;
         require(d > 0, "zero denominator");
         out = Rat(n, d);
+    }
+
+    function _slice(bytes memory r, uint256 from, uint256 to) private pure returns (bytes memory out) {
+        out = new bytes(to - from);
+        for (uint256 i = 0; i < out.length; i++) out[i] = r[from + i];
     }
 
     function _stringAt(bytes memory r, uint256 from) private pure returns (bytes memory) {

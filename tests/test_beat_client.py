@@ -403,19 +403,21 @@ def test_the_chains_fills_are_subtracted_by_the_hunt_and_the_checklist(chain):
 
 
 def test_a_v5_book_posts_and_verifies(chain):
-    """Admissibility by declaration reaches the chain: a book whose offers
-    declare bonds and require them clears, posts, and the challenger's dry
-    run says every leg verifies under the redeployed verifier."""
-    from loopmarket import Requires
+    """Admissibility by declaration reaches the chain: a book whose makers
+    hold deposits and require cover clears, posts, and the challenger's dry
+    run says every leg verifies under the verifier."""
+    from loopmarket import Acceptance, Bond, Requires
     w3, address, key = chain
     cat = Ontology.persistent(RecordStore(MemoryBytesStore()))
-    cat.load({"apple": [], "lesson": []}); cat.commit()
+    cat.load({"apple": [], "lesson": [], "stablecoin-eur": []}); cat.commit()
     pins = cat.pins
+    EUR = Acceptance(("stablecoin-eur",), "EUR", 1)
+    dep = lambda qty: Bond(Thing(("stablecoin-eur",), qty, "EUR"), qty, "0xE")
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
-    book.publish_many([give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins, bond=5, v=5),   # 40 of 100 reserve 2
-                       want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins, bond=1, requires=Requires(bond=1)),
-                       give("b1", Thing(("lesson",)), 80, **V, **pins, bond=1, v=5),
-                       want("farm", Thing(("lesson",)), 85, **V, **pins, bond=2, requires=Requires(bond="1/2"))])
+    book.publish_many([give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins, bond=dep(50)),
+                       want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins, requires=Requires(point=10, accepts=(EUR,))),
+                       give("b1", Thing(("lesson",)), 80, **V, **pins, bond=dep(5)),
+                       want("farm", Thing(("lesson",)), 85, **V, **pins, requires=Requires(point=3, accepts=(EUR,)))])
     book.commit()
     client = BeatClient("", address, key=key, client=w3)
     agent = SolverAgent(book, cat, clearing=ChainClearing(book, cat, beat_client=client, clock=lambda: NOW),

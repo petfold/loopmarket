@@ -247,50 +247,59 @@ def test_a_composed_want_verifies_leg_by_leg(face):
 
 
 # --------------------------------------------------------------------------- #
-# Admissibility by declaration on chain (v5, 2026-09-18)
+# Admissibility by declaration on chain (v5, accepted 2026-09-19)
 # --------------------------------------------------------------------------- #
 
-def test_a_v5_leg_verifies_and_an_unmet_requirement_is_convicted(face):
-    """The buyer requires a bond of 1 and settles by countersign; the bonded
-    seller's leg verifies on chain; a leg through an under-bonded seller, or
-    a seller that accepts only lockers, is convicted structurally."""
-    from loopmarket import Requires
-    w3, verifier = face
-    cat = Ontology(OntoDAG()).load({"apple": [], "lesson": []})
+def _v5_book():
+    """Amara requires 50 on her scale, accepting a euro stablecoin at 1 per
+    EUR or BTC at 1/2000 per sat, held by a contract; sellers with a 60 EUR
+    deposit (covers), 30 000 sat (15: does not), none, or an unheld one."""
+    from loopmarket import Acceptance, Bond, Requires
     pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    EUR, SAT = Acceptance(("stablecoin-eur",), "EUR", 1), Acceptance(("btc",), "sat", "1/2000")
+    def dep(concepts, qty, unit, escrow="0xE"):
+        return Bond(Thing(concepts, qty, unit), 45, escrow)
+    buyer = want("b", Thing(("transport",), 1, "run"), 60, **V, **pins,       # above the 45 asked: the leg balances
+                 requires=Requires(point=50, accepts=(SAT, EUR), escrows=("contract",)))
+    rich = give("s", Thing(("transport",), 1, "run"), 45, **V, **pins, bond=dep(("stablecoin-eur",), 60, "EUR"))
+    poor = give("p", Thing(("transport",), 1, "run"), 45, **V, **pins, bond=dep(("btc",), 30_000, "sat"))
+    bare = give("n", Thing(("transport",), 1, "run"), 45, **V, **pins, v=5)
+    unheld = give("u", Thing(("transport",), 1, "run"), 45, **V, **pins, bond=dep(("stablecoin-eur",), 60, "EUR", ""))
+    other = give("o", Thing(("transport",), 1, "run"), 45, **V, **pins, bond=dep(("money",), 60, "EUR"))   # by name: not hers
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
-    buyer = want("b", Thing(("apple",), 3), 15, **V, **pins, bond=1, requires=Requires(bond=1))
-    bonded = give("s", Thing(("apple",), 3), 12, **V, **pins, bond=1, v=5)
-    poor = give("p", Thing(("apple",), 3), 12, **V, **pins, bond="1/2", v=5)
-    fussy = give("f", Thing(("apple",), 3), 12, **V, **pins, bond=1, requires=Requires(oracles=("locker",)))
-    legacy = give("l", Thing(("apple",), 3), 12, **V, **pins)                 # v4: a float bond, so none
-    ret = [give("b", Thing(("lesson",)), 10, **V, **pins, bond=1, v=5), want("s", Thing(("lesson",)), 11, **V, **pins, v=5)]
-    book.publish_many([buyer, bonded, poor, fussy, legacy, *ret]); book.commit()
-    root = book.store.root
-    snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
-    verifier.functions.setPotentials([b"b", b"s", b"p", b"f", b"l"], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1]).transact()
+    book.publish_many([buyer, rich, poor, bare, unheld, other]); book.commit()
+    return book, pins, buyer, rich, poor, bare, unheld, other
 
+
+def test_a_v5_leg_verifies_and_an_unmet_requirement_is_convicted(face):
+    w3, verifier = face
+    book, pins, buyer, rich, poor, bare, unheld, other = _v5_book()
+    snapshot = OfferRegistry(RecordStore.at(book.store.root, book.store.blobs))
+    verifier.functions.setPotentials([b"b", b"s", b"p", b"n", b"u", b"o"], [1] * 6, [1] * 6).transact()
     def leg(g):
-        return _leg_args(snapshot, None, {"want": buyer.offer_id, "gives": [g.offer_id], "taken": ["3"]})
-    beat = _beat(root, pins)
-    want_maker, gives = verifier.functions.verifyLeg(beat, leg(bonded)).call()
-    assert want_maker == b"b" and gives == [b"s"]
-    for g, why in ((poor, "bond (share )?below"), (legacy, "bond (share )?below"), (fussy, "witness type not accepted")):
+        return _leg_args(snapshot, None, {"want": buyer.offer_id, "gives": [g.offer_id], "taken": ["1"]})
+    beat = _beat(book.store.root, pins)
+    assert verifier.functions.verifyLeg(beat, leg(rich)).call()[0] == b"b"
+    for g, why in ((poor, "deposit share below"), (bare, "no deposit"), (unheld, "not in an escrow")):
         with pytest.raises(Exception, match=why):
             verifier.functions.verifyLeg(beat, leg(g)).call()
-    print("\ngas for a v5 leg with a requirement:", verifier.functions.verifyLeg(beat, leg(bonded)).estimate_gas())
+    # a deposit whose category matches none of hers by name is the semantic half's: it passes here
+    assert verifier.functions.verifyLeg(beat, leg(other)).call()[0] == b"b"
+    print("\ngas for a v5 leg with a deposit and an acceptance table:", verifier.functions.verifyLeg(beat, leg(rich)).estimate_gas())
 
 
 def test_the_share_reserved_for_a_partial_fill_is_what_the_chain_compares(face):
-    """The farm's 100 kg with bond 10 reserves 4 for a 40 kg want: a floor
-    of 4 verifies, a floor of 5 is convicted as a share below the requirement."""
-    from loopmarket import Requires
+    """The farm's 100 kg with a 10 EUR deposit reserves 4 EUR for a 40 kg
+    want: a point of 4 verifies, a point of 5 is convicted."""
+    from loopmarket import Acceptance, Bond, Requires
     w3, verifier = face
     pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
-    for floor, ok in ((4, True), (5, False)):
+    for point, ok in ((4, True), (5, False)):
         book = OfferRegistry(RecordStore(MemoryBytesStore()))
-        farm = give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins, bond=10, v=5)
-        b1 = want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins, bond=1, requires=Requires(bond=floor))
+        farm = give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins,
+                    bond=Bond(Thing(("stablecoin-eur",), 10, "EUR"), 8, "0xE"))
+        b1 = want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins,
+                  requires=Requires(point=point, accepts=(Acceptance(("stablecoin-eur",), "EUR", 1),)))
         book.publish_many([farm, b1]); book.commit()
         snapshot = OfferRegistry(RecordStore.at(book.store.root, book.store.blobs))
         verifier.functions.setPotentials([b"farm", b"b1"], [1, 1], [1, 1]).transact()
@@ -299,5 +308,5 @@ def test_the_share_reserved_for_a_partial_fill_is_what_the_chain_compares(face):
         if ok:
             assert verifier.functions.verifyLeg(beat, args).call()[0] == b"b1"
         else:
-            with pytest.raises(Exception, match="bond share below"):
+            with pytest.raises(Exception, match="deposit share below"):
                 verifier.functions.verifyLeg(beat, args).call()

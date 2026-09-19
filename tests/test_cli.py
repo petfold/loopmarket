@@ -996,22 +996,37 @@ def test_a_fold_is_computed_under_the_books_addressing(env, tmp_path, monkeypatc
     assert cli._addressing_of(plain) == "sha256"
 
 
-def test_bond_and_require_bond_settings_make_a_v5_offer(loop, monkeypatch):
-    """`set bond` declares my bond on every offer; `set require_bond` the
-    floor I demand of a counterparty — the offer becomes a v5 record and
-    the render says so; a negative amount is refused at `set`."""
+def test_guarantee_settings_make_a_v5_offer(loop, monkeypatch):
+    """`set bond` declares my deposit by the offer grammar with its worth to
+    me last, `set escrow` where it is held; `set require_point`,
+    `require_cancel`, `ladder` and `require_accepts` my requirement — the
+    ladder derived over the lead to the offer's time term; the offer becomes
+    a v5 record and the render says so."""
     run = loop
-    run.ok("set", "bond", "0.5")
-    run.ok("set", "require_bond", "1")
-    code, out, err = run("set", "require_bond", "-1")
+    run.ok("set", "bond", "60EUR stablecoin-eur 45")
+    run.ok("set", "escrow", "0xE")
+    run.ok("set", "require_point", "50")
+    run.ok("set", "require_cancel", "5")
+    run.ok("set", "ladder", "late")
+    run.ok("set", "require_accepts", "btc sat 1/2000; stablecoin-eur EUR 1")
+    code, out, err = run("set", "require_point", "-1")
     assert code != 0 and "non-negative" in err
-    run.ok("set", "require_cancel", "0.25")
-    out = run.ok("give", "apple", "home", "5")
-    assert "terms    bond 0.5" in out and "requires bond 1  cancel 0.25" in out and "v5" in out
+    code, out, err = run("set", "ladder", "steep")
+    assert code != 0 and "linear, late, early or flat" in err
+    out = run.ok("give", "apple", "home", "time(2026-09-19T00:00:00Z..2026-09-19T12:00:00Z)", "5")
+    assert "bond 60EUR stablecoin-eur worth 45 in 0xE" in out and "requires point 50" in out and "v5" in out
+    assert "accepts btc sat 0.0005; stablecoin-eur EUR 1" in out and "ladder " in out
     offer = next(o for o in run.session.book.offers(include_filled=True))
-    assert offer.v == 5 and offer.bond == 1 / 2 and offer.requires.bond == 1 and offer.requires.cancel == 1 / 4
-    monkeypatch.setenv("LOOP_REQUIRE_CANCEL", ""); run.ok("set", "require_cancel", "")
-    monkeypatch.setenv("LOOP_BOND", ""); monkeypatch.setenv("LOOP_REQUIRE_BOND", "")
-    run.ok("set", "bond", ""); run.ok("set", "require_bond", "")
+    assert offer.v == 5 and offer.bond.asset.qty == 60 and offer.bond.value == 45 and offer.bond.escrow == "0xE"
+    req = offer.requires
+    assert req.point == 50 and [a.unit for a in req.accepts] == ["sat", "EUR"]
+    lead = 1789776000 - NOW                                             # to the window's start
+    assert req.ladder == ((lead, 5), (lead // 4, 5), (0, 50))          # late: flat, then rising
+    # no time term: no ladder, the point at every lead
     out = run.ok("want", "apple", "home", "6")
+    offer2 = next(o for o in run.session.book.offers(include_filled=True) if o.kind == "want")
+    assert offer2.requires.ladder == () and offer2.requires.at(0) == 50
+    for key in ("bond", "escrow", "require_point", "require_cancel", "require_accepts"):
+        monkeypatch.setenv("LOOP_" + key.upper(), ""); run.ok("set", key, "")
+    out = run.ok("want", "apple", "home", "7")
     assert "v4" in out and "requires" not in out

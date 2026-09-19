@@ -119,6 +119,52 @@ _SETTINGS = {
         "LOOP_VALID", "30d", "--valid DURATION",
         "how long my offers stand (a duration, or an absolute window)"),
     "bond": _Setting(
+        "LOOP_BOND", "", "--bond DEPOSIT",
+        "the deposit I hold against my performance, on every give I publish: "
+        "`QTY[UNIT] CATEGORY... VALUE` — the asset by the grammar (quantity "
+        "first), its worth to me on my scale last (v5; a declaration until "
+        "the escrow of `escrow` holds it)"),
+    "escrow": _Setting(
+        "LOOP_ESCROW", "", "--escrow ADDRESS",
+        "the escrow contract holding my deposit (empty: not yet deposited)"),
+    "require_point": _Setting(
+        "LOOP_REQUIRE_POINT", "", "--require-point AMOUNT",
+        "my neutral point on a no-show, on my scale: what makes me whole — "
+        "payments to the leg's other counterparties, the substitute, the "
+        "inconvenience; a counterparty must reserve a deposit covering it "
+        "(admissibility by declaration, v5) or the leg is never matched"),
+    "require_cancel": _Setting(
+        "LOOP_REQUIRE_CANCEL", "", "--require-cancel AMOUNT",
+        "what a cancellation costs at the far end of the ladder (at most "
+        "require_point); the ladder rises from it to require_point over "
+        "the lead to the leg's time term, in the shape of `ladder`"),
+    "ladder": _Setting(
+        "LOOP_LADDER", "linear", "--ladder SHAPE",
+        "the cancellation ladder's shape over the lead at posting: linear "
+        "(default), late (flat, then rising over the last quarter), early "
+        "(rising over the first quarter, then flat), flat (a step at the "
+        "window); the record carries only the points"),
+    "require_accepts": _Setting(
+        "LOOP_REQUIRE_ACCEPTS", "", "--require-accepts TABLE",
+        "the durable assets I accept as compensation, with my price per "
+        "unit on my scale: `CATEGORY... UNIT PRICE; ...` (e.g. "
+        "`btc sat 1/2000; stablecoin-eur EUR 1`)"),
+    "require_escrows": _Setting(
+        "LOOP_REQUIRE_ESCROWS", "", "--require-escrows KINDS",
+        "escrow kinds I accept for a counterparty's deposit (e.g. contract); "
+        "empty: any"),
+    "maker": _Setting(
+        "LOOP_MAKER", "", "--maker NAME",
+        "my identity; the signer's address when bee_signer is set and the "
+        "sig extra is installed"),
+    "terms": _Setting(
+        "LOOP_TERMS", "", "--terms 'TERM ...'",
+        "terms added to every offer whose line does not name that head, "
+        "e.g. 'home ..+90d'; unset: anywhere, any time"),
+    "valid": _Setting(
+        "LOOP_VALID", "30d", "--valid DURATION",
+        "how long my offers stand (a duration, or an absolute window)"),
+    "bond": _Setting(
         "LOOP_BOND", "", "--bond AMOUNT",
         "the bond I declare on every offer I publish (in the bond's asset; "
         "a declaration until P3's escrow holds it)"),
@@ -1126,6 +1172,16 @@ def _concepts(offer: Offer) -> str:
 # The one renderer: the approval block *is* `show` (gate G4)
 # --------------------------------------------------------------------------- #
 
+def _bond_text(offer: Offer) -> str:
+    b = offer.bond
+    if offer.v < 5:
+        return f"bond {_num(q(b))}"
+    if b is None:
+        return "bond -"
+    return (f"bond {_num(b.asset.qty)}{b.asset.unit} {' '.join(b.asset.concepts)} "
+            f"worth {_num(b.value)}" + (f" in {b.escrow}" if b.escrow else " (not deposited)"))
+
+
 def render_offer(offer: Offer) -> str:
     pins = (f"catalogue {offer.ontology_root[:16] or '-'}  "
             f"registry {offer.registry_version or '-'}  "
@@ -1147,16 +1203,18 @@ def render_offer(offer: Offer) -> str:
         f"  valid    {_span(offer.valid)}",
         f"           local {_span(offer.valid, _local)}",
         f"  pins     {pins}",
-        f"  terms    bond {_num(q(offer.bond))}  oracle {offer.oracle}  "
+        f"  terms    {_bond_text(offer)}  oracle {offer.oracle}  "
         f"arbitrator {offer.arbitrator or '-'}",
         f"  nonce    {offer.nonce}",
         f"  offer_id {offer.offer_id}",
     ]
     if offer.requires is not None and not offer.requires.empty:
         req = offer.requires
-        lines.insert(-2, f"  requires bond {_num(req.bond)}"
-                     + (f"  cancel {_num(req.cancel)}" if req.cancel is not None else "")
+        lines.insert(-2, f"  requires point {_num(req.point)}"
+                     + (f"  ladder {' '.join(f'{lead}s:{_num(a)}' for lead, a in req.ladder)}" if req.ladder else "")
+                     + (f"  accepts {'; '.join(' '.join(a.concepts) + f' {a.unit} {_num(a.price)}' for a in req.accepts)}" if req.accepts else "")
                      + (f"  oracle {' '.join(req.oracles)}" if req.oracles else "")
+                     + (f"  escrow {' '.join(req.escrows)}" if req.escrows else "")
                      + "  (of every counterparty, per fill; unmet is never matched)")
     return "\n".join(lines)
 
@@ -1354,24 +1412,74 @@ def _offer_from_part(session: Session, side: str, part: Part, price,
     nonce = now * 1000 + sum(1 for o in session.book.offers(include_filled=True)
                              if o.maker == maker)
     make = give if side == GIVE else want
-    offer = make(maker, thing, price, valid=valid, nonce=nonce, **ontology.pins, **_guarantees())
+    offer = make(maker, thing, price, valid=valid, nonce=nonce, **ontology.pins,
+                 **_guarantees(now, thing.concepts))
     return offer, notes, reused
 
 
-def _guarantees() -> dict:
-    """The `bond` and `require_bond` settings as offer fields: a declared
-    bond, and a counterparty requirement — which makes the offer a v5
-    record (`schema.Requires`). Nothing set: the v4 record as before."""
-    from .schema import Requires
+def _guarantees(now: int, concepts=()) -> dict:
+    """The guarantee settings as offer fields (v5, `P3-release-and-reclearing.md`
+    §5d): `bond`/`escrow` as a `Bond` deposit — its asset by the offer
+    grammar, its worth to me last — and `require_point`, `require_cancel`,
+    `ladder`, `require_accepts`, `require_escrows` as a `Requires`. The
+    ladder is derived over the lead from `now` to the offer's handover time
+    term (the first `time(...)` among `concepts`); an offer with no time term
+    gets no ladder — a cancellation costs the point. Nothing set: v4."""
+    from .schema import Acceptance, Bond, Requires, Thing
     out: dict = {}
-    if _configured("bond"):
-        out["bond"] = q(_configured("bond"))           # a typed decimal is the decimal it prints as (U9)
-    if _configured("require_bond") or _configured("require_cancel"):
-        out["requires"] = Requires(bond=q(_configured("require_bond") or 0),
-                                   cancel=q(_configured("require_cancel")) if _configured("require_cancel") else None)
-    if "requires" in out or isinstance(out.get("bond"), Fraction):
+    dep = _configured("bond")
+    if dep:
+        parsed = parse_offer_tokens(shlex.split(dep))
+        if parsed.qty is None or parsed.price is None or not parsed.concepts:
+            raise ValueError("bond is `QTY[UNIT] CATEGORY... VALUE`: the deposit by the grammar, its worth to me last")
+        out["bond"] = Bond(Thing(tuple(parsed.concepts), parsed.qty, parsed.unit or "unit"),
+                           parsed.price, _configured("escrow") or "")
+    point = q(_configured("require_point")) if _configured("require_point") else None
+    accepts = []
+    for entry in (e.strip() for e in (_configured("require_accepts") or "").split(";") if e.strip()):
+        toks = shlex.split(entry)
+        if len(toks) < 3:
+            raise ValueError(f"require_accepts entry {entry!r} is `CATEGORY... UNIT PRICE`")
+        accepts.append(Acceptance(tuple(toks[:-2]), toks[-2], q(toks[-1])))
+    escrows = tuple(t for t in (_configured("require_escrows") or "").split() if t)
+    if point is not None or accepts or escrows:
+        ladder = ()
+        if point is not None and _configured("require_cancel"):
+            far = q(_configured("require_cancel"))
+            lead = _handover_lead(concepts, now)
+            if lead and lead > 0:
+                ladder = _ladder(_configured("ladder") or "linear", lead, far, point)
+        out["requires"] = Requires(point=point or 0, ladder=ladder, accepts=tuple(accepts), escrows=escrows)
+    if "requires" in out or "bond" in out:
         out["v"] = 5
     return out
+
+
+def _handover_lead(concepts, now: int) -> int | None:
+    """Seconds from `now` to the start of the offer's handover time term."""
+    for term in concepts:
+        if isinstance(term, str) and term.startswith("time(") and term.endswith(")"):
+            try:
+                start, _end = _calendar_span(term[5:-1])
+            except Exception:                   # noqa: BLE001 — not a span this reader knows
+                continue
+            return start - now
+    return None
+
+
+def _ladder(shape: str, lead: int, far, point) -> tuple:
+    """The cancellation ladder over the lead at posting, in one of a few
+    shapes (Peter, 2026-09-19): the points only, on the maker's scale."""
+    far, point = q(far), q(point)
+    if shape == "linear":
+        return ((lead, far), (0, point))
+    if shape == "late":                            # flat, then rising over the last quarter
+        return ((lead, far), (lead // 4, far), (0, point))
+    if shape == "early":                           # rising over the first quarter, then flat
+        return ((lead, far), (lead - lead // 4, point), (0, point))
+    if shape == "flat":                            # the far amount until the window
+        return ((lead, far), (1, far), (0, point))
+    raise ValueError("ladder is linear, late, early or flat")
 
 
 def _age(seconds: int) -> str:
@@ -1604,7 +1712,8 @@ def _composed_offer(session: Session, parts: list[Part], price,
                          "(there is no price memory for a composition)")
     valid = validity(valid_text or _configured("valid"), session.now)
     offer = want(session.maker, Parts(tuple(p.thing for p in parts)), price,
-                 valid=valid, **session.catalogue.pins, **_guarantees())
+                 valid=valid, **session.catalogue.pins,
+                 **_guarantees(session.now, tuple(t for p in parts for t in p.thing.concepts)))
     notes = [f"part {i}: {note}" for i, p in enumerate(parts, 1) for note in p.notes]
     return offer, notes
 
@@ -2562,13 +2671,15 @@ def cmd_set(args, session, out):
         parse_now(value)
     if args.key == "valid":
         validity(value, 0)
-    if args.key in ("bond", "require_bond", "require_cancel") and value:
+    if args.key in ("require_point", "require_cancel") and value:
         try:
             amount = q(value)
         except Exception as exc:              # noqa: BLE001
             raise ValueError(f"{args.key} is an amount: {exc}") from None
         if amount < 0:
             raise ValueError(f"{args.key} is a non-negative amount")
+    if args.key == "ladder" and value and value not in ("linear", "late", "early", "flat"):
+        raise ValueError("ladder is linear, late, early or flat")
     if args.key == "terms":
         for term in shlex.split(value):
             # a name is checked when an offer uses it (fails closed, U7);

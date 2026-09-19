@@ -85,6 +85,40 @@ def _major_skew(a: str, b: str) -> bool:
     return bool(a) and bool(b) and a.split(".")[0] != b.split(".")[0]
 
 
+def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=None) -> bool:
+    """Does `other`'s declaration meet `mine`'s requirement (v5; admissibility
+    by declaration, `P3-release-and-reclearing.md` §5d)? The witness type and
+    the escrow kind must be accepted; and when the neutral point is above
+    zero, `other` must carry a deposit whose category falls under one my
+    maker accepts (the catalogue decides, one-way: the deposit fits within
+    the acceptance), in that entry's unit, whose quantity *reserved for this
+    fill* — the deposit × taken / whole for a give, the whole deposit for a
+    want — covers my point at my price for that asset. Two conversions each
+    inside one maker's scale, one comparison in the asset's unit (U14). A
+    point with no acceptance can be met by nothing: fail closed (U7)."""
+    req = mine.requires
+    if req is None or req.empty:
+        return True
+    if req.oracles and other.oracle not in req.oracles:
+        return False
+    if req.point == 0:
+        return True
+    bond = other.bond if other.v >= 5 else None
+    if bond is None:
+        return False
+    if req.escrows and not bond.escrow:
+        return False                    # an escrow is required and none holds the deposit
+    share = bond.reserved(taken, whole) if taken is not None else q(bond.asset.qty)
+    for acc in req.accepts:
+        if acc.unit != bond.asset.unit:
+            continue
+        if not ontology.satisfies(bond.asset.concepts, acc.concepts):
+            continue
+        if share >= req.needed(acc):
+            return True
+    return False
+
+
 def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
            quantity: bool = True, thing: Thing | None = None,
            available=None, taken=None) -> bool:
@@ -100,15 +134,15 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
     # admissibility by declaration (v5, 2026-09-18): each side's requirement
     # of a counterparty — a bond floor, accepted witness types — must be met
     # by the other side's declaration; unmet is refused, fail closed (U7)
-    # the give's bond is reserved per fill: the share for what this leg takes
-    # (the wanted quantity, an aggregated share, or — an operator's run, a
-    # whole give — everything); the want is taken whole
+    # the give's deposit is reserved per fill: the share for what this leg
+    # takes (the wanted quantity, an aggregated share, or — an operator's run,
+    # a whole give — everything); the want is taken whole
     wanted = thing if thing is not None else (None if want.composed else want.thing)
     give_taken = taken if taken is not None else \
         (q(wanted.qty) if (quantity and wanted is not None) else q(give.thing.qty))
-    if want.requires is not None and not want.requires.met_by(give, taken=give_taken):
+    if not meets(want, give, ontology, taken=give_taken, whole=q(give.thing.qty)):
         return False
-    if give.requires is not None and not give.requires.met_by(want):
+    if not meets(give, want, ontology):
         return False
     if not (give.valid.is_open_at(now) and want.valid.is_open_at(now)):
         return False

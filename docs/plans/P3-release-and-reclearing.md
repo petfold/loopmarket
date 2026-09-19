@@ -223,7 +223,11 @@ This replaces the single `cancel` number in the held v5 change: `requires`
 carries the ladder (two points by default), the no-show amount being its
 last point.
 
-## 5d. The v5 record, proposed (held for Peter's reading; consolidates §5a and §5c)
+## 5d. The v5 record — ACCEPTED by Peter 2026-09-19, built the same day (consolidates §5a and §5c)
+
+*Built:* `schema.Acceptance`, `schema.Bond`, `schema.Requires(point, ladder,
+accepts, oracles, escrows)`, `matching.meets` in every check, the verifier's
+structural half, the CLI settings; the escrow contract itself is next.
 
 Today's v5 (built 2026-09-18) carries, on every offer, `bond` as a bare
 rational in an unnamed asset and `requires = {bond, cancel, oracles}`,

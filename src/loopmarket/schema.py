@@ -330,68 +330,143 @@ BID = WANT
 # --------------------------------------------------------------- requirements
 
 @dataclass(frozen=True, slots=True)
+class Acceptance:
+    """One asset a maker takes as compensation (`P3-release-and-reclearing.md`
+    §5, §5d): a durable, escrowable category the maker names, its unit, and
+    the maker's own price per unit on its scale — the one conversion the
+    protocol ever makes, inside one maker's scale, once, at clearing."""
+
+    concepts: tuple[str, ...]
+    unit: str
+    price: Fraction                     # per unit, on the accepting maker's scale
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "concepts", tuple(sorted(set(self.concepts))))
+        object.__setattr__(self, "price", q(self.price))
+        if not self.concepts or self.price <= 0:
+            raise ValueError("an acceptance names a category and a positive price per unit")
+
+    def to_record(self) -> list:
+        return [list(self.concepts), self.unit, rat(self.price)]
+
+    @classmethod
+    def from_record(cls, rec) -> "Acceptance":
+        return cls(tuple(rec[0]), rec[1], q(rec[2]))
+
+
+@dataclass(frozen=True, slots=True)
+class Bond:
+    """A give's deposit against its performance (§5a, §5d): a thing — the
+    asset's category, quantity and unit — held by an escrow contract, worth
+    `value` to the giver on its own scale ("the bond in the giver's unit").
+    Marked as backing: never a give a solver could clear. A single deposit
+    backs every fill of the give and is *reserved per fill* in proportion to
+    the quantity taken (Peter, 2026-09-18)."""
+
+    asset: Thing
+    value: Fraction = Fraction(0)
+    escrow: str = ""                    # the escrow contract holding it; "" until deposited
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "value", q(self.value))
+        if self.value < 0:
+            raise ValueError("a bond's value is non-negative")
+
+    def reserved(self, taken, whole) -> Fraction:
+        """The deposit's share for a fill taking `taken` of a give of `whole`."""
+        whole = q(whole)
+        return q(self.asset.qty) if whole <= 0 else q(self.asset.qty) * q(taken) / whole
+
+    def to_record(self, v: int = 5) -> dict[str, Any]:
+        return {"asset": self.asset.to_record(v), "value": rat(self.value), "escrow": self.escrow}
+
+    @classmethod
+    def from_record(cls, rec: dict[str, Any]) -> "Bond":
+        a = rec["asset"]
+        return cls(Thing(tuple(a["concepts"]), q(a["qty"]), a["unit"], step=q(a["step"]), min=q(a["min"])),
+                   q(rec["value"]), rec.get("escrow", ""))
+
+
+@dataclass(frozen=True, slots=True)
 class Requires:
     """What a maker requires of any counterparty on a leg through this
     offer — admissibility by declaration (decided by Peter 2026-09-18,
-    `docs/plans/P2-loop-selection.md` §4a): a floor on the counterparty's
-    `bond` (in the bond's asset, compared in that asset, so no numeraire
-    enters — U14), and the witness types it accepts (`oracle`; empty means
-    any). Matching refuses a leg that does not meet the requirement,
-    fail-closed like vocabulary (U7), so every admissible loop is
-    acceptable to each member by its own word and the beat's selection
-    needs no risk weight to protect anyone. Until P3's escrow a
-    counterparty's `bond` is its declaration; the gate compares what the
-    records say, and the escrow will make the declaration true. A v5
-    form: the record bump that carries it also spells `bond` as `n/d`."""
+    `docs/plans/P2-loop-selection.md` §4a; the record accepted 2026-09-19,
+    `P3-release-and-reclearing.md` §5d). `point` is the maker's *neutral
+    point* on a no-show — its whole reliance, on its own scale; `ladder`
+    the cancellation cost over lead time, ordered `(lead seconds, amount)`
+    pairs read linearly at the cancellation's lead before the leg's
+    handover window, the last at lead 0; `accepts` the durable, escrowable
+    asset categories it takes as compensation, each with its own price per
+    unit; `oracles` the witness types accepted (empty: any); `escrows` the
+    escrow kinds accepted (empty: any). Matching refuses a leg that does
+    not meet the requirement, fail-closed like vocabulary (U7). Until the
+    escrow exists a counterparty's deposit is its declaration; the escrow
+    makes it true."""
 
-    bond: Fraction = Fraction(0)        # the floor on a no-show: the wanter's whole reliance
-    oracles: tuple[str, ...] = ()       # witness types accepted; () accepts any
-    #: The floor owed when the counterparty *cancels* the leg before its
-    #: handover window instead of not showing (Peter, 2026-09-18: a
-    #: cancellation is cheaper than a no-show, so the giver is motivated to
-    #: cancel as early as it knows; a ride that will be late cancels and
-    #: re-offers with the new time). None: the no-show floor applies.
-    cancel: Fraction | None = None
+    point: Fraction = Fraction(0)
+    ladder: tuple = ()                  # ((lead_seconds, amount), ...), leads descending to 0
+    accepts: tuple = ()                 # Acceptance, ...
+    oracles: tuple[str, ...] = ()
+    escrows: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "bond", q(self.bond))
+        object.__setattr__(self, "point", q(self.point))
+        if self.point < 0:
+            raise ValueError("a neutral point is non-negative")
+        ladder = tuple((int(lead), q(amount)) for lead, amount in self.ladder)
+        if ladder:
+            leads = [lead for lead, _ in ladder]
+            if leads != sorted(leads, reverse=True) or len(set(leads)) != len(leads) or leads[-1] != 0:
+                raise ValueError("a ladder is ordered by lead, descending to 0")
+            if any(a < 0 or a > self.point for _, a in ladder):
+                raise ValueError("a ladder's amounts lie between 0 and the neutral point")
+        object.__setattr__(self, "ladder", ladder)
+        object.__setattr__(self, "accepts", tuple(a if isinstance(a, Acceptance) else Acceptance(*a)
+                                                   for a in self.accepts))
         object.__setattr__(self, "oracles", tuple(sorted(set(self.oracles))))
-        if self.cancel is not None:
-            object.__setattr__(self, "cancel", q(self.cancel))
-            if not 0 <= self.cancel <= self.bond:
-                raise ValueError("the cancellation floor lies between 0 and the no-show floor")
-        if self.bond < 0:
-            raise ValueError("a bond floor is non-negative")
+        object.__setattr__(self, "escrows", tuple(sorted(set(self.escrows))))
 
     @property
     def empty(self) -> bool:
-        return self.bond == 0 and not self.oracles and self.cancel is None
+        return self.point == 0 and not self.ladder and not self.accepts \
+            and not self.oracles and not self.escrows
 
-    def met_by(self, other: "Offer", *, taken=None) -> bool:
-        """Does `other`'s declaration satisfy this requirement? A bond backs
-        every fill of its offer and is *reserved per fill* in proportion to
-        the quantity taken (Peter, 2026-09-18): the share compared is
-        bond × taken / quantity — the whole bond for a want, an
-        indivisible give or an operator's whole run."""
-        share = q(other.bond)
-        if taken is not None and not other.composed:
-            whole = q(other.thing.qty)
-            if whole > 0:
-                share = share * q(taken) / whole
-        if share < self.bond:
-            return False
-        return not self.oracles or other.oracle in self.oracles
+    def at(self, lead_seconds) -> Fraction:
+        """The cancellation cost at `lead_seconds` before the window: the
+        ladder read linearly; the neutral point when there is no ladder or
+        the lead is past its far end... beyond the far end the far amount."""
+        if not self.ladder:
+            return self.point
+        lead = q(lead_seconds)
+        if lead >= self.ladder[0][0]:
+            return self.ladder[0][1]
+        for (l1, a1), (l2, a2) in zip(self.ladder, self.ladder[1:]):
+            if l2 <= lead <= l1:
+                if l1 == l2:
+                    return a2
+                return a2 + (a1 - a2) * (lead - l2) / (l1 - l2)
+        return self.ladder[-1][1]
+
+    def needed(self, acceptance: Acceptance) -> Fraction:
+        """The quantity of `acceptance`'s asset that covers the neutral point."""
+        return self.point / acceptance.price
 
     def to_record(self) -> dict[str, Any]:
-        rec = {"bond": rat(self.bond), "oracles": list(self.oracles)}
-        if self.cancel is not None:
-            rec["cancel"] = rat(self.cancel)
+        rec: dict[str, Any] = {"point": rat(self.point), "oracles": list(self.oracles),
+                               "accepts": [a.to_record() for a in self.accepts]}
+        if self.ladder:
+            rec["ladder"] = [[str(lead), rat(amount)] for lead, amount in self.ladder]
+        if self.escrows:
+            rec["escrows"] = list(self.escrows)
         return rec
 
     @classmethod
     def from_record(cls, rec: dict[str, Any]) -> "Requires":
-        return cls(q(rec["bond"]), tuple(rec["oracles"]),
-                   q(rec["cancel"]) if "cancel" in rec else None)
+        return cls(q(rec["point"]),
+                   tuple((int(l), q(a)) for l, a in rec.get("ladder", [])),
+                   tuple(Acceptance.from_record(a) for a in rec.get("accepts", [])),
+                   tuple(rec.get("oracles", [])), tuple(rec.get("escrows", [])))
 
 
 # -------------------------------------------------------------------------- offer
@@ -416,7 +491,7 @@ class Offer:
     service: TimeWindow | None = None
     where: GeoDisc | None = None
     ontology_root: str = ""       # pinned catalogue version (recordstore root)
-    bond: Any = 0.0               # the maker's own bond (v1–v4 a float; v5 an exact rational, U9)
+    bond: Any = 0.0               # v1–v4: a float never acted on; v5: a `Bond` deposit, or None
     oracle: str = "countersign"   # witness type the leg will settle against
     arbitrator: str = ""          # named in advance, like a jurisdiction clause
     # v5 (2026-09-18): what the maker requires of a counterparty — a bond
@@ -434,8 +509,9 @@ class Offer:
     # in the conjunction as role terms — and `valid` may be open-ended.
     # v4 (2026-09-14): exact numbers as `n/d` strings (U9), `step` and
     # `min` on a thing in place of `divisible`, and a want may be `Parts`.
-    # v5 (2026-09-18): `requires` — admissibility by declaration — and the
-    # maker's `bond` as an exact rational. A v4 offer re-encodes as v4.
+    # v5 (2026-09-18/19): `requires` — admissibility by declaration — and
+    # `bond` as a deposit (`Bond`: asset, value, escrow). A v4 offer
+    # re-encodes as v4.
     v: int = 4                    # record version; identity includes it
 
     def __post_init__(self) -> None:
@@ -449,14 +525,20 @@ class Offer:
             raise ValueError(
                 "uniform offer form: the token side must be the maker's own token"
             )
-        if q(self.bond) < 0:
-            raise ValueError("bond must be non-negative")
         if self.v not in (1, 2, 3, 4, 5):
             raise ValueError(f"unknown offer record version: {self.v!r}")
-        if self.v < 5 and self.requires is not None:
-            raise ValueError("a counterparty requirement is a v5 form")
-        if self.v >= 5:
-            object.__setattr__(self, "bond", q(self.bond))
+        if self.v < 5:
+            if self.requires is not None:
+                raise ValueError("a counterparty requirement is a v5 form")
+            if isinstance(self.bond, Bond):
+                raise ValueError("a deposit is a v5 form")
+            if q(self.bond) < 0:
+                raise ValueError("bond must be non-negative")
+        else:
+            if self.bond in (0, 0.0, None):
+                object.__setattr__(self, "bond", None)
+            elif not isinstance(self.bond, Bond):
+                raise ValueError("a v5 bond is a deposit: Bond(asset, value, escrow)")
             if self.requires is None:
                 object.__setattr__(self, "requires", Requires())
         if self.v < 2 and (self.registry_version or self.contract_version):
@@ -549,7 +631,8 @@ class Offer:
             "wants": side(self.wants),
             "valid": self.valid.to_record(),
             "ontology_root": self.ontology_root,
-            "bond": rat(self.bond) if self.v >= 5 else self.bond,
+            "bond": (self.bond.to_record(self.v) if self.bond is not None else None)
+                    if self.v >= 5 else self.bond,
             "oracle": self.oracle,
             "arbitrator": self.arbitrator,
             "nonce": self.nonce,
@@ -612,7 +695,8 @@ class Offer:
             service=TimeWindow(*rec["service"]) if v < 3 else None,
             where=GeoDisc(*rec["where"]) if v < 3 else None,
             ontology_root=rec.get("ontology_root", ""),
-            bond=q(rec["bond"]) if v >= 5 else rec.get("bond", 0.0),
+            bond=(Bond.from_record(rec["bond"]) if rec.get("bond") is not None else None)
+                 if v >= 5 else rec.get("bond", 0.0),
             oracle=rec.get("oracle", "countersign"),
             arbitrator=rec.get("arbitrator", ""),
             requires=Requires.from_record(rec["requires"]) if v >= 5 else None,
@@ -639,8 +723,8 @@ def _field_form(service, where, kw: dict[str, Any]) -> dict[str, Any]:
     current record, whose spacetime is in the conjunction."""
     if (service is not None or where is not None) and "v" not in kw:
         kw = dict(kw, v=2)
-    if kw.get("requires") is not None and "v" not in kw:
-        kw = dict(kw, v=5)              # a requirement is a v5 form
+    if (kw.get("requires") is not None or isinstance(kw.get("bond"), Bond)) and "v" not in kw:
+        kw = dict(kw, v=5)              # a requirement or a deposit is a v5 form
     return dict(kw, service=service, where=where)
 
 

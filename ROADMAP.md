@@ -108,7 +108,7 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       and the record bytes, ~3.7 M gas; 6.3 M for a two-part composed leg), `BeatClearing.sol` (one outcome
       per beat with a bond, a challenge window, fills recorded at
       finalization, an arbiter hook for the semantic half) — deployed on
-      Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`, redeployed 2026-09-18 at `0x1277B4906b6Aab4dF806dd85c5ED980135C12931` with the Swarm-addressing pin, that evening at `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf` with composed wants, and late that evening at `0x6699A442630356fcBB4E0DFbD67c2E6D5550F7Ea` with the v5 record's declared requirements and at `0xe5699BE764CE66209b29D25c22413feffD63433A` with the bond reserved per fill; `beat.py`,
+      Gnosis at `0xFD1022636c2f0Cd3bbE5f4e40E0ee33C39654D08`, redeployed 2026-09-18 at `0x1277B4906b6Aab4dF806dd85c5ED980135C12931` with the Swarm-addressing pin, that evening at `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf` with composed wants, and late that evening at `0x6699A442630356fcBB4E0DFbD67c2E6D5550F7Ea` with the v5 record's declared requirements and at `0xe5699BE764CE66209b29D25c22413feffD63433A` with the bond reserved per fill, and on 2026-09-19 at `0x75025e88749963B85c95f2EFB0143D76eA7169B8` with the accepted v5 record; `beat.py`,
       `ChainClearing`, `loop propose` / `finalize`; beat 1 posted live
       and finalized (2026-09-18).
 - [x] **Anchored ids versus proofs** (DECIDED 2026-09-15 with the contract
@@ -122,7 +122,7 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       (numeraire-free score U14, the fairness filter with the baseline as
       reserve bid, deterministic offer-disjoint selection, every revealed
       loop re-derived first), `commit`/`reveal`/`outcome`/`sealed`.
-      Deployed on Gnosis at `0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5` (redeployed at `0x2014e7D3A097a709c3d27Df67617dcF9879A2A2A`, then `0x79493a82F36B9EEABDE974044020F72055Bf4A32`, with the v5 clearing contracts); live the same evening
+      Deployed on Gnosis at `0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5` (redeployed at `0x2014e7D3A097a709c3d27Df67617dcF9879A2A2A`, `0x79493a82F36B9EEABDE974044020F72055Bf4A32` and `0xFB533254050087E384DEB98CAF2be4874Ba7c592` with the v5 clearing contracts); live the same evening
       (commit, reveal, outcome, record; the winner posted and verified from
       a fresh session). Still open there: Shutter
       threshold encryption as the sealing (§3's primary), solver bonds
@@ -183,13 +183,13 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       holds a declared bond, the cancellation and repair records, a
       history requirement (U12).
 
-- [ ] The crypto escrow (medium term) · [plan §5a](docs/plans/P3-release-and-reclearing.md):
-      a smart contract as a maker — signs by state, takes no personal
+- [ ] The crypto escrow (medium term) · [plan §5a](docs/plans/P3-release-and-reclearing.md)
+      — the record for it (§5d) accepted and built 2026-09-19: a smart contract as a maker — signs by state, takes no personal
       tokens, its holding a condition on the giver's give, not a leg;
       `deposit`/`release`/`refund` and a verdict hook on the clearing
       contract; the wanter names the durable asset categories she accepts
-      with her own prices, conversion once at clearing. Holds the v5
-      `bond`/`requires` change until read.
+      with her own prices, conversion once at clearing. What remains is
+      the escrow contract and the verdict hook.
 - [ ] Release prices and re-clearing · [plan](docs/plans/P3-release-and-reclearing.md)
       (direction, 2026-09-18): the required floor as the maker's true
       neutral point, permissionless cancellation at that price, cancel-and-

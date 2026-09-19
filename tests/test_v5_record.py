@@ -1,9 +1,12 @@
-"""The v5 record: admissibility by declaration (decided by Peter 2026-09-18,
-`docs/plans/P2-loop-selection.md` §4a). A maker declares what it requires
-of any counterparty — a bond floor, the witness types it accepts — and
-matching refuses a leg that does not meet it, fail closed (U7); the
-maker's own `bond` becomes an exact rational (U9). v4 records re-encode
-byte for byte; a requirement is a v5 form."""
+"""The v5 record as accepted 2026-09-19 (`docs/plans/P3-release-and-reclearing.md`
+§5d): admissibility by declaration — a maker's `requires` (its neutral point
+on its own scale, the cancellation ladder over lead time, the durable assets
+it accepts as compensation with its own prices, witness types, escrow kinds)
+and a giver's `bond` (a deposit — asset, quantity, unit — worth a value on
+the giver's scale, held by an escrow). Matching refuses a leg unless each
+side's requirement is met by the other's declaration, the deposit reserved
+per fill (U7, fail closed); no asset is named by the protocol; nothing
+converts after clearing (U14). v4 re-encodes byte for byte."""
 
 import pytest
 from ontodag import OntoDAG
@@ -11,131 +14,126 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    MockClearing, Offer, OfferRegistry, Ontology, Requires, SolverAgent, Thing, TimeWindow, give, want,
+    Acceptance, Bond, MockClearing, Offer, OfferRegistry, Ontology, Requires, SolverAgent, Thing,
+    TimeWindow, give, want,
 )
 from loopmarket.clearing import LoopProposal
 from loopmarket.graph import Loop
-from loopmarket.matching import Match, candidate_matches, check_aggregate, check_match, check_parts
+from loopmarket.matching import Match, candidate_matches, check_aggregate, check_match, check_parts, meets
 
 NOW = 5_000
 V = dict(valid=TimeWindow(0, 1_000_000))
+EUR = Acceptance(("stablecoin-eur",), "EUR", 1)
+SAT = Acceptance(("btc",), "sat", "1/2000")
 
 
 def _cat():
-    return Ontology(OntoDAG()).load({"apple": [], "lesson": [], "repair": [], "ticket": [], "transport": []})
+    return Ontology(OntoDAG()).load({"apple": [], "lesson": [], "repair": [], "ticket": [], "transport": [],
+                                     "money": [], "stablecoin-eur": ["money"], "btc": ["money"]})
 
 
-def test_the_v5_record_round_trips_and_a_requirement_is_a_v5_form():
-    o = give("a", Thing(("apple",), 3), 9, **V, bond="3/4",
-             requires=Requires(bond="1/2", oracles=("locker", "countersign")))
-    assert o.v == 5 and o.bond == 3 / 4 and o.requires.oracles == ("countersign", "locker")
-    rec = o.to_record()
-    assert rec["v"] == 5 and rec["bond"] == "3/4"
-    assert rec["requires"] == {"bond": "1/2", "oracles": ["countersign", "locker"]}
+def _deposit(concepts, qty, unit, value, escrow="0xE"):
+    return Bond(Thing(concepts, qty, unit), value, escrow)
+
+
+def test_the_v5_record_round_trips_and_v4_is_untouched():
+    amara = want("amara", Thing(("transport",), 1, "run"), 40, **V,
+                 requires=Requires(point=50, ladder=((604800, 5), (86400, 20), (0, 50)),
+                                   accepts=(SAT, EUR), escrows=("contract",)))
+    assert amara.v == 5 and amara.bond is None
+    rec = amara.to_record()
+    assert rec["bond"] is None
+    assert rec["requires"] == {"point": "50", "ladder": [["604800", "5"], ["86400", "20"], ["0", "50"]],
+                               "accepts": [[["btc"], "sat", "1/2000"], [["stablecoin-eur"], "EUR", "1"]],
+                               "oracles": [], "escrows": ["contract"]}
     back = Offer.from_record(rec)
-    assert back == o and back.offer_id == o.offer_id
-    # a v5 offer without a stated requirement carries an empty one, so the record is complete
-    plain5 = give("a", Thing(("apple",), 3), 9, **V, v=5)
-    assert plain5.requires == Requires() and plain5.requires.empty and plain5.to_record()["bond"] == "0"
-    # v4 is untouched: no requires key, the float bond, the same bytes as before
+    assert back == amara and back.offer_id == amara.offer_id
+    driver = give("driver", Thing(("transport",), 1, "run"), 45, **V,
+                  bond=_deposit(("stablecoin-eur",), 60, "EUR", 45))
+    assert driver.v == 5 and driver.requires.empty
+    rec2 = driver.to_record()
+    assert rec2["bond"] == {"asset": {"concepts": ["stablecoin-eur"], "min": "0", "qty": "60", "step": "60",
+                                      "unit": "EUR"}, "value": "45", "escrow": "0xE"}
+    assert rec2["requires"] == {"point": "0", "oracles": [], "accepts": []}
+    assert Offer.from_record(rec2) == driver
+    # the ladder reads linearly, the far amount beyond its far end
+    assert amara.requires.at(3 * 86400) == 15 and amara.requires.at(10 * 86400) == 5 and amara.requires.at(0) == 50
+    # v4 is untouched: a float bond, no requires key, the same bytes
     o4 = give("a", Thing(("apple",), 3), 9, **V, nonce=7)
     assert o4.v == 4 and "requires" not in o4.to_record() and o4.to_record()["bond"] == 0.0
     assert Offer.from_record(o4.to_record()).offer_id == o4.offer_id
     with pytest.raises(ValueError, match="v5 form"):
-        give("a", Thing(("apple",), 3), 9, **V, requires=Requires(bond=1), v=4)
+        give("a", Thing(("apple",), 3), 9, **V, bond=_deposit(("btc",), 1, "sat", 1), v=4)
     with pytest.raises(ValueError, match="v5 form"):
-        Offer.from_record(dict(o4.to_record(), requires={"bond": "0", "oracles": []}))
+        Offer.from_record(dict(o4.to_record(), requires={"point": "0", "oracles": [], "accepts": []}))
     with pytest.raises(ValueError, match="carries requires"):
         Offer.from_record({k: v for k, v in rec.items() if k != "requires"})
-    with pytest.raises(ValueError, match="unknown offer record version"):
-        Offer.from_record(dict(rec, v=6))
-    with pytest.raises(ValueError, match="non-negative"):
-        Requires(bond=-1)
+    with pytest.raises(ValueError, match="ordered by lead"):
+        Requires(point=5, ladder=((0, 5), (100, 1)))
+    with pytest.raises(ValueError, match="between 0 and the neutral point"):
+        Requires(point=5, ladder=((100, 9), (0, 5)))
+    with pytest.raises(ValueError, match="positive price"):
+        Acceptance(("btc",), "sat", 0)
 
 
-def test_matching_refuses_a_leg_that_fails_either_sides_requirement():
+def test_matching_reserves_the_deposit_per_fill_and_converts_once_on_private_scales():
     cat = _cat()
-    demanding = want("b", Thing(("apple",), 3), 12, **V, requires=Requires(bond=1))
-    poor = give("a", Thing(("apple",), 3), 9, **V, bond="1/2", v=5)
-    rich = give("a", Thing(("apple",), 3), 9, **V, bond=2, v=5)
-    legacy = give("a", Thing(("apple",), 3), 9, **V)                    # v4: no rational bond, so none
-    assert check_match(poor, demanding, cat, now=NOW) is None
-    assert check_match(legacy, demanding, cat, now=NOW) is None
-    assert check_match(rich, demanding, cat, now=NOW) is not None
-    # the give may require too; the want's declaration is what it is judged by
-    fussy = give("a", Thing(("apple",), 3), 9, **V, bond=2, requires=Requires(oracles=("locker",)))
-    assert check_match(fussy, demanding, cat, now=NOW) is None           # the want settles by countersign
-    lockered = want("b", Thing(("apple",), 3), 12, **V, oracle="locker", bond=1, requires=Requires(bond=1))
-    assert check_match(fussy, lockered, cat, now=NOW) is not None
-    # an empty requirement accepts anyone; a v5 offer against v4 offers matches as before
-    assert check_match(legacy, want("b", Thing(("apple",), 3), 12, **V, v=5), cat, now=NOW) is not None
-    # composed wants and aggregated legs are gated give by give
-    evening = want("b", Thing(("ticket",), 2), 60, **V, requires=Requires(bond=1))
-    assert check_aggregate(evening, [give("t1", Thing(("ticket",), 1), 20, **V, bond=1, v=5),
-                                     give("t2", Thing(("ticket",), 1), 20, **V, bond=0, v=5)],
-                           [1, 1], cat, now=NOW) is None
-    assert check_aggregate(evening, [give("t1", Thing(("ticket",), 1), 20, **V, bond=1, v=5),
-                                     give("t2", Thing(("ticket",), 1), 20, **V, bond=1, v=5)],
-                           [1, 1], cat, now=NOW) is not None
+    amara = want("amara", Thing(("transport",), 1, "run"), 40, **V,
+                 requires=Requires(point=50, accepts=(SAT, EUR), escrows=("contract",)))
+    rich = give("d1", Thing(("transport",), 1, "run"), 45, **V, bond=_deposit(("stablecoin-eur",), 60, "EUR", 45))
+    poor = give("d2", Thing(("transport",), 1, "run"), 45, **V, bond=_deposit(("btc",), 30_000, "sat", 45))
+    unheld = give("d3", Thing(("transport",), 1, "run"), 45, **V, bond=_deposit(("stablecoin-eur",), 60, "EUR", 45, ""))
+    bare = give("d4", Thing(("transport",), 1, "run"), 45, **V, v=5)
+    legacy = give("d5", Thing(("transport",), 1, "run"), 45, **V)
+    assert check_match(rich, amara, cat, now=NOW) is not None        # 60 EUR at 1/EUR covers 50
+    assert check_match(poor, amara, cat, now=NOW) is None            # 30 000 sat at 1/2000 is 15
+    assert check_match(unheld, amara, cat, now=NOW) is None          # she requires an escrow
+    assert check_match(bare, amara, cat, now=NOW) is None and check_match(legacy, amara, cat, now=NOW) is None
+    # a point with no acceptance can be met by nothing (fail closed); a point of zero needs no deposit
+    assert check_match(rich, want("b", Thing(("transport",), 1, "run"), 40, **V, requires=Requires(point=1)), cat, now=NOW) is None
+    assert check_match(bare, want("b", Thing(("transport",), 1, "run"), 40, **V, requires=Requires(point=0, oracles=("countersign",))), cat, now=NOW) is not None
+    # the category is the catalogue's: `money` accepts a stablecoin deposit, not the other way
+    money = want("b", Thing(("transport",), 1, "run"), 40, **V, requires=Requires(point=50, accepts=(Acceptance(("money",), "EUR", 1),)))
+    assert check_match(rich, money, cat, now=NOW) is not None
+    generic = give("d6", Thing(("transport",), 1, "run"), 45, **V, bond=_deposit(("money",), 60, "EUR", 45))
+    assert check_match(generic, amara, cat, now=NOW) is None
+    # reserved per fill: 100 kg with a 10 EUR deposit reserves 4 EUR for 40 kg
+    farm = give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, bond=_deposit(("stablecoin-eur",), 10, "EUR", 8))
+    assert check_match(farm, want("b", Thing(("apple",), 40, "kg"), 90, **V, requires=Requires(point=4, accepts=(EUR,))), cat, now=NOW)
+    assert check_match(farm, want("b", Thing(("apple",), 40, "kg"), 90, **V, requires=Requires(point=5, accepts=(EUR,))), cat, now=NOW) is None
+    assert meets(amara, rich, cat, taken=1, whole=1) and not meets(amara, poor, cat, taken=1, whole=1)
+    # aggregated shares reserve by share; a composed want gates give by give
+    evening = want("b", Thing(("ticket",), 2), 60, **V, requires=Requires(point=1, accepts=(EUR,)))
+    t = give("t", Thing(("ticket",), 4, step=1), 80, **V, bond=_deposit(("stablecoin-eur",), 2, "EUR", 2))
+    u = give("u", Thing(("ticket",), 4, step=1), 80, **V, bond=_deposit(("stablecoin-eur",), 2, "EUR", 2))
+    assert check_aggregate(evening, [t, u], [1, 1], cat, now=NOW) is None                  # 1 of 4 reserves 1/2
+    assert check_aggregate(want("b", Thing(("ticket",), 4), 120, **V, requires=Requires(point=1, accepts=(EUR,))),
+                           [t, u], [2, 2], cat, now=NOW) is not None
     from loopmarket import Parts
     night = want("b", Parts((Thing(("ticket",), 2), Thing(("transport",), 1, "run"))), 60, **V,
-                 requires=Requires(bond=1))
-    theatre = give("th", Thing(("ticket",), 10, step=1), 200, **V, bond=5, v=5)   # 2 of 10 reserve 1
-    driver = give("dr", Thing(("transport",), 1, "run"), 15, **V, bond="1/4", v=5)
-    assert check_parts(night, (theatre, driver), cat, now=NOW) is None
-    assert check_parts(night, (theatre, give("dr", Thing(("transport",), 1, "run"), 15, **V, bond=1, v=5)),
-                       cat, now=NOW) is not None
-    thin = give("th", Thing(("ticket",), 10, step=1), 200, **V, bond=1, v=5)      # 2 of 10 reserve 1/5: refused
-    assert check_parts(night, (thin, give("dr", Thing(("transport",), 1, "run"), 15, **V, bond=1, v=5)),
-                       cat, now=NOW) is None
+                 requires=Requires(point=1, accepts=(EUR,)))
+    theatre = give("th", Thing(("ticket",), 10, step=1), 200, **V, bond=_deposit(("stablecoin-eur",), 5, "EUR", 5))
+    assert check_parts(night, (theatre, rich), cat, now=NOW) is not None
+    assert check_parts(night, (theatre, poor), cat, now=NOW) is None
 
 
-def test_the_solver_never_proposes_an_inadmissible_loop_and_clearing_refuses_one():
-    """b requires a bond of 1 from whoever serves it. The richer loop runs
-    through an under-bonded seller: it is not a candidate at all; the bonded
-    seller's loop clears. A proposal built by hand through the under-bonded
-    seller is refused by the checklist."""
+def test_the_solver_never_proposes_an_inadmissible_loop():
+    """b requires 1 EUR of cover from whoever serves it. The richer loop runs
+    through a seller with no deposit: not a candidate; the covered seller's
+    loop clears; a hand-built proposal through the other is refused."""
     cat = _cat()
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
-    offers = [want("b", Thing(("apple",), 3), 15, **V, bond=1, requires=Requires(bond=1)),
-              give("cheap", Thing(("apple",), 3), 9, **V, bond=0, v=5),           # rate 1.67, unbonded
-              give("bonded", Thing(("apple",), 3), 12, **V, bond=1, v=5),         # rate 1.25
-              give("b", Thing(("lesson",)), 10, **V, bond=1, v=5),
+    offers = [want("b", Thing(("apple",), 3), 15, **V, requires=Requires(point=1, accepts=(EUR,))),
+              give("cheap", Thing(("apple",), 3), 9, **V, v=5),
+              give("covered", Thing(("apple",), 3), 12, **V, bond=_deposit(("stablecoin-eur",), 1, "EUR", 1)),
+              give("b", Thing(("lesson",)), 10, **V, v=5),
               want("cheap", Thing(("lesson",)), 11, **V, v=5),
-              want("bonded", Thing(("lesson",)), 13, **V, v=5)]              # covers the 12 it is owed
+              want("covered", Thing(("lesson",)), 13, **V, v=5)]
     book.publish_many(offers); book.commit()
-    matches = list(candidate_matches(offers, cat, now=NOW))
-    assert not any(m.give.maker == "cheap" and m.want.maker == "b" for m in matches)
+    assert not any(m.give.maker == "cheap" and m.want.maker == "b" for m in candidate_matches(offers, cat, now=NOW))
     agent = SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t", min_surplus=0.0)
-    receipts = agent.step(now=NOW)
-    assert [r.accepted for r in receipts] == [True]
+    assert [r.accepted for r in agent.step(now=NOW)] == [True]
     assert book.is_filled(offers[2].offer_id) and not book.is_filled(offers[1].offer_id)
     forged = Loop((Match(give=offers[1], want=offers[0]), Match(give=offers[3], want=offers[4])))
-    verdict = MockClearing(book, cat, clock=lambda: NOW).rehearse(
-        LoopProposal(forged, book.store.root, cat.root, "t", NOW))
-    assert not verdict.accepted and "already filled" in verdict.reason or "fails re-verification" in verdict.reason
-
-
-def test_the_bond_is_reserved_per_fill_and_the_cancel_floor_rides_v5():
-    """A give's bond backs every fill of it: a 100 kg give with bond 10
-    reserves 4 for a 40 kg want, so a floor of 4 is met and 5 is not; a
-    want and an indivisible give are taken whole. The cancellation floor
-    lies between 0 and the no-show floor and round-trips."""
-    cat = _cat()
-    farm = give("f", Thing(("apple",), 100, "kg", step=5), 200, **V, bond=10, v=5)
-    assert check_match(farm, want("b", Thing(("apple",), 40, "kg"), 90, **V, requires=Requires(bond=4)), cat, now=NOW)
-    assert check_match(farm, want("b", Thing(("apple",), 40, "kg"), 90, **V, requires=Requires(bond=5)), cat, now=NOW) is None
-    assert check_match(farm, want("b", Thing(("apple",), 100, "kg"), 220, **V, requires=Requires(bond=10)), cat, now=NOW)
-    # aggregated shares reserve by share; an operator's whole run reserves the whole bond
-    evening = want("b", Thing(("ticket",), 2), 60, **V, requires=Requires(bond=1))
-    t = give("t", Thing(("ticket",), 4, step=1), 80, **V, bond=2, v=5)          # 2 of 4 reserve 1
-    u = give("u", Thing(("ticket",), 4, step=1), 80, **V, bond=2, v=5)
-    assert check_aggregate(evening, [t, u], [1, 1], cat, now=NOW) is None         # 1 of 4 reserves 1/2 each
-    assert check_aggregate(want("b", Thing(("ticket",), 4), 120, **V, requires=Requires(bond=1)), [t, u], [2, 2],
-                           cat, now=NOW) is not None
-    r = Requires(bond=4, cancel=1, oracles=("countersign",))
-    o = want("b", Thing(("apple",), 40, "kg"), 90, **V, requires=r)
-    assert Offer.from_record(o.to_record()).requires == r and o.to_record()["requires"]["cancel"] == "1"
-    assert Requires(bond=4).to_record() == {"bond": "4", "oracles": []}            # no cancel key unless given
-    with pytest.raises(ValueError, match="between 0 and"):
-        Requires(bond=4, cancel=5)
+    verdict = MockClearing(book, cat, clock=lambda: NOW).rehearse(LoopProposal(forged, book.store.root, cat.root, "t", NOW))
+    assert not verdict.accepted

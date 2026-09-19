@@ -318,6 +318,36 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   gate is unchanged; fixed at clearing; symmetric. Replaces the single
   `cancel` number in the held v5 change.
 
+- **The v5 record in its accepted shape** (2026-09-19; `docs/plans/
+  P3-release-and-reclearing.md` §5d, accepted by Peter). `Requires(point,
+  ladder, accepts, oracles, escrows)`: the maker's neutral point on a
+  no-show on its own scale; the cancellation ladder over lead time
+  (ordered `(lead, amount)` points, linear between, read at the
+  cancellation's lead before the leg's handover window — `Requires.at`);
+  the durable, escrowable asset categories it accepts as compensation,
+  each with its own price per unit (`Acceptance`); witness types; escrow
+  kinds. `Bond(asset, value, escrow)` on a give: a deposit — a `Thing` —
+  worth `value` on the giver's scale, held by an escrow contract, reserved
+  per fill (`Bond.reserved`). `matching.meets` is the gate in every check:
+  witness type and escrow kind accepted, the deposit under an accepted
+  category through the catalogue in that entry's unit, the reserved share
+  covering the point at the acceptance's price; two conversions each on
+  one scale, one comparison in the asset's unit, no asset named by the
+  protocol (U14), a point with no acceptance met by nothing (U7).
+  `LoopVerifier` reads the deposit object and the acceptance table and
+  checks the same structurally where an acceptance equals the deposit's
+  category by name ("no deposit", "not in an escrow", "deposit share below
+  the counterparty's neutral point"); subsumption stays the semantic
+  half's. CLI: `set bond 'QTY[UNIT] CATEGORY... VALUE'`, `set escrow`,
+  `set require_point`, `set require_cancel`, `set ladder linear|late|
+  early|flat` (the ladder derived over the lead to the offer's time term),
+  `set require_accepts 'CATEGORY... UNIT PRICE; ...'`, `set
+  require_escrows`; the render shows the deposit and the requirement. The
+  day-old `bond`/`requires` numbers are replaced within v5, not bumped.
+  **Redeployed on Gnosis** for the verifier: `BeatClearing` at `0x75025e88749963B85c95f2EFB0143D76eA7169B8`,
+  `SealedBeat` at `0xFB533254050087E384DEB98CAF2be4874Ba7c592` (same parameters; measured 6.4 M gas for a
+  one-give v5 leg with a deposit and an acceptance table).
+
 ### Live gate, 2026-09-18
 
 The challenger from a fresh session. Three makers' `rs:` books announced

@@ -145,7 +145,7 @@ is a bundle of loop records pinning one root; `outcome` re-derives every
 revealed loop (U3), adds the baseline as reserve bid (§8), applies §5's
 filter and §6's selection, posts winners to `BeatClearing` loop by loop
 and records `auction/<beat>` in the clearing book. Deployed on Gnosis at
-`0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5` (240-block beats, 120 to commit, outcomes to `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf`); redeployed late that evening at `0x2014e7D3A097a709c3d27Df67617dcF9879A2A2A` with the v5 clearing contract `0x6699A442630356fcBB4E0DFbD67c2E6D5550F7Ea`, and again at `0x79493a82F36B9EEABDE974044020F72055Bf4A32` with `0xe5699BE764CE66209b29D25c22413feffD63433A` (the bond reserved per fill). The
+`0xbE1Af10c55dc9969539f5a1de79eD663bdaDDCd5` (240-block beats, 120 to commit, outcomes to `0x6614D98e9659ED5f14DdD68c98C7e223a0CA47Bf`); redeployed late that evening at `0x2014e7D3A097a709c3d27Df67617dcF9879A2A2A` with the v5 clearing contract `0x6699A442630356fcBB4E0DFbD67c2E6D5550F7Ea`, again at `0x79493a82F36B9EEABDE974044020F72055Bf4A32` with `0xe5699BE764CE66209b29D25c22413feffD63433A` (the bond reserved per fill), and on 2026-09-19 at `0xFB533254050087E384DEB98CAF2be4874Ba7c592` with `0x75025e88749963B85c95f2EFB0143D76eA7169B8` (the accepted v5 record). The
 beat's root is the outcome submitter's fold — proposals pinning another
 root are rejected; anchoring the cutoff root to a block is the
 publication open problem of `proof-fabric.md`. Live the same evening on
