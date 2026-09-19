@@ -223,6 +223,68 @@ This replaces the single `cancel` number in the held v5 change: `requires`
 carries the ladder (two points by default), the no-show amount being its
 last point.
 
+## 5d. The v5 record, proposed (held for Peter's reading; consolidates §5a and §5c)
+
+Today's v5 (built 2026-09-18) carries, on every offer, `bond` as a bare
+rational in an unnamed asset and `requires = {bond, cancel, oracles}`,
+the two floors likewise in that unnamed asset. The proposal replaces both
+so that no asset is named by the protocol, every amount a maker states is
+on its own scale, and the cancellation cost is a ladder.
+
+**The wanter's side — `requires`**, what she asks of any counterparty on
+a leg through this offer:
+
+| field | meaning | unit |
+|---|---|---|
+| `point` | her neutral point on a no-show — her whole reliance: payments to the leg's other counterparties, the substitute, the inconvenience | her own scale |
+| `ladder` | the cancellation cost over lead time: ordered `[[lead, amount], …]`, lead in seconds before the leg's handover window, amount ≤ `point`, linear between points, the last point at lead 0 (§5c); absent means `point` at every lead | seconds; her own scale |
+| `accepts` | the durable, escrowable asset categories she takes as compensation, each with her price per unit on her scale: `[[category, unit, price], …]` (§5) | catalogue term; asset unit; her own scale |
+| `oracles` | witness types she accepts; empty means any | names |
+| `escrows` | escrow contract kinds she accepts (§5a); medium term `"contract"` only; absent means any | names |
+
+**The giver's side — `bond`**, what it holds against its performance:
+
+| field | meaning |
+|---|---|
+| `asset` | the deposit: a category, a quantity, a unit — under one of the categories a counterparty accepts (the catalogue decides) |
+| `value` | what the deposit is worth to the giver, on its own scale (its bond "in its own unit") |
+| `escrow` | the escrow contract's address that holds it (§5a); the deposit is marked as backing, never a give a solver could clear |
+
+**Admissibility at clearing (matching, and the verifier's structural
+half):** the deposit's category falls under one the wanter accepts, its
+unit is that entry's unit, and the quantity reserved for this fill —
+`asset.qty × taken / the give's qty`, the whole for a want, an
+indivisible give or an operator's run — is at least `point / price` for
+that entry. Two conversions, each inside one maker's scale; one
+comparison in the asset's unit; nothing converts later. A payout on a
+ruling is the reserved quantity (or the ladder's amount at the
+cancellation's lead time, divided by the same price), in the deposit's
+asset, to the wanter's key.
+
+**Versioning.** v5 is a day old and carries no live data worth keeping, so
+this is a change *within* v5, not a v6: the ids of the handful of v5
+offers in scratch books change, nothing else. A v4 offer is untouched.
+`Requires` becomes `point, ladder, accepts, oracles, escrows`; `bond`
+becomes `asset, value, escrow`. Both sides keep `requires` (a giver may
+require a bonded wanter too).
+
+**An example** — Amara wants a ride, one run, 40 on her scale, and would
+accept BTC or a euro stablecoin as compensation:
+
+```
+"requires": {"point": "50", "ladder": [["604800", "5"], ["86400", "20"], ["0", "50"]],
+             "accepts": [["btc", "sat", "1/2000"], ["stablecoin-eur", "EUR", "1"]],
+             "oracles": [], "escrows": ["contract"]}
+```
+
+A driver whose `bond` is `{"asset": ["stablecoin-eur", "60", "EUR"], "value": "45", "escrow": "0x…"}`
+reserves the whole 60 EUR for this one-run fill; her point of 50 at 1 per
+EUR needs 50 EUR; admissible. A driver holding 30 000 sat at her price of
+1/2000 per sat covers 15 on her scale; not admissible for her.
+
+**What is not in the record:** the ladder type, the horizon fraction, the
+escrow's terms (its own offer), any asset name the protocol knows.
+
 ## 5b. Payments for buyouts
 
 The entrant's bid for a buyout (§2–§3) is paid the same way: in an asset the
