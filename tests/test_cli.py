@@ -975,7 +975,11 @@ def test_a_fold_is_computed_under_the_books_addressing(env, tmp_path, monkeypatc
     root is the book's own once it absorbs the fold — the root a sealed
     proposal pins and the clearing book resolves (live finding 2026-09-18:
     a memory fold's sha256 root beside the Swarm book's BMT root of the
-    same content)."""
+    same content). Skips without swarmfs (Swarm addressing needs its
+    keccak chunk tree; CI installs the test and sig extras only)."""
+    import importlib.util
+    if importlib.util.find_spec("swarmfs") is None:
+        pytest.skip("Swarm addressing needs swarmfs: pip install 'swarmfs[feeds]'")
     from recordstore import DirBytesStore, FilePointer, RecordStore
     from loopmarket import OfferRegistry, Thing, TimeWindow, give, want
 
