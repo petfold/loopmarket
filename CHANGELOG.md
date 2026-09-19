@@ -45,8 +45,11 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   the share in smallest units, the wanter's key, the give's arbitrator or
   my key as resolver, the want's time term as the window, `escrow_claim`
   as the claim period, the wanter's ladder converted at her price into
-  the asset). Not yet: `BeatClearing` reserving from the contract itself,
-  and factbond's contract as the resolver.
+  the asset). **Deployed on Gnosis at
+  `0x7bee68244f2Bc2d67F21E5ae2eE7696Afca9c55F`** and gated live the same
+  day: no loop while the bond was unfunded, the loop after `deposit`,
+  posted as a beat. Not yet: `BeatClearing` reserving from the contract
+  itself, and factbond's contract as the resolver.
 - **A bare `set bond N` is N on my scale** (2026-09-19): deposited as
   `default_asset` at my price for it (5 on my scale at 2 per xDAI is
   2.5 xDAI), as the design says — the value on the giver's scale,

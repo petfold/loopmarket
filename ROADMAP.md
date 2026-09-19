@@ -196,7 +196,8 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       level, the agreed arbiter the top rung of factbond's ladder);
       withdrawal after notice; the wanter names the durable asset
       categories she accepts with her own prices, conversion once at
-      clearing. Not deployed on Gnosis yet.
+      clearing. Deployed on Gnosis 2026-09-19 at
+      `0x7bee68244f2Bc2d67F21E5ae2eE7696Afca9c55F`; live gate the same day.
 - [x] The gate consults the chain's holding (`meets(held=)`, 2026-09-19)
       and `loop finalize` reserves per fill from the loop record
       (`escrow.reservations_for`) with the clearing key.
