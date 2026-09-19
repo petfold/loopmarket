@@ -11,6 +11,16 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **What a counterparty must be able to trust — the claims, ranked**
+  (P3 §4b, Peter, 2026-09-19): performance, description (the roster's
+  countersign split into *received* and *as described*, the item-not-as-
+  described dispute as its own proposition), credentials for services
+  (matches a registry; a future `credentials` field), the handover point's
+  liveness (factbond's first domain, seen from the leg), maker track
+  record (U12), catalogue edges. **Start with the automated boxes** (§4c):
+  parcel lockers' existence, access hours and peer-handover model as the
+  first bonded handover points — no person speaks for a box, and every
+  handover through one reports back.
 - **factbond as the resolver** (2026-09-19 evening): `LoopEscrow` gains
   the key-only `hold(bytes32)` / `resolve(bytes32, uint256)` — the
   `subject` a generic resolver names, keccak(offer, loop), derivable from

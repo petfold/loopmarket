@@ -347,6 +347,84 @@ Consequences for this plan:
   countersign becomes its transfer. Not before the countersign record
   exists; not a matching concern at any point.
 
+### 4b. What a counterparty must be able to trust: the claims, ranked (Peter, 2026-09-19)
+
+The roster above lists witness types; this ranks the *propositions* a
+leg's counterparty relies on, by how much rides on each and how often it
+fails in real marketplaces, so bonds and oracles attach where they matter:
+
+1. **Performance — the leg was delivered.** The lesson given, the box
+   handed over, the repair done. The escrow's reservation already stands
+   against this (`P3-release-and-reclearing.md` §5e); the roster's
+   witnesses (countersign, locker, photo, digital proof) are its
+   evidence; factbond adjudicates only the contested residue.
+2. **Description — the thing is what the offer says.** Organic, working,
+   this weight, this brand, this condition; the e-bike counts as a
+   bicycle for the repair. "Item not as described" is the largest dispute
+   category on every consumer marketplace, and it is a *different
+   proposition* from non-delivery — factbond's two-product split
+   (`insurance-products.md` §1) applied to a leg: delivered-but-wrong is
+   not not-delivered. The offer's own terms are the claim, the giver's
+   bond backs them, the wanter's countersignature at handover is the cheap
+   evidence, a photo the contested one. **The roster's `countersign` is
+   therefore split into two acts: *received* and *as described*, signed
+   separately, so a wanter can acknowledge the handover and still dispute
+   the thing.** This is the claim loopmarket did not name; it is the most
+   valuable addition.
+3. **Credentials for services.** A licensed electrician, a certified
+   teacher, a food-safety registration, an insured courier: claims that
+   match a *registry* — `attribute-matches-source`, cheap at the automated
+   rung, with safety rather than inconvenience at stake. For any service
+   leg involving homes, children, health or vehicles this is the claim a
+   wanter would pay to have bonded; a v6 offer field `credentials`
+   (registry, identifier) is the natural carrier, checked by the same
+   crawler that checks sources (factbond `domain-choice.md` §5).
+4. **The handover point is live.** A give at the shop relies on the shop
+   existing and being open in the window; a give at a locker relies on
+   the locker existing, being accessible then, and admitting a peer
+   handover. This is factbond's first domain, POI liveness
+   (`domain-choice.md`), seen from the leg: a cleared leg's handover
+   coordinates are exactly the facts the quest apps verify — and, for
+   the automated boxes, exactly the facts every handover through them
+   reports back (§4c).
+5. **Maker track record.** Fills completed, defaults, cancellations,
+   adjudicated failures — derived from cleared loops under U12, no
+   assertion needed; what risk-priced routing (§5) and factbond's loss
+   tables per maker read.
+6. **Catalogue edges.** The subsumption a match relied on; bonded
+   assertions and clearing-attached insurance are designed (§3), ranked
+   last for relevance because edge disputes are wording disputes (T9) and
+   ontodag's certificates settle the structural half for free.
+
+Prices do not appear (personal scales cancel in the loop); availability
+is the book's through fills.
+
+### 4c. Start with the automated boxes (Peter, 2026-09-19)
+
+The first handover points to bond are the **parcel lockers and pickup
+boxes** — unattended infrastructure with no person to speak for it. A
+shop with a person at the loopmarket interface reports its own state
+(and its own failures) through that person; a box has no one, so its
+liveness is exactly what a guarantee is for. Three claims per box:
+
+- **it exists** at the mapped place (Ljubljana has 203 mapped on OSM,
+  Pošta Slovenije, GLS and DPD; 48 with a check date);
+- **when it is accessible** — 24/7, a host's hours, or a locked lobby
+  (29 of the 203 carry opening hours);
+- **its handover model** — whether a private person can hand a thing to
+  another private person through it, at what fee, through which app;
+  most networks admit only their own carrier's parcels, some allow
+  peer-to-peer drop-off (1 of 203 carries any payment tag). For
+  loopmarket this is the claim that matters: a box that admits no peer
+  handover is not a handover point.
+
+And the reason to start here: **once boxes are used, every handover
+through one is a report.** The operator's signed event (the parametric
+feed class factbond names, `insurance-products.md` §1) and the
+counterparty's *received* act say whether and when the box worked; the
+box's loss table writes itself from loopmarket's own traffic, no sweep
+needed. The seal of §4a rides inside the same box.
+
 ## 5. Risk-priced routing: the lemons defense
 
 The solver maximizes the rate product, so it routes through the cheapest leg
