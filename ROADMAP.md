@@ -188,14 +188,25 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       contract the same day** (`contracts/LoopEscrow.sol`, `escrow.py`,
       `loop deposit`): a smart contract as a maker — signs by state, takes
       no personal tokens, its holding a condition on the giver's give, not
-      a leg; deposit behind the offer id, reservation per fill by the
-      arbiter, `release`/`refund` by verdict, withdrawal after notice; the
-      wanter names the durable asset categories she accepts with her own
-      prices, conversion once at clearing.
+      a leg; deposit behind the offer id, reservation per fill at
+      clearing, settled by timeout or the parties' own acts (quiet,
+      countersigned, cancelled at the ladder), a contested claim resolved
+      by the resolver fixed at clearing — **custody here, adjudication in
+      factbond** (§5e, Peter, 2026-09-19: a ruling or a timeout, one
+      level, the agreed arbiter the top rung of factbond's ladder);
+      withdrawal after notice; the wanter names the durable asset
+      categories she accepts with her own prices, conversion once at
+      clearing. Not deployed on Gnosis yet.
 - [ ] The verdict hook: `BeatClearing`'s finalization reserving on the
       escrow directly, and the gate comparing the chain's `held` with the
       record's declared bond (today the declaration is what matching and
       the verifier compare).
+- [ ] factbond as the resolver: its assertion contract's consumer edge
+      (`hold`/`resolve` on a subject hash, factbond's
+      `loopmarket-coupling.md` §3b) takes the resolver's address; the
+      escrow does not change. The no-ruling escalation and the repair
+      supersession (a cancellation a re-clearing replaced pays nothing)
+      live there and in §3's superseding records.
 - [ ] Release prices and re-clearing · [plan](docs/plans/P3-release-and-reclearing.md)
       (direction, 2026-09-18): the required floor as the maker's true
       neutral point, permissionless cancellation at that price, cancel-and-

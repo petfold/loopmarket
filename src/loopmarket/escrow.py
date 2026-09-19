@@ -14,11 +14,19 @@ nothing: the quantity was fixed at clearing in the asset's own unit (U14),
 and this module only turns that exact rational into the asset's smallest
 unit (`to_wei`), rejecting a quantity the asset cannot represent.
 
+Custody here, adjudication in factbond (§5e, Peter, 2026-09-19: "a
+ruling or a timeout"). The contract settles every undisputed case by
+itself — quiet after the window (`settle`, anyone), the wanter's
+countersignature, the giver's cancellation at the ladder's amount — and
+a contested claim is factbond's bonded assertion about (offer, loop): the
+resolver fixed at clearing calls `hold` and `resolve`, nothing more. Until
+factbond's contract exists the resolver is one key.
+
 `EscrowClient` sends and reads; web3 loads lazily behind the `chain`
-extra (boundary B2). The verdicts (`reserve`, `release`, `refund` by the
-arbiter) are the clearing contract's arbiter hook's shape; wiring
-`BeatClearing`'s finalization to `reserve` is the next step, and until
-then the notice period on withdrawal is the guard.
+extra (boundary B2). `reserve` is the clearing's call, with the leg's
+wanter, window, resolver and the ladder in asset units; wiring
+`BeatClearing`'s finalization to it is the next step, and until then the
+notice period on withdrawal is the guard.
 """
 
 from __future__ import annotations
@@ -102,18 +110,39 @@ class EscrowClient:
     def withdraw(self, offer_id: str, amount: int) -> dict:
         return self._send(self.contract().functions.withdraw(offer_key(offer_id), amount))
 
-    # ---- the arbiter and the wanter ------------------------------------------
+    # ---- the clearing, the wanter, the resolver ------------------------------
 
-    def reserve(self, offer_id: str, loop_id: str, amount: int) -> dict:
-        return self._send(self.contract().functions.reserve(offer_key(offer_id), offer_key(loop_id), amount))
+    def reserve(self, offer_id: str, loop_id: str, wanter: str, resolver: str, amount: int, *,
+                window: tuple[int, int], claim_seconds: int, ladder: list[tuple[int, int]] = ()) -> dict:
+        """Reserve `amount` for one fill (the clearing's key): the leg's
+        wanter and handover window (unix seconds), the resolver both
+        offers declared acceptable, the claim period after the window and
+        the ladder as (lead seconds, amount in smallest units), descending."""
+        leads = [int(lead) for lead, _ in ladder]
+        amounts = [int(a) for _, a in ladder]
+        return self._send(self.contract().functions.reserve(
+            offer_key(offer_id), offer_key(loop_id), wanter, resolver, amount,
+            int(window[0]), int(window[1]), int(claim_seconds), leads, amounts))
 
-    def release(self, offer_id: str, loop_id: str, to: str, amount: int, reason: str = "") -> dict:
-        return self._send(self.contract().functions.release(
-            offer_key(offer_id), offer_key(loop_id), to, amount, reason))
+    def cancel(self, offer_id: str, loop_id: str) -> dict:
+        """The giver's cancellation: the ladder's amount to the wanter."""
+        return self._send(self.contract().functions.cancel(offer_key(offer_id), offer_key(loop_id)))
 
-    def refund(self, offer_id: str, loop_id: str, wanter: str, reason: str = "") -> dict:
-        return self._send(self.contract().functions.refund(
-            offer_key(offer_id), offer_key(loop_id), wanter, reason))
+    def countersign(self, offer_id: str, loop_id: str) -> dict:
+        """The wanter's countersignature of delivery: the reservation returns now."""
+        return self._send(self.contract().functions.countersign(offer_key(offer_id), offer_key(loop_id)))
+
+    def settle(self, offer_id: str, loop_id: str) -> dict:
+        """Quiet after the claim period: anyone returns the reservation."""
+        return self._send(self.contract().functions.settle(offer_key(offer_id), offer_key(loop_id)))
+
+    def hold(self, offer_id: str, loop_id: str) -> dict:
+        """The resolver: a claim is open."""
+        return self._send(self.contract().functions.hold(offer_key(offer_id), offer_key(loop_id)))
+
+    def resolve(self, offer_id: str, loop_id: str, to_wanter: int) -> dict:
+        """The resolver: the outcome, what the wanter gets of the reservation."""
+        return self._send(self.contract().functions.resolve(offer_key(offer_id), offer_key(loop_id), to_wanter))
 
     # ---- reads ---------------------------------------------------------------
 
@@ -123,9 +152,13 @@ class EscrowClient:
     def free(self, offer_id: str) -> int:
         return self.contract().functions.free(offer_key(offer_id)).call()
 
-    def reserved(self, offer_id: str, loop_id: str) -> int:
-        c = self.contract()
-        return c.functions.reserved(c.functions.key(offer_key(offer_id), offer_key(loop_id)).call()).call()
+    def reservation(self, offer_id: str, loop_id: str) -> dict:
+        r = self.contract().functions.reservation(offer_key(offer_id), offer_key(loop_id)).call()
+        return {"wanter": r[0], "resolver": r[1], "amount": r[2], "window": (r[3], r[4]),
+                "claim_until": r[5], "held": r[6], "settled": r[7], "ladder": list(zip(r[8], r[9]))}
+
+    def ladder_at(self, offer_id: str, loop_id: str, lead: int) -> int:
+        return self.contract().functions.ladderAt(offer_key(offer_id), offer_key(loop_id), int(lead)).call()
 
     def deposit_of(self, offer_id: str) -> dict:
         giver, token, amount, released = self.contract().functions.deposits(offer_key(offer_id)).call()

@@ -1,8 +1,11 @@
-"""The crypto escrow (P3 §5a, 2026-09-19): a giver's deposit behind an
-offer id, a share reserved per fill, paid to the wanter on the arbiter's
-ruling, returned on the wanter's countersignature, withdrawn by the giver
-only after notice and only what no fill holds. Native coin and ERC-20.
-Skips without the `evm` extra."""
+"""The crypto escrow (P3 §5a/§5e, 2026-09-19): a giver's deposit behind
+an offer id, a share reserved per fill at clearing, settled by timeout or
+by the parties' own acts wherever nothing is disputed — quiet after the
+window, the wanter's countersignature, the giver's cancellation at the
+ladder — and by the resolver's `hold`/`resolve` only for a contested
+claim (factbond's, one key today); the giver withdraws only after notice
+and only what no fill holds. Native coin and ERC-20. Skips without the
+`evm` extra."""
 
 import importlib.util
 import os
@@ -51,14 +54,14 @@ def chain():
     w3 = Web3(EthereumTesterProvider())
     accounts = w3.eth.accounts
     w3.eth.default_account = accounts[0]
-    arbiter = accounts[1]
+    clearing = accounts[1]
     receipt = w3.eth.wait_for_transaction_receipt(
-        w3.eth.contract(abi=art["abi"], bytecode=art["bin"]).constructor(arbiter, NOTICE).transact())
+        w3.eth.contract(abi=art["abi"], bytecode=art["bin"]).constructor(clearing, NOTICE).transact())
     escrow = w3.eth.contract(address=receipt["contractAddress"], abi=art["abi"])
     receipt = w3.eth.wait_for_transaction_receipt(
         w3.eth.contract(abi=coin_art["abi"], bytecode=coin_art["bin"]).constructor().transact())
     coin = w3.eth.contract(address=receipt["contractAddress"], abi=coin_art["abi"])
-    return w3, escrow, coin, arbiter
+    return w3, escrow, coin, clearing
 
 
 def _as(w3, who):
@@ -84,81 +87,136 @@ def test_to_wei_is_exact_or_refuses():
         to_wei(Fraction(1, 3))
 
 
-def test_deposit_reserve_release_refund_in_the_native_coin(chain):
-    w3, escrow, coin, arbiter = chain
-    giver, wanter = w3.eth.accounts[2], w3.eth.accounts[3]
-    offer, loop, loop2 = bytes.fromhex(OFFER), bytes.fromhex(LOOP), bytes.fromhex(LOOP2)
+def _reserve(escrow, clearing, offer, loop, wanter, resolver, amount, start, end, claim=100, ladder=()):
+    leads, amounts = [l for l, _ in ladder], [a for _, a in ladder]
+    escrow.functions.reserve(offer, loop, wanter, resolver, amount, start, end, claim, leads, amounts).transact(
+        {"from": clearing})
+
+
+def _now(w3):
+    return w3.eth.get_block("latest")["timestamp"]
+
+
+def _advance(w3, seconds):
+    w3.provider.ethereum_tester.time_travel(_now(w3) + seconds)
+    w3.provider.ethereum_tester.mine_block()
+
+
+def test_undisputed_paths_settle_without_a_ruling(chain):
+    """Quiet after the claim period: anyone settles and the giver gets the
+    reservation back; a countersignature returns it now; a cancellation
+    pays the ladder's amount at that lead. No resolver involved."""
+    w3, escrow, coin, clearing = chain
+    giver, wanter, resolver = w3.eth.accounts[2], w3.eth.accounts[3], w3.eth.accounts[4]
+    offer = bytes.fromhex(OFFER)
     escrow.functions.deposit(offer).transact({"from": giver, "value": 10 ** 18})
-    assert escrow.functions.held(offer).call() == 10 ** 18
     assert escrow.functions.free(offer).call() == 10 ** 18
-    # only the arbiter reserves, only within what is free
-    assert "not the arbiter" in _reverts(w3, escrow.functions.reserve(offer, loop, 1), giver)
-    assert "beyond what is free" in _reverts(w3, escrow.functions.reserve(offer, loop, 2 * 10 ** 18), arbiter)
-    escrow.functions.reserve(offer, loop, 4 * 10 ** 17).transact({"from": arbiter})
-    escrow.functions.reserve(offer, loop2, 3 * 10 ** 17).transact({"from": arbiter})
-    assert escrow.functions.free(offer).call() == 3 * 10 ** 17
-    assert "already reserved" in _reverts(w3, escrow.functions.reserve(offer, loop, 1), arbiter)
-    # a ruling of failure pays the wanter the ruled amount; the rest of the reservation returns
+    now = _now(w3)
+    quiet, signed, cancelled = (bytes.fromhex(x * 32) for x in ("aa", "bb", "cc"))
+    assert "not the clearing" in _reverts(
+        w3, escrow.functions.reserve(offer, quiet, wanter, resolver, 1, now, now, 1, [], []), giver)
+    _reserve(escrow, clearing, offer, quiet, wanter, resolver, 2 * 10 ** 17, now + 1000, now + 2000)
+    _reserve(escrow, clearing, offer, signed, wanter, resolver, 3 * 10 ** 17, now + 1000, now + 2000)
+    # the ladder: 1/10 of the reservation a day out, the whole of it at the door
+    _reserve(escrow, clearing, offer, cancelled, wanter, resolver, 4 * 10 ** 17, now + 86_400, now + 90_000,
+             ladder=[(86_400, 4 * 10 ** 16), (0, 4 * 10 ** 17)])
+    assert escrow.functions.free(offer).call() == 10 ** 17
+    assert "beyond what is free" in _reverts(
+        w3, escrow.functions.reserve(offer, bytes(32), wanter, resolver, 2 * 10 ** 17, now, now, 1, [], []), clearing)
+    # quiet: not before the claim period ends
+    assert "claim period open" in _reverts(w3, escrow.functions.settle(offer, quiet), wanter)
+    # countersigned: the wanter alone, and now
+    assert "not the wanter" in _reverts(w3, escrow.functions.countersign(offer, signed), giver)
+    before = w3.eth.get_balance(giver)
+    escrow.functions.countersign(offer, signed).transact({"from": wanter})
+    assert w3.eth.get_balance(giver) - before == 3 * 10 ** 17
+    # cancelled half a day before the window: linear between the two points = 0.22e18
+    assert escrow.functions.ladderAt(offer, cancelled, 43_200).call() == 22 * 10 ** 16
+    _advance(w3, 43_200)
     before_w, before_g = w3.eth.get_balance(wanter), w3.eth.get_balance(giver)
-    escrow.functions.release(offer, loop, wanter, 25 * 10 ** 16, "no-show").transact({"from": arbiter})
-    assert w3.eth.get_balance(wanter) - before_w == 25 * 10 ** 16
-    assert w3.eth.get_balance(giver) - before_g == 15 * 10 ** 16
-    assert escrow.functions.held(offer).call() == 6 * 10 ** 17
-    assert "not within the reservation" in _reverts(w3, escrow.functions.release(offer, loop, wanter, 1, ""), arbiter)
-    # the wanter's countersignature returns the other reservation to the giver
-    assert "not the arbiter or the wanter" in _reverts(w3, escrow.functions.refund(offer, loop2, wanter, ""), giver)
-    before_g = w3.eth.get_balance(giver)
-    escrow.functions.refund(offer, loop2, wanter, "delivered").transact({"from": wanter})
-    assert w3.eth.get_balance(giver) - before_g == 3 * 10 ** 17
-    assert escrow.functions.held(offer).call() == escrow.functions.free(offer).call() == 3 * 10 ** 17
+    receipt = w3.eth.wait_for_transaction_receipt(escrow.functions.cancel(offer, cancelled).transact({"from": giver}))
+    gas = receipt["gasUsed"] * w3.eth.get_transaction(receipt["transactionHash"])["gasPrice"]
+    paid = w3.eth.get_balance(wanter) - before_w
+    assert 21 * 10 ** 16 <= paid <= 23 * 10 ** 16            # a few seconds of block time move the lead
+    assert w3.eth.get_balance(giver) - before_g == 4 * 10 ** 17 - paid - gas
+    # quiet: after the claim period anyone settles, to the giver
+    _advance(w3, 2000)
+    before = w3.eth.get_balance(giver)
+    escrow.functions.settle(offer, quiet).transact({"from": resolver})
+    assert w3.eth.get_balance(giver) - before == 2 * 10 ** 17
+    assert "not open" in _reverts(w3, escrow.functions.settle(offer, quiet), wanter)
+    assert escrow.functions.held(offer).call() == escrow.functions.free(offer).call() == 10 ** 17
     # the giver leaves only after notice, and only with what is free
     assert "notice not served" in _reverts(w3, escrow.functions.withdraw(offer, 1), giver)
     escrow.functions.notice(offer).transact({"from": giver})
-    assert "notice not served" in _reverts(w3, escrow.functions.withdraw(offer, 1), giver)
     for _ in range(NOTICE):
         w3.provider.ethereum_tester.mine_block()
-    assert "beyond what is free" in _reverts(w3, escrow.functions.withdraw(offer, 4 * 10 ** 17), giver)
-    before_g = w3.eth.get_balance(giver)
-    receipt = w3.eth.wait_for_transaction_receipt(
-        escrow.functions.withdraw(offer, 3 * 10 ** 17).transact({"from": giver}))
-    gas = receipt["gasUsed"] * w3.eth.get_transaction(receipt["transactionHash"])["gasPrice"]
-    assert w3.eth.get_balance(giver) - before_g == 3 * 10 ** 17 - gas   # the giver pays its own gas
+    assert "beyond what is free" in _reverts(w3, escrow.functions.withdraw(offer, 2 * 10 ** 17), giver)
+    escrow.functions.withdraw(offer, 10 ** 17).transact({"from": giver})
     assert escrow.functions.held(offer).call() == 0
-    # another key cannot deposit behind the same offer
     assert "another deposit" in _reverts(w3, escrow.functions.deposit(offer), wanter, value=1)
 
 
-def test_erc20_deposit_and_release(chain):
-    w3, escrow, coin, arbiter = chain
-    giver, wanter = w3.eth.accounts[0], w3.eth.accounts[3]
+def test_a_contested_claim_is_the_resolvers_and_bounded_to_the_fill(chain):
+    """`hold` stops the quiet timeout; `resolve` pays what the wanter gets
+    and returns the rest — only the reservation's resolver, only within the
+    reservation, only to that wanter and giver."""
+    w3, escrow, coin, clearing = chain
+    giver, wanter, resolver = w3.eth.accounts[2], w3.eth.accounts[3], w3.eth.accounts[4]
+    offer, loop = bytes.fromhex("33" * 32), bytes.fromhex(LOOP)
+    escrow.functions.deposit(offer).transact({"from": giver, "value": 10 ** 18})
+    now = _now(w3)
+    _reserve(escrow, clearing, offer, loop, wanter, resolver, 5 * 10 ** 17, now + 10, now + 20, claim=100)
+    assert "not the resolver" in _reverts(w3, escrow.functions.hold(offer, loop), clearing)
+    assert "no claim held" in _reverts(w3, escrow.functions.resolve(offer, loop, 1), resolver)
+    escrow.functions.hold(offer, loop).transact({"from": resolver})
+    _advance(w3, 200)
+    assert "a claim is open" in _reverts(w3, escrow.functions.settle(offer, loop), giver)
+    assert "not open" in _reverts(w3, escrow.functions.cancel(offer, loop), giver)
+    assert "beyond the reservation" in _reverts(w3, escrow.functions.resolve(offer, loop, 6 * 10 ** 17), resolver)
+    before_w, before_g = w3.eth.get_balance(wanter), w3.eth.get_balance(giver)
+    escrow.functions.resolve(offer, loop, 3 * 10 ** 17).transact({"from": resolver})
+    assert w3.eth.get_balance(wanter) - before_w == 3 * 10 ** 17
+    assert w3.eth.get_balance(giver) - before_g == 2 * 10 ** 17
+    assert escrow.functions.free(offer).call() == 5 * 10 ** 17
+    assert "claim period over" not in _reverts(w3, escrow.functions.hold(offer, loop), resolver)  # settled: not open
+
+
+def test_erc20_deposit_and_resolve(chain):
+    w3, escrow, coin, clearing = chain
+    giver, wanter, resolver = w3.eth.accounts[0], w3.eth.accounts[3], w3.eth.accounts[4]
     offer, loop = bytes.fromhex("11" * 32), bytes.fromhex(LOOP)
     coin.functions.approve(escrow.address, 500).transact({"from": giver})
     escrow.functions.depositToken(offer, coin.address, 500).transact({"from": giver})
     assert escrow.functions.held(offer).call() == 500
     assert "a token" in _reverts(w3, escrow.functions.depositToken(offer, "0x" + "00" * 20, 1), giver)
-    escrow.functions.reserve(offer, loop, 200).transact({"from": arbiter})
-    escrow.functions.release(offer, loop, wanter, 200, "cancelled at the door").transact({"from": arbiter})
+    now = _now(w3)
+    _reserve(escrow, clearing, offer, loop, wanter, resolver, 200, now, now + 10)
+    escrow.functions.hold(offer, loop).transact({"from": resolver})
+    escrow.functions.resolve(offer, loop, 200).transact({"from": resolver})
     assert coin.functions.balanceOf(wanter).call() == 200
     assert escrow.functions.held(offer).call() == 300
 
 
 def test_offers_signed_by_state(chain):
-    w3, escrow, coin, arbiter = chain
+    w3, escrow, coin, clearing = chain
     offer = bytes.fromhex("22" * 32)
     assert not escrow.functions.offers(offer).call()
-    assert "not the owner" in _reverts(w3, escrow.functions.registerOffer(offer), arbiter)
+    assert "not the owner" in _reverts(w3, escrow.functions.registerOffer(offer), clearing)
     escrow.functions.registerOffer(offer).transact({"from": w3.eth.accounts[0]})
     assert escrow.functions.offers(offer).call()
 
 
 def test_client_reads_and_the_shipped_artifact_match_the_source(chain):
     from loopmarket.escrow import abi
-    w3, escrow, coin, arbiter = chain
+    w3, escrow, coin, clearing = chain
     client = EscrowClient("", escrow.address, client=w3)
     assert client.held("11" * 32) == 300
-    assert client.reserved("11" * 32, LOOP) == 200
+    r = client.reservation("11" * 32, LOOP)
+    assert r["amount"] == 200 and r["settled"] and r["held"] and r["resolver"] == w3.eth.accounts[4]
     assert client.deposit_of("11" * 32)["token"] == coin.address
     names = {e["name"] for e in abi()["abi"] if e["type"] == "function"}
-    assert {"deposit", "depositToken", "reserve", "release", "refund", "notice", "withdraw", "held", "free"} <= names
+    assert {"deposit", "depositToken", "reserve", "cancel", "countersign", "settle", "hold", "resolve",
+            "notice", "withdraw", "held", "free", "ladderAt"} <= names
     with pytest.raises(ValueError):
         client.deposit(OFFER, 1)

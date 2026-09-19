@@ -26,10 +26,18 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   `scripts/deploy_escrow.py`, the artifact shipped by
   `scripts/build_beat.py`. CLI: `set escrow chain:RPC@CONTRACT` (the
   record names the address only) and `loop deposit [ID] [--check]`,
-  funding each of my gives' bonds in the gas token. Six tests on a local
-  EVM (native, ERC-20, notice, the CLI verb). Not yet: the verdict hook on
-  `BeatClearing` (finalization reserving directly) and the gate checking
-  the chain's holding against the record.
+  funding each of my gives' bonds in the gas token. **Rebuilt the same day
+  as custody plus a resolver interface** (§5e, Peter: *a ruling or a
+  timeout*): every undisputed case settles without a ruling — `settle`
+  after a quiet claim period by anyone, the wanter's `countersign`, the
+  giver's `cancel` at the ladder's amount for that lead (`ladderAt`) —
+  and a contested claim is factbond's bonded assertion about (offer,
+  loop), the resolver fixed at clearing making exactly two calls, `hold`
+  and `resolve`, bounded to that fill. The clearing's key reserves with
+  the leg's wanter, window, resolver, claim period and ladder. Seven tests
+  on a local EVM. Not yet: the verdict hook on `BeatClearing`
+  (finalization reserving directly), the gate checking the chain's holding
+  against the record, and factbond's contract as the resolver.
 - **A bare `set bond N` is N on my scale** (2026-09-19): deposited as
   `default_asset` at my price for it (5 on my scale at 2 per xDAI is
   2.5 xDAI), as the design says — the value on the giver's scale,

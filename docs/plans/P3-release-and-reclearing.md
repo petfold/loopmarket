@@ -163,8 +163,9 @@ clearing**: the release is the escrow's settlement behaviour, not a branch
 in the circulation.
 
 **Built 2026-09-19** (`contracts/LoopEscrow.sol`, `src/loopmarket/escrow.py`,
-`loop deposit`), with two departures from the sketch above that the
-accepted record forced: the deposit is keyed by the *offer id*, not by
+`loop deposit`) — and rebuilt the same day as custody plus a resolver
+interface, §5e, after Peter's "a ruling or a timeout" — with two departures
+from the sketch above that the accepted record forced: the deposit is keyed by the *offer id*, not by
 (loop, fill), because `Bond.escrow` is in the record before any loop
 exists and a divisible give's one deposit backs every fill it gets; and
 the reservation per fill is the arbiter's call (`reserve(offer, loop,
@@ -304,6 +305,68 @@ CLI's default* (Peter, 2026-09-19): a maker who gives only numbers deposits
 and accepts the configured chain's gas token at 1 per unit on its scale —
 xDAI while Swarm settles on Gnosis, which every maker already holds for
 gas — written explicitly into the record like any other acceptance.
+
+## 5e. Custody here, adjudication in factbond: the resolver (Peter, 2026-09-19)
+
+The first contract (§5a, built the morning of 2026-09-19) made every payout
+a ruling: `release` needed the arbiter, `refund` the arbiter or the wanter,
+and nothing happened by itself after the window. Peter's correction: **a
+ruling or a timeout** — rulings are for contested claims only, and the
+claim mechanism (stakes, contest, escalation, the adjudicator at the top,
+who pays the fee) is factbond's, not a second copy inside the escrow. The
+confusion came from factbond being plans without an interface to call, so
+adjudication was designed where the money was. The split is by what each
+repo knows:
+
+**The escrow knows what only loopmarket has** — the reservation per fill,
+the leg's handover window, the ladder, the wanter's countersignature, the
+giver's cancellation — and settles from those facts everything that needs
+no dispute:
+
+- *quiet after the window*: a claim period after the handover window with
+  no claim held, and anyone may settle — the reservation returns to the
+  giver;
+- *countersigned delivery*: the wanter's own transaction returns it now,
+  shortening the giver's lock-up;
+- *the giver's cancellation*: the giver's own transaction pays the ladder
+  amount at that lead to the wanter and returns the rest — nobody can
+  dispute what the giver did (rule 8's repair: a cancellation that a
+  re-clearing supersedes within the notice pays nothing; that coupling
+  waits for §3's superseding records).
+
+**Factbond knows how to settle a contested fact.** "This giver failed
+this leg" is a bonded assertion about the subject (offer, loop); the
+unchallenged claim paying out by timeout is factbond's optimistic
+default; the agreed adjudicator is the top rung of its ladder, chosen per
+leg from the record's declarations (`arbitrator` on the give, the
+wanter's accepted witness types), never a system in front of it; the
+escalation when no ruling arrives in the agreed period is factbond's
+constitution (`mechanism-design.md`'s ladder), not the escrow's.
+
+**The interface is one call each way**, and it is generic on factbond's
+side — a subject hash and a consumer callback, so the same market
+adjudicates catalogue edges, oracle reports, a Wikidata entry and a
+delivery claim with one set of stakes and one reputation record
+(factbond's `loopmarket-coupling.md` §3b):
+
+- `hold(offer, loop)` — the resolver says a claim is open; the quiet
+  timeout no longer refunds;
+- `resolve(offer, loop, toWanter)` — the resolver's outcome; the escrow
+  pays `toWanter` of the reservation to the wanter and the rest to the
+  giver.
+
+The escrow accepts both only from the **resolver fixed for that
+reservation at clearing**, and a resolver can only move that reservation
+between that giver and that wanter — the damage of a bad adjudicator is
+bounded to the legs that chose it. Nothing about stakes, challenges,
+periods or fees enters loopmarket; nothing about offers, loops or ladders
+enters factbond.
+
+**Today's stand-in.** Until factbond's contract exists the resolver is one
+key (the deployer's, as `BeatClearing`'s arbiter is), ruling directly
+through the same two calls; when factbond lands it takes the resolver's
+address and the escrow does not change. The declaration selects the
+resolver, by declaration like the escrow and the asset (§5d).
 
 ## 5b. Payments for buyouts
 

@@ -156,7 +156,10 @@ The doctrine, in the order the examples forced it:
    taxi. A repair costing less than the floor returns nothing to the
    defaulter: otherwise refusing a cheap repair would pay, and the floor
    is the wanter's by agreement.
-7. **Claims are staked.** The wanter stakes to claim a default; a
+7. **Claims are staked.** (Where: in factbond — the claim is a bonded
+   assertion about (offer, loop), and loopmarket's escrow only holds and
+   pays on the resolver's outcome; `P3-release-and-reclearing.md` §5e,
+   2026-09-19.) The wanter stakes to claim a default; a
    rejected claim pays the giver from the stake (factbond's dispute
    ladder, the frivolous-claim guard).
 
