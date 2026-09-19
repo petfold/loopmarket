@@ -126,7 +126,7 @@ class MockClearing:
     def __init__(self, registry: OfferRegistry, ontology: Ontology, *,
                  min_surplus: float = 0.0, require_per_node: bool = True,
                  clock=_time.time, verifiable_oracles=VERIFIABLE_ORACLES,
-                 chain_fills=None):
+                 chain_fills=None, escrow_held=None):
         self.registry = registry
         self.ontology = ontology
         self.min_surplus = min_surplus
@@ -141,6 +141,19 @@ class MockClearing:
         #: subtracted from what the book says is left, everywhere the checklist
         #: asks.
         self.chain_fills = chain_fills
+        #: offer id -> quantity the escrow contract holds behind it, in the
+        #: asset's unit (`EscrowClient.held` scaled), or None: with it, a
+        #: deposit that names an escrow counts only up to what is held
+        #: (`matching.meets`, 2026-09-19) — the chain is the authority on
+        #: the deposit as on the fills.
+        self.escrow_held = escrow_held
+
+    def deposits(self, offer_ids) -> dict | None:
+        """What the escrow holds behind each offer, or None when no escrow
+        is consulted (the declaration then stands, as before)."""
+        if self.escrow_held is None:
+            return None
+        return {oid: q(self.escrow_held(oid)) for oid in offer_ids}
 
     def available(self, offer_ids) -> dict:
         """What may still be taken from each offer: the book's remainder,
@@ -230,29 +243,33 @@ class MockClearing:
         root = self.registry.commit()
         return Receipt(True, lid, book_root=root)
 
-    def verify_leg(self, leg, *, now: int, available: dict) -> str | None:
+    def verify_leg(self, leg, *, now: int, available: dict, held: dict | None = None) -> str | None:
         """Re-derive one leg from this clearing's book and ontology — the
         exact check for its shape: `check_aggregate` for explicit shares,
         `check_parts` for a composed want, `check_match` for one give,
         `check_composition` for a thing moved by operators — against what
-        `available` says fills have left of each give. None when the leg
+        `available` says fills have left of each give, and `held` (the
+        escrow's holdings, this clearing's own when not given) says of each
+        deposit. None when the leg
         holds, else the reason. The unit of U3, and of a challenger's
         re-derivation (beat.py): the same code that cleared a leg is what
         convicts it."""
+        if held is None:
+            held = self.deposits(leg.offer_ids)
         fresh_want = self.registry.get(leg.want.offer_id)
         fresh_gives = [self.registry.get(g.offer_id) for g in leg.gives]
         if leg.quantities is not None:
             ok = check_aggregate(fresh_want, fresh_gives, leg.quantities, self.ontology,
-                                 now=now, available=available)
+                                 now=now, available=available, held=held)
         elif fresh_want.composed:
             ok = check_parts(fresh_want, fresh_gives, self.ontology, now=now,
-                             available=available)
+                             available=available, held=held)
         elif leg.simple:
             ok = check_match(fresh_gives[0], fresh_want, self.ontology, now=now,
-                             available=available)
+                             available=available, held=held)
         else:
             ok = check_composition(fresh_want, fresh_gives, self.ontology, now=now,
-                                   available=available)
+                                   available=available, held=held)
         if ok is None:
             return (f"leg fails re-verification: "
                     f"{'+'.join(g.offer_id[:8] for g in leg.gives)}"

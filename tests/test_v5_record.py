@@ -8,6 +8,8 @@ side's requirement is met by the other's declaration, the deposit reserved
 per fill (U7, fail closed); no asset is named by the protocol; nothing
 converts after clearing (U14). v4 re-encodes byte for byte."""
 
+from fractions import Fraction
+
 import pytest
 from ontodag import OntoDAG
 
@@ -137,3 +139,76 @@ def test_the_solver_never_proposes_an_inadmissible_loop():
     forged = Loop((Match(give=offers[1], want=offers[0]), Match(give=offers[3], want=offers[4])))
     verdict = MockClearing(book, cat, clock=lambda: NOW).rehearse(LoopProposal(forged, book.store.root, cat.root, "t", NOW))
     assert not verdict.accepted
+
+
+def test_the_chain_is_the_authority_on_a_deposit_when_an_escrow_is_consulted():
+    """With `held` (what the escrow contract holds behind each offer), a
+    deposit that names an escrow counts only up to what is held: declared
+    and unfunded meets nothing; funded in full meets as before; a deposit
+    naming no escrow stays the declaration the gate compares (2026-09-19).
+    The clearing consults its `escrow_held` the same way."""
+    cat = _cat()
+    amara = want("amara", Thing(("transport",), 1, "run"), 50, **V,
+                 requires=Requires(point=50, accepts=(EUR,)))
+    rich = give("d1", Thing(("transport",), 1, "run"), 45, **V, bond=_deposit(("stablecoin-eur",), 60, "EUR", 45))
+    unescrowed = give("d3", Thing(("transport",), 1, "run"), 45, **V, bond=_deposit(("stablecoin-eur",), 60, "EUR", 45, ""))
+    assert check_match(rich, amara, cat, now=NOW, held={}) is None                       # declared, never funded
+    assert check_match(rich, amara, cat, now=NOW, held={rich.offer_id: 40}) is None      # short of her point
+    assert check_match(rich, amara, cat, now=NOW, held={rich.offer_id: 60}) is not None
+    assert check_match(rich, amara, cat, now=NOW, held={rich.offer_id: 100}) is not None  # never above the declaration
+    assert check_match(unescrowed, amara, cat, now=NOW, held={}) is not None             # no escrow named: the declaration
+    assert not meets(amara, rich, cat, taken=1, whole=1, held={}) and meets(amara, rich, cat, taken=1, whole=1, held={rich.offer_id: 60})
+    # the clearing: the same leg clears with the deposit held and is refused without
+    for held_qty, accepted in ((60, True), (0, False)):
+        book = OfferRegistry(RecordStore(MemoryBytesStore()))
+        driver_wants = want("d1", Thing(("apple",), 1), 46, **V)   # covers what d1 gives (per node)
+        amara_gives = give("amara", Thing(("apple",), 1), 28, **V)
+        book.publish_many([amara, rich, driver_wants, amara_gives]); book.commit()
+        clearing = MockClearing(book, cat, clock=lambda: NOW, escrow_held=lambda oid: held_qty if oid == rich.offer_id else 0)
+        agent = SolverAgent(registry=book, ontology=cat, clearing=clearing, solver_id="t",
+                            escrow_held=clearing.escrow_held)
+        receipts = agent.step(now=NOW)
+        assert bool(receipts and receipts[0].accepted) is accepted
+
+
+def test_reservations_for_a_cleared_loop_name_the_share_the_wanter_and_the_ladder_in_the_asset():
+    """`escrow.reservations_for` turns a cleared loop into what the clearing
+    reserves: bond × taken / quantity in the asset's smallest units, the
+    wanter's key as the destination, the give's declared arbitrator or the
+    stand-in as resolver, the want's window, and the wanter's ladder
+    converted at her acceptance price into the asset, rounded down and
+    capped at the reservation (2026-09-19). Pure: a leg is enough."""
+    from types import SimpleNamespace
+    from loopmarket.escrow import reservations_for, to_wei
+    from loopmarket.matching import Leg
+    W, D = "0x" + "aa" * 20, "0x" + "bb" * 20
+    span_text = "2026-09-20T10:00:00Z..2026-09-20T12:00:00Z"
+    amara = want(W, Thing(("apple", f"time({span_text})"), 40, "kg"), 90, **V,
+                 requires=Requires(point=4, ladder=((86_400, 1), (0, 4)), accepts=(EUR,)))
+    farm = give(D, Thing(("apple",), 100, "kg", step=5), 200, **V,
+                bond=_deposit(("stablecoin-eur",), 10, "EUR", 8, "0xEsCrOw"), arbitrator="0x" + "cc" * 20)
+    proposal = SimpleNamespace(circulation=SimpleNamespace(legs=(Leg(amara, (farm,)),), loop_id="ab" * 32))
+    spans = {span_text: (1_789_898_400, 1_789_905_600)}
+    rs = reservations_for(proposal, escrow="0xescrow", resolver="0x" + "dd" * 20, claim_seconds=600, now=NOW,
+                          span=lambda text: spans[text])
+    assert len(rs) == 1
+    r = rs[0]
+    assert r["offer_id"] == farm.offer_id and r["loop_id"] == "ab" * 32
+    assert r["wanter"] == W and r["resolver"] == "0x" + "cc" * 20
+    assert r["amount"] == to_wei(Fraction(4))                         # 10 EUR × 40 / 100
+    assert r["window"] == (1_789_898_400, 1_789_905_600) and r["claim_seconds"] == 600
+    assert r["ladder"] == [(86_400, to_wei(1)), (0, to_wei(4))]        # at 1 per EUR
+    # no span reader: the window is now; another escrow: nothing; no arbitrator: the stand-in
+    assert reservations_for(proposal, escrow="0xescrow", resolver=W, claim_seconds=1, now=NOW)[0]["window"] == (NOW, NOW)
+    assert reservations_for(proposal, escrow="0xother", resolver=W, claim_seconds=1, now=NOW) == []
+    plain = give(D, Thing(("apple",), 100, "kg", step=5), 200, **V, bond=_deposit(("stablecoin-eur",), 10, "EUR", 8, "0xEsCrOw"))
+    leg = SimpleNamespace(circulation=SimpleNamespace(legs=(Leg(amara, (plain,)),), loop_id="ab" * 32))
+    assert reservations_for(leg, escrow="0xescrow", resolver="0x" + "dd" * 20, claim_seconds=1, now=NOW)[0]["resolver"] == "0x" + "dd" * 20
+    # the ladder is capped at the reservation, and the wanter must be a key
+    steep = want(W, Thing(("apple",), 40, "kg"), 90, **V, requires=Requires(point=4, ladder=((10, 4), (0, 4)), accepts=(Acceptance(("stablecoin-eur",), "EUR", "1/2"),)))
+    leg = SimpleNamespace(circulation=SimpleNamespace(legs=(Leg(steep, (plain,)),), loop_id="ab" * 32))
+    assert reservations_for(leg, escrow="0xescrow", resolver=W, claim_seconds=1, now=NOW)[0]["ladder"] == [(10, to_wei(4)), (0, to_wei(4))]
+    named = want("amara", Thing(("apple",), 40, "kg"), 90, **V, requires=Requires(point=4, accepts=(EUR,)))
+    leg = SimpleNamespace(circulation=SimpleNamespace(legs=(Leg(named, (plain,)),), loop_id="ab" * 32))
+    with pytest.raises(ValueError, match="not a key address"):
+        reservations_for(leg, escrow="0xescrow", resolver=W, claim_seconds=1, now=NOW)

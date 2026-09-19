@@ -197,10 +197,13 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       withdrawal after notice; the wanter names the durable asset
       categories she accepts with her own prices, conversion once at
       clearing. Not deployed on Gnosis yet.
-- [ ] The verdict hook: `BeatClearing`'s finalization reserving on the
-      escrow directly, and the gate comparing the chain's `held` with the
-      record's declared bond (today the declaration is what matching and
-      the verifier compare).
+- [x] The gate consults the chain's holding (`meets(held=)`, 2026-09-19)
+      and `loop finalize` reserves per fill from the loop record
+      (`escrow.reservations_for`) with the clearing key.
+- [ ] `BeatClearing` reserving from the contract itself at finalization
+      (the contract would need the leg's wanter, window, resolver and
+      ladder decoded on chain; today the clearing key sends them), and the
+      verifier holding the clearing to those numbers.
 - [ ] factbond as the resolver: its assertion contract's consumer edge
       (`hold`/`resolve` on a subject hash, factbond's
       `loopmarket-coupling.md` §3b) takes the resolver's address; the

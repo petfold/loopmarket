@@ -35,9 +35,18 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   loop), the resolver fixed at clearing making exactly two calls, `hold`
   and `resolve`, bounded to that fill. The clearing's key reserves with
   the leg's wanter, window, resolver, claim period and ladder. Seven tests
-  on a local EVM. Not yet: the verdict hook on `BeatClearing`
-  (finalization reserving directly), the gate checking the chain's holding
-  against the record, and factbond's contract as the resolver.
+  on a local EVM. **And the chain is the authority on a deposit** (the
+  same day): `matching.meets(held=)` counts a deposit naming an escrow
+  only up to what the contract holds — threaded through every gate, the
+  agent (`escrow_held`), the clearing (`MockClearing(escrow_held=)`) and
+  the CLI whenever `escrow` is set — so a declared, unfunded bond meets
+  nothing; and `loop finalize` reserves on the escrow the share of every
+  bonded give the finalized loop relies on (`escrow.reservations_for`:
+  the share in smallest units, the wanter's key, the give's arbitrator or
+  my key as resolver, the want's time term as the window, `escrow_claim`
+  as the claim period, the wanter's ladder converted at her price into
+  the asset). Not yet: `BeatClearing` reserving from the contract itself,
+  and factbond's contract as the resolver.
 - **A bare `set bond N` is N on my scale** (2026-09-19): deposited as
   `default_asset` at my price for it (5 on my scale at 2 per xDAI is
   2.5 xDAI), as the design says — the value on the giver's scale,

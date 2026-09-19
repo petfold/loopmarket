@@ -137,6 +137,10 @@ _SETTINGS = {
         "the escrow contract holding my deposit: chain:RPC_URL@CONTRACT "
         "(LoopEscrow; the record names the address); `deposit [ID]` funds "
         "a give's declared bond there (empty: a declaration only)"),
+    "escrow_claim": _Setting(
+        "LOOP_ESCROW_CLAIM", "7d", "--escrow-claim DURATION",
+        "how long after a leg's handover window a claim on its deposit may "
+        "be opened before the reservation returns to the giver by itself"),
     "require_point": _Setting(
         "LOOP_REQUIRE_POINT", "", "--require-point AMOUNT",
         "my neutral point on a no-show, on my scale: what makes me whole — "
@@ -2303,7 +2307,8 @@ def cmd_loops(args, session, out):
     is profitable, so `loop loops && loop clear` reads naturally."""
     fold = session.fold()
     agent = SolverAgent(fold, session.catalogue, clearing=None,
-                        solver_id="loop-cli", min_surplus=0.0, chain_fills=_chain_fills(session))
+                        solver_id="loop-cli", min_surplus=0.0, chain_fills=_chain_fills(session),
+                        escrow_held=_escrow_held(session))
     root, loops = agent.find_loops(now=session.now)
     for loop in loops:
         _print_loop(loop, fold, out)
@@ -2341,9 +2346,12 @@ def cmd_propose(args, session, out):
         session.book.commit()
     book, ontology = session.book, session.catalogue
     client = _beat_client(session)
+    held = _escrow_held(session)
     agent = SolverAgent(book, ontology,
-                        ChainClearing(book, ontology, beat_client=client, clock=lambda: now),
-                        solver_id="loop-cli", min_surplus=0.0, chain_fills=client.filled)
+                        ChainClearing(book, ontology, beat_client=client, clock=lambda: now,
+                                      escrow_held=held),
+                        solver_id="loop-cli", min_surplus=0.0, chain_fills=client.filled,
+                        escrow_held=held)
     receipts = agent.step(now=now)
     posted = 0
     for r in receipts:
@@ -2364,6 +2372,16 @@ def _escrow_client(session):
         raise ValueError("no escrow contract: `loop set escrow chain:RPC_URL@CONTRACT`")
     rpc, _, address = spec[6:].rpartition("@")
     return EscrowClient(rpc, address, key=_configured("bee_signer") or None)
+
+
+def _escrow_held(session):
+    """`EscrowClient.held` in asset units when an escrow contract is set —
+    the authority on every deposit the hunt and the checklist weigh — else
+    None (the declaration stands)."""
+    if not (_configured("escrow") or "").startswith("chain:"):
+        return None
+    from .escrow import held_units
+    return held_units(_escrow_client(session))
 
 
 def cmd_deposit(args, session, out):
@@ -2405,11 +2423,41 @@ def cmd_deposit(args, session, out):
 
 
 def cmd_finalize(args, session, out):
-    """Record a beat's fills on chain once its challenge window has closed."""
+    """Record a beat's fills on chain once its challenge window has closed
+    — and, with an escrow set, reserve on it the share of every deposit the
+    loop's legs rely on (2026-09-19): the fills becoming the chain's
+    authority is the moment the deposits behind them are locked per fill;
+    the loop record is found as `challenge` finds it, the reservation built
+    by `escrow.reservations_for`, `claim` the period after the window in
+    which a claim may be opened (`escrow_claim`), the resolver my own key
+    until factbond's contract exists."""
+    from .beat import find_evidence, proposal_from_record
+    from .escrow import reservations_for
     client = _beat_client(session)
     receipt = client.finalize(int(args.beat))
     state = client.beat(int(args.beat))
     print(f"finalized beat {args.beat}: {state['fills']} fills, gas {receipt['gasUsed']}", file=out)
+    if not (_configured("escrow") or "").startswith("chain:"):
+        return 0
+    ev = find_evidence(state, _evidence_books(session, state, None))
+    if ev is None:
+        print(f"loop: beat {args.beat}: no loop record found, nothing reserved on the escrow", file=_err())
+        return 2
+    escrow = _escrow_client(session)
+    proposal = proposal_from_record(ev.record, ev.snapshot)
+    reservations = reservations_for(proposal, escrow=escrow.address, resolver=escrow.account().address,
+                                    claim_seconds=duration_s(_configured("escrow_claim") or "7d"),
+                                    now=session.now, span=_calendar_span)
+    for r in reservations:
+        try:
+            escrow.reserve(r["offer_id"], r["loop_id"], r["wanter"], r["resolver"], r["amount"],
+                           window=r["window"], claim_seconds=r["claim_seconds"], ladder=r["ladder"])
+            print(f"reserved {_num(Fraction(r['amount'], 10 ** 18))} behind {r['offer_id'][:16]}… "
+                  f"for {r['wanter']}", file=out)
+        except Exception as exc:  # noqa: BLE001 — a reservation the contract refuses is reported, not fatal
+            print(f"loop: {r['offer_id'][:16]}…: not reserved: {exc}", file=_err())
+    if not reservations:
+        print("no deposit of this escrow behind the loop's legs", file=out)
     return 0
 
 

@@ -61,6 +61,9 @@ class SolverAgent:
     #: offer id -> quantity the chain has recorded as taken (`BeatClearing.
     #: filled`), or None: a spent offer is not hunted through (2026-09-18).
     chain_fills: object = None
+    #: offer id -> what the escrow holds behind it (asset units), or None:
+    #: a deposit naming an escrow counts only up to what is held (2026-09-19).
+    escrow_held: object = None
     #: Selection (P2-loop-selection.md, 2026-09-18): every simple cycle up
     #: to `max_legs` legs is a candidate (`graph.enumerate_cycles`, at most
     #: `cycle_limit` of them), the composed sets beside them, and the packer
@@ -105,8 +108,12 @@ class SolverAgent:
                         continue
                 kept.append(o)
             offers = kept
+        held = None
+        if self.escrow_held is not None:
+            held = {o.offer_id: q(self.escrow_held(o.offer_id)) for o in offers
+                    if o.v >= 5 and o.bond is not None and o.bond.escrow}
         matches = list(candidate_matches(offers, self.ontology, now=now,
-                                         available=available))
+                                         available=available, held=held))
         cycles, complete = enumerate_cycles(matches, max_legs=self.max_legs,
                                             limit=self.cycle_limit, min_surplus=self.min_surplus)
         candidates: dict[str, Loop | Circulation] = {c.loop_id: c for c in cycles}
@@ -116,9 +123,9 @@ class SolverAgent:
             for loop in graph.find_profitable_loops(min_surplus=self.min_surplus,
                                                     limit=self.max_loops_per_step):
                 candidates.setdefault(loop.loop_id, loop)
-        composed = list(composed_legs(offers, self.ontology, now=now, available=available)) \
-            + list(parts_legs(offers, self.ontology, now=now, available=available)) \
-            + list(aggregate_legs(offers, self.ontology, now=now, available=available))
+        composed = list(composed_legs(offers, self.ontology, now=now, available=available, held=held)) \
+            + list(parts_legs(offers, self.ontology, now=now, available=available, held=held)) \
+            + list(aggregate_legs(offers, self.ontology, now=now, available=available, held=held))
         if composed:
             legs = composed + [Leg.from_match(m) for m in matches]
             for circ in find_circulations(legs, min_surplus=self.min_surplus,

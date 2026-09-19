@@ -34,6 +34,8 @@ from __future__ import annotations
 import json
 from fractions import Fraction
 
+from .schema import q
+
 NATIVE = "0x0000000000000000000000000000000000000000"
 
 
@@ -54,6 +56,81 @@ def to_wei(qty: Fraction | int | str, decimals: int = 18) -> int:
     if scaled.denominator != 1:
         raise ValueError(f"{qty} is not a whole number of 10^-{decimals} units")
     return int(scaled)
+
+
+def floor_wei(qty, decimals: int = 18) -> int:
+    """A quantity rounded down to the asset's smallest unit — for the
+    ladder's points, which bound a payout and may lose the dust."""
+    return int(Fraction(qty) * 10 ** decimals)
+
+
+def held_units(client: "EscrowClient", decimals: int = 18):
+    """offer id -> what the escrow holds, in the asset's unit (a Fraction):
+    the `escrow_held` the agent and the clearing take."""
+    return lambda offer_id: Fraction(client.held(offer_id), 10 ** decimals)
+
+
+def is_address(text: str) -> bool:
+    return isinstance(text, str) and len(text) == 42 and text.startswith("0x") \
+        and all(c in "0123456789abcdefABCDEF" for c in text[2:])
+
+
+def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int, now: int,
+                     span=None, decimals: int = 18) -> list[dict]:
+    """What the clearing reserves on the escrow for a cleared loop: one
+    reservation per give whose `bond` names `escrow` — the share bond ×
+    taken / quantity (§3a rule 8) in smallest units, the leg's wanter (its
+    maker, which must be a key address: the payout's destination), the
+    resolver (the give's declared `arbitrator` when it is an address, else
+    `resolver`, the stand-in until factbond), the want's handover window
+    (`span(text)` reads the first `time(...)` term of the want, else the
+    window is `now`), the claim period, and the wanter's ladder converted
+    at her acceptance price for the deposit's asset into that asset —
+    rounded down, capped at the reservation. Pure: nothing is sent."""
+    out = []
+    escrow = escrow.lower()
+    for leg in proposal.circulation.legs:
+        want = leg.want
+        window = (now, now)
+        if span is not None:
+            for term in _concepts(want):
+                if isinstance(term, str) and term.startswith("time(") and term.endswith(")"):
+                    try:
+                        window = tuple(span(term[5:-1]))
+                        break
+                    except Exception:      # noqa: BLE001 — not a span this reader knows
+                        continue
+        for i, give in enumerate(leg.gives):
+            bond = give.bond if give.v >= 5 else None
+            if bond is None or bond.escrow.lower() != escrow:
+                continue
+            if not is_address(want.maker):
+                raise ValueError(f"{want.maker!r} is not a key address: the payout has no destination")
+            share = bond.reserved(leg.taken(i), give.thing.qty)
+            amount = to_wei(share, decimals)
+            ladder = []
+            req = want.requires
+            if req is not None and req.ladder:
+                price = next((q(a.price) for a in req.accepts
+                              if a.unit == bond.asset.unit and set(a.concepts) <= set(bond.asset.concepts)),
+                             None)
+                if price is None:            # the acceptance the gate matched by subsumption:
+                    price = next((q(a.price) for a in req.accepts if a.unit == bond.asset.unit), None)
+                if price is not None:
+                    ladder = [(int(lead), min(amount, floor_wei(q(a) / price, decimals)))
+                              for lead, a in req.ladder]
+            out.append({"offer_id": give.offer_id, "loop_id": proposal.circulation.loop_id,
+                        "wanter": want.maker,
+                        "resolver": give.arbitrator if is_address(give.arbitrator) else resolver,
+                        "amount": amount, "window": (int(window[0]), int(window[1])),
+                        "claim_seconds": int(claim_seconds), "ladder": ladder})
+    return out
+
+
+def _concepts(want):
+    if want.composed:
+        return [c for part in want.parts for c in part.concepts]
+    return list(want.thing.concepts)
 
 
 def offer_key(offer_id: str) -> bytes:
