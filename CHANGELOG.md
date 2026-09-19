@@ -11,6 +11,34 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **The crypto escrow — `LoopEscrow.sol` and `loopmarket.escrow`** (P3
+  §5a, 2026-09-19). A smart contract as a maker: it signs by state
+  (`registerOffer`) and takes no personal tokens, so its holding is a
+  condition on the giver's give, not a leg. A giver's declared v5 `Bond`
+  is deposited behind the offer id (`deposit` in the chain's native coin,
+  `depositToken` for an ERC-20); the arbiter reserves a share per fill
+  (bond × taken / quantity), pays the wanter on a ruling of failure
+  (`release`, the excess of the reservation returning to the giver) and
+  returns the reservation on the wanter's countersignature or after the
+  window (`refund`); the giver withdraws only what no fill holds and only
+  after a notice period. `EscrowClient` (the `chain` extra), `to_wei`
+  refusing a quantity the asset cannot hold exactly (U9),
+  `scripts/deploy_escrow.py`, the artifact shipped by
+  `scripts/build_beat.py`. CLI: `set escrow chain:RPC@CONTRACT` (the
+  record names the address only) and `loop deposit [ID] [--check]`,
+  funding each of my gives' bonds in the gas token. Six tests on a local
+  EVM (native, ERC-20, notice, the CLI verb). Not yet: the verdict hook on
+  `BeatClearing` (finalization reserving directly) and the gate checking
+  the chain's holding against the record.
+- **A bare `set bond N` is N on my scale** (2026-09-19): deposited as
+  `default_asset` at my price for it (5 on my scale at 2 per xDAI is
+  2.5 xDAI), as the design says — the value on the giver's scale,
+  converted once at the giver's declared price.
+- **`xdai` in the triangle catalogue** under `stablecoin cryptocurrency
+  currency`, the names of ontodag's economics pack (v6 carries `dai`,
+  `xdai`, `usdc`, `bzz`, `xbzz`), so the demo's makers can bond in the
+  chain's gas token.
+
 - **The `challenge` verb — the optimistic beat gets its challenger**
   (P2, 2026-09-18). The CLI keeps no copy of what `propose` posted: the
   book is the channel. `loop challenge BEAT [LEG] [--check] [--book SPEC]`

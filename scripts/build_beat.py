@@ -1,6 +1,7 @@
-"""Compile contracts/BeatClearing.sol and contracts/SealedBeat.sol into the
-artifacts the package ships, `src/loopmarket/contracts/{BeatClearing,
-SealedBeat}.json` ({"abi", "bytecode"}), with
+"""Compile contracts/BeatClearing.sol, contracts/SealedBeat.sol and
+contracts/LoopEscrow.sol into the artifacts the package ships,
+`src/loopmarket/contracts/{BeatClearing,SealedBeat,LoopEscrow}.json`
+({"abi", "bytecode"}), with
 the parameters the tests compile under (solc 0.8.24, via IR, optimizer 200
 runs) so the deployed bytecode is reproducible from the sources.
 
@@ -34,6 +35,7 @@ def main() -> None:
     solcx.install_solc("0.8.24")
     build("BeatClearing.sol", "BeatClearing", OUT)
     build("SealedBeat.sol", "SealedBeat", OUT.replace("BeatClearing.json", "SealedBeat.json"))
+    build("LoopEscrow.sol", "LoopEscrow", OUT.replace("BeatClearing.json", "LoopEscrow.json"))
 
 
 if __name__ == "__main__":

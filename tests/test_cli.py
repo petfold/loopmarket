@@ -1047,8 +1047,60 @@ def test_the_default_asset_is_the_chains_gas_token_and_must_be_in_the_catalogue(
     monkeypatch.setenv("LOOP_DEFAULT_ASSET", ""); run.ok("set", "default_asset", "")
     out = run.ok("give", "apple", "home", "5")
     assert "bond 5xDAI xdai worth 5" in out and "requires point 20" in out and "accepts xdai xDAI 1" in out
-    offer = next(o for o in run.session.book.offers(include_filled=True))
+    offer = next(o for o in run.session.book.offers(include_filled=True) if o.tokens.amount == 5)
     assert offer.bond.asset.concepts == ("xdai",) and offer.bond.value == 5
-    assert offer.requires.accepts[0].concepts == ("xdai",) and offer.requires.accepts[0].price == 1
+    # the bare amount is on my scale: at 2 per xDAI, 5 on my scale is 2.5 xDAI
+    run.ok("set", "default_asset", "xdai xDAI 2")
+    out = run.ok("give", "apple", "home", "6")
+    offer = next(o for o in run.session.book.offers(include_filled=True) if o.tokens.amount == 6)
+    assert offer.bond.asset.qty == 5 / 2 and offer.bond.value == 5 and offer.requires.accepts[0].price == 2
+    monkeypatch.setenv("LOOP_DEFAULT_ASSET", ""); run.ok("set", "default_asset", "")
     for key in ("bond", "require_point"):
         monkeypatch.setenv("LOOP_" + key.upper(), ""); run.ok("set", key, "")
+
+
+def test_deposit_funds_the_declared_bond_on_the_escrow_contract(loop, monkeypatch):
+    """`set escrow chain:RPC@CONTRACT` names the escrow in the record (the
+    address only, so the id is the same under any RPC) and `deposit` funds
+    each of my gives' declared bond there in the chain's native coin —
+    `--check` reports, a held bond is not deposited twice (P3 §5a,
+    2026-09-19). Skips without the evm extra."""
+    import importlib.util
+    if not all(importlib.util.find_spec(m) for m in ("solcx", "eth_tester", "web3")):
+        pytest.skip("needs the evm extra")
+    import os
+    import solcx
+    from web3 import EthereumTesterProvider, Web3
+    from loopmarket.escrow import EscrowClient
+    solcx.install_solc("0.8.24")
+    contracts = os.path.join(os.path.dirname(__file__), "..", "contracts")
+    compiled = solcx.compile_files([os.path.join(contracts, "LoopEscrow.sol")], output_values=["abi", "bin"],
+                                   solc_version="0.8.24", optimize=True, optimize_runs=200, via_ir=True,
+                                   allow_paths=contracts)
+    art = next(v for k, v in compiled.items() if k.endswith(":LoopEscrow"))
+    w3 = Web3(EthereumTesterProvider())
+    w3.eth.default_account = w3.eth.accounts[0]
+    receipt = w3.eth.wait_for_transaction_receipt(
+        w3.eth.contract(abi=art["abi"], bytecode=art["bin"]).constructor(w3.eth.accounts[1], 2).transact())
+    address = receipt["contractAddress"]
+    key = "0x" + "7a" * 32                       # a funded throwaway key: the giver
+    giver = w3.eth.account.from_key(key).address
+    w3.eth.wait_for_transaction_receipt(w3.eth.send_transaction({"to": giver, "value": 10 ** 20}))
+    client = EscrowClient("", address, key=key, client=w3)
+    monkeypatch.setattr(cli, "_escrow_client", lambda session: client)
+    run = loop
+    run.ok("set", "escrow", f"chain:http://x@{address}")
+    run.ok("set", "bond", "5")
+    run.ok("give", "apple", "home", "5")
+    offer = next(o for o in run.session.book.offers(include_filled=True))
+    assert offer.bond.escrow == address and offer.bond.asset.qty == 5
+    out = run.ok("deposit", "--check")
+    assert f"{offer.offer_id[:16]}… 5xDAI xdai: 5 to deposit" in out
+    assert client.held(offer.offer_id) == 0
+    out = run.ok("deposit")
+    assert "deposited" in out and client.held(offer.offer_id) == 5 * 10 ** 18
+    assert "held" in run.ok("deposit", offer.offer_id[:8])
+    code, out, err = run("deposit", "ffff")
+    assert code != 0 and "not an unfilled give of mine" in err
+    for k in ("escrow", "bond"):
+        monkeypatch.setenv("LOOP_" + k.upper(), ""); run.ok("set", k, "")

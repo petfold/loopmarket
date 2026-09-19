@@ -162,6 +162,18 @@ listens to, the arbiter hook's shape. **No conditional leg shape in
 clearing**: the release is the escrow's settlement behaviour, not a branch
 in the circulation.
 
+**Built 2026-09-19** (`contracts/LoopEscrow.sol`, `src/loopmarket/escrow.py`,
+`loop deposit`), with two departures from the sketch above that the
+accepted record forced: the deposit is keyed by the *offer id*, not by
+(loop, fill), because `Bond.escrow` is in the record before any loop
+exists and a divisible give's one deposit backs every fill it gets; and
+the reservation per fill is the arbiter's call (`reserve(offer, loop,
+amount)`) until the verdict hook lets the clearing contract's finalization
+reserve directly — the giver's withdrawal therefore waits a notice period
+and takes only what no fill holds. `release` pays the ruled amount and
+returns the excess of the reservation; `refund` is the wanter's own
+transaction or the arbiter's after the window. Native coin and ERC-20.
+
 **What the v5 record becomes — held until this is read:** the giver's
 `bond` = (asset category, quantity, escrow contract), marked as backing and
 never clearable as a give; the wanter's `requires` = neutral point,

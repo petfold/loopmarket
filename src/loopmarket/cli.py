@@ -121,9 +121,10 @@ _SETTINGS = {
     "bond": _Setting(
         "LOOP_BOND", "", "--bond DEPOSIT",
         "the deposit I hold against my performance, on every give I publish: "
-        "`QTY[UNIT] CATEGORY... VALUE` — the asset by the grammar (quantity "
-        "first), its worth to me on my scale last (v5; a declaration until "
-        "the escrow of `escrow` holds it)"),
+        "an amount on my scale, deposited as default_asset at my price for "
+        "it, or `QTY[UNIT] CATEGORY... VALUE` — the asset by the grammar "
+        "(quantity first), its worth to me on my scale last (v5; a "
+        "declaration until the escrow of `escrow` holds it)"),
     "default_asset": _Setting(
         "LOOP_DEFAULT_ASSET", "xdai xDAI 1", "--default-asset 'CATEGORY UNIT PRICE'",
         "the asset a bare-number `bond` deposits and a `require_point` with "
@@ -132,8 +133,10 @@ _SETTINGS = {
         "Gnosis (a CLI default; the record names it explicitly, the protocol "
         "names no asset)"),
     "escrow": _Setting(
-        "LOOP_ESCROW", "", "--escrow ADDRESS",
-        "the escrow contract holding my deposit (empty: not yet deposited)"),
+        "LOOP_ESCROW", "", "--escrow SPEC",
+        "the escrow contract holding my deposit: chain:RPC_URL@CONTRACT "
+        "(LoopEscrow; the record names the address); `deposit [ID]` funds "
+        "a give's declared bond there (empty: a declaration only)"),
     "require_point": _Setting(
         "LOOP_REQUIRE_POINT", "", "--require-point AMOUNT",
         "my neutral point on a no-show, on my scale: what makes me whole — "
@@ -1442,16 +1445,16 @@ def _guarantees(now: int, concepts=()) -> dict:
     dep = _configured("bond")
     if dep:
         toks = shlex.split(dep)
-        if len(toks) == 1:                         # a bare amount: the default asset, worth its amount at my price
-            amount = q(toks[0])
-            out["bond"] = Bond(Thing(d_cat, amount, d_unit), amount * d_price, _configured("escrow") or "")
+        if len(toks) == 1:                         # a bare amount: on MY scale, deposited as the default
+            value = q(toks[0])                     # asset at my price for it (value / price units)
+            out["bond"] = Bond(Thing(d_cat, value / d_price, d_unit), value, _escrow_address())
         else:
             parsed = parse_offer_tokens(toks)
             if parsed.qty is None or parsed.price is None or not parsed.concepts:
                 raise ValueError("bond is an amount of the default asset, or `QTY[UNIT] CATEGORY... VALUE`: "
                                  "the deposit by the grammar, its worth to me last")
             out["bond"] = Bond(Thing(tuple(parsed.concepts), parsed.qty, parsed.unit or "unit"),
-                               parsed.price, _configured("escrow") or "")
+                               parsed.price, _escrow_address())
     point = q(_configured("require_point")) if _configured("require_point") else None
     accepts = []
     for entry in (e.strip() for e in (_configured("require_accepts") or "").split(";") if e.strip()):
@@ -1473,6 +1476,13 @@ def _guarantees(now: int, concepts=()) -> dict:
     if "requires" in out or "bond" in out:
         out["v"] = 5
     return out
+
+
+def _escrow_address() -> str:
+    """The address the record names: `chain:RPC@ADDRESS` or a bare address
+    — the protocol names no RPC, and the id must not change with one."""
+    spec = _configured("escrow") or ""
+    return spec.rpartition("@")[2] if spec.startswith("chain:") else spec
 
 
 def _check_asset_categories(offer, ontology) -> None:
@@ -2347,6 +2357,53 @@ def cmd_propose(args, session, out):
     return 0 if posted else 1
 
 
+def _escrow_client(session):
+    from .escrow import EscrowClient
+    spec = _configured("escrow")
+    if not spec or not spec.startswith("chain:"):
+        raise ValueError("no escrow contract: `loop set escrow chain:RPC_URL@CONTRACT`")
+    rpc, _, address = spec[6:].rpartition("@")
+    return EscrowClient(rpc, address, key=_configured("bee_signer") or None)
+
+
+def cmd_deposit(args, session, out):
+    """Fund the declared bond of my gives on the escrow contract (P3 §5a,
+    2026-09-19): for the offer named, or every unfilled give of mine whose
+    `bond` names the `escrow` contract and is not yet held there, deposit
+    the bond's quantity in the chain's native coin — the default asset,
+    xDAI on Gnosis — from the bee_signer key. `--check` reports what the
+    contract holds against each and sends nothing. An ERC-20 deposit is
+    the client's `deposit(token=)`; the CLI funds the gas token only, as
+    the one asset every maker on the chain already holds."""
+    from .escrow import to_wei
+    client = _escrow_client(session)
+    mine = [o for o in session.book.offers(include_filled=False)
+            if o.maker == session.maker and o.kind == GIVE and o.v >= 5 and o.bond is not None]
+    if args.id:
+        mine = [o for o in mine if o.offer_id.startswith(args.id)]
+        if not mine:
+            raise ValueError(f"{args.id}: not an unfilled give of mine with a bond")
+    escrow = client.address.lower()
+    mine = [o for o in mine if o.bond.escrow.lower() == escrow]
+    if not mine:
+        print("nothing to deposit: no give of mine names this escrow", file=_err())
+        return 1
+    sent = 0
+    for o in mine:
+        need, held = to_wei(o.bond.asset.qty), client.held(o.offer_id)
+        asset = f"{_num(o.bond.asset.qty)}{o.bond.asset.unit} {' '.join(o.bond.asset.concepts)}"
+        if held >= need:
+            print(f"{o.offer_id[:16]}… {asset}: held", file=out)
+            continue
+        if args.check:
+            print(f"{o.offer_id[:16]}… {asset}: {_num(Fraction(need - held, 10 ** 18))} to deposit", file=out)
+            continue
+        receipt = client.deposit(o.offer_id, need - held)
+        sent += 1
+        print(f"{o.offer_id[:16]}… {asset}: deposited, gas {receipt['gasUsed']}", file=out)
+    return 0
+
+
 def cmd_finalize(args, session, out):
     """Record a beat's fills on chain once its challenge window has closed."""
     client = _beat_client(session)
@@ -2776,6 +2833,7 @@ loop — the loopmarket command line (docs/plans/cli.md)
                              re-verify a beat from its loop record, off chain and by the
                              contract's own verifier; convict a leg it would fail
   loop finalize BEAT         record a beat's fills on chain after its window
+  loop deposit [ID] [--check]  fund my gives' declared bonds on the escrow contract
   loop commit                seal this session's loops for the current sealed beat
   loop reveal [BEAT]         open the sealed bundle in the beat's reveal phase
   loop outcome [BEAT] [--check]  derive a closed beat's winners (reserve bid, fairness
@@ -2896,6 +2954,10 @@ def build_parser():
     p = sub.add_parser("finalize", add_help=False)
     p.add_argument("beat")
     p.set_defaults(func=cmd_finalize)
+    p = sub.add_parser("deposit", add_help=False)
+    p.add_argument("id", nargs="?", default=None)
+    p.add_argument("--check", action="store_true")
+    p.set_defaults(func=cmd_deposit)
     p = sub.add_parser("commit", add_help=False)
     p.set_defaults(func=cmd_commit)
     p = sub.add_parser("reveal", add_help=False)
