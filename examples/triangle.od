@@ -53,3 +53,11 @@ produce food
 local
 weekly
 vegetable-box produce local weekly
+# the asset a deposit is held in (v5, P3 §5a, 2026-09-19): the names are
+# ontodag's economics pack's (`xdai stablecoin cryptocurrency currency`), so
+# the triangle's makers can bond in the chain's gas token and a wanter's
+# `require_point` accept it under any of these
+currency
+cryptocurrency currency
+stablecoin cryptocurrency
+xdai stablecoin
