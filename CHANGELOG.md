@@ -22,6 +22,10 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   factbond's contract from the sibling checkout and runs a claim on a
   real reservation both ways — certified by timeout and paid, disputed
   and refuted with the giver refunded — skipping without `../factbond`.
+  Live on Gnosis the same night: `LoopEscrow` redeployed at
+  `0x299CE499fdDA61bCB006718E5Ac551B5006269Bf`, factbond's `Assertions` at
+  `0xfa6f9367A283A8c53AA876C1416D4B49027bBF99`, and a claim on beat 2's
+  reservation certified by timeout and paid through the escrow.
 
 ## [0.11.0] — 2026-09-19
 
