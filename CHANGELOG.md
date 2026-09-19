@@ -48,7 +48,8 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   the asset). **Deployed on Gnosis at
   `0x7bee68244f2Bc2d67F21E5ae2eE7696Afca9c55F`** and gated live the same
   day: no loop while the bond was unfunded, the loop after `deposit`,
-  posted as a beat. Not yet: `BeatClearing` reserving from the contract
+  posted as a beat, and after the window `finalize` recorded the fills
+  and reserved the share on the escrow, read back from a fresh client. Not yet: `BeatClearing` reserving from the contract
   itself, and factbond's contract as the resolver.
 - **A bare `set bond N` is N on my scale** (2026-09-19): deposited as
   `default_asset` at my price for it (5 on my scale at 2 per xDAI is
