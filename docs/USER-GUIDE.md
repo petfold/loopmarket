@@ -500,6 +500,42 @@ bonded and slashable once P3 lands — and a maker who wants to disclose
 nothing names a locker or a public pickup place instead
 (`docs/plans/P1-spacetime-terms.md` §4).
 
+### 7.2 Guarantees: a neutral point, a deposit, the escrow
+
+Since 0.11.0 an offer can *require* something of any counterparty and
+*declare* something about itself (the v5 record — admissibility by
+declaration, `docs/plans/P3-release-and-reclearing.md` §5d). Both are on
+your own scale; the protocol names no money:
+
+```console
+$ loop set require_point 20          # a no-show costs me 20 on my scale: any give I take must be backed by that much
+$ loop set require_cancel 5          # a cancellation well ahead costs me 5 — the ladder in between is derived
+$ loop set bond 5                    # every give I publish is backed by 5 on my scale, deposited as default_asset (xDAI at 1)
+$ loop give vegetable-box farm 50    # → "bond 5xDAI xdai worth 5 …  requires point 20 …  v5"
+```
+
+A give whose deposit does not cover a wanter's point *at her price for
+that asset* is never matched with her — fail closed, like vocabulary —
+and the clearing contract checks the same declaration. Nothing is
+converted after clearing: two conversions each inside one maker's scale,
+one comparison in the asset's unit.
+
+The deposit is held by the **escrow contract** (`contracts/LoopEscrow.sol`,
+deployed on Gnosis): `loop set escrow chain:RPC@CONTRACT` names it in the
+record, `loop deposit` funds every bonded give of yours in the chain's
+gas token, and from then on the hunt and the checklist count a bond only
+up to what the contract holds — a declared, unfunded bond matches nothing.
+When a beat is finalized, `loop finalize BEAT` reserves the share of each
+deposit its loop relies on (bond × taken / quantity) for that fill: the
+wanter's key, the handover window, a claim period (`escrow_claim`, 7 d),
+the wanter's ladder in the asset. Every undisputed case then settles
+without anyone ruling: the reservation returns to the giver after a
+quiet claim period (anyone may settle), or now on the wanter's
+countersignature, and a giver who cancels pays the ladder's amount for
+that lead. Only a *contested* claim needs a ruling, and that is
+factbond's: the resolver fixed at clearing (your key today) holds and
+resolves the reservation, nothing more.
+
 ## 8. The solver agent — and then federation
 
 Everything above, as one loop of one method — and as one script. The
@@ -903,6 +939,28 @@ validity windows outstripping the batch, and you should watch
 bet, not a custody arrangement; and one feed has one signer — sharing a
 feed key is sharing your identity.
 
+### 11.1 Clearing on chain
+
+The contracts live on the EVM chain Swarm settles on (Gnosis today) and
+every session with the settings sees the same beats:
+
+```console
+$ loop set beat chain:https://rpc.gnosischain.com@0x75025e88749963B85c95f2EFB0143D76eA7169B8      # BeatClearing
+$ loop set auction chain:https://rpc.gnosischain.com@0xFB533254050087E384DEB98CAF2be4874Ba7c592   # SealedBeat
+$ loop set escrow chain:https://rpc.gnosischain.com@0x7bee68244f2Bc2d67F21E5ae2eE7696Afca9c55F    # LoopEscrow
+$ loop propose                       # clear locally, post each loop as one beat (a bond, a challenge window)
+$ loop beats --open                  # what stands
+$ loop challenge 1 --check           # rebuild the record from the submitter's book, ask the verifier, send only what convicts
+$ loop finalize 1                    # after the window: fills recorded on chain, deposits reserved on the escrow
+$ loop commit; loop reveal; loop outcome   # the sealed beat: seal my loops, open them, derive a closed beat's winners
+```
+
+The chain is the authority on what is filled and on what is held: a
+fold that never saw a clearing's fills still proposes nothing through a
+spent offer, and a bond counts only as far as the escrow holds it.
+`docs/plans/proof-fabric.md`, `P2-batch-auction.md` and
+`P3-release-and-reclearing.md` §5a–§5e are the design records.
+
 ## 12. Where to go next
 
 - **`loop help`** — every command and setting on one screen; the design
@@ -915,6 +973,8 @@ feed key is sharing your identity.
 - **The plan corpus** (`docs/plans/`, indexed in the
   [README](../README.md)) — where the marketplace is going: batch
   auctions, verifiable clearing, the guarantee fabric, privacy.
+- **factbond** (`github.com/petfold/factbond`) — where a contested claim
+  on a deposit is adjudicated: custody here, adjudication there.
 - **The demos** — `examples/triangle.loop` (P0 as a script),
   `examples/demo_triangle.py` (the same through the API),
   `examples/demo_federation.py` (P1 in one file, memory or live).

@@ -103,12 +103,23 @@ the stored number for v1–v3, a `rat` string for v4.
 ```
 Offer(maker, gives, wants, service, where, valid,
       ontology_root="", bond=0.0, oracle="countersign", arbitrator="",
-      nonce=<auto: unix ms>, registry_version="", contract_version="", v=2)
+      requires=None, nonce=<auto: unix ms>, registry_version="", contract_version="", v=2)
 ```
+
+v5 (2026-09-18/19, admissibility by declaration): `bond` is a `Bond(asset:
+Thing, value, escrow)` — a deposit worth `value` on the giver's scale, held
+by the escrow contract at `escrow`, reserved per fill as bond × taken /
+quantity (`Bond.reserved`) — and `requires` a `Requires(point, ladder,
+accepts, oracles, escrows)`: the neutral point on a no-show on the maker's
+scale, the cancellation ladder `((lead_seconds, amount), ...)` descending
+to 0 (`.at(lead)` linear), the `Acceptance(concepts, unit, price)` entries
+naming the asset categories accepted as compensation each at the maker's
+price per unit, the witness types and escrow kinds accepted. A requirement
+or a deposit makes the offer v5; v4 re-encodes byte for byte.
 
 Validation (`ValueError`): exactly one of `gives`/`wants` is a `Thing`
 (or, on the want side of a v4 record, `Parts`) and one a `Tokens` whose
-`issuer == maker` (invariant U1); `bond >= 0`; `v in {1, 2, 3, 4}`; v1
+`issuer == maker` (invariant U1); `bond >= 0` (v<5) or a `Bond` (v5); `v in {1, 2, 3, 4, 5}`; v1
 records carry no registry/contract pins; parts, a `step` other than 0 or
 the whole quantity, and a floor are v4 forms.
 
@@ -123,8 +134,10 @@ the whole quantity, and a floor are v4 forms.
 | `.canonical_bytes()` | recordstore canonical JSON of `to_record()` |
 | `.offer_id` | SHA-256 hex of `canonical_bytes()` — the content address |
 
-`bond`, `oracle`, `arbitrator` are carried in identity from day one but
-only `oracle` is enforced today (clearing's refusal gate).
+`bond`, `oracle`, `arbitrator` are carried in identity from day one; since
+v5 a maker's *requirement* of them is enforced (`matching.meets`, the
+contract's verifier), and since 2026-09-19 a deposit naming an escrow
+counts only up to what the contract holds (`meets(held=)`).
 
 ### `give(maker, thing, amount, *, valid, service=None, where=None, **kw) -> Offer`
 ### `want(maker, thing_or_parts, amount, *, valid, service=None, where=None, **kw) -> Offer`
@@ -416,13 +429,46 @@ node `potentials`. A simple cycle's record is byte-identical to before.
 | `abi()` | the compiled `BeatClearing` (ABI, bytecode) from `loopmarket/contracts/BeatClearing.json` (inside the package) |
 | `clearing.ChainClearing(registry, ontology, *, beat_client, ...)` | `MockClearing`'s checklist, then the beat posted; the receipt's `reason` is `beat N` |
 
+## 8c. `loopmarket.auction` — the sealed-proposal beat (P2, 2026-09-18)
+
+| name | one line |
+|---|---|
+| `bundle_bytes(proposals)` / `seal(bytes, salt)` | a proposal is a bundle of loop records pinning one root; sealed as keccak(bytes ‖ salt) |
+| `outcome(beat, revealed, snapshot, ontology, *, now, chain_fills=None, baseline=...)` | re-derive every revealed loop (U3), add the baseline's loops as the reserve bid, the fairness filter, select the set worth most under the offers' capacities (`selection.pack`), ties by loop_id then bundle hash |
+| `SealedBeatClient` / `MemorySealedBeat` (`open_sealed(spec)`) | commit, reveal, read a beat's phase and reveals, record the outcome; `SealedBeat.sol` |
+
+## 8d. `loopmarket.selection` — loop selection (P2, 2026-09-18)
+
+| name | one line |
+|---|---|
+| `Item(key, score, takes)` | what a candidate loop takes from each offer (a want whole, a give by the leg's quantity) |
+| `pack(items, capacity, *, exact_up_to=EXACT_UP_TO, budget=BUDGET, prior=0) -> list[Item]` | the set worth most under per-offer capacities: exact branch and bound while few, greedy beyond, `order_key`'s total order (U6) |
+| `weight(gain, legs, *, prior=0, factor=None)` | the objective per loop: ln(1+gain), or (1−p)^legs·ln(1+gain) with a failure prior |
+
+## 8e. `loopmarket.escrow` — the crypto escrow (P3 §5a/§5e, 2026-09-19)
+
+| name | one line |
+|---|---|
+| `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder)`, `.cancel`, `.countersign`, `.settle`, `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.ladder_at`, `.deposit_of`; web3 lazy (`chain` extra) |
+| `to_wei(qty, decimals=18)` / `floor_wei` | an exact quantity as the asset's smallest unit — refused when not representable (U9) / rounded down (the ladder) |
+| `held_units(client)` | offer id → what the escrow holds, in the asset's unit: the `escrow_held` the agent and the clearing take |
+| `reservations_for(proposal, *, escrow, resolver, claim_seconds, now, span=None)` | pure: one reservation per give whose bond names `escrow` — the share in smallest units, the wanter's key, the give's `arbitrator` or `resolver`, the want's `time(...)` term as the window (through `span`), the ladder converted at the wanter's acceptance price |
+| `abi()` | the compiled `LoopEscrow` from `loopmarket/contracts/LoopEscrow.json` |
+
+`LoopEscrow.sol`: deposit behind the offer id (native coin or ERC-20), the
+clearing's key reserves per fill, undisputed cases settle by themselves
+(`settle` after the claim period, `countersign`, `cancel` at `ladderAt`),
+the resolver fixed at clearing makes two calls (`hold`, `resolve`), the
+giver withdraws what no fill holds after a notice period. Deployed on
+Gnosis at `0x7bee68244f2Bc2d67F21E5ae2eE7696Afca9c55F`.
+
 ## 9. `loopmarket.solver.agent` — the baseline species
 
-### `SolverAgent(registry, ontology, clearing, solver_id="solver-0", min_surplus=0.005, max_loops_per_step=10)`
+### `SolverAgent(registry, ontology, clearing, solver_id="solver-0", min_surplus=0.005, max_loops_per_step=10, chain_fills=None, escrow_held=None, max_legs=5, cycle_limit=2000, exact_up_to=24, pack_budget=200_000, failure_prior=0)`
 
 | member | meaning |
 |---|---|
-| `.find_loops(*, now=None) -> (book_root, [Loop])` | snapshot → offers → matches → graph → disjoint loops |
+| `.find_loops(*, now=None) -> (book_root, [Loop \| Circulation])` | snapshot → offers (the chain's fills and the escrow's holdings subtracted) → matches → every simple cycle (`enumerate_cycles`) plus the composed legs → `selection.pack` |
 | `.step(*, now=None) -> [Receipt]` | find, then propose each loop (pinning the snapshot root and `ontology.root`); appends to `.receipts` |
 | `.run(*, interval_s=5.0, max_steps=None)` | poll loop for live operation |
 
@@ -769,10 +815,15 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `import [FILE]` | publish records from FILE or stdin; ids survive |
 | | `help`, `--version` | |
 
-Not yet at the command line: `propose`, `fold`, `audit` (after the
-federation demo). Composed wants (`docs/plans/cli.md` §13) draft, compose,
-resolve and render today; publishing one waits for the v4 record (`wants`
-carrying parts, fills naming every give consumed).
+| chain | `propose` | clear locally as `clearing` does and post each loop as one beat on `beat` (the contract's verdict asked first; the bee_signer key pays the bond) |
+| | `beats [--open]` | every beat on the contract: submitter, root, fills, state |
+| | `challenge BEAT [LEG] [--check] [--book SPEC]` | find the record behind a beat, re-derive every leg off chain and by the verifier for free, send only what convicts (exit 2: no record anywhere) |
+| | `finalize BEAT` | after the window: fills recorded on chain; with `escrow` set, each bonded give's share reserved per fill |
+| | `commit` / `reveal [BEAT]` / `outcome [BEAT] [--check]` / `sealed [BEAT]` | the sealed beat on `auction`: seal my loops, open them, derive a closed beat's winners and post them, read a beat |
+| | `deposit [ID] [--check]` | fund my gives' declared bonds on the `escrow` contract in the gas token |
+| discovery | `announce [--role]` / `announced` / `fold` | say "my book is here" on `registry`; the standing set; fold the announced books myself |
+
+Composed wants publish since the v4 record (`want A + B PRICE`, drafts).
 
 ### The approval block
 
@@ -814,6 +865,15 @@ loop config (owner-readable, 0600); secrets print masked.
 | `confirm` | `LOOP_CONFIRM` | `auto` | `auto` / `on` / `off` |
 | `render`, `limit` | `LOOP_RENDER`, `LOOP_LIMIT` | `auto` | as odag: tables and 50 rows at a terminal, raw and unlimited in a pipe |
 | `bee_api`, `bee_batch`, `bee_signer` | `BEE_*` | inherited from odag | the Bee node; `bee_signer` is secret |
+| `registry` | `LOOP_REGISTRY` | none | the announcement channel: `chain:RPC@CONTRACT` (LoopBookRegistry), `file:PATH`, `memory:`; comma-separated are one channel |
+| `beat` | `LOOP_BEAT` | none | the clearing contract `chain:RPC@CONTRACT` (BeatClearing): `propose`, `beats`, `challenge`, `finalize` |
+| `auction` | `LOOP_AUCTION` | none | the sealed-proposal beat `chain:RPC@CONTRACT` (SealedBeat) or `memory:`: `commit`, `reveal`, `outcome`, `sealed` |
+| `escrow` | `LOOP_ESCROW` | none | the escrow contract `chain:RPC@CONTRACT` (LoopEscrow); the record names the address; `deposit` funds, `finalize` reserves |
+| `escrow_claim` | `LOOP_ESCROW_CLAIM` | `7d` | how long after a leg's window a claim on its deposit may be opened |
+| `bond` | `LOOP_BOND` | none | my deposit on every give: an amount on my scale (deposited as `default_asset` at my price) or `QTY[UNIT] CATEGORY... VALUE` (v5) |
+| `default_asset` | `LOOP_DEFAULT_ASSET` | `xdai xDAI 1` | the asset a bare `bond` deposits and a bare `require_point` accepts, with its price per unit on my scale |
+| `require_point`, `require_cancel`, `ladder` | `LOOP_REQUIRE_*`, `LOOP_LADDER` | none, none, `linear` | my neutral point on a no-show and on a far cancellation, on my scale; the ladder's shape over the lead at posting (`linear`, `late`, `early`, `flat`) |
+| `require_accepts`, `require_escrows` | `LOOP_REQUIRE_*` | none | `CATEGORY... UNIT PRICE; ...` — the assets I accept as compensation at my prices; the escrow kinds I accept |
 
 Names resolve through the **view** — the catalogue merged with odag's
 active store and odag's overlays — while matching runs against the

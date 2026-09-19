@@ -80,7 +80,7 @@ aggregator that cannot lie about what it folded.
 ## P2 — verifiable clearing
 
 Design 2026-08-07; the record, the solver's objects and the contracts
-built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
+built 2026-09-13 to 2026-09-19 (0.5.0–0.11.0). What follows is what stands.
 
 - [x] **The v4 record** (DONE 2026-09-14, 0.8.0): exact rationals on the
       clearing path — U9 binding — `step` and `min` in place of
@@ -116,7 +116,7 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       offers are proven under the beat's book root by trie proof; no
       per-offer anchoring is required (P1 §4a stays maker-optional).
 - [x] **The sealed-proposal beat** in front of the contract (DONE
-      2026-09-18, the commit-reveal form) · [plan](docs/plans/P2-batch-auction.md)
+      2026-09-18, 0.11.0, the commit-reveal form) · [plan](docs/plans/P2-batch-auction.md)
       §2–§6: `SealedBeat.sol` (fixed cadence, one commitment per solver per
       beat, reveals emitted, the outcome recorded once), `auction.py`
       (numeraire-free score U14, the fairness filter with the baseline as
@@ -127,7 +127,7 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       a fresh session). Still open there: Shutter
       threshold encryption as the sealing (§3's primary), solver bonds
       through factbond (§8), the endogenous spread leg (§7).
-- [x] **Loop selection** (DONE 2026-09-18) · [plan](docs/plans/P2-loop-selection.md):
+- [x] **Loop selection** (DONE 2026-09-18, 0.11.0) · [plan](docs/plans/P2-loop-selection.md):
       `selection.pack` — the packing over candidate loops under the
       offers' capacities (an indivisible offer or a want once, a divisible
       give shared up to its remainder), exact by branch and bound below
@@ -138,7 +138,7 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       packs; the beat selects through the same packer with the fairness
       filter read against displacement. Not built: chains (G4), netting
       (G5), priors from data, cycle cancelling as a species.
-- [x] **The `challenge` verb** (DONE 2026-09-18): the CLI keeps no copy of
+- [x] **The `challenge` verb** (DONE 2026-09-18, 0.11.0): the CLI keeps no copy of
       what it posted — a challenger rebuilds the submission from the
       submitter's announced clearing book's loop record and the snapshot
       at the beat's root, hashing to the beat's commitments; re-derives
@@ -172,7 +172,7 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       re-verification; settlement-attached insurance under the indemnity
       principle; the leg-oracle coupling. Design, 2026-08-07.
 - [x] Bonds in selection — **admissibility by declaration** (DECIDED and
-      built 2026-09-18, [P2-loop-selection §4a](docs/plans/P2-loop-selection.md)):
+      built 2026-09-18, released 0.11.0, [P2-loop-selection §4a](docs/plans/P2-loop-selection.md)):
       the v5 record's `requires` (a bond floor, accepted witness types)
       gates matching off chain and verifies on chain; `set bond`,
       `set require_bond`, `set require_cancel`; a bond reserved per fill
@@ -197,7 +197,8 @@ built 2026-09-13 to 2026-09-18 (0.5.0–0.10.0). What follows is what stands.
       withdrawal after notice; the wanter names the durable asset
       categories she accepts with her own prices, conversion once at
       clearing. Deployed on Gnosis 2026-09-19 at
-      `0x7bee68244f2Bc2d67F21E5ae2eE7696Afca9c55F`; live gate the same day.
+      `0x7bee68244f2Bc2d67F21E5ae2eE7696Afca9c55F`; live gate the same day
+      (0.11.0).
 - [x] The gate consults the chain's holding (`meets(held=)`, 2026-09-19)
       and `loop finalize` reserves per fill from the loop record
       (`escrow.reservations_for`) with the clearing key.

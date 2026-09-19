@@ -9,6 +9,8 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-09-19
+
 ### Added
 
 - **The crypto escrow — `LoopEscrow.sol` and `loopmarket.escrow`** (P3

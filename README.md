@@ -128,7 +128,21 @@ window, fills recorded on chain at finalization — posted to from
 `loop propose` and, since 2026-09-18, challenged from `loop challenge`
 (the record rebuilt from the submitter's book, the contract's verdict
 asked for free, sent only where it convicts); the semantic half stays
-optimistic with an arbiter hook. Alpha; interfaces will move.
+optimistic with an arbiter hook. Since 2026-09-18 (0.11.0) the chain
+verifies books on Swarm under their own BMT addressing
+(`SwarmAddress.sol`), composed wants leg by leg, and — in front of the
+beat — the sealed-proposal auction (`SealedBeat.sol`, `loop commit` /
+`reveal` / `outcome`: numeraire-free scoring, the baseline as reserve
+bid, the fairness filter); the baseline selects among every simple cycle
+with one packer (`selection.py`); and guarantees are **admissibility by
+declaration** (the v5 record): a maker's neutral point, cancellation
+ladder and accepted assets on its own scale, a giver's deposit reserved
+per fill — gated in matching, checked on chain, and since 2026-09-19
+*held*: the crypto escrow (`LoopEscrow.sol`, deployed on Gnosis, a smart
+contract as a maker) holds the deposit, the gate counts a bond only up
+to what the contract holds, `loop finalize` reserves the share per fill,
+and every undisputed case settles by timeout or the parties' own acts —
+a contested claim is factbond's. Alpha; interfaces will move.
 
 **Designed (2026-08-07):** most of what loopmarket *is* now lives as a
 decided, research-grounded plan corpus under `docs/plans/` — one document
