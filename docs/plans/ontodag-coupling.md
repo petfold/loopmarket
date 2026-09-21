@@ -434,6 +434,14 @@ implementation with its own bugs and no treaty.
 | Public store-spec opener      | `cli.md` §11: the `catalogue` setting accepts any odag spec (`.od` / `rs:` / `swarm:`) | **To ask upstream**: a public `open(spec)`; loopmarket never copies `_load_native`. Meanwhile: `Ontology.persistent()` over `rs:`/`swarm:` record stores only. |
 | Chunk layout / leaf-packing   | hydration cost breaching P1 latency gate | Hydrate-once + `get_many` batching; published summaries. |
 
+- **(2026-09-21, from factbond's `ontodag-first.md`) A minimal witness path.**
+  `is_below` certificates cover the dependency closure; a query returning
+  the *edges one derivation used* would let a dispute name which link was
+  wrong and a correction target it. Optional: the coverage gate itself
+  needs only `is_below` (the walk lies under the want's concept, so
+  "within scope S" is `want ⊑ S`). And in ontodag-core: the reading
+  history per pack as machine-readable metadata.
+
 ## Gates
 
 - **G1 — spacetime terms live.** The triangle settles with service
