@@ -2435,12 +2435,20 @@ def cmd_finalize(args, session, out):
     the loop record is found as `challenge` finds it, the reservation built
     by `escrow.reservations_for`, `claim` the period after the window in
     which a claim may be opened (`escrow_claim`), the resolver my own key
-    until factbond's contract exists."""
+    until factbond's contract exists. A beat whose fills no longer fit what
+    the chain recorded since it was posted (another beat took the same
+    offers first) is cancelled by the contract instead, its bond returned
+    to the submitter — nothing is recorded and nothing reserved (exit 1)."""
     from .beat import find_evidence, proposal_from_record
     from .escrow import reservations_for
     client = _beat_client(session)
     receipt = client.finalize(int(args.beat))
     state = client.beat(int(args.beat))
+    if state["cancelled"]:
+        print(f"beat {args.beat} cancelled at finalize: its fills no longer fit what the chain "
+              f"has recorded since (another beat took the offers first); the bond went back "
+              f"to the submitter, gas {receipt['gasUsed']}", file=out)
+        return 1
     print(f"finalized beat {args.beat}: {state['fills']} fills, gas {receipt['gasUsed']}", file=out)
     if not (_configured("escrow") or "").startswith("chain:"):
         return 0

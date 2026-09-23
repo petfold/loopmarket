@@ -52,7 +52,10 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   caps; `BeatClient.verdict` reports the fill faults as the contract would
   (`fill_fault`, `cap_fault`); `pending_fills` returns the cap. The `Fill`
   ABI changes, so the deployed contracts need a redeploy before the CLI
-  talks to them again.
+  talks to them again. `loop finalize` reports a beat the contract cancelled
+  as cancelled (exit 1) and reserves nothing behind it; before, it printed
+  "finalized" whatever happened and, with an escrow set, would have reserved
+  deposits for a beat that recorded no fills.
 
 ## [0.11.0] — 2026-09-19
 

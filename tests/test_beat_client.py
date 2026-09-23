@@ -294,6 +294,62 @@ def test_the_cli_posts_lists_challenges_and_finalizes(chain, tmp_path, monkeypat
     assert f"beat {beat} by" in out and "finalized" in out
 
 
+def test_finalize_reports_a_beat_cancelled_by_a_race(chain, tmp_path, monkeypatch):
+    """The same loop posted twice against one book (2026-09-23): the first
+    `finalize` records the fills; the second finds the offers taken, the
+    contract cancels it and returns the bond, and the CLI says so — it
+    neither claims the fills nor reserves anything behind them (exit 1)."""
+    from ontodag import __main__ as odag
+    from ontodag.prelude import apply as apply_prelude
+    from loopmarket import cli
+    w3, address, key = chain
+    monkeypatch.setenv("LOOP_HOME", str(tmp_path / "loop"))
+    monkeypatch.setenv("ONTODAG_HOME", str(tmp_path / "odag"))
+    monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'book'}")
+    monkeypatch.setenv("LOOP_CONFIRM", "off")
+    monkeypatch.setenv("LOOP_NOW", str(NOW))
+    monkeypatch.setenv("LOOP_BEAT", f"chain:test@{address}")
+    for var in ("LOOP_REGISTRY", "LOOP_PEERS", "LOOP_ESCROW"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("BEE_SIGNER", key)
+    cli._OVERRIDES.clear()
+    spec = f"rs:{tmp_path / 'cat'}"
+    cat = odag.Session(odag._normalize_spec(spec))
+    apply_prelude(cat.dag)
+    for name in ("apple", "lesson"):
+        cat.dag.put(name, [])
+    cat.save()
+    monkeypatch.setenv("LOOP_CATALOGUE", spec)
+    client = BeatClient("", address, key=key, client=w3)
+    monkeypatch.setattr(cli, "_beat_client", lambda session: client)
+
+    def run(*argv):
+        import io
+        out, err = io.StringIO(), io.StringIO()
+        code = cli.dispatch(list(argv), cli.Session(), out, err)
+        return code, out.getvalue(), err.getvalue()
+
+    monkeypatch.setenv("LOOP_MAKER", "farm")
+    # prices of its own: the module's chain already holds the other CLI test's
+    # fills, and equal offers under the same clock are the same offers
+    run("give", "100kg:5", "apple", "201"); run("want", "lesson", "86")
+    monkeypatch.setenv("LOOP_MAKER", "b1")
+    run("want", "40kg", "apple", "91"); run("give", "lesson", "81")
+    code, out, err = run("propose")
+    assert code == 0, (out, err)
+    first = int(out.split("posted beat ")[1].split(":")[0])
+    book = cli._open_book(f"rs:{tmp_path / 'book'}")
+    ev = find_evidence(client.beat(first), [book])
+    second, _ = client.submit(ev.submission)                   # a racing solver, same root
+    w3.provider.ethereum_tester.mine_blocks(WINDOW + 1)
+    assert run("finalize", str(first))[0] == 0
+    code, out, _ = run("finalize", str(second))
+    assert code == 1 and f"beat {second} cancelled at finalize" in out and "fills" in out
+    assert client.beat(second)["cancelled"] and not client.beat(second)["finalized"]
+    apples = next(f[0].hex() for f in ev.submission.fills if f[1:3] == (40, 1))
+    assert client.filled(apples) == 40                           # recorded once
+
+
 def test_a_beat_the_contract_would_convict_is_never_posted(chain):
     """The submitter asks the contract's verifier before paying the bond
     (live finding 2026-09-18: a Swarm-addressed clearing book's honest beat
