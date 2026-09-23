@@ -9,6 +9,17 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Fixed
+
+- **The settings table named six settings twice** (2026-09-23). An older
+  copy of `maker`, `terms`, `valid`, `bond`, `require_bond` and
+  `require_cancel` sat below the current ones, and a Python dict keeps the
+  last of two equal keys silently: `bond` and `require_cancel` showed their
+  pre-v5 help ("in the bond's asset", "at most require_bond"), and the
+  retired `require_bond` — read by nothing since the accepted v5 record —
+  was still accepted. The stale copy is gone, `set require_bond` is refused
+  as unknown, and a test fails if a setting is ever named twice.
+
 ## [0.12.0] — 2026-09-23
 
 ### Added

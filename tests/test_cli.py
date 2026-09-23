@@ -1108,3 +1108,19 @@ def test_deposit_funds_the_declared_bond_on_the_escrow_contract(loop, monkeypatc
     assert code != 0 and "not an unfilled give of mine" in err
     for k in ("escrow", "bond"):
         monkeypatch.setenv("LOOP_" + k.upper(), ""); run.ok("set", k, "")
+
+
+def test_the_settings_table_names_each_setting_once():
+    """A dict literal keeps the last of two equal keys without a word: an
+    older copy of six settings sat below the current ones until 2026-09-23,
+    so `bond` and `require_cancel` showed their pre-v5 help and the retired
+    `require_bond` was still accepted. Each name once, or this fails."""
+    import ast
+    import inspect
+    tree = ast.parse(inspect.getsource(cli))
+    table = next(n.value for n in ast.walk(tree) if isinstance(n, ast.Assign)
+                 and any(getattr(t, "id", None) == "_SETTINGS" for t in n.targets))
+    names = [k.value for k in table.keys]
+    assert len(names) == len(set(names)), sorted(n for n in names if names.count(n) > 1)
+    assert "require_bond" not in names
+    assert "deposit I hold against my performance" in cli._SETTINGS["bond"].help

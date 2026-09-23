@@ -172,30 +172,6 @@ _SETTINGS = {
         "LOOP_REQUIRE_ESCROWS", "", "--require-escrows KINDS",
         "escrow kinds I accept for a counterparty's deposit (e.g. contract); "
         "empty: any"),
-    "maker": _Setting(
-        "LOOP_MAKER", "", "--maker NAME",
-        "my identity; the signer's address when bee_signer is set and the "
-        "sig extra is installed"),
-    "terms": _Setting(
-        "LOOP_TERMS", "", "--terms 'TERM ...'",
-        "terms added to every offer whose line does not name that head, "
-        "e.g. 'home ..+90d'; unset: anywhere, any time"),
-    "valid": _Setting(
-        "LOOP_VALID", "30d", "--valid DURATION",
-        "how long my offers stand (a duration, or an absolute window)"),
-    "bond": _Setting(
-        "LOOP_BOND", "", "--bond AMOUNT",
-        "the bond I declare on every offer I publish (in the bond's asset; "
-        "a declaration until P3's escrow holds it)"),
-    "require_bond": _Setting(
-        "LOOP_REQUIRE_BOND", "", "--require-bond AMOUNT",
-        "the least bond a counterparty must reserve for a leg through my "
-        "offer — admissibility by declaration (v5 record, 2026-09-18); "
-        "unmet, the leg is never matched; on a no-show it is mine"),
-    "require_cancel": _Setting(
-        "LOOP_REQUIRE_CANCEL", "", "--require-cancel AMOUNT",
-        "what a counterparty owes me instead if it cancels the leg before "
-        "its window (at most require_bond); a late ride cancels and re-offers"),
     "interval": _Setting(
         "LOOP_INTERVAL", "30s", "--interval DURATION",
         "how often `watch` polls the fold"),
