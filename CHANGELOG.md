@@ -50,7 +50,13 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   longer fit EIP-170 together: 10.2 kB + 16.8 kB). `beat.deploy` deploys
   both; `scripts/deploy_beat.py` takes `--predecessors`, `--verifier`,
   `--retire`; `BeatClient` gains `recorded`, `predecessors`, `successor`,
-  `retire`. The constructor changes, so the Gnosis contracts are redeployed.
+  `retire`. Redeployed on Gnosis the same evening: BeatClearing
+  `0xaF1BBE184bb52981841919FBAc9BfF9f2a04691e`, LegVerifier
+  `0x21fD83C2A3DEee6042a359E4ad3A4a4537F41803`, SealedBeat
+  `0x6E8f425eb89d20cB3B85F26dE1EDC17E3218E40C`, the six earlier contracts
+  with beats as predecessors; live, the loop cleared on the previous contract
+  found no candidate from a book that never saw its fills, and posted straight
+  to the new contract was convicted on challenge.
 
 - **`BeatClearing.finalize` can no longer overfill an offer** (2026-09-23).
   `submit` took fills without their offers' quantities, so `finalize` added
