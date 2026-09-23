@@ -9,6 +9,8 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-09-23
+
 ### Added
 
 - **What a counterparty must be able to trust — the claims, ranked**
