@@ -18,10 +18,23 @@ import "./LoopVerifier.sol";
 /// cancel a beat within the window on a semantic challenge decided off
 /// chain. Until an arbiter is set, semantic faults are what the bond and
 /// the readers' re-derivation deter, not what the contract catches.
+///
+/// Each committed fill carries its offer's *cap* — the give's quantity, a
+/// want's 1/1 (a want is filled whole) — so `finalize` can check that the
+/// beat's fills fit what the chain has recorded since (2026-09-23). Two beats
+/// submitted against the same book may each be sound at their pinned root
+/// and together overfill an offer; before, only a challenge on the second
+/// caught that, and `finalize` summed the fills blindly. Now the later
+/// finalize cancels its beat and refunds the bond — a race, not a fraud. A
+/// cap is a commitment like any other: one that is not the record's quantity,
+/// a want fill that is not whole, or a give fill that is not the leg's
+/// quantity convicts the beat on challenge.
 contract BeatClearing {
     using LoopVerifier for LoopVerifier.Beat;
 
-    struct Fill { bytes32 offer; uint256 n; uint256 d; }
+    /// `n/d` taken from `offer`, which holds `capN/capD` in all (a give's
+    /// quantity; 1/1 for a want, taken whole).
+    struct Fill { bytes32 offer; uint256 n; uint256 d; uint256 capN; uint256 capD; }
 
     struct BeatRecord {
         LoopVerifier.Beat pins;
@@ -72,7 +85,8 @@ contract BeatClearing {
     /// Post one beat's outcome. `legHashes[i]` is keccak256(abi.encode(leg_i))
     /// over the `LoopVerifier.Leg` the submitter would supply to a challenge;
     /// `fills` the quantities every give and want in those legs take (a
-    /// want's fill is its whole quantity as 1/1); `makers`/`potentials` the
+    /// want's fill is its whole quantity as 1/1), each with its offer's cap
+    /// (the give's quantity; 1/1 for a want); `makers`/`potentials` the
     /// node potentials. The full data is expected beside the chain (the
     /// clearing book on Swarm); the chain holds the commitments.
     function submit(LoopVerifier.Beat calldata pins, bytes32[] calldata legHashes,
@@ -93,7 +107,9 @@ contract BeatClearing {
         b.potentialsHash = keccak256(abi.encode(makers, potentials));
         for (uint256 i = 0; i < fills.length; i++) {
             require(fills[i].n > 0 && fills[i].d > 0, "a fill takes something");
-            // a fill must fit what is already recorded: checked exactly at finalize too
+            require(fills[i].capN > 0 && fills[i].capD > 0, "a fill names its offer's cap");
+            require(fills[i].n * fills[i].capD <= fills[i].capN * fills[i].d, "a fill beyond its cap");
+            // what the chain records meanwhile is checked against the caps at finalize
             _pending[beat].push(fills[i]);
         }
         b.fillCount = fills.length;
@@ -102,8 +118,10 @@ contract BeatClearing {
 
     /// Re-verify leg `index` of a beat on chain. Reverts if the supplied data
     /// is not what was committed; cancels the beat and pays the bond to the
-    /// challenger if the leg fails `LoopVerifier`; does nothing (the
-    /// challenger paid gas for nothing) if the leg verifies.
+    /// challenger if the leg fails `LoopVerifier` or the beat's committed
+    /// fills are not the leg's (the want whole, each give's quantity taken,
+    /// each cap the offer's quantity); does nothing (the challenger paid gas
+    /// for nothing) if the leg verifies.
     function challenge(uint256 beat, uint256 index, bytes32[] calldata legHashes,
                        LoopVerifier.Leg calldata leg, bytes[] calldata makers,
                        LoopVerifier.Rat[] calldata potentials) external
@@ -116,27 +134,32 @@ contract BeatClearing {
                 "not the committed leg");
         require(keccak256(abi.encode(makers, potentials)) == b.potentialsHash,
                 "not the committed potentials");
-        // the fills the beat committed for this leg's gives must be the quantities taken
-        for (uint256 i = 0; i < leg.gives.length; i++) {
-            require(_pendingTakes(beat, leg.gives[i].id, leg.taken[i]), "fill differs from leg");
+        // the fills the beat committed must be this leg's: a fault there is the
+        // submitter's (the leg is the committed one), so it convicts
+        string memory fault = _fillFault(beat, leg);
+        if (bytes(fault).length == 0) {
+            try this.verifyLegExternal(b.pins, leg, makers, potentials)
+                returns (LoopVerifier.Rat[] memory qtys) {
+                fault = _capFault(beat, leg, qtys);
+                if (bytes(fault).length == 0) {
+                    emit Challenged(beat, index, msg.sender, "leg verifies");
+                    return;
+                }
+            } catch Error(string memory reason) {
+                fault = reason;
+            } catch Panic(uint256 code) {
+                // arithmetic overflow, an index out of range: a malformed leg
+                fault = "leg fails: panic";
+                code;
+            } catch {
+                // out of gas or an unknown error: NOT a conviction — the
+                // challenger must bring enough gas for the verification
+                revert("verification did not complete: bring more gas");
+            }
         }
-        try this.verifyLegExternal(b.pins, leg, makers, potentials) {
-            emit Challenged(beat, index, msg.sender, "leg verifies");
-        } catch Error(string memory reason) {
-            _cancel(beat, reason);
-            emit Challenged(beat, index, msg.sender, reason);
-            payable(msg.sender).transfer(b.bond);
-        } catch Panic(uint256 code) {
-            // arithmetic overflow, an index out of range: a malformed leg
-            _cancel(beat, "leg fails: panic");
-            emit Challenged(beat, index, msg.sender, "leg fails: panic");
-            payable(msg.sender).transfer(b.bond);
-            code;
-        } catch {
-            // out of gas or an unknown error: NOT a conviction — the
-            // challenger must bring enough gas for the verification
-            revert("verification did not complete: bring more gas");
-        }
+        _cancel(beat, fault);
+        emit Challenged(beat, index, msg.sender, fault);
+        payable(msg.sender).transfer(b.bond);
     }
 
     /// The arbiter's word on what the contract cannot compute.
@@ -149,19 +172,31 @@ contract BeatClearing {
         payable(arbiter).transfer(b.bond);
     }
 
-    /// After the window: record the fills exactly, return the bond.
+    /// After the window: record the fills exactly, return the bond — or, when
+    /// what the chain has recorded since the beat was submitted leaves too
+    /// little of an offer for its fill, cancel the beat whole (a loop clears
+    /// all its legs or none) and return the bond: a race between beats
+    /// sound at their own roots, not a fault of this one.
     function finalize(uint256 beat) external {
         BeatRecord storage b = beats[beat];
         require(b.submittedAt != 0 && !b.finalized && !b.cancelled, "no open beat");
         require(block.number > b.submittedAt + windowBlocks, "window open");
         Fill[] storage fills = _pending[beat];
+        // check every fill before recording any: recorded + this beat's fills
+        // of the same offer so far must stay within the cap, exactly
         for (uint256 i = 0; i < fills.length; i++) {
-            LoopVerifier.Rat memory before = _filledOf(fills[i].offer);
-            // before + fill, exact
-            uint256 n = before.n * fills[i].d + fills[i].n * before.d;
-            uint256 d = before.d * fills[i].d;
-            uint256 g = _gcd(n, d);
-            _filled[fills[i].offer] = LoopVerifier.Rat(n / g, d / g);
+            LoopVerifier.Rat memory total = _filledOf(fills[i].offer);
+            for (uint256 j = 0; j <= i; j++) {
+                if (fills[j].offer == fills[i].offer) total = _plus(total, fills[j].n, fills[j].d);
+            }
+            if (total.n * fills[i].capD > fills[i].capN * total.d) {
+                _cancel(beat, "a fill exceeds what is left of its offer");
+                payable(b.submitter).transfer(b.bond);
+                return;
+            }
+        }
+        for (uint256 i = 0; i < fills.length; i++) {
+            _filled[fills[i].offer] = _plus(_filledOf(fills[i].offer), fills[i].n, fills[i].d);
         }
         b.finalized = true;
         emit Finalized(beat, b.pins.bookRoot, fills.length);
@@ -172,12 +207,15 @@ contract BeatClearing {
 
     function verifyLegExternal(LoopVerifier.Beat calldata pins, LoopVerifier.Leg calldata leg,
                                bytes[] calldata makers, LoopVerifier.Rat[] calldata potentials)
-        external
+        external returns (LoopVerifier.Rat[] memory qtys)
     {
         require(msg.sender == address(this), "internal");
         _makers = makers;
         _potentials = potentials;
-        LoopVerifier.verifyLeg(pins, leg, _filledOf, _potentialOf);
+        (, LoopVerifier.Facts[] memory gives) = LoopVerifier.verifyLeg(pins, leg, _filledOf, _potentialOf);
+        // each give's quantity, for the caps the beat committed
+        qtys = new LoopVerifier.Rat[](gives.length);
+        for (uint256 i = 0; i < gives.length; i++) qtys[i] = gives[i].qty;
     }
 
     bytes[] private _makers;                       // scratch for the lookup during one verification
@@ -195,14 +233,46 @@ contract BeatClearing {
         if (r.d == 0) r = LoopVerifier.Rat(0, 1);
     }
 
-    function _pendingTakes(uint256 beat, bytes32 offer, LoopVerifier.Rat calldata taken)
-        private view returns (bool)
-    {
+    /// The beat's committed fill of `offer` (the first), and whether it exists.
+    function _pendingOf(uint256 beat, bytes32 offer) private view returns (bool, Fill memory f) {
         Fill[] storage fills = _pending[beat];
         for (uint256 i = 0; i < fills.length; i++) {
-            if (fills[i].offer == offer) return fills[i].n * taken.d == taken.n * fills[i].d;
+            if (fills[i].offer == offer) return (true, fills[i]);
         }
-        return false;
+        return (false, f);
+    }
+
+    /// Why the beat's committed fills are not `leg`'s, or "": the want filled
+    /// whole against a cap of 1/1, every give by the quantity the leg takes.
+    function _fillFault(uint256 beat, LoopVerifier.Leg calldata leg) private view returns (string memory) {
+        (bool found, Fill memory w) = _pendingOf(beat, leg.want.id);
+        if (!found || w.n != w.d || w.capN != w.capD) return "the want's fill is not whole";
+        for (uint256 i = 0; i < leg.gives.length; i++) {
+            (bool has, Fill memory g) = _pendingOf(beat, leg.gives[i].id);
+            if (!has || g.n * leg.taken[i].d != leg.taken[i].n * g.d) return "fill differs from leg";
+        }
+        return "";
+    }
+
+    /// Why a give's committed cap is not its record's quantity, or "".
+    function _capFault(uint256 beat, LoopVerifier.Leg calldata leg, LoopVerifier.Rat[] memory qtys)
+        private view returns (string memory)
+    {
+        for (uint256 i = 0; i < leg.gives.length; i++) {
+            (, Fill memory g) = _pendingOf(beat, leg.gives[i].id);
+            if (g.capN * qtys[i].d != qtys[i].n * g.capD) return "a cap is not its give's quantity";
+        }
+        return "";
+    }
+
+    /// a + n/d, exact and reduced.
+    function _plus(LoopVerifier.Rat memory a, uint256 n, uint256 d)
+        private pure returns (LoopVerifier.Rat memory)
+    {
+        uint256 num = a.n * d + n * a.d;
+        uint256 den = a.d * d;
+        uint256 g = _gcd(num, den);
+        return LoopVerifier.Rat(num / g, den / g);
     }
 
     function _cancel(uint256 beat, string memory reason) private {

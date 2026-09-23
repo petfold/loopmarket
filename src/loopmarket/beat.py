@@ -70,7 +70,7 @@ class Submission:
     pins: tuple            # (bookRoot, ontologyRoot, registryVersion, contractVersion, addressing)
     legs: list             # LoopVerifier.Leg tuples, in the loop record's order
     leg_hashes: list       # keccak256(abi.encode(leg)) each
-    fills: list            # (offer id bytes, n, d)
+    fills: list            # (offer id bytes, n, d, cap n, cap d): a give's cap its quantity, a want's 1/1
     makers: list           # bytes
     potentials: list       # (n, d)
 
@@ -118,9 +118,9 @@ def submission(proposal: LoopProposal, snapshot: OfferRegistry, *,
         gives = [_proof(snapshot, g.offer_id) for g in leg.gives]
         taken = [_rat(leg.taken(i)) for i in range(len(leg.gives))]
         legs.append((want, gives, taken))
-        fills.append((bytes.fromhex(leg.want.offer_id), 1, 1))
+        fills.append((bytes.fromhex(leg.want.offer_id), 1, 1, 1, 1))
         for g, t in zip(leg.gives, taken):
-            fills.append((bytes.fromhex(g.offer_id), *t))
+            fills.append((bytes.fromhex(g.offer_id), *t, *_rat(g.thing.qty)))
     hashes = [keccak(encode([LEG_TYPE], [leg])) for leg in legs]
     if potentials is None:
         potentials = circ.potentials()
@@ -371,8 +371,9 @@ class BeatClient:
         n = self.contract().functions.beatCount().call()
         return [self.beat(i) for i in range(1, n + 1)]
 
-    def pending_fills(self, beat: int) -> list[tuple[str, Fraction]]:
-        return [(f[0].hex(), Fraction(f[1], f[2]))
+    def pending_fills(self, beat: int) -> list[tuple[str, Fraction, Fraction]]:
+        """The fills beat `beat` would record: (offer id, taken, the offer's cap)."""
+        return [(f[0].hex(), Fraction(f[1], f[2]), Fraction(f[3], f[4]))
                 for f in self.contract().functions.pendingFills(beat).call()]
 
     def timestamp_of(self, block: int) -> int:
@@ -381,11 +382,52 @@ class BeatClient:
     def verdict(self, state: dict, index: int, sub: Submission,
                 *, gas: int = 12_000_000) -> str | None:
         """What the contract's verifier says about leg `index` of a posted
-        beat, without a transaction — see `verdict_of`."""
+        beat, without a transaction — see `verdict_of`. First the beat's
+        committed fills against the leg's (the checks `challenge` makes
+        before verifying, with its reasons): `sub` is rebuilt from the
+        record, so it holds the true quantities and caps."""
+        fault = self.fill_fault(state["beat"], index, sub)
+        if fault:
+            return fault
         pins = (bytes.fromhex(state["book_root"]), bytes.fromhex(state["ontology_root"]),
                 state["registry_version"].encode(), state["contract_version"].encode(),
                 ADDRESSING.get(state["addressing"], 255))
-        return self.verdict_of(sub, index, pins=pins, gas=gas)
+        verdict = self.verdict_of(sub, index, pins=pins, gas=gas)
+        if verdict != "leg verifies":
+            return verdict
+        return self.cap_fault(state["beat"], index, sub) or verdict
+
+    def fill_fault(self, beat: int, index: int, sub: Submission) -> str | None:
+        """Why beat `beat`'s committed fills are not leg `index`'s — the want
+        filled whole against a cap of 1/1, each give by the quantity the leg
+        takes — in the contract's words, or None. `sub` is the submission
+        rebuilt from the record."""
+        committed = self._committed(beat)
+        want, gives, taken = sub.legs[index]
+        if committed.get(want[0].hex()) != (1, 1):
+            return "the want's fill is not whole"
+        for g, t in zip(gives, taken):
+            got = committed.get(g[0].hex())
+            if got is None or got[0] != Fraction(*t):
+                return "fill differs from leg"
+        return None
+
+    def cap_fault(self, beat: int, index: int, sub: Submission) -> str | None:
+        """Why a cap beat `beat` committed for leg `index`'s gives is not the
+        give's quantity (the rebuilt submission's), or None."""
+        committed = self._committed(beat)
+        truth = {f[0].hex(): Fraction(f[3], f[4]) for f in sub.fills}
+        for g in sub.legs[index][1]:
+            got = committed.get(g[0].hex())
+            if got is None or got[1] != truth[g[0].hex()]:
+                return "a cap is not its give's quantity"
+        return None
+
+    def _committed(self, beat: int) -> dict:
+        committed: dict = {}
+        for oid, taken, cap in self.pending_fills(beat):
+            committed.setdefault(oid, (taken, cap))          # the first, as the contract reads
+        return committed
 
     def verdict_of(self, sub: Submission, index: int, *, pins=None,
                    gas: int = 12_000_000) -> str | None:

@@ -88,11 +88,12 @@ def _legs(snapshot, rec):
     legs = [(proof(l["want"]), [proof(g) for g in l["gives"]], [_rat(t) for t in l["taken"]])
             for l in rec["legs"]]
     hashes = [Web3.keccak(encode([LEG_TYPE], [leg])) for leg in legs]
-    fills = []
+    fills = []                                  # (offer, n, d, cap n, cap d)
     for l in rec["legs"]:
-        fills.append((bytes.fromhex(l["want"]), 1, 1))
+        fills.append((bytes.fromhex(l["want"]), 1, 1, 1, 1))
         for g, t in zip(l["gives"], l["taken"]):
-            fills.append((bytes.fromhex(g), *_rat(t)))
+            cap = snapshot.get(g).thing.qty
+            fills.append((bytes.fromhex(g), *_rat(t), cap.numerator, cap.denominator))
     makers = sorted(rec["potentials"])
     potentials = [_rat(rec["potentials"][m]) for m in makers]
     return legs, hashes, fills, [m.encode() for m in makers], potentials
@@ -150,7 +151,7 @@ def test_a_bad_leg_is_challenged_and_the_bond_goes_to_the_challenger(chain):
     from eth_abi import encode
     from web3 import Web3
     hashes = [Web3.keccak(encode([LEG_TYPE], [leg])) for leg in legs]
-    fills = [(f[0], 105, 1) if f[0] == gives_p[0][0] else f for f in fills]
+    fills = [(f[0], 105, 1, 105, 1) if f[0] == gives_p[0][0] else f for f in fills]
     tx = beat.functions.submit(_pins(root), hashes, fills, makers, potentials).transact({"value": BOND})
     bid = beat.events.Submitted().process_receipt(w3.eth.wait_for_transaction_receipt(tx))[0]["args"]["beat"]
     challenger = w3.eth.accounts[1]
@@ -172,3 +173,99 @@ def test_a_bad_leg_is_challenged_and_the_bond_goes_to_the_challenger(chain):
     w3.eth.wait_for_transaction_receipt(
         beat.functions.cancelByArbiter(bid2, "the give does not fit the want").transact({"from": w3.eth.accounts[2]}))
     assert beat.functions.beats(bid2).call()[8]
+
+
+def _submit(w3, beat, root, hashes, fills, makers, potentials):
+    tx = beat.functions.submit(_pins(root), hashes, fills, makers, potentials).transact({"value": BOND})
+    return beat.events.Submitted().process_receipt(w3.eth.wait_for_transaction_receipt(tx))[0]["args"]["beat"]
+
+
+def test_two_beats_racing_over_one_book_cannot_overfill(chain):
+    """The finalize gap (2026-09-23): the same loop posted twice against
+    one book — each beat sound at its pinned root, both open at once. The
+    first to finalize records its fills; the second finds its wants already
+    filled whole, is cancelled at finalize rather than recorded, and its
+    submitter gets the bond back (a race, not a fraud). Before the fix
+    `finalize` summed the fills blindly and the second beat filled every
+    offer twice."""
+    w3, beat = chain
+    snapshot, root, rec, offers = _cleared()
+    legs, hashes, fills, makers, potentials = _legs(snapshot, rec)
+    first = _submit(w3, beat, root, hashes, fills, makers, potentials)
+    racer = w3.eth.accounts[3]
+    tx = beat.functions.submit(_pins(root), hashes, fills, makers, potentials).transact({"value": BOND, "from": racer})
+    second = beat.events.Submitted().process_receipt(w3.eth.wait_for_transaction_receipt(tx))[0]["args"]["beat"]
+    w3.provider.ethereum_tester.mine_blocks(WINDOW + 1)
+    w3.eth.wait_for_transaction_receipt(beat.functions.finalize(first).transact())
+    before = w3.eth.get_balance(racer)
+    rc = w3.eth.wait_for_transaction_receipt(beat.functions.finalize(second).transact({"from": w3.eth.accounts[4]}))
+    ev = beat.events.Cancelled().process_receipt(rc)[0]["args"]
+    assert ev["beat"] == second and "exceeds" in ev["reason"]
+    state = beat.functions.beats(second).call()
+    assert state[8] and not state[7]                                 # cancelled, not finalized
+    assert w3.eth.get_balance(racer) == before + BOND                # the bond back, whole
+    assert tuple(beat.functions.filled(bytes.fromhex(offers[0].offer_id)).call()) == (40, 1)
+    assert tuple(beat.functions.filled(bytes.fromhex(offers[1].offer_id)).call()) == (1, 1)
+
+
+def test_a_give_is_never_recorded_past_its_quantity(chain):
+    """Two different loops over one 100 kg give, 60 kg each, both open: the
+    second finalize would record 120 kg of 100 — it cancels instead."""
+    w3, beat = chain
+    cat = Ontology(OntoDAG()).load({"apple": [], "lesson": []})
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    offers = [give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **PINS),
+              want("b1", Thing(("apple",), 60, "kg"), 130, **V, **PINS),
+              give("b1", Thing(("lesson",)), 80, **V, **PINS),
+              want("farm", Thing(("lesson",)), 125, **V, **PINS),
+              want("b2", Thing(("apple",), 60, "kg"), 131, **V, **PINS),
+              give("b2", Thing(("lesson",)), 81, **V, **PINS),
+              want("farm", Thing(("lesson",)), 126, **V, **PINS)]
+    book.publish_many(offers); book.commit()
+    root = book.store.root
+    snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
+    # each loop solved alone against the same root, as two racing solvers would
+    beats = []
+    for keep in ({0, 1, 2, 3}, {0, 4, 5, 6}):
+        solo = OfferRegistry(RecordStore(MemoryBytesStore()))
+        solo.publish_many([o for i, o in enumerate(offers) if i in keep]); solo.commit()
+        agent = SolverAgent(registry=solo, ontology=cat, clearing=MockClearing(solo, cat, clock=lambda: NOW), solver_id="t")
+        receipts = agent.step(now=NOW)
+        assert receipts and receipts[0].accepted
+        rec = solo.store.get(f"loop/{receipts[0].loop_id}")
+        legs, hashes, fills, makers, potentials = _legs(snapshot, rec)
+        beats.append(_submit(w3, beat, root, hashes, fills, makers, potentials))
+    w3.provider.ethereum_tester.mine_blocks(WINDOW + 1)
+    w3.eth.wait_for_transaction_receipt(beat.functions.finalize(beats[0]).transact())
+    rc = w3.eth.wait_for_transaction_receipt(beat.functions.finalize(beats[1]).transact())
+    assert beat.events.Cancelled().process_receipt(rc)[0]["args"]["beat"] == beats[1]
+    assert tuple(beat.functions.filled(bytes.fromhex(offers[0].offer_id)).call()) == (60, 1)
+
+
+def test_a_false_cap_or_a_partial_want_fill_is_convicted(chain):
+    """The caps are commitments: a submitter who inflates a give's cap (to
+    slip an overfill past finalize) or commits a want as less than whole
+    (so it could be filled again) is convicted by a challenge on the leg,
+    and the bond is the challenger's."""
+    w3, beat = chain
+    snapshot, root, rec, offers = _cleared()
+    legs, hashes, fills, makers, potentials = _legs(snapshot, rec)
+    apples = next(i for i, l in enumerate(rec["legs"]) if l["taken"] == ["40"])
+    farm = bytes.fromhex(offers[0].offer_id)
+    challenger = w3.eth.accounts[1]
+    inflated = [(f[0], f[1], f[2], 1000, 1) if f[0] == farm else f for f in fills]
+    bid = _submit(w3, beat, root, hashes, inflated, makers, potentials)
+    rc = w3.eth.wait_for_transaction_receipt(beat.functions.challenge(
+        bid, apples, hashes, legs[apples], makers, potentials).transact({"from": challenger, "gas": 12_000_000}))
+    assert beat.events.Challenged().process_receipt(rc)[0]["args"]["reason"] == "a cap is not its give's quantity"
+    assert beat.functions.beats(bid).call()[8]
+    b1 = bytes.fromhex(rec["legs"][apples]["want"])
+    halved = [(f[0], 1, 2, 1, 1) if f[0] == b1 else f for f in fills]
+    bid = _submit(w3, beat, root, hashes, halved, makers, potentials)
+    rc = w3.eth.wait_for_transaction_receipt(beat.functions.challenge(
+        bid, apples, hashes, legs[apples], makers, potentials).transact({"from": challenger, "gas": 12_000_000}))
+    assert beat.events.Challenged().process_receipt(rc)[0]["args"]["reason"] == "the want's fill is not whole"
+    # and a fill beyond its own cap is refused at submit
+    with pytest.raises(Exception, match="beyond its cap"):
+        beat.functions.submit(_pins(root), hashes, [(f[0], f[1], f[2], 1, 1) if f[0] == farm else f
+                                                    for f in fills], makers, potentials).call({"value": BOND})

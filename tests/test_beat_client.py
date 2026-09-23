@@ -170,8 +170,15 @@ def test_a_structural_forgery_is_convicted_and_the_bond_paid(chain):
     circ = Circulation(legs_from_record(forged, snapshot))
     forged["loop_id"] = circ.loop_id                                  # the forger is at least consistent
     forgery = LoopProposal(circ, root, cat.root, "t", NOW)
-    sub = submission(forgery, snapshot, potentials={m: e for m, e in rec["potentials"].items()})
+    honest_caps = submission(forgery, snapshot, potentials={m: e for m, e in rec["potentials"].items()})
     submitter = BeatClient("", address, key=key, client=w3)
+    # with the give's true cap the contract refuses the fill at submit
+    # (2026-09-23), so the forger must lie about the cap as well
+    with pytest.raises(Exception, match="beyond its cap"):
+        submitter.submit(honest_caps)
+    import dataclasses
+    sub = dataclasses.replace(honest_caps, fills=[f if f[1:3] != (105, 1) else (*f[:3], 105, 1)
+                                                  for f in honest_caps.fills])
     beat, _ = submitter.submit(sub)
     # the forger's clearing book: U11 refuses an oversold fill at a registry
     # commit, so the forger writes the record through the store itself

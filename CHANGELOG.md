@@ -37,6 +37,23 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   `0xfa6f9367A283A8c53AA876C1416D4B49027bBF99`, and a claim on beat 2's
   reservation certified by timeout and paid through the escrow.
 
+### Fixed
+
+- **`BeatClearing.finalize` can no longer overfill an offer** (2026-09-23).
+  `submit` took fills without their offers' quantities, so `finalize` added
+  them blindly: two beats solved against one book, each sound at its root
+  and open at once, recorded every fill twice unless someone challenged the
+  second. Each committed fill now carries its offer's cap (a give's
+  quantity, a want's 1/1); `finalize` checks all of a beat's fills against
+  what the chain recorded since and, if any no longer fits, cancels the beat
+  whole and refunds the bond. A false cap, a want committed as less than
+  whole, or a give fill differing from its leg convicts on challenge (the
+  last used to revert the challenge instead). `beat.submission` commits the
+  caps; `BeatClient.verdict` reports the fill faults as the contract would
+  (`fill_fault`, `cap_fault`); `pending_fills` returns the cap. The `Fill`
+  ABI changes, so the deployed contracts need a redeploy before the CLI
+  talks to them again.
+
 ## [0.11.0] — 2026-09-19
 
 ### Added
