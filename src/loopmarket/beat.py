@@ -53,10 +53,49 @@ def abi() -> dict:
     IR, optimizer 200 runs; rebuilt by `scripts/build_beat.py`) so an
     installed wheel can talk to the deployed contract without a compiler
     or the repository."""
+    return _artifact("BeatClearing.json")
+
+
+def verifier_abi() -> dict:
+    """`LegVerifier` (2026-09-23): the leg verification `BeatClearing` calls,
+    deployed once beside it — the library outgrew the clearing contract's
+    EIP-170 room. Shipped and rebuilt as `abi()` is."""
+    return _artifact("LegVerifier.json")
+
+
+def _artifact(name: str) -> dict:
     from importlib import resources
-    with resources.files("loopmarket").joinpath("contracts", "BeatClearing.json").open(
-            encoding="utf-8") as fh:
+    with resources.files("loopmarket").joinpath("contracts", name).open(encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def deploy(w3, bond_wei: int, window_blocks: int, arbiter: str | None = None, *,
+           predecessors=(), verifier: str | None = None, key: str | None = None) -> tuple[str, str]:
+    """Deploy a `BeatClearing` (and, unless `verifier` names one already on
+    the chain, a `LegVerifier` for it) and return (clearing, verifier).
+    `predecessors` are the earlier clearing contracts whose fills are the new
+    one's floor — list every address that has recorded fills, so an offer
+    they cleared cannot clear again. `key` signs raw transactions (a remote
+    node); without it the node's default account sends (a test chain).
+    `arbiter` defaults to the sender."""
+    account = w3.eth.account.from_key(key) if key else None
+    sender = account.address if account else w3.eth.default_account
+
+    def send(built):
+        if account is None:
+            tx = built.transact({"from": sender})
+        else:
+            tx = w3.eth.send_raw_transaction(account.sign_transaction(built.build_transaction({
+                "from": sender, "nonce": w3.eth.get_transaction_count(sender)})).raw_transaction)
+        return w3.eth.wait_for_transaction_receipt(tx)["contractAddress"]
+
+    if verifier is None:
+        art = verifier_abi()
+        verifier = send(w3.eth.contract(abi=art["abi"], bytecode=art["bytecode"]).constructor())
+    art = abi()
+    clearing = send(w3.eth.contract(abi=art["abi"], bytecode=art["bytecode"]).constructor(
+        bond_wei, window_blocks, arbiter or sender, verifier, [w3.to_checksum_address(p) for p in predecessors]))
+    return clearing, verifier
 
 
 #: The book root's addressing scheme as the contract numbers it
@@ -344,8 +383,29 @@ class BeatClient:
         return self._send(self.contract().functions.finalize(beat))
 
     def filled(self, offer_id: str) -> Fraction:
+        """What has been taken from the offer: this contract's fills plus its
+        predecessors' (since 2026-09-23 the chain of clearing contracts is
+        one fill authority)."""
         n, d = self.contract().functions.filled(bytes.fromhex(offer_id)).call()
         return Fraction(n, d)
+
+    def recorded(self, offer_id: str) -> Fraction:
+        """What this contract itself recorded as taken from the offer."""
+        n, d = self.contract().functions.recorded(bytes.fromhex(offer_id)).call()
+        return Fraction(n, d)
+
+    def predecessors(self) -> list[str]:
+        c = self.contract().functions
+        return [c.predecessors(i).call() for i in range(c.predecessorCount().call())]
+
+    def successor(self) -> str | None:
+        s = self.contract().functions.successor().call()
+        return None if int(s, 16) == 0 else s
+
+    def retire(self, to: str) -> dict:
+        """Hand the fill authority to the contract at `to` (the arbiter's
+        key only): no new beat here after this."""
+        return self._send(self.contract().functions.retire(self._web3().to_checksum_address(to)))
 
     def beat(self, beat: int) -> dict:
         """The beat's record on chain: the pins, the submitter, the two

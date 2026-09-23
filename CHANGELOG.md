@@ -39,6 +39,19 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Fixed
 
+- **Offers cleared under an old clearing contract no longer clear again
+  after a redeploy** (2026-09-23; `proof-fabric.md`'s open problem of
+  2026-09-18). `BeatClearing` takes its `predecessors` at construction and
+  answers `filled` as its own `recorded` fills plus theirs — the old
+  contracts' fills are the floor. `retire(successor)` (the arbiter, once)
+  stops new beats on a contract, and its still-open beats count the
+  successor's fills at finalize. Leg verification moved into
+  `LegVerifier.sol`, deployed once beside the clearing contract (the two no
+  longer fit EIP-170 together: 10.2 kB + 16.8 kB). `beat.deploy` deploys
+  both; `scripts/deploy_beat.py` takes `--predecessors`, `--verifier`,
+  `--retire`; `BeatClient` gains `recorded`, `predecessors`, `successor`,
+  `retire`. The constructor changes, so the Gnosis contracts are redeployed.
+
 - **`BeatClearing.finalize` can no longer overfill an offer** (2026-09-23).
   `submit` took fills without their offers' quantities, so `finalize` added
   them blindly: two beats solved against one book, each sound at its root

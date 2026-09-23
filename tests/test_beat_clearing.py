@@ -43,20 +43,36 @@ WINDOW = 5
 
 
 @pytest.fixture(scope="module")
-def chain():
+def compiled():
+    """BeatClearing and the LegVerifier it calls, compiled from the sources."""
     solcx, Web3, EthereumTesterProvider = _evm()
     solcx.install_solc("0.8.24")
-    compiled = solcx.compile_files([os.path.join(HERE, "..", "contracts", "BeatClearing.sol")],
-                                   output_values=["abi", "bin"], solc_version="0.8.24",
-                                   optimize=True, optimize_runs=200, via_ir=True,
-                                   allow_paths=os.path.join(HERE, "..", "contracts"))
-    artifact = next(v for k, v in compiled.items() if k.endswith(":BeatClearing"))
+    out = solcx.compile_files([os.path.join(HERE, "..", "contracts", f)
+                               for f in ("BeatClearing.sol", "LegVerifier.sol")],
+                              output_values=["abi", "bin"], solc_version="0.8.24",
+                              optimize=True, optimize_runs=200, via_ir=True,
+                              allow_paths=os.path.join(HERE, "..", "contracts"))
+    pick = lambda name: next(v for k, v in out.items() if k.endswith(":" + name))
     w3 = Web3(EthereumTesterProvider())
     w3.eth.default_account = w3.eth.accounts[0]
-    c = w3.eth.contract(abi=artifact["abi"], bytecode=artifact["bin"])
+    ver = pick("LegVerifier")
+    r = w3.eth.wait_for_transaction_receipt(
+        w3.eth.contract(abi=ver["abi"], bytecode=ver["bin"]).constructor().transact())
+    return w3, pick("BeatClearing"), r["contractAddress"]
+
+
+def _clearing(compiled, predecessors=()):
+    """A fresh BeatClearing on the module's chain, with `predecessors`."""
+    w3, art, verifier = compiled
+    c = w3.eth.contract(abi=art["abi"], bytecode=art["bin"])
     receipt = w3.eth.wait_for_transaction_receipt(
-        c.constructor(BOND, WINDOW, w3.eth.accounts[2]).transact())
-    return w3, w3.eth.contract(address=receipt["contractAddress"], abi=artifact["abi"])
+        c.constructor(BOND, WINDOW, w3.eth.accounts[2], verifier, list(predecessors)).transact())
+    return w3.eth.contract(address=receipt["contractAddress"], abi=art["abi"])
+
+
+@pytest.fixture(scope="module")
+def chain(compiled):
+    return compiled[0], _clearing(compiled)
 
 
 def _cleared():
@@ -269,3 +285,87 @@ def test_a_false_cap_or_a_partial_want_fill_is_convicted(chain):
     with pytest.raises(Exception, match="beyond its cap"):
         beat.functions.submit(_pins(root), hashes, [(f[0], f[1], f[2], 1, 1) if f[0] == farm else f
                                                     for f in fills], makers, potentials).call({"value": BOND})
+
+
+def _finalize_after_window(w3, beat, bid):
+    w3.provider.ethereum_tester.mine_blocks(WINDOW + 1)
+    return w3.eth.wait_for_transaction_receipt(beat.functions.finalize(bid).transact())
+
+
+def test_a_redeployed_contract_counts_its_predecessors_fills(compiled):
+    """The fill authority across a redeploy (2026-09-23): offers cleared
+    under an old contract are as filled under its successor, which is built
+    naming it — the same loop posted on the new contract cannot be recorded
+    again; its own fills and the floor are told apart."""
+    w3 = compiled[0]
+    old = _clearing(compiled)
+    snapshot, root, rec, offers = _cleared()
+    legs, hashes, fills, makers, potentials = _legs(snapshot, rec)
+    _finalize_after_window(w3, old, _submit(w3, old, root, hashes, fills, makers, potentials))
+    farm = bytes.fromhex(offers[0].offer_id)
+    new = _clearing(compiled, [old.address])
+    assert tuple(new.functions.filled(farm).call()) == (40, 1)          # the floor
+    assert tuple(new.functions.recorded(farm).call()) == (0, 1)         # none of its own
+    assert new.functions.predecessorCount().call() == 1
+    again = _submit(w3, new, root, hashes, fills, makers, potentials)
+    rc = _finalize_after_window(w3, new, again)
+    assert new.events.Cancelled().process_receipt(rc)[0]["args"]["beat"] == again
+    assert tuple(new.functions.filled(farm).call()) == (40, 1)          # still once
+    # a contract built without it knows nothing — the problem this solves
+    blind = _clearing(compiled)
+    assert tuple(blind.functions.filled(farm).call()) == (0, 1)
+
+
+def test_a_give_used_up_before_the_redeploy_convicts_on_challenge(compiled):
+    """Structurally too: a give its predecessor took whole leaves nothing
+    here, and a leg taking from it is convicted by the verifier."""
+    w3 = compiled[0]
+    cat = Ontology(OntoDAG()).load({"apple": [], "lesson": []})
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    offers = [give("farm", Thing(("apple",), 40, "kg"), 80, **V, **PINS),
+              want("b1", Thing(("apple",), 40, "kg"), 90, **V, **PINS),
+              give("b1", Thing(("lesson",)), 80, **V, **PINS),
+              want("farm", Thing(("lesson",)), 85, **V, **PINS)]
+    book.publish_many(offers); book.commit()
+    root = book.store.root
+    snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
+    agent = SolverAgent(registry=book, ontology=cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+    receipts = agent.step(now=NOW)
+    rec = book.store.get(f"loop/{receipts[0].loop_id}")
+    legs, hashes, fills, makers, potentials = _legs(snapshot, rec)
+    old = _clearing(compiled)
+    _finalize_after_window(w3, old, _submit(w3, old, root, hashes, fills, makers, potentials))
+    new = _clearing(compiled, [old.address])
+    bid = _submit(w3, new, root, hashes, fills, makers, potentials)
+    apples = next(i for i, l in enumerate(rec["legs"]) if l["taken"] == ["40"])
+    rc = w3.eth.wait_for_transaction_receipt(new.functions.challenge(
+        bid, apples, hashes, legs[apples], makers, potentials).transact({"from": w3.eth.accounts[1], "gas": 12_000_000}))
+    assert "left" in new.events.Challenged().process_receipt(rc)[0]["args"]["reason"]
+
+
+def test_a_retired_contract_takes_no_beat_and_its_open_beats_see_the_successor(compiled):
+    """`retire` hands the fill authority on: no new beat on the old contract,
+    and a beat still open there when it retired counts what the successor
+    has recorded since — the same loop cleared on the successor first leaves
+    the old beat nothing, so it cancels at finalize."""
+    w3 = compiled[0]
+    old = _clearing(compiled)
+    snapshot, root, rec, offers = _cleared()
+    legs, hashes, fills, makers, potentials = _legs(snapshot, rec)
+    stale = _submit(w3, old, root, hashes, fills, makers, potentials)       # open at retirement
+    new = _clearing(compiled, [old.address])
+    with pytest.raises(Exception, match="not the arbiter"):
+        old.functions.retire(new.address).call({"from": w3.eth.accounts[1]})
+    w3.eth.wait_for_transaction_receipt(old.functions.retire(new.address).transact({"from": w3.eth.accounts[2]}))
+    assert old.functions.successor().call() == new.address
+    with pytest.raises(Exception, match="retired"):
+        old.functions.submit(_pins(root), hashes, fills, makers, potentials).call({"value": BOND})
+    with pytest.raises(Exception, match="already retired"):
+        old.functions.retire(new.address).call({"from": w3.eth.accounts[2]})
+    fresh = _submit(w3, new, root, hashes, fills, makers, potentials)
+    w3.provider.ethereum_tester.mine_blocks(WINDOW + 1)
+    w3.eth.wait_for_transaction_receipt(new.functions.finalize(fresh).transact())
+    rc = w3.eth.wait_for_transaction_receipt(old.functions.finalize(stale).transact())
+    assert old.events.Cancelled().process_receipt(rc)[0]["args"]["beat"] == stale
+    farm = bytes.fromhex(offers[0].offer_id)
+    assert tuple(new.functions.filled(farm).call()) == (40, 1)          # once, across both

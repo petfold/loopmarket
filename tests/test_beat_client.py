@@ -40,14 +40,13 @@ BOND, WINDOW = 10 ** 16, 3
 @pytest.fixture(scope="module")
 def chain():
     _solcx, Web3, EthereumTesterProvider = _evm()
-    art = abi()
+    from loopmarket.beat import deploy
     w3 = Web3(EthereumTesterProvider())
     w3.eth.default_account = w3.eth.accounts[0]
-    c = w3.eth.contract(abi=art["abi"], bytecode=art["bytecode"])
-    receipt = w3.eth.wait_for_transaction_receipt(c.constructor(BOND, WINDOW, w3.eth.accounts[2]).transact())
+    address, _verifier = deploy(w3, BOND, WINDOW, w3.eth.accounts[2])
     # a funded key for the client: eth-tester's first account, exported
     key = w3.provider.ethereum_tester.backend.account_keys[0].to_hex()
-    return w3, receipt["contractAddress"], key
+    return w3, address, key
 
 
 def _book():

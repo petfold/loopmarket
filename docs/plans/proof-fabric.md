@@ -379,6 +379,19 @@ two consumers, shared conformance tests.
   new one's floor, or offers pinning the contract they clear under),
   redeploy only with the book's cleared offers withdrawn or expired, and
   treat each address's fills as its own. Owner: P2 contract design.
+  **Resolved 2026-09-23 by the floor:** a `BeatClearing` is built with its
+  `predecessors` (up to 16), and its `filled` is its own `recorded` fills
+  plus every predecessor's answer, so an offer an old contract filled is as
+  filled on the new one — the verifier sees no remainder and `finalize`
+  cancels a beat that would record it again. The arbiter's one-time
+  `retire(successor)` closes the other direction: a retired contract takes
+  no new beat, and a beat still open when it retired counts the successor's
+  `recorded` fills at finalize. Pinning offers to a contract was rejected:
+  every redeploy would strand the open offers. Contracts deployed before
+  2026-09-23 have no `retire` — they are read as predecessors and stay open;
+  a beat on one of them is outside the configured authority. Leg
+  verification moved to a separately deployed `LegVerifier` to make room
+  (the clearing contract had reached EIP-170's limit).
 - **POT mirroring fidelity.** If G4 fires, the POT root and the recordstore
   root describe the same book through different trees; the proof that they
   agree (every key, both directions) is itself a non-monotone completeness

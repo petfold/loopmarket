@@ -160,13 +160,10 @@ PERIOD, COMMIT_BLOCKS, BOND, WINDOW = 12, 5, 10 ** 16, 3
 def chain():
     from web3 import EthereumTesterProvider, Web3
     from loopmarket.auction import abi as sealed_abi
-    from loopmarket.beat import abi as beat_abi
+    from loopmarket.beat import deploy
     w3 = Web3(EthereumTesterProvider())
     w3.eth.default_account = w3.eth.accounts[0]
-    art = beat_abi()
-    r = w3.eth.wait_for_transaction_receipt(
-        w3.eth.contract(abi=art["abi"], bytecode=art["bytecode"]).constructor(BOND, WINDOW, w3.eth.accounts[2]).transact())
-    clearing = r["contractAddress"]
+    clearing, _verifier = deploy(w3, BOND, WINDOW, w3.eth.accounts[2])
     art2 = sealed_abi()
     r2 = w3.eth.wait_for_transaction_receipt(
         w3.eth.contract(abi=art2["abi"], bytecode=art2["bytecode"]).constructor(PERIOD, COMMIT_BLOCKS, clearing).transact())

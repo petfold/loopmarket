@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./LoopVerifier.sol";
+import "./LegVerifier.sol";
+
+/// A successor's own fills, without its predecessors' (one hop forward).
+interface IRecorded {
+    function recorded(bytes32 offer) external view returns (uint256 n, uint256 d);
+}
 
 /// The optimistic beat (P2, decided with Peter 2026-09-15; docs/plans/
 /// P2-batch-auction.md §2/§6, proof-fabric.md). One outcome per beat: a
@@ -29,6 +34,21 @@ import "./LoopVerifier.sol";
 /// cap is a commitment like any other: one that is not the record's quantity,
 /// a want fill that is not whole, or a give fill that is not the leg's
 /// quantity convicts the beat on challenge.
+///
+/// The fill authority across a redeploy (2026-09-23; proof-fabric.md's open
+/// problem of 2026-09-18). Fills live in the contract that recorded them, so
+/// a redeployed contract knew none of them and offers cleared under the old
+/// one cleared again. Now a contract is built with its `predecessors`: its
+/// `filled` is what it recorded plus what each of them answers — the old
+/// contracts' fills are the new one's floor, and an offer they filled is as
+/// filled here. `recorded` is this contract's own. And the arbiter may
+/// `retire` a contract to its successor: it takes no new beat after that,
+/// and a beat still open when it retired checks, at finalize, what the
+/// successor has recorded as well — so fills never race across the two in
+/// either direction. (Contracts deployed before this one have no `retire`:
+/// they stay open, and are read as predecessors only.) Leg verification is
+/// the `LegVerifier` deployed beside it — the library outgrew EIP-170's
+/// room for both.
 contract BeatClearing {
     using LoopVerifier for LoopVerifier.Beat;
 
@@ -51,29 +71,48 @@ contract BeatClearing {
     uint256 public immutable bondWei;
     uint256 public immutable windowBlocks;
     address public arbiter;
+    LegVerifier public immutable verifier;
+    address[] public predecessors;             // earlier clearing contracts: their fills are the floor
+    address public successor;                  // set once by `retire`; no new beat after
 
     uint256 public beatCount;
     mapping(uint256 => BeatRecord) public beats;
     mapping(uint256 => Fill[]) private _pending;                 // fills a beat would record
-    mapping(bytes32 => LoopVerifier.Rat) private _filled;        // recorded fills, exact
+    mapping(bytes32 => LoopVerifier.Rat) private _recorded;      // this contract's own fills, exact
 
     event Submitted(uint256 indexed beat, bytes32 bookRoot, bytes32 legsHash, address submitter);
     event Challenged(uint256 indexed beat, uint256 leg, address challenger, string reason);
     event Cancelled(uint256 indexed beat, string reason);
     event Finalized(uint256 indexed beat, bytes32 bookRoot, uint256 fills);
+    event Retired(address successor);
 
-    constructor(uint256 bondWei_, uint256 windowBlocks_, address arbiter_) {
+    constructor(uint256 bondWei_, uint256 windowBlocks_, address arbiter_, LegVerifier verifier_,
+                address[] memory predecessors_) {
+        require(predecessors_.length <= 16, "at most 16 predecessors");
         bondWei = bondWei_;
         windowBlocks = windowBlocks_;
         arbiter = arbiter_;
+        verifier = verifier_;
+        predecessors = predecessors_;
     }
 
     // ---- reading -------------------------------------------------------------
 
-    /// What has been recorded as taken from an offer, exact (0/1: nothing).
+    /// What has been taken from an offer, exact (0/1: nothing): what this
+    /// contract recorded plus what every predecessor answers.
     function filled(bytes32 offer) public view returns (uint256 n, uint256 d) {
         LoopVerifier.Rat memory r = _filledOf(offer);
         return (r.n, r.d);
+    }
+
+    /// What this contract itself recorded as taken from an offer.
+    function recorded(bytes32 offer) external view returns (uint256 n, uint256 d) {
+        LoopVerifier.Rat memory r = _ownOf(offer);
+        return (r.n, r.d);
+    }
+
+    function predecessorCount() external view returns (uint256) {
+        return predecessors.length;
     }
 
     function pendingFills(uint256 beat) external view returns (Fill[] memory) {
@@ -94,6 +133,7 @@ contract BeatClearing {
                     LoopVerifier.Rat[] calldata potentials)
         external payable returns (uint256 beat)
     {
+        require(successor == address(0), "retired: submit to the successor");
         require(msg.value == bondWei, "bond");
         require(legHashes.length >= 1 && fills.length >= 2, "an empty beat");
         require(makers.length == potentials.length, "potentials shape");
@@ -138,7 +178,7 @@ contract BeatClearing {
         // submitter's (the leg is the committed one), so it convicts
         string memory fault = _fillFault(beat, leg);
         if (bytes(fault).length == 0) {
-            try this.verifyLegExternal(b.pins, leg, makers, potentials)
+            try verifier.verify(b.pins, leg, makers, potentials, address(this))
                 returns (LoopVerifier.Rat[] memory qtys) {
                 fault = _capFault(beat, leg, qtys);
                 if (bytes(fault).length == 0) {
@@ -160,6 +200,16 @@ contract BeatClearing {
         _cancel(beat, fault);
         emit Challenged(beat, index, msg.sender, fault);
         payable(msg.sender).transfer(b.bond);
+    }
+
+    /// Hand the fill authority to `to`, once: no new beat here after this;
+    /// beats already open still finalize, counting what `to` has recorded.
+    function retire(address to) external {
+        require(msg.sender == arbiter && arbiter != address(0), "not the arbiter");
+        require(successor == address(0), "already retired");
+        require(to != address(0) && to != address(this), "no successor");
+        successor = to;
+        emit Retired(to);
     }
 
     /// The arbiter's word on what the contract cannot compute.
@@ -186,6 +236,10 @@ contract BeatClearing {
         // of the same offer so far must stay within the cap, exactly
         for (uint256 i = 0; i < fills.length; i++) {
             LoopVerifier.Rat memory total = _filledOf(fills[i].offer);
+            if (successor != address(0)) {
+                (uint256 sn, uint256 sd) = IRecorded(successor).recorded(fills[i].offer);
+                if (sd != 0) total = _plus(total, sn, sd);
+            }
             for (uint256 j = 0; j <= i; j++) {
                 if (fills[j].offer == fills[i].offer) total = _plus(total, fills[j].n, fills[j].d);
             }
@@ -196,7 +250,7 @@ contract BeatClearing {
             }
         }
         for (uint256 i = 0; i < fills.length; i++) {
-            _filled[fills[i].offer] = _plus(_filledOf(fills[i].offer), fills[i].n, fills[i].d);
+            _recorded[fills[i].offer] = _plus(_ownOf(fills[i].offer), fills[i].n, fills[i].d);
         }
         b.finalized = true;
         emit Finalized(beat, b.pins.bookRoot, fills.length);
@@ -205,31 +259,27 @@ contract BeatClearing {
 
     // ---- the verifier, callable so a failure can be caught ------------------
 
+    /// One leg's structural verification against this contract's fills — what
+    /// a challenge runs, callable (as `eth_call`) so a submitter or challenger
+    /// asks for free first. Returns each give's quantity.
     function verifyLegExternal(LoopVerifier.Beat calldata pins, LoopVerifier.Leg calldata leg,
                                bytes[] calldata makers, LoopVerifier.Rat[] calldata potentials)
-        external returns (LoopVerifier.Rat[] memory qtys)
+        external returns (LoopVerifier.Rat[] memory)
     {
-        require(msg.sender == address(this), "internal");
-        _makers = makers;
-        _potentials = potentials;
-        (, LoopVerifier.Facts[] memory gives) = LoopVerifier.verifyLeg(pins, leg, _filledOf, _potentialOf);
-        // each give's quantity, for the caps the beat committed
-        qtys = new LoopVerifier.Rat[](gives.length);
-        for (uint256 i = 0; i < gives.length; i++) qtys[i] = gives[i].qty;
+        return verifier.verify(pins, leg, makers, potentials, address(this));
     }
 
-    bytes[] private _makers;                       // scratch for the lookup during one verification
-    LoopVerifier.Rat[] private _potentials;
-
-    function _potentialOf(bytes memory maker) internal view returns (LoopVerifier.Rat memory) {
-        for (uint256 i = 0; i < _makers.length; i++) {
-            if (keccak256(_makers[i]) == keccak256(maker)) return _potentials[i];
-        }
-        revert("maker without a potential");
-    }
-
+    /// Recorded here plus every predecessor's answer.
     function _filledOf(bytes32 offer) internal view returns (LoopVerifier.Rat memory r) {
-        r = _filled[offer];
+        r = _ownOf(offer);
+        for (uint256 i = 0; i < predecessors.length; i++) {
+            (uint256 n, uint256 d) = IFills(predecessors[i]).filled(offer);
+            if (d != 0 && n != 0) r = _plus(r, n, d);
+        }
+    }
+
+    function _ownOf(bytes32 offer) internal view returns (LoopVerifier.Rat memory r) {
+        r = _recorded[offer];
         if (r.d == 0) r = LoopVerifier.Rat(0, 1);
     }
 
