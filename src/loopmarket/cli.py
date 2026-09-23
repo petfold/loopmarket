@@ -2210,7 +2210,7 @@ def _matches(session: Session):
 def cmd_matches(args, session, out):
     rows = [f"{m.giver} gives {' '.join(m.give.thing.concepts)} to "
             f"{m.receiver} (wants {' '.join(m.want.thing.concepts)}) "
-            f"rate {m.rate:.4g}  {m.give.offer_id[:12]}>{m.want.offer_id[:12]}"
+            f"rate {float(m.rate):.4g}  {m.give.offer_id[:12]}>{m.want.offer_id[:12]}"
             for m in _matches(session)]
     rows.sort()
     for r in rows:

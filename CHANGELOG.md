@@ -39,6 +39,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Fixed
 
+- **`loop matches` on Python 3.11** (2026-09-23): the rate, an exact
+  `Fraction` since the v4 record, was formatted with `:.4g`, which
+  `Fraction` supports only from 3.12 — CI's 3.11 job had failed on every
+  push since. Formatted as a float, as every other rate in the CLI is. The
+  README's test count is current again (216).
+
 - **Offers cleared under an old clearing contract no longer clear again
   after a redeploy** (2026-09-23; `proof-fabric.md`'s open problem of
   2026-09-18). `BeatClearing` takes its `predecessors` at construction and
