@@ -249,7 +249,7 @@ and the clocks:
   capital efficiency specialist insurers live on — is **factbond's**
   *(corrected 2026-09-25, plan D9)*: its geared payout reserve applied to
   cover gives, fail-closed at the cap; not loopmarket's, and not
-  assurance's beyond the underwriting requirements.
+  hansa's beyond the underwriting requirements.
 - **One resolve per reservation.** A policy allowing several claims needs
   several reservations (or a remaining-cover counter, later).
 - **The cover period and the claim period are matched terms** *(applied

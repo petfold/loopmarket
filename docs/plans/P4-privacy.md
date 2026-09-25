@@ -365,7 +365,7 @@ the door; item ids are derived, never salted, since linkage is ruled
 permanent here; every statement records who paid the attester; and any
 reputation format built on the loss view accepts an association-set
 membership proof wherever it accepts an address history (§5 item 5).
-Unlinkable presentations are the assurance repository's and outside this
+Unlinkable presentations are the hansa repository's and outside this
 document's tiers.
 
 ## Gates

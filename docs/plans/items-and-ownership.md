@@ -165,7 +165,7 @@ transfer; a failed transfer is non-performance (bond, point, repair).
   stolen-goods register** — `counterparty-gate.md`'s revocation pattern, not ownership.
 - **Fact cover (title insurance):** "the seller had the right to sell h as of
   D" — the insurer does the search and pays if refuted. The general answer
-  for anything valuable (assurance's insurer toolkit).
+  for anything valuable (hansa's insurer toolkit).
 - A bond sized to the item's value, forfeited on reclaim within the claim
   period, makes fencing unprofitable within those limits.
 
@@ -186,7 +186,7 @@ id, the countersign as its transfer, "not before the countersign record
 exists; not a matching concern at any point"). This draft overrules it
 explicitly rather than by extension: the fill chain naming `item(h)` *is*
 that token's history without the token. Where an NFT register exists
-outside, an adapter reads it as one more register (assurance) — a source of
+outside, an adapter reads it as one more register (hansa) — a source of
 statements, never title at clearing.
 
 ## 6. Privacy

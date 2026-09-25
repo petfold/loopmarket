@@ -12,7 +12,7 @@ by absence, with a maximum age chosen by the wanter; the protocol never
 requires a government credential (Peter's rule). The statement shape, the
 revocation design and the adapter split were the assistant's answers to the
 chat's open decisions 4–7, not recorded agreements. loopmarket defines the
-shape and the gate; the **assurance** repo produces statements (adapters,
+shape and the gate; the **hansa** repo produces statements (adapters,
 registers, insurers).
 
 Two things in loopmarket's own corpus this draft answers and must be
@@ -91,7 +91,7 @@ statement: { subject: K,            # the maker key it is about
              scheme: hash }               # the check procedure applied (plan E3)
 ```
 
-Sources (all produced outside loopmarket, by assurance): an EU / W3C
+Sources (all produced outside loopmarket, by hansa): an EU / W3C
 credential (*signed*), an attester who read paper or an online register
 (*attested*, including a practice attesting for its practitioners, backed
 by the practice's deposit), the subject's own declaration backed by a
@@ -116,7 +116,7 @@ derived from, beside `sig/` and `handoff/`; covered by the book root the
 proposal already pins. Public, because admissibility is a matching gate: the
 solver must see it before proposing (`meets` in candidate generation). The
 public form carries the minimum (a ZK or selectively disclosed statement);
-photos and documents are never published (assurance's binding, §7); where a
+photos and documents are never published (hansa's binding, §7); where a
 door check needs the photo, the statement carries a commitment (hash) to it
 and the door presentation reveals it, signed by the issuer.
 
@@ -250,7 +250,7 @@ months for a course certificate.
   writes `notice/<loop>/<offer>` in its own book — timestamped, provable —
   and the counterparty's client reads it. Notification moves the risk: a
   wanter who proceeds after notice bears it; harm before notice is the
-  watcher's (the insurer's, when cover exists — assurance).
+  watcher's (the insurer's, when cover exists — hansa).
 - **The notice is also rung zero of every claim** *(applied plan A2, B1)*:
   a claim on a reservation must cite a prior `notice/` record from the
   claimant to the giver, which carries a **cure deadline**; the notice must
@@ -296,7 +296,7 @@ required by the protocol.**
 ## 8. Boundaries
 
 - B1: the gate is pure: statement shape, catalogue, absence proofs. Verifying
-  EU seals, X.509 or SD-JWTs lives in assurance's adapters (or behind an
+  EU seals, X.509 or SD-JWTs lives in hansa's adapters (or behind an
   optional extra, lazily imported — B2), and an unverifiable statement meets
   nothing.
 - On chain: the statement's signature, inclusion and absence proofs are the
@@ -327,7 +327,7 @@ required by the protocol.**
   neutral here: it rules linkage permanent and stealth fills incompatible
   with auditability (`P4-privacy.md` §3 item 4, §5 item 1), and ships no
   unlinkability language before its G2. Unlinkable ZK presentations are
-  assurance's and outside P4's scope.
+  hansa's and outside P4's scope.
 
 Decided in `credentials-cover-and-options.md` and **applied here on 2026-09-25**: D1
 (§2, §4 step 6), D2 (§4 step 7), D4 (§1 `legs`, §2), D7 (§1, §4, §5), D8

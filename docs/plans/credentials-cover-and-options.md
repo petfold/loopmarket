@@ -2,7 +2,7 @@
 
 Status: design, entered loopmarket's plan corpus 2026-09-25. This is the
 cross-repository plan agreed in the assurance drafts (consolidated
-2026-09-25); factbond, ontodag and the assurance repository carry the
+2026-09-25); factbond, ontodag and the hansa repository carry the
 same decisions from their side. loopmarket's detailed designs are
 `options-and-cover.md`, `items-and-ownership.md` and
 `counterparty-gate.md`; the practice record it was checked against is
@@ -586,7 +586,7 @@ bindings and asserted false subsumptions.
 - The photo reaches the counterparty's device by selective disclosure at
   the door; the public statement carries only a commitment to it.
 - Evidence classes are factbond's catalogue; the only ordered chains in the
-  assurance pack are the door scale and, if the evidence classes are ever
+  hansa pack are the door scale and, if the evidence classes are ever
   ordered, that one. That is the second vertical for ontodag's ordinal kind
   (the assurance drafts' `ontodag-asks.md` §2): ontodag decides between the kind and cumulative
   names as the interim.
@@ -594,7 +594,7 @@ bindings and asserted false subsumptions.
 ### D9. Placement; the mutual as the first pooled form, with its rules; the loss view
 
 **Problem.** The three-repo split and the relocation of pooled cover and
-the trust score to assurance were decided in the drafts, on a reading of
+the trust score to hansa were decided in the drafts, on a reading of
 factbond that was not accurate. The mutual's own rules were unspecified.
 
 **Decision.**
@@ -603,7 +603,7 @@ factbond that was not accurate. The mutual's own rules were unspecified.
 |---|---|
 | **loopmarket** | the record (v6), the gate with `accept`, `cred/` and `notice/` sidecars with cure deadlines, the `register` role and `register_roots` pin, absence and consistency proofs on the leg path, option records, item claims, argument-only operators, `claimOnly` reservations, `assign`, `settle(split)`, `extendClaim`, the cancellation ladder applied to options |
 | **factbond** | F1; the `self-knowable` class with its evidence period, ruling periods, evidence fee, challenger cap, finality window, suspension and final rung in the evidence policy; adjudicators in the calibration ledger; the loss view (from `Asserted ⋈ Refuted`, the asserter in the correction feed's payload) with look-back; **pooled cover**: the geared payout reserve of `netting-and-reserves.md` applied to cover gives, fail-closed at the cap, with per-fact notional caps, and the mutual's rules below; the coverage give for any pack used in bonded matching |
-| **assurance** | adapters (attester first, EU and W3C later), register services and mirrors as transparency logs with declared cadence, the credential layer of the vocabulary (on ontodag-core's occupations pack) with `scheme` per category, identity binding (D8) and the handover app, the insurer's product layer (underwriting `requires.legs`, presentation, retention, watching and notice duty as the monitor role, graduated sanctions and exclusion, terms construed against the drafter), and a scoring service as one more attester if anyone builds one |
+| **hansa** | adapters (attester first, EU and W3C later), register services and mirrors as transparency logs with declared cadence, the credential layer of the vocabulary (on ontodag-core's occupations pack) with `scheme` per category, identity binding (D8) and the handover app, the insurer's product layer (underwriting `requires.legs`, presentation, retention, watching and notice duty as the monitor role, graduated sanctions and exclusion, terms construed against the drafter), and a scoring service as one more attester if anyone builds one |
 | **ontodag / ontodag-core** | the identifier kind (registry 4.3), the ordinal decision, the general vocabulary additions in the assurance drafts' `ontodag-asks.md` §3, the legal-vocabulary check of §3b |
 
 - **The trust score is deferred.** An attested statement "from seeds S,
@@ -622,7 +622,7 @@ factbond that was not accurate. The mutual's own rules were unspecified.
   entrants are not waited for. Correlated risk is priced by the reserve's
   concentration cap; a mutual may buy reinsurance as a cover give from
   another pool, the free recursion. The reserve is factbond's; the
-  underwriting requirements are assurance's product layer, the same for a
+  underwriting requirements are hansa's product layer, the same for a
   mutual and for an insurer.
 - **The mutual's rules.**
   - **F1. Admission: survey and vouch, both, priced.** An attester's or
@@ -818,7 +818,7 @@ as rewritten on 2026-09-25.
 | `docs/plans/EVOLUTION.md` §3 | the ordinal decision, with loopmarket's condition chain and the door scale as the two verticals |
 | ontodag-core packs | `warranty`, `inspection`, `survey`, `certification`, `qualification`, `diploma`, `accreditation`, `theft`, `stolen-goods`, `recall`, `serial-number`, the batch sense of lot, `surety-bond` (§3 of the asks); the occupations pack unchanged; the legal-vocabulary check (the assurance drafts' `ontodag-asks.md` §3b) |
 
-### assurance (new repository)
+### hansa (new repository)
 
 | receives | what |
 |---|---|
@@ -833,7 +833,7 @@ as rewritten on 2026-09-25.
 | 2 | 2026-09-25 | D5: per-maker rule in v1; priced exclusivity next, field fixed now |
 | 3 | 2026-09-25 | D9: mutual first; a specialist insurer is the one-member case |
 | 4 | 2026-09-25 | D10: negligence excluded from v1; a mutual's discretionary product; no placeholder rung; good-practice review, not compliance |
-| 5 | 2026-09-25 | names: `option/`, `operator-argument`, the repository keeps `assurance` (`surety` the best single alternative) |
+| 5 | 2026-09-25 | names: `option/`, `operator-argument`, the repository keeps `hansa` (`surety` the best single alternative) |
 | 6 | 2026-09-25 | D7: `kinds` plus `min_bond` is the only OR; cross-category alternatives via recognition edges |
 | 7 | 2026-09-25 | family A (clocks): all five; rule 4; A2 reshaped to three record-checkable clocks |
 | 8 | 2026-09-25 | family B (first rung, small claims): all |
@@ -864,7 +864,7 @@ Ordered by what unblocks what; nothing blocks current development.
    as rewritten, with `cred/`, `notice/` with cure deadlines, the `register`
    role, `register_roots` in the proposal, the loop record and `Beat`,
    `verifyAbsence` and consistency proofs on the leg path, `accept`, the
-   enumerating rejection record, argument-only operators. **assurance A0**
+   enumerating rejection record, argument-only operators. **hansa A0**
    against it. This is the piece that answers the motivating question.
 4. **ontodag:** the identifier kind (registry 4.3) and the ordinal decision.
    Unblocks items and the door scale's naming.
@@ -875,4 +875,4 @@ Ordered by what unblocks what; nothing blocks current development.
    a certified claim paying under the indemnity rule net of assignment; then
    **factbond's reserve applied to cover gives** and the mutual with F1–F8
    (D9).
-7. **assurance A1–A5.**
+7. **hansa A1–A5.**
