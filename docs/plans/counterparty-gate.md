@@ -72,6 +72,15 @@ as recognition edges under one node, not in the record. Empty
 category must appear as a give in the loop whose argument accepts the
 wanted thing, composed by the solver like `transport`.
 
+*(Reconciled 2026-09-25 with factbond's `ontodag-first.md`, "who owns
+what":)* the `Requires.coverage` (v6) it planned for loopmarket is one
+`legs` entry naming `coverage(S)`, and its "composed-leg kind beside the
+operator's" is the argument-only operator of `options-and-cover.md` §4.1
+(`operator-argument`, declared by its argument with no ends). One field,
+one composition path, one v6 bump for cover, inspection and catalogue
+coverage alike; `Ontology.assert_edge(bond=)` retires in favour of coverage
+gives as that document says.
+
 This one v6 bump carries, with `options-and-cover.md`'s `underlying` and `exercise`, all the
 new fields; P3 §4b's planned `credentials` field is subsumed by the `cred/`
 sidecar, which a credential can renew or lose without re-signing the offer.
