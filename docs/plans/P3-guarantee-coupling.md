@@ -275,7 +275,12 @@ closed, drift breaks loudly:
    declares the oracle types it can verify and refuses any loop whose legs
    name a type outside that set. MockSettlement declares exactly the P0
    countersign semantics (`verifiable_oracles`); nothing else settles
-   through it.
+   through it. A new witness type therefore enters in three places: the
+   roster (factbond's evidence policy), the clearing's verifiable set and
+   the settlement adapter; `possession`, `photo-match` and
+   `registry-transfer` (`counterparty-gate.md` §7, `items-and-ownership.md`
+   §5.2) follow that route, and a requirement names a door level by
+   cumulative category, never a bare type.
 2. **Hash-pinned policies** (decided 2026-08; deferred at the 2026-08-20
    bump — the adjudication policy documents the hash would pin are
    factbond `evidence-policy` deliverables that do not exist yet, and a
@@ -345,7 +350,11 @@ Consequences for this plan:
   transfer of the token at each handover and the chain of custody is the
   token's history — the seal identifier becomes the token id, and the
   countersign becomes its transfer. Not before the countersign record
-  exists; not a matching concern at any point.
+  exists; not a matching concern at any point. *(Overruled 2026-09-25,
+  `items-and-ownership.md` §5.5:)* the fill chain naming `item(h)` is that
+  token's history without the token; an NFT solves neither the physical
+  binding nor title, and where one exists outside it is read as a
+  register of statements, never minted here.
 
 ### 4b. What a counterparty must be able to trust: the claims, ranked (Peter, 2026-09-19)
 
@@ -370,15 +379,27 @@ fails in real marketplaces, so bonds and oracles attach where they matter:
    therefore split into two acts: *received* and *as described*, signed
    separately, so a wanter can acknowledge the handover and still dispute
    the thing.** This is the claim loopmarket did not name; it is the most
-   valuable addition.
+   valuable addition. *(2026-09-25:)* the split is also the countersign
+   shape for inspected goods, where a certificate-final `inspect` leg
+   settles the certified attributes between wanter and giver and a claim
+   on them runs against the inspector (`items-and-ownership.md` §3).
 3. **Credentials for services.** A licensed electrician, a certified
    teacher, a food-safety registration, an insured courier: claims that
    match a *registry* — `attribute-matches-source`, cheap at the automated
    rung, with safety rather than inconvenience at stake. For any service
    leg involving homes, children, health or vehicles this is the claim a
-   wanter would pay to have bonded; a v6 offer field `credentials`
-   (registry, identifier) is the natural carrier, checked by the same
-   crawler that checks sources (factbond `domain-choice.md` §5).
+   wanter would pay to have bonded. *(Decided 2026-09-25, superseding the
+   v6 `credentials` field this item first proposed:)* the carrier is a
+   **statement in the maker's `cred/` sidecar**, read by a fail-closed
+   gate on the requirer's `requires.counterparty`, with registers
+   separately rooted and pinned and revocation proven by absence
+   (`counterparty-gate.md`; the cross-repository plan
+   `credentials-cover-and-options.md` D7). A sidecar, not a field, because
+   a credential renews or is revoked without re-signing the offer; the
+   crawler check this item described is the attester adapter's automated
+   rung. A statement may be backed by a deposit (the practice's, for its
+   practitioners) and is then reserved per relying leg like performance
+   (D1).
 4. **The handover point is live.** A give at the shop relies on the shop
    existing and being open in the window; a give at a locker relies on
    the locker existing, being accessible then, and admitting a peer

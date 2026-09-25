@@ -677,6 +677,58 @@ economics, section added 2026-08-21); the settlement half:
 `P2-batch-auction.md`; the read-path decentralization investigation:
 registered, pre-P1-completion.
 
+## T15 — Register liveness as denial of service on its issuees (added 2026-09-25)
+
+**Attack.** The counterparty gate (`counterparty-gate.md`) reads a
+statement's status against pinned register roots and fails closed: a
+register that goes silent past a requirer's `max_root_age` invalidates
+every statement it issued, for every requirer that strict. Taking a
+register offline, or outrunning its heartbeat with a network partition,
+excludes all its issuees from every leg that requires them. Motives: a
+competing issuer, a captured root, or plain outage.
+
+**Economics.** The attack costs the register nothing if it is the
+register's own act, and costs an outsider only the register's
+availability. Its value scales with how many makers depend on one
+register and how short requirers set their bounds.
+
+**Defense (by construction).** Registers are transparency logs with a
+declared cadence and consistency proofs between roots
+(`credentials-cover-and-options.md` D7); mirrors are content-addressed
+snapshots on Swarm that proposals pin, so a register's last root stays
+readable after it stops; a requirer whose bound is shorter than a
+register's cadence excludes it by its own choice; trust roots are the
+requirer's, so a captured or silent root is routed around by naming
+another; "two inconsistent roots signed by one register" is a specific,
+refutable fact against the register's bond. The residual is the price of
+hard-fail, accepted and named: a requirer who sets hours bears hours.
+
+## T16 — Puppet third parties and ruling-count washing (added 2026-09-25)
+
+**Attack.** Keys are free, so a giver names its own puppet as a leg's
+resolver or inspector, or a would-be adjudicator manufactures a record of
+"unreversed rulings" with puppet cases (a puppet asserts, a puppet
+disputes, the adjudicator rules, nobody reverses) at the cost of the burn
+slice per case. The same for inspection counts.
+
+**Economics.** A puppet key costs nothing; a manufactured ruling costs
+the burn slice plus a fee the washer pays to itself. Any acceptance
+criterion that counts volume is bought at that price.
+
+**Defense (by construction).** No acceptance criterion counts. A
+requirement admits a resolver or an inspector by key, by an accrediting
+root whose own collateral is at stake, by a deposit floor, or by the
+absence of reversals within a look-back window
+(`credentials-cover-and-options.md` D7 C4, D4 E2); the resolver is fixed
+at clearing and must be within the requirer's acceptance; its deposit is
+what a ruling puts at risk, and a reversal at the final rung forfeits it
+and enters the calibration ledger; a puppet that slips through only
+delays, and its deposit pays for the delay. The only positive entry the
+ledger carries for an adjudicator is a ruling escalated at doubled stake
+to the final rung and upheld there, which costs a real review. The cheap
+formality stays: a resolver or inspector is never the key of a party to
+the leg or of the deposit's maker. U12's rule, applied to judges.
+
 ## The ten fee/bond rules (by construction)
 
 *(Standing note, 2026-08-21: with agenda item 4 ratified there is no live
@@ -786,6 +838,13 @@ self-dealing playbooks.
   `catalogue-bootstrap.md`). Capture that never trips a dispute leaves
   no loss experience to audit; the standing signal is silent exactly
   here.
+- **Closed 2026-09-25** (`credentials-cover-and-options.md`): the item
+  denial-of-sale attack (a cross-maker exclusivity rule on a derived
+  `item(h)` blocked any item for free; the rule is per maker, exclusivity
+  priced, D5); exit by silence (a held reservation could quiet-settle to a
+  silent asserter; only a ruling releases it, D10 C1); and T5's indemnity
+  rule now stated for cover (`min(limit, provable loss) − deductible`,
+  net of the giver's reservation after assignment, D3).
 
 ## What this document does not promise
 

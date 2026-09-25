@@ -290,6 +290,14 @@ weight. factbond is asked for the doctrine size per leg and a pinned
 adjudication-outcome record (`factbond/docs/plans/loopmarket-coupling.md`,
 open problems).
 
+*(a) and (d) decided 2026-09-25* (`credentials-cover-and-options.md` D7):
+the declared requirement may name a bond floor, accepted witness types,
+a counterparty statement (category, kinds, deposit floor, trust roots,
+maximum register-root age), loop structure (`legs`) and acceptable third
+parties (resolvers, inspectors: by key, accrediting root, deposit floor or
+absence of reversals, never by a count) — and never history; the reserve
+bid may not propose a leg below a member's declared requirement.
+
 ## 5. Chains alongside cycles, and who may give first
 
 Chains break the length ceiling reliability imposes on cycles. NEAD

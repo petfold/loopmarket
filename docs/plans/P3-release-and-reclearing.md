@@ -428,6 +428,36 @@ is a small set of primitives, in this order:
    contract's checks stay few and the money lives in the contract built to
    hold it.
 
+## 8. Options, cover and the escrow's new acts (decided 2026-09-25)
+
+Recorded here because they are the ladder and the escrow applied to two
+new kinds of leg; the designs are `options-and-cover.md` and the
+cross-repository plan `credentials-cover-and-options.md`.
+
+- **An option is a cleared leg and an obligation under §2.** The option
+  offer O names its underlying P; clearing writes `option/<P>/<loop>`,
+  active while `now < until`; P is admissible only to O's holder meanwhile.
+  W's exit is a permissionless cancellation of the option leg at the
+  ladder's price, paid to the holder from O's deposit; a withdrawal of P
+  during an active option is read as that cancellation; a no-show at
+  exercise is non-performance on P. No unpriced lock (D6). Exercise is a
+  clearing and needs a closing loop. An item claim on `item(h)` ends with
+  the option's window or the fill's performance (D5).
+- **Cover settles through a `claimOnly` reservation**: never countersigned;
+  released by `resolve` on a ruling, by a two-signature `settle(split)`, or
+  by the quiet `settle` when no claim was asserted; a held reservation
+  never quiet-settles (D3, D10). `cancel` after the window pays the whole
+  reservation to the insured, which stays.
+- **Three escrow acts of the same size as `cancel`:** `assign(key, to)` by
+  the reservation's wanter to any key (a claim too small to pursue is
+  pursued when it can be sold); `settle(split)` signed by wanter and giver;
+  `extendClaim(key, seconds)` by the giver only, tail cover sold as a give.
+- **The claim period is a matched term** (`claim_max` on the give, the
+  want's ask at most that, a catalogue default and cap per category), and
+  a claim must cite a prior `notice/` with a cure deadline (D1's A1, A2).
+- **Staged release** of a reservation (a fraction at countersign, the rest
+  at claim-period end) is accepted in principle and deferred (D-5).
+
 ## Open problems
 
 - **The payment channel** for §5: who holds the entrant's bid, when it is

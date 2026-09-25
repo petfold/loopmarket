@@ -9,6 +9,24 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Added
+
+- **Plans: credentials, cover and options** (2026-09-25). Five documents
+  entered the plan corpus from the assurance drafts:
+  `docs/plans/credentials-cover-and-options.md` (the cross-repository
+  plan: ten decisions, a shared vocabulary, stated divergences from
+  commercial practice, the fold-in map), `counterparty-gate.md`,
+  `options-and-cover.md`, `items-and-ownership.md` and
+  `commercial-practice-review.md`. Existing plans amended by dated edit:
+  P3-guarantee-coupling §3 rule 1, §4a (the per-item NFT note overruled)
+  and §4b items 2–3 (the v6 `credentials` field superseded by the `cred/`
+  sidecar), P2-loop-selection §4a (open decisions (a) and (d) answered),
+  P3-release-and-reclearing §8 (options and cover under the ladder and the
+  escrow), P4-privacy §8, THREATS T15–T16 and a closed-items note, ROADMAP
+  P3b, CLAUDE.md's planned extensions, and the README's disclaimer.
+  ROADMAP's "factbond as the resolver" item marked done (live since
+  2026-09-19).
+
 ### Fixed
 
 - **The settings table named six settings twice** (2026-09-23). An older

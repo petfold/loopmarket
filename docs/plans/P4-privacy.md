@@ -353,6 +353,21 @@ the owning P2 document without the named answer (decided 2026-08; items
   simplification #7's rule, discharged by this document: proposals that
   encrypt something not named in §3–§6 are rejected on arrival.
 
+## 8. Credentials in the book (decided 2026-09-25)
+
+`counterparty-gate.md` puts statements about a maker's key in a public
+`cred/` sidecar, because admissibility is a matching gate and the solver
+must see it before proposing. This document's rulings apply unchanged:
+`cred/` is plaintext and permanent like `fill/` (§5 item 1); the public
+statement carries the minimum, a commitment to any photo and never the
+photo, which reaches the counterparty's device by selective disclosure at
+the door; item ids are derived, never salted, since linkage is ruled
+permanent here; every statement records who paid the attester; and any
+reputation format built on the loss view accepts an association-set
+membership proof wherever it accepts an address history (§5 item 5).
+Unlinkable presentations are the assurance repository's and outside this
+document's tiers.
+
 ## Gates
 
 - **G1 — Tier 1 end-to-end.** An offer published via mixnet transport

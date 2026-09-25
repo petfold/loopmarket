@@ -18,6 +18,14 @@ product exceeds one, i.e. negative cycles under −log weights — and a
 **clearing** layer re-verifies every leg from scratch and commits the
 whole loop atomically.
 
+loopmarket is open source on the internet with no organisation behind
+it. Compliance with any jurisdiction's law is entirely the responsibility
+of the makers who use it; the protocol neither enforces nor designs
+around it. What the design holds itself to is good commercial practice:
+the solutions merchants, private courts and mutuals converged on because
+they were more efficient, safer and produced fewer conflicts
+(`docs/plans/commercial-practice-review.md`).
+
 ```console
 $ odag put piano-lesson music-lesson        # the catalogue is ontodag's
 $ loop set maker amara; loop place home 46.05,14.50,5km; loop set terms home

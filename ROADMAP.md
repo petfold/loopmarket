@@ -206,12 +206,14 @@ built 2026-09-13 to 2026-09-19 (0.5.0–0.11.0). What follows is what stands.
       (the contract would need the leg's wanter, window, resolver and
       ladder decoded on chain; today the clearing key sends them), and the
       verifier holding the clearing to those numbers.
-- [ ] factbond as the resolver: its assertion contract's consumer edge
+- [x] factbond as the resolver: its assertion contract's consumer edge
       (`hold`/`resolve` on a subject hash, factbond's
       `loopmarket-coupling.md` §3b) takes the resolver's address; the
-      escrow does not change. The no-ruling escalation and the repair
-      supersession (a cancellation a re-clearing replaced pays nothing)
-      live there and in §3's superseding records.
+      escrow does not change. **Live on Gnosis since 2026-09-19** (0.12.0:
+      a claim on beat 2's reservation certified by timeout and paid through
+      the escrow); this line was stale until 2026-09-25. The no-ruling
+      escalation and the repair supersession (a cancellation a re-clearing
+      replaced pays nothing) live there and in §3's superseding records.
 - [ ] Release prices and re-clearing · [plan](docs/plans/P3-release-and-reclearing.md)
       (direction, 2026-09-18): the required floor as the maker's true
       neutral point, permissionless cancellation at that price, cancel-and-
@@ -222,6 +224,39 @@ built 2026-09-13 to 2026-09-19 (0.5.0–0.11.0). What follows is what stands.
 - [ ] **Physical escrow — end of the roadmap:** custodians of goods,
       escrow agents with fees on their own scale, agents that can themselves
       fail (the recursion), deferred by Peter 2026-09-18.
+
+## P3b — credentials, cover and options · [plan](docs/plans/credentials-cover-and-options.md)
+
+Decided 2026-09-25 with the assurance drafts; the cross-repository plan
+carries the decisions, three design documents carry the detail, and
+`commercial-practice-review.md` is the record they were checked against.
+Nothing here blocks P3's open items; the sequencing is the plan's §6.
+
+- [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
+      — v6 `requires.counterparty` (category, kinds, deposit floor, trust
+      roots, maximum root age), `requires.legs`, `requires.resolvers`; one
+      statement shape in a `cred/` sidecar with its own fold rule;
+      registers as separately rooted transparency logs under a `register`
+      role, pinned per proposal in `register_roots` (proposal, loop record,
+      `Beat`); `verifyAbsence` and consistency proofs on the leg path;
+      `notice/` with a cure deadline as rung zero of every claim; the door
+      scale and issuance sources as witness types through the roster; the
+      rejection record enumerating every failing step. R1–R7.
+- [ ] **Options and cover** · [design](docs/plans/options-and-cover.md) —
+      v6 `underlying`, `exercise`, `claim_max`; `option/<P>/<loop>` records
+      under the cancellation ladder; `operator-argument` and composed
+      cover; `claimOnly` reservations released only by ruling or
+      two-signature settlement; `assign` to any key, `settle(split)`,
+      `extendClaim`; the insured asserts the trigger, presentation,
+      assignment before payout, netting, the indemnity rule. C1–C7.
+- [ ] **Items** · [design](docs/plans/items-and-ownership.md) — `item(h)`
+      on ontodag's identifier kind (an upstream ask); the per-maker rule;
+      item claims as a clearing keyspace; certificate-final and independent
+      `inspect` legs; `registry-transfer` at settlement; priced exclusivity
+      in the bump after v6. I1–I6.
+- [ ] **Small escrow changes first** (plan §6 step 2): `claimOnly`,
+      `assign`, `settle(split)`, `extendClaim`, per-leg claim seconds, the
+      accepted-resolver check at `reserve`.
 
 ## P4 — staged privacy · [plan](docs/plans/P4-privacy.md)
 
@@ -262,8 +297,12 @@ Not phases — they constrain every phase, and each is at design as of
       (`TrieProofVerifier.sol`, measured gas in §1); the doctrine fork
       (certificates versus U3 re-derivation) resolved in shape the same
       day — structural half on chain, semantic half optimistic.
-- [ ] [Threats](docs/plans/THREATS.md) — T1–T14; design 2026-08-07 with a
-      dated edit 2026-08-21. T14 is closed in P1 above.
+- [ ] [Threats](docs/plans/THREATS.md) — T1–T16; design 2026-08-07 with
+      dated edits 2026-08-21 and 2026-09-25 (T15 register liveness, T16
+      puppet third parties). T14 is closed in P1 above.
+- [ ] [Commercial practice review](docs/plans/commercial-practice-review.md)
+      — the plan read against what merchants, private courts and mutuals
+      converged on; entered 2026-09-25, its amendments decided the same day.
 
 ## Invariants
 
