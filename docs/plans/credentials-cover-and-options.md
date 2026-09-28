@@ -185,9 +185,14 @@ and Weingast's condition (8)).
   self-bonded statement, the giver's own book), which the gate reads as
   "meets nothing" until cleared.
 - **Evidence hashes and rulings are public**; the evidence itself is
-  disclosed to every rung on the escalation path. The burn slice on the
+  disclosed to every rung on the escalation path. ~~The burn slice on the
   loser's stake stays (it is load-bearing against self-dispute laundering,
-  factbond THREATS T11).
+  factbond THREATS T11).~~ *(Replaced 2026-09-28, Peter, in factbond: the
+  loser pays the adjudicator's fee, a cost, and the winner takes the rest;
+  a margin above cost is a price only competition may set. An asserter may
+  concede a contested claim, and then no one rules and no fee is due.
+  Self-dispute laundering stays a loss on the fees, and the calibration
+  ledger never credits surviving a dispute.)*
 
 *The clocks (rule 4).*
 
@@ -242,8 +247,8 @@ and Weingast's condition (8)).
   adjudicator's deposit forfeited; the policy names the adjudicator class
   per category (holders of the same credential under the same root, or the
   register itself), each holding a deposit. **Ruling counts are never a
-  signal**: puppet cases manufacture them for the burn slice (U12's reason,
-  applied to judges). The one positive entry the ledger may carry for an
+  signal**: puppet cases manufacture them at the price of the fees (U12's
+  reason, applied to judges). The one positive entry the ledger may carry for an
   adjudicator is a ruling escalated at doubled stake to the final rung and
   upheld there, which costs the washer a real review.
 - **C5. The ruling record** carries the referred fact, the notice

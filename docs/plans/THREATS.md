@@ -729,6 +729,18 @@ to the final rung and upheld there, which costs a real review. The cheap
 formality stays: a resolver or inspector is never the key of a party to
 the leg or of the deposit's maker. U12's rule, applied to judges.
 
+## T17 — Defamation on a permanent store — primary: `factbond/docs/plans/THREATS.md` (added 2026-09-28)
+
+*(Mirrored from factbond's entry; condensed.)* A contest that is a label
+("K is a fraudster") instead of a refutable fact buys, for a stake, a
+permanent public accusation no ruling can clear, against a person's key.
+Defense: factbond's adjudicator path (F4, `factbond.procedure`) refuses a
+contest that names no claim record its policy covers, in the accused's
+favour; the `notice/` of rung zero passes between the parties and is
+public only when a bonded act cites it after the cure deadline, so a
+cured matter leaves nothing public (R6's gate here). Residual: the bonded
+act itself stays public, marked by its refusal.
+
 ## The ten fee/bond rules (by construction)
 
 *(Standing note, 2026-08-21: with agenda item 4 ratified there is no live
