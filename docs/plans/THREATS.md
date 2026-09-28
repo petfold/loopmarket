@@ -13,7 +13,7 @@ side payments, off-protocol subsidies, semantic drift.
 This is the cross-system register both repos gate on. Each entry records
 the attack, its economics with researched numbers, the by-construction
 defense with its invariant and owning document, the residual, the tripwire
-that pages a human, and the owning work package. The mirror is
+that pages a human, and the owning work package. The other half is
 `factbond/docs/plans/THREATS.md`; defenses live in `P2-batch-auction.md`,
 `P1-federated-book.md`, `P3-guarantee-coupling.md`,
 `catalogue-bootstrap.md`, `P4-privacy.md`, and factbond's
@@ -54,8 +54,9 @@ and T14–T16 here; T4–T6, T9–T13 and T17 in
 full copies:)* an entry whose primary is factbond appears here as a short
 stub — the attack in a sentence, loopmarket's own part of the defense,
 tripwire and work package, and a link to the full entry — and is edited
-there only. factbond's register still carries this register's primaries
-in condensed full form; edits land primary-first.
+there only. factbond's register does the same for the entries primary
+here, so every entry has one full copy; a stub that contradicts its
+primary blocks both registers' phase gates (factbond's G4).
 
 ## T1 — Rebate/reward-farmed wash loops
 

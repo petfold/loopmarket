@@ -23,7 +23,8 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   factbond's `loopmarket-coupling.md` §5 for the coupling's sequencing;
   the User Guide (§7) and the Roadmap mention factbond's contested-claim
   procedure and changes briefly and link factbond's new User Guide and
-  Roadmap.
+  Roadmap. factbond's register does the reverse for this register's
+  primaries, so every threat entry has one full copy.
 
 ### Added
 
