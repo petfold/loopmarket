@@ -414,6 +414,12 @@ def test_assign_hands_the_claim_to_any_key(chain):
     _reserve(escrow, clearing, offer, loop, wanter, resolver, 5 * 10 ** 17, now, now + 10, claim=1000)
     assert "not the wanter" in _reverts(w3, escrow.functions.assign(offer, loop, buyer), giver)
     assert "a key" in _reverts(w3, escrow.functions.assign(offer, loop, "0x" + "00" * 20), wanter)
+    assert "no party" in _reverts(w3, escrow.functions.assign(offer, loop, resolver), wanter)
+    # C4 at reserve: the resolver is neither the wanter nor the depositor
+    now = _now(w3)
+    for judge in (wanter, giver):
+        assert "no party" in _reverts(w3, escrow.functions.reserve(
+            offer, bytes.fromhex("5a" * 32), wanter, judge, 1, _terms(now, now), [], []), clearing)
     escrow.functions.settle(offer, loop, 10 ** 17).transact({"from": giver})       # the giver's offer to the old wanter
     escrow.functions.assign(offer, loop, buyer).transact({"from": wanter})
     assert escrow.functions.reservation(offer, loop).call()[0] == buyer

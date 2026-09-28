@@ -202,7 +202,9 @@ Then *(applied plan D3, 2026-09-25)*:
   *(built 2026-09-28 in the contract and as `reservations_for`'s
   `claim_only` predicate; reading `insure` is C5's)*;
 - the cover period and claim period come from the `insure` term's
-  `period(…)`, and `claim_seconds` is per leg;
+  `period(…)`, and `claim_seconds` is per leg *(per leg since 2026-09-29,
+  E2: the want's `claim_period`, else the default, never beyond the give's
+  `claim_max`; reading `period(…)` is C5's)*;
 - no claim: `settle` after the claim period returns the deposit to I;
 - a claim: **the insured asserts the trigger** on factbond ("the gearbox
   failed on D", "the seller did not have title as of D") as a fresh

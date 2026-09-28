@@ -537,6 +537,23 @@ factbond's: the resolver fixed at clearing (`set resolver`: factbond's
 `Assertions` contract, or your own key when empty) holds and resolves
 the reservation, nothing more.
 
+The claim period is matched per leg (v6): a give declares the longest it
+carries (`set claim_max 60d`), a want asks for one (`set require_claim
+30d`) and meets only gives that carry at least that; with no ask the
+reservation takes `escrow_claim`, never beyond the give's `claim_max`. A
+want may also name the resolvers it accepts (`set require_resolvers
+0x…`): it then meets only gives whose `arbitrator` is one of them, and a
+resolver is never a party to the leg. With factbond as the resolver the
+escrow opens only the wanter's own claim, naming the giver, for at most
+the reservation, with windows no shorter than `claim_min_challenge` and
+`claim_min_ruling`; a retracted claim reopens the reservation. The
+parties can also end any reservation by agreement: each signs the same
+split and the second signature pays it out; the wanter may assign the
+claim to anyone, and the giver may lengthen the claim period (tail
+cover). A reservation behind a give under the catalogue's `insure` is
+cover: it is never ended by a countersignature. These acts are in the
+contract source; the Gnosis escrow gains them at its next redeploy.
+
 How a contested claim runs once factbond resolves it (notice to the
 giver first, then the claim, the giver's dispute or the claim certifying,
 concession, the ruling and its appeal) is factbond's to document: its

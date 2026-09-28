@@ -247,6 +247,9 @@ contract LoopEscrow {
         require(r.amount == 0 && !r.settled, "already reserved");
         require(amount > 0 && amount <= free(offer), "beyond what is free");
         require(wanter != address(0) && resolver != address(0), "a wanter and a resolver");
+        // C4's formality, which no puppet cost defeats: nobody judges a claim
+        // on a reservation they are a party to (THREATS T16)
+        require(resolver != wanter && resolver != deposits[offer].giver, "the resolver is no party");
         require(t.windowStart <= t.windowEnd, "a window");
         require(ladderLead.length == ladderAmount.length, "a ladder");
         for (uint256 i = 0; i < ladderLead.length; i++) {
@@ -346,6 +349,7 @@ contract LoopEscrow {
         Reservation storage r = reservations[k];
         require(msg.sender == r.wanter, "not the wanter");
         require(to != address(0), "a key");
+        require(to != r.resolver, "the resolver is no party");
         require(r.amount > 0 && !r.settled, "not open");
         require(!r.held, "a claim is open");
         delete splits[k][msg.sender];

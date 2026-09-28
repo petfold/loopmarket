@@ -254,6 +254,12 @@ name factbond's redeployed `Assertions`. Hence:
    the want's ask, the catalogue's default and cap), the accepted-resolver
    check in `reservations_for`, `min_challenge`/`min_ruling` from the claim
    class's rule; `claim_only` from `insure` waits for C5's grammar.
+   DONE 2026-09-29 but for the catalogue's per-category default and cap
+   (no catalogue carries them yet; `escrow_claim` stands in) and the claim
+   class's rule (the windows are settings until a policy record is read):
+   per-leg claim period, resolver by key in `meets` and at clearing,
+   never a party (also on chain, in the source), cover by a catalogue
+   category under `insure`, the CLI settings.
 4. **factbond: isolate consumer reverts, then redeploy** (factbond's
    roadmap): a consumer that reverts in `resolve` must not strand a case
    and its stakes (T18's residual), fixed before the address loopmarket

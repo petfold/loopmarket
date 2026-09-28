@@ -98,11 +98,19 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
     window is `now`), the claim period, and the wanter's ladder converted
     at her acceptance price for the deposit's asset into that asset —
     rounded down, capped at the reservation. `claim_only(give)` says which
-    reservations are cover (never countersigned; the `insure` reading is
-    C5's, none today); `min_challenge` and `min_ruling` are the least
-    windows a claim must name, 0 leaving the resolver's own bounds (the
-    matched periods of v6 replace these constants, E2). Pure: nothing is
-    sent."""
+    reservations are cover (never countersigned; `cover_predicate` reads
+    the catalogue); `min_challenge` and `min_ruling` are the least windows
+    a claim must name, 0 leaving the resolver's own bounds. Pure: nothing
+    is sent.
+
+    E2 (2026-09-29), on the v6 record: the claim period is the leg's —
+    the want's `claim_period` when it asks one (the gate made sure the
+    give's `claim_max` reaches it), else `claim_seconds`, and never longer
+    than the give's declared `claim_max`; the resolver is never a party to
+    the leg (C4's formality: the want's or the give's maker), and when the
+    want requires `resolvers` it must be one they admit — the gate already
+    refused the leg otherwise, so a failure here is a clearing that
+    bypassed the gate, and it raises."""
     out = []
     escrow = escrow.lower()
     for leg in proposal.circulation.legs:
@@ -124,6 +132,19 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
                 raise ValueError(f"{want.maker!r} is not a key address: the payout has no destination")
             share = bond.reserved(leg.taken(i), give.thing.qty)
             amount = to_wei(share, decimals)
+            chosen = give.arbitrator if is_address(give.arbitrator) else resolver
+            parties = (want.maker, give.maker)
+            if chosen.lower() in {p.lower() for p in parties}:
+                raise ValueError(f"the resolver {chosen} is a party to the leg on {give.offer_id[:12]} (C4)")
+            if want.v >= 6 and want.requires is not None and want.requires.resolvers is not None:
+                from .matching import admits
+                if not admits(want.requires.resolvers, chosen, parties=parties):
+                    raise ValueError(f"the resolver {chosen} is not one {want.maker} accepts")
+            claim = int(claim_seconds)
+            if want.v >= 6 and want.requires is not None and want.requires.claim_period:
+                claim = want.requires.claim_period
+            if give.v >= 6 and give.claim_max:
+                claim = min(claim, give.claim_max)
             ladder = []
             req = want.requires
             if req is not None and req.ladder:
@@ -136,13 +157,24 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
                     ladder = [(int(lead), min(amount, floor_wei(q(a) / price, decimals)))
                               for lead, a in req.ladder]
             out.append({"offer_id": give.offer_id, "loop_id": proposal.circulation.loop_id,
-                        "wanter": want.maker,
-                        "resolver": give.arbitrator if is_address(give.arbitrator) else resolver,
+                        "wanter": want.maker, "resolver": chosen,
                         "amount": amount, "window": (int(window[0]), int(window[1])),
-                        "claim_seconds": int(claim_seconds), "ladder": ladder,
+                        "claim_seconds": claim, "ladder": ladder,
                         "claim_only": bool(claim_only(give)) if claim_only else False,
                         "min_challenge": int(min_challenge), "min_ruling": int(min_ruling)})
     return out
+
+
+def cover_predicate(ontology, head: str = "insure"):
+    """Which gives are cover, for `reservations_for`'s `claim_only`: a give
+    whose thing falls under the catalogue's `insure` (one-way, as any
+    category). A catalogue without the category marks nothing: a
+    countersign stays possible, as before. The `insure(...)` term with its
+    nested roles is C5's grammar; a plain category under `insure` is enough
+    for the reservation's flag."""
+    if not ontology.known(head):
+        return lambda give: False
+    return lambda give: give.kind == "give" and ontology.satisfies(give.thing.concepts, (head,))
 
 
 def _concepts(want):

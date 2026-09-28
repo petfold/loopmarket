@@ -145,7 +145,38 @@ _SETTINGS = {
     "escrow_claim": _Setting(
         "LOOP_ESCROW_CLAIM", "7d", "--escrow-claim DURATION",
         "how long after a leg's handover window a claim on its deposit may "
-        "be opened before the reservation returns to the giver by itself"),
+        "be opened before the reservation returns to the giver by itself, "
+        "when the want asks none (never beyond the give's claim_max)"),
+    "claim_min_challenge": _Setting(
+        "LOOP_CLAIM_MIN_CHALLENGE", "", "--claim-min-challenge DURATION",
+        "the least dispute window a claim on a reservation my clearing makes "
+        "must leave the giver (the escrow refuses a shorter one at `hold`); "
+        "0: the resolver's own bound"),
+    "claim_min_ruling": _Setting(
+        "LOOP_CLAIM_MIN_RULING", "", "--claim-min-ruling DURATION",
+        "the least ruling window such a claim must name: the claim class's "
+        "evidence period plus its rung's ruling period; 0: the resolver's own"),
+    "arbitrator": _Setting(
+        "LOOP_ARBITRATOR", "", "--arbitrator ADDRESS",
+        "the resolver my gives name for claims on their deposit (factbond's "
+        "Assertions, or a key; never mine); a want requiring resolvers "
+        "matches only a give naming one it accepts; empty: the clearing's "
+        "`resolver`"),
+    "claim_max": _Setting(
+        "LOOP_CLAIM_MAX", "", "--claim-max DURATION",
+        "the longest claim period my give's deposit carries after the "
+        "handover window (v6, plan A1); a want asking longer is not matched. "
+        "A v6 offer clears off chain; the on-chain verifier reads v6 after "
+        "the next clearing-contract redeploy"),
+    "require_claim": _Setting(
+        "LOOP_REQUIRE_CLAIM", "", "--require-claim DURATION",
+        "the claim period I ask of a giver's deposit (v6): only gives whose "
+        "claim_max reaches it are matched"),
+    "require_resolvers": _Setting(
+        "LOOP_REQUIRE_RESOLVERS", "", "--require-resolvers KEYS",
+        "the resolvers I accept for a claim on a giver's deposit, by key "
+        "(v6, C4): only gives naming one of them as arbitrator are matched, "
+        "and never a party to the leg"),
     "require_point": _Setting(
         "LOOP_REQUIRE_POINT", "", "--require-point AMOUNT",
         "my neutral point on a no-show, on my scale: what makes me whole — "
@@ -440,6 +471,11 @@ def duration_s(text: str) -> int:
     except ValueError as exc:
         raise ValueError(f"{text!r} is not a duration (30d, 2h, 90m)") from exc
     return int(_rational(re.match(r"^duration\((.*)\)$", canonical).group(1)))
+
+
+def _seconds_or_zero(text: str | None) -> int:
+    """A duration setting that may be unset: empty or 0 is no bound."""
+    return duration_s(text) if text and text.strip() not in ("0", "0s") else 0
 
 
 def _rational(text: str) -> Fraction:
@@ -1210,8 +1246,25 @@ def render_offer(offer: Offer) -> str:
                      + (f"  accepts {'; '.join(' '.join(a.concepts) + f' {a.unit} {_num(a.price)}' for a in req.accepts)}" if req.accepts else "")
                      + (f"  oracle {' '.join(req.oracles)}" if req.oracles else "")
                      + (f"  escrow {' '.join(req.escrows)}" if req.escrows else "")
+                     + (f"  claim {_duration_text(req.claim_period)}" if req.claim_period else "")
+                     + (f"  resolvers {' '.join(req.resolvers.keys)}" if req.resolvers is not None else "")
+                     + (f"  credentials {' '.join(c.category for c in req.counterparty)}" if req.counterparty else "")
+                     + (f"  legs {' '.join(l.category for l in req.legs)}" if req.legs else "")
                      + "  (of every counterparty, per fill; unmet is never matched)")
+    if offer.v >= 6 and (offer.claim_max or offer.underlying):
+        lines.insert(-2, "  v6      "
+                     + (f" claim_max {_duration_text(offer.claim_max)}" if offer.claim_max else "")
+                     + (f" option on {offer.underlying[:16]}… exercisable {_span(offer.exercise)}"
+                        if offer.underlying else ""))
     return "\n".join(lines)
+
+
+def _duration_text(seconds: int) -> str:
+    """Seconds as the largest whole unit: 30d, 2h, 90m, 45s."""
+    for unit, size in (("d", 86_400), ("h", 3_600), ("m", 60)):
+        if seconds and seconds % size == 0:
+            return f"{seconds // size}{unit}"
+    return f"{seconds}s"
 
 
 def _span(w: TimeWindow, fmt=None) -> str:
@@ -1408,21 +1461,31 @@ def _offer_from_part(session: Session, side: str, part: Part, price,
                              if o.maker == maker)
     make = give if side == GIVE else want
     offer = make(maker, thing, price, valid=valid, nonce=nonce, **ontology.pins,
-                 **_guarantees(now, thing.concepts))
+                 **_guarantees(now, thing.concepts, side=side))
     _check_asset_categories(offer, ontology)
     return offer, notes, reused
 
 
-def _guarantees(now: int, concepts=()) -> dict:
+def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
     """The guarantee settings as offer fields (v5, `P3-release-and-reclearing.md`
     §5d): `bond`/`escrow` as a `Bond` deposit — its asset by the offer
     grammar, its worth to me last — and `require_point`, `require_cancel`,
     `ladder`, `require_accepts`, `require_escrows` as a `Requires`. The
     ladder is derived over the lead from `now` to the offer's handover time
     term (the first `time(...)` among `concepts`); an offer with no time term
-    gets no ladder — a cancellation costs the point. Nothing set: v4."""
-    from .schema import Acceptance, Bond, Requires, Thing
+    gets no ladder — a cancellation costs the point. Nothing set: v4.
+    v6 (E2, 2026-09-29): a give's `claim_max`; a want's `require_claim` and
+    `require_resolvers` in its `Requires`; `arbitrator` on a give (a field
+    every version carries)."""
+    from .schema import Accept, Acceptance, Bond, Requires, Thing
     out: dict = {}
+    if side == GIVE:
+        if _configured("arbitrator"):
+            out["arbitrator"] = _configured("arbitrator")
+        if _configured("claim_max"):
+            out["claim_max"] = duration_s(_configured("claim_max"))
+    claim_period = duration_s(_configured("require_claim")) if side == WANT and _configured("require_claim") else 0
+    resolver_keys = tuple((_configured("require_resolvers") or "").split()) if side == WANT else ()
     default = shlex.split(_configured("default_asset") or "xdai xDAI 1")
     if len(default) < 3:
         raise ValueError("default_asset is `CATEGORY... UNIT PRICE`")
@@ -1450,15 +1513,19 @@ def _guarantees(now: int, concepts=()) -> dict:
     if point and not accepts:                      # a point with nothing named accepts the default asset
         accepts.append(Acceptance(d_cat, d_unit, d_price))
     escrows = tuple(t for t in (_configured("require_escrows") or "").split() if t)
-    if point is not None or accepts or escrows:
+    if point is not None or accepts or escrows or claim_period or resolver_keys:
         ladder = ()
         if point is not None and _configured("require_cancel"):
             far = q(_configured("require_cancel"))
             lead = _handover_lead(concepts, now)
             if lead and lead > 0:
                 ladder = _ladder(_configured("ladder") or "linear", lead, far, point)
-        out["requires"] = Requires(point=point or 0, ladder=ladder, accepts=tuple(accepts), escrows=escrows)
-    if "requires" in out or "bond" in out:
+        out["requires"] = Requires(point=point or 0, ladder=ladder, accepts=tuple(accepts), escrows=escrows,
+                                   claim_period=claim_period,
+                                   resolvers=Accept(keys=resolver_keys) if resolver_keys else None)
+    if out.get("claim_max") or claim_period or resolver_keys:
+        out["v"] = 6
+    elif "requires" in out or "bond" in out:
         out["v"] = 5
     return out
 
@@ -1744,7 +1811,7 @@ def _composed_offer(session: Session, parts: list[Part], price,
     valid = validity(valid_text or _configured("valid"), session.now)
     offer = want(session.maker, Parts(tuple(p.thing for p in parts)), price,
                  valid=valid, **session.catalogue.pins,
-                 **_guarantees(session.now, tuple(t for p in parts for t in p.thing.concepts)))
+                 **_guarantees(session.now, tuple(t for p in parts for t in p.thing.concepts), side=WANT))
     _check_asset_categories(offer, session.catalogue)
     notes = [f"part {i}: {note}" for i, p in enumerate(parts, 1) for note in p.notes]
     return offer, notes
@@ -2416,7 +2483,7 @@ def cmd_finalize(args, session, out):
     offers first) is cancelled by the contract instead, its bond returned
     to the submitter — nothing is recorded and nothing reserved (exit 1)."""
     from .beat import find_evidence, proposal_from_record
-    from .escrow import reservations_for
+    from .escrow import cover_predicate, reservations_for
     client = _beat_client(session)
     receipt = client.finalize(int(args.beat))
     state = client.beat(int(args.beat))
@@ -2434,10 +2501,16 @@ def cmd_finalize(args, session, out):
         return 2
     escrow = _escrow_client(session)
     proposal = proposal_from_record(ev.record, ev.snapshot)
-    reservations = reservations_for(proposal, escrow=escrow.address,
-                                    resolver=_configured("resolver") or escrow.account().address,
-                                    claim_seconds=duration_s(_configured("escrow_claim") or "7d"),
-                                    now=session.now, span=_calendar_span)
+    try:
+        reservations = reservations_for(
+            proposal, escrow=escrow.address, resolver=_configured("resolver") or escrow.account().address,
+            claim_seconds=duration_s(_configured("escrow_claim") or "7d"), now=session.now,
+            span=_calendar_span, claim_only=cover_predicate(session.catalogue),
+            min_challenge=_seconds_or_zero(_configured("claim_min_challenge")),
+            min_ruling=_seconds_or_zero(_configured("claim_min_ruling")))
+    except ValueError as exc:                  # a party as resolver, an unaccepted one: nothing reserved
+        print(f"loop: beat {args.beat}: nothing reserved on the escrow: {exc}", file=_err())
+        return 2
     for r in reservations:
         try:
             escrow.reserve(r["offer_id"], r["loop_id"], r["wanter"], r["resolver"], r["amount"],

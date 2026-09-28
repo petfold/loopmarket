@@ -200,3 +200,70 @@ def test_requirements_this_build_cannot_check_meet_nothing_and_options_clear_now
     assert Requires().empty and not Requires().v6
     assert check_match(dentist, want("amara", Thing(("dentistry",), 1, "visit"), 40, **V, nonce=25,
                                      requires=Requires()), ont, now=NOW) is not None
+
+
+def test_a_resolver_acceptance_admits_the_named_key_and_never_a_party():
+    """E2 (C4): `requires.resolvers` is met by a give whose arbitrator the
+    acceptance admits — by key today; never the want's or the give's maker
+    (the cheap formality); an acceptance whose admission needs the
+    registers or the ledger (roots, a deposit floor, a look-back) admits
+    nothing until those reads exist (U7)."""
+    from loopmarket.matching import admits
+    ont = _cat()
+    judge, giver = "0x" + "77" * 20, "0x" + "44" * 20
+    acc = Accept(keys=(judge,))
+    assert admits(acc, judge) and admits(acc, judge.upper().replace("0X", "0x"))
+    assert not admits(acc, "") and not admits(acc, "0x" + "78" * 20)
+    assert not admits(acc, judge, parties=(judge,))
+    assert not admits(Accept(keys=(judge,), clean_for=86_400), judge)
+    assert not admits(Accept(roots=("0xroot",)), judge)
+    w = want("amara", Thing(("dentistry",), 1, "visit"), 40, **V, nonce=31, requires=Requires(resolvers=acc))
+    named = give(giver, Thing(("dentistry",), 1, "visit"), 35, **V, nonce=32, arbitrator=judge)
+    assert check_match(named, w, ont, now=NOW) is not None
+    assert check_match(give(giver, Thing(("dentistry",), 1, "visit"), 35, **V, nonce=33), w, ont, now=NOW) is None
+    self_judged = want(judge, Thing(("dentistry",), 1, "visit"), 40, **V, nonce=34, requires=Requires(resolvers=acc))
+    assert check_match(named, self_judged, ont, now=NOW) is None           # the wanter would judge her own claim
+
+
+def test_reservations_take_the_legs_claim_period_and_refuse_a_party_as_resolver():
+    """E2: the reservation's claim period is the want's ask, else the
+    default, and never beyond the give's claim_max; the resolver is never a
+    party; `cover_predicate` marks a give under the catalogue's `insure`."""
+    from types import SimpleNamespace
+    from loopmarket.escrow import cover_predicate, reservations_for
+    from loopmarket.matching import Leg
+    W, D, J = "0x" + "aa" * 20, "0x" + "bb" * 20, "0x" + "cc" * 20
+    bond = Bond(Thing(("stablecoin-eur",), 10, "EUR"), 8, "0xE")
+
+    def loop(w, g):
+        return SimpleNamespace(circulation=SimpleNamespace(legs=(Leg(w, (g,)),), loop_id="ab" * 32))
+
+    def res(w, g, **kw):
+        return reservations_for(loop(w, g), escrow="0xE", resolver=J, claim_seconds=7 * 86_400, now=NOW, **kw)[0]
+
+    asks = want(W, Thing(("apple",), 1, "kg"), 9, **V, nonce=41, requires=Requires(claim_period=30 * 86_400))
+    plain = want(W, Thing(("apple",), 1, "kg"), 9, **V, nonce=42)
+    carries = give(D, Thing(("apple",), 1, "kg"), 5, **V, nonce=43, bond=bond, claim_max=60 * 86_400)
+    short = give(D, Thing(("apple",), 1, "kg"), 5, **V, nonce=44, bond=bond, claim_max=3 * 86_400)
+    v5 = give(D, Thing(("apple",), 1, "kg"), 5, **V, nonce=45, bond=bond)
+    assert res(asks, carries)["claim_seconds"] == 30 * 86_400           # the want's ask
+    assert res(plain, carries)["claim_seconds"] == 7 * 86_400           # the default, within claim_max
+    assert res(plain, short)["claim_seconds"] == 3 * 86_400             # never beyond what the giver carries
+    assert res(plain, v5)["claim_seconds"] == 7 * 86_400
+    with pytest.raises(ValueError, match="a party to the leg"):
+        reservations_for(loop(plain, v5), escrow="0xE", resolver=D, claim_seconds=1, now=NOW)
+    judged = give(D, Thing(("apple",), 1, "kg"), 5, **V, nonce=46, bond=bond, arbitrator=W)
+    with pytest.raises(ValueError, match="a party to the leg"):
+        res(plain, judged)
+    picky = want(W, Thing(("apple",), 1, "kg"), 9, **V, nonce=47, requires=Requires(resolvers=Accept(keys=(J,))))
+    assert res(picky, v5)["resolver"] == J
+    with pytest.raises(ValueError, match="not one"):
+        reservations_for(loop(picky, v5), escrow="0xE", resolver="0x" + "dd" * 20, claim_seconds=1, now=NOW)
+    # cover: a give under `insure` is claim-only; a catalogue without it marks nothing
+    ont = Ontology(OntoDAG()).load({"insure": [], "theft-cover": ["insure"], "apple": [],
+                                    "stablecoin-eur": []})
+    cover = give(D, Thing(("theft-cover",), 1, "policy"), 5, **V, nonce=48, bond=bond)
+    wants_cover = want(W, Thing(("theft-cover",), 1, "policy"), 9, **V, nonce=49)
+    assert res(wants_cover, cover, claim_only=cover_predicate(ont))["claim_only"]
+    assert not res(plain, v5, claim_only=cover_predicate(ont))["claim_only"]
+    assert not res(wants_cover, cover, claim_only=cover_predicate(_cat()))["claim_only"]

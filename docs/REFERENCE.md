@@ -870,7 +870,11 @@ loop config (owner-readable, 0600); secrets print masked.
 | `auction` | `LOOP_AUCTION` | none | the sealed-proposal beat `chain:RPC@CONTRACT` (SealedBeat) or `memory:`: `commit`, `reveal`, `outcome`, `sealed` |
 | `escrow` | `LOOP_ESCROW` | none | the escrow contract `chain:RPC@CONTRACT` (LoopEscrow); the record names the address; `deposit` funds, `finalize` reserves |
 | `resolver` | `LOOP_RESOLVER` | none | who resolves a contested claim on the deposits `finalize` reserves (factbond's `Assertions`; a give's `arbitrator` wins; empty: my key) |
-| `escrow_claim` | `LOOP_ESCROW_CLAIM` | `7d` | how long after a leg's window a claim on its deposit may be opened |
+| `escrow_claim` | `LOOP_ESCROW_CLAIM` | `7d` | how long after a leg's window a claim on its deposit may be opened, when the want asks none; never beyond the give's `claim_max` |
+| `claim_min_challenge`, `claim_min_ruling` | `LOOP_CLAIM_MIN_*` | none | the least dispute and ruling windows a claim on the reservations `finalize` makes must name (the escrow refuses shorter at `hold`) |
+| `arbitrator` | `LOOP_ARBITRATOR` | none | the resolver my gives name for claims on their deposit (never my own key); a want requiring resolvers matches only a give naming one it accepts |
+| `claim_max` | `LOOP_CLAIM_MAX` | none | the longest claim period my gives' deposits carry (v6) |
+| `require_claim`, `require_resolvers` | `LOOP_REQUIRE_*` | none | the claim period I ask of a giver's deposit; the resolvers I accept, by key (v6) |
 | `bond` | `LOOP_BOND` | none | my deposit on every give: an amount on my scale (deposited as `default_asset` at my price) or `QTY[UNIT] CATEGORY... VALUE` (v5) |
 | `default_asset` | `LOOP_DEFAULT_ASSET` | `xdai xDAI 1` | the asset a bare `bond` deposits and a bare `require_point` accepts, with its price per unit on my scale |
 | `require_point`, `require_cancel`, `ladder` | `LOOP_REQUIRE_*`, `LOOP_LADDER` | none, none, `linear` | my neutral point on a no-show and on a far cancellation, on my scale; the ladder's shape over the lead at posting (`linear`, `late`, `early`, `flat`) |

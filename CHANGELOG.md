@@ -11,6 +11,18 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **E2: the claim period and the resolver per leg** (2026-09-29, on the
+  v6 record). `escrow.reservations_for` takes the leg's claim period —
+  the want's `claim_period`, else `escrow_claim`, never beyond the give's
+  `claim_max` — refuses a resolver who is a party to the leg (C4's
+  formality) or outside the want's `resolvers`, and marks cover through
+  `cover_predicate` (a give under the catalogue's `insure`). `meets`
+  admits a `resolvers` acceptance by key (`matching.admits`; roots and
+  floors fail closed until R3/R4). CLI settings `arbitrator`, `claim_max`,
+  `require_claim`, `require_resolvers`, `claim_min_challenge`,
+  `claim_min_ruling`; the render shows the v6 fields. `LoopEscrow.reserve`
+  refuses a resolver who is the wanter or the depositor and `assign`
+  refuses the resolver (source and artifact; not deployed).
 - **The v6 record** (2026-09-29, R1; `docs/plans/counterparty-gate.md` §1–§2,
   `options-and-cover.md` §3.1, one bump as decided in D7). `Requires` gains
   `counterparty` (`Credential`: category, kinds, `min_bond`, trust

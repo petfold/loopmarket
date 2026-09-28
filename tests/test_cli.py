@@ -1037,6 +1037,47 @@ def test_guarantee_settings_make_a_v5_offer(loop, monkeypatch):
     assert "v4" in out and "requires" not in out
 
 
+def test_v6_settings_make_a_v6_offer_and_the_gate_matches_the_claim_period(loop, monkeypatch):
+    """E2 (2026-09-29): `set claim_max` on my gives, `set require_claim`
+    and `set require_resolvers` on my wants, `set arbitrator` naming my
+    gives' resolver — each makes a v6 record and the render says so; a
+    want asking a longer claim than a give carries is never matched, one
+    within it is, and a resolver acceptance admits only the arbitrator it
+    names."""
+    from loopmarket.matching import check_match
+    run = loop
+    judge = "0x" + "77" * 20
+    run.ok("set", "claim_max", "60d")
+    run.ok("set", "arbitrator", judge)
+    out = run.ok("give", "apple", "home", "5")
+    assert "v6" in out and "claim_max 60d" in out and f"arbitrator {judge}" in out
+    g = next(o for o in run.session.book.offers(include_filled=True) if o.kind == "give")
+    assert g.v == 6 and g.claim_max == 60 * 86_400 and g.arbitrator == judge
+    for key in ("claim_max", "arbitrator"):
+        monkeypatch.setenv("LOOP_" + key.upper(), ""); run.ok("set", key, "")
+    run.ok("set", "require_claim", "30d")
+    run.ok("set", "require_resolvers", judge)
+    out = run.ok("want", "apple", "home", "6")
+    assert "v6" in out and "claim 30d" in out and f"resolvers {judge}" in out
+    w = next(o for o in run.session.book.offers(include_filled=True) if o.kind == "want")
+    assert w.v == 6 and w.requires.claim_period == 30 * 86_400 and w.requires.resolvers.keys == (judge,)
+    ont = run.session.catalogue
+    from loopmarket import give as make_give
+
+    def other(**kw):                                            # a counterparty's give, not my own
+        fields = dict(valid=g.valid, nonce=g.nonce, ontology_root=g.ontology_root,
+                      registry_version=g.registry_version, contract_version=g.contract_version,
+                      claim_max=g.claim_max, arbitrator=g.arbitrator)
+        return make_give("0x" + "99" * 20, g.thing, 5, **dict(fields, **kw))
+    assert check_match(other(), w, ont, now=NOW) is not None
+    assert check_match(other(claim_max=7 * 86_400), w, ont, now=NOW) is None
+    assert check_match(other(arbitrator="0x" + "78" * 20), w, ont, now=NOW) is None
+    for key in ("require_claim", "require_resolvers"):
+        monkeypatch.setenv("LOOP_" + key.upper(), ""); run.ok("set", key, "")
+    out = run.ok("want", "apple", "home", "7")
+    assert "v4" in out
+
+
 def test_the_default_asset_is_the_chains_gas_token_and_must_be_in_the_catalogue(loop, monkeypatch):
     """A bare-number `bond` deposits xDAI and a `require_point` with nothing
     named accepts xDAI at 1 — the configured chain's gas token, a CLI default

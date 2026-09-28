@@ -85,6 +85,22 @@ def _major_skew(a: str, b: str) -> bool:
     return bool(a) and bool(b) and a.split(".")[0] != b.split(".")[0]
 
 
+def admits(accept, key: str, *, parties=()) -> bool:
+    """Does `accept` admit `key` as a third party on a leg — the resolver
+    of its reservation (C4), the giver of a required leg? Never a party to
+    the leg: the cheap formality that no puppet cost defeats (THREATS T16).
+    A key named in `keys` is admitted. Accreditation under `roots` needs the
+    registers (R3) and the floors — a deposit, a look-back without
+    reversal, an issuance source — need the chain and the ledger (R4); an
+    acceptance that needs any of them to admit `key` admits nothing until
+    those reads exist (U7)."""
+    if not key or key.lower() in {p.lower() for p in parties if p}:
+        return False
+    if accept.min_deposit or accept.clean_for or accept.issuance:
+        return False
+    return key.lower() in {k.lower() for k in accept.keys}
+
+
 def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=None,
           held=None) -> bool:
     """Does `other`'s declaration meet `mine`'s requirement (v5; admissibility
@@ -104,15 +120,19 @@ def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=No
 
     v6 (2026-09-29): a `claim_period` is met by a give whose `claim_max`
     reaches it (plan A1's matched term; an undeclared maximum reaches
-    nothing until the catalogue's default exists, E2). A credential, a
-    required leg or a resolver acceptance meets nothing yet: the record
-    carries them since R1 and the gate that checks them is R4, so until then
-    a requirement this build cannot check refuses the leg (U7) rather than
-    passing it unread."""
+    nothing until the catalogue's default exists). A `resolvers`
+    acceptance is met by a give whose declared `arbitrator` it admits
+    (`admits`, E2: by key today). A credential or a required leg meets
+    nothing yet: the record carries them since R1 and the gate that checks
+    them is R4, so until then a requirement this build cannot check refuses
+    the leg (U7) rather than passing it unread."""
     req = mine.requires
     if req is None or req.empty:
         return True
-    if req.counterparty or req.legs or req.resolvers is not None:
+    if req.counterparty or req.legs:
+        return False
+    if req.resolvers is not None and not (
+            other.kind == GIVE and admits(req.resolvers, other.arbitrator, parties=(mine.maker, other.maker))):
         return False
     if req.claim_period and (other.kind != GIVE or other.v < 6 or other.claim_max < req.claim_period):
         return False

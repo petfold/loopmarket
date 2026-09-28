@@ -199,20 +199,20 @@ def test_reservations_for_a_cleared_loop_name_the_share_the_wanter_and_the_ladde
     assert r["window"] == (1_789_898_400, 1_789_905_600) and r["claim_seconds"] == 600
     assert r["ladder"] == [(86_400, to_wei(1)), (0, to_wei(4))]        # at 1 per EUR
     assert (r["claim_only"], r["min_challenge"], r["min_ruling"]) == (False, 0, 0)   # no cover, the resolver's bounds
-    cover = reservations_for(proposal, escrow="0xescrow", resolver=W, claim_seconds=1, now=NOW,
+    cover = reservations_for(proposal, escrow="0xescrow", resolver="0x" + "dd" * 20, claim_seconds=1, now=NOW,
                              claim_only=lambda g: g.offer_id == farm.offer_id, min_challenge=3600, min_ruling=86_400)[0]
     assert (cover["claim_only"], cover["min_challenge"], cover["min_ruling"]) == (True, 3600, 86_400)
     # no span reader: the window is now; another escrow: nothing; no arbitrator: the stand-in
-    assert reservations_for(proposal, escrow="0xescrow", resolver=W, claim_seconds=1, now=NOW)[0]["window"] == (NOW, NOW)
-    assert reservations_for(proposal, escrow="0xother", resolver=W, claim_seconds=1, now=NOW) == []
+    assert reservations_for(proposal, escrow="0xescrow", resolver="0x" + "dd" * 20, claim_seconds=1, now=NOW)[0]["window"] == (NOW, NOW)
+    assert reservations_for(proposal, escrow="0xother", resolver="0x" + "dd" * 20, claim_seconds=1, now=NOW) == []
     plain = give(D, Thing(("apple",), 100, "kg", step=5), 200, **V, bond=_deposit(("stablecoin-eur",), 10, "EUR", 8, "0xEsCrOw"))
     leg = SimpleNamespace(circulation=SimpleNamespace(legs=(Leg(amara, (plain,)),), loop_id="ab" * 32))
     assert reservations_for(leg, escrow="0xescrow", resolver="0x" + "dd" * 20, claim_seconds=1, now=NOW)[0]["resolver"] == "0x" + "dd" * 20
     # the ladder is capped at the reservation, and the wanter must be a key
     steep = want(W, Thing(("apple",), 40, "kg"), 90, **V, requires=Requires(point=4, ladder=((10, 4), (0, 4)), accepts=(Acceptance(("stablecoin-eur",), "EUR", "1/2"),)))
     leg = SimpleNamespace(circulation=SimpleNamespace(legs=(Leg(steep, (plain,)),), loop_id="ab" * 32))
-    assert reservations_for(leg, escrow="0xescrow", resolver=W, claim_seconds=1, now=NOW)[0]["ladder"] == [(10, to_wei(4)), (0, to_wei(4))]
+    assert reservations_for(leg, escrow="0xescrow", resolver="0x" + "dd" * 20, claim_seconds=1, now=NOW)[0]["ladder"] == [(10, to_wei(4)), (0, to_wei(4))]
     named = want("amara", Thing(("apple",), 40, "kg"), 90, **V, requires=Requires(point=4, accepts=(EUR,)))
     leg = SimpleNamespace(circulation=SimpleNamespace(legs=(Leg(named, (plain,)),), loop_id="ab" * 32))
     with pytest.raises(ValueError, match="not a key address"):
-        reservations_for(leg, escrow="0xescrow", resolver=W, claim_seconds=1, now=NOW)
+        reservations_for(leg, escrow="0xescrow", resolver="0x" + "dd" * 20, claim_seconds=1, now=NOW)
