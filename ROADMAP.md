@@ -278,7 +278,8 @@ name factbond's redeployed `Assertions`. Hence:
    possession and photo at the door) produces the statement, loopmarket's gate
    passes and the loop clears; revoked in the attester's register, refused
    (hansa `tests/test_a0.py`). Next in Track G: R5 (root sequence), R6
-   (`notice/` with the cure deadline), R7 (the door's witness types).
+   (`notice/` with the cure deadline), R7 (the door's witness types). R6's
+   sidecars DONE 2026-09-29 (`notice.py`; the watch integration remains).
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust

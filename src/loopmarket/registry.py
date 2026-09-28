@@ -5,6 +5,8 @@ Layout (one book = one RecordStore, one root reference per version):
     offer/<offer_id>                 -> the offer record (immutable value)
     sig/<offer_id>                   -> detached maker signature (U8, off-feed)
     handoff/<loop_id>/<offer_id>     -> sealed settlement text (handoff.py)
+    notice/<loop_id>/<offer_id>      -> a claimant's notice to the giver, sealed (R6, notice.py)
+    cure/<loop_id>/<offer_id>        -> the giver's answer to it, sealed (R6)
     cred/<subject>/<statement_id>    -> {"statement": ..., "presentation": ...} — a statement about
                                         the book owner's key, presented for the counterparty gate
                                         (v6, R2, 2026-09-29; counterparty-gate.md §3.2)
@@ -60,6 +62,8 @@ FILL = "fill/"
 LOOP = "loop/"
 HANDOFF = "handoff/"   # handoff/<loop_id>/<offer_id> -> sealed text (see handoff.py)
 CRED = "cred/"         # cred/<subject>/<statement_id> -> a presented statement (R2)
+NOTICE = "notice/"     # notice/<loop_id>/<offer_id> -> a sealed notice (R6)
+CURE = "cure/"         # cure/<loop_id>/<offer_id> -> a sealed cure (R6)
 
 
 class PartialLoopError(RuntimeError):
@@ -255,6 +259,30 @@ class OfferRegistry:
         self.store.put(f"{CRED}{statement.subject}/{sid}",
                        {"statement": statement.to_record(), "presentation": presentation})
         return sid
+
+    def send_notice(self, loop_id: str, offer_id: str, side: dict) -> None:
+        """Write a sealed notice (`notice.sealed`) about the fill of
+        `offer_id` in `loop_id` into this, the claimant's, book (R6)."""
+        self._sidecar(NOTICE, loop_id, offer_id, side)
+
+    def send_cure(self, loop_id: str, offer_id: str, side: dict) -> None:
+        """Write the giver's sealed answer to a notice into its own book."""
+        self._sidecar(CURE, loop_id, offer_id, side)
+
+    def _sidecar(self, prefix: str, loop_id: str, offer_id: str, side: dict) -> None:
+        from .notice import fault
+        why = fault(side.get("from", "") if isinstance(side, dict) else "", side)
+        if why:
+            raise ValueError(why)
+        self.store.put(f"{prefix}{loop_id}/{offer_id}", side)
+
+    def notice(self, loop_id: str, offer_id: str) -> dict | None:
+        key = f"{NOTICE}{loop_id}/{offer_id}"
+        return self.store.get(key) if self.store.contains(key) else None
+
+    def cure(self, loop_id: str, offer_id: str) -> dict | None:
+        key = f"{CURE}{loop_id}/{offer_id}"
+        return self.store.get(key) if self.store.contains(key) else None
 
     def statements(self, subject: str | None = None) -> Iterator[tuple[Statement, dict | None]]:
         """Every presented (statement, presentation), or those about `subject`."""

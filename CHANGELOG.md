@@ -21,6 +21,17 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **R6: notices before claims** (2026-09-29; `counterparty-gate.md` §6).
+  `notice.py`: a claimant's `notice/<loop>/<offer>` sealed to the giver
+  and the giver's `cure/<loop>/<offer>` sealed back, each beside a salted
+  commitment to its plaintext (`sealed`, `read`, `opens`), in factbond's
+  `Notice`/`Cure` shape (`notice_record`, `cure_record`);
+  `OfferRegistry.send_notice`/`send_cure`/`notice`/`cure`; the fold admits
+  each only as its writer's own speech. A cured matter leaves nothing
+  readable in public (factbond THREATS T17); a claim discloses the opening
+  and anyone checks it. `lapsed` is the watch's re-check for a relied-on
+  statement revoked or suspended since clearing. The clocks are factbond's
+  procedure; `loop watch` does not run the re-check yet.
 - **R4: the counterparty gate** (2026-09-29; `counterparty-gate.md` §4).
   `gate.CounterpartyGate` checks each `requires.counterparty` credential
   against the statements the other side presented (`cred/`), under the

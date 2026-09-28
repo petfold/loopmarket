@@ -42,7 +42,7 @@ from dataclasses import dataclass
 from recordstore import RecordStore
 
 from .registry import (
-    CRED, HANDOFF,
+    CRED, CURE, HANDOFF, NOTICE,
     FILL, LOOP, OFFER, SIG, WITHDRAW, OfferRegistry,
     or_set_resolver,
 )
@@ -269,6 +269,15 @@ class Aggregator:
                 deferred.append((key, rec))   # handoff/ sorts before offer/
             elif key.startswith(CRED):
                 reason = self._cred_fault(owner, role, key, rec)
+                if reason:
+                    reject(key, reason)
+                    continue
+                staged.put(key, rec)
+            elif key.startswith(NOTICE) or key.startswith(CURE):
+                # R6: a notice or a cure is its writer's speech between the
+                # parties, sealed; admitted in the writer's own maker book
+                from .notice import fault
+                reason = "notice outside a maker book" if role != MAKER else fault(owner, rec)
                 if reason:
                     reject(key, reason)
                     continue
