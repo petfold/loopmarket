@@ -242,7 +242,7 @@ def test_factbond_as_the_resolver(chain):
     fee, floor = 10 ** 15, 10 ** 16
     receipt = w3.eth.wait_for_transaction_receipt(
         w3.eth.contract(abi=art["abi"], bytecode=art["bin"]).constructor(
-            adjudicator, treasury, fee, floor, 100, 100, 7500, 5000).transact())
+            adjudicator, treasury, fee, floor, 100, 10, 60 * 86400, 100, 7500, 5000).transact())
     factbond = w3.eth.contract(address=receipt["contractAddress"], abi=art["abi"])
     offer = bytes.fromhex("77" * 32)
     escrow.functions.deposit(offer).transact({"from": giver, "value": 10 ** 18})
@@ -253,9 +253,9 @@ def test_factbond_as_the_resolver(chain):
     # a claim on a subject the escrow never gave factbond is refused by the escrow's hold
     subj_q = escrow.functions.key(offer, quiet).call()
     other = escrow.functions.key(offer, bytes.fromhex("a3" * 32)).call()
-    assert "not the resolver" in _reverts(w3, factbond.functions.assert_(other, escrow.address, 1, 990), wanter, value=fee + floor)
+    assert "not the resolver" in _reverts(w3, factbond.functions.assert_(other, escrow.address, 1, 990, 0, 5000), wanter, value=fee + floor)
     # undisputed: the wanter asserts failure claiming the reservation, and after the window factbond pays it out
-    factbond.functions.assert_(subj_q, escrow.address, 4 * 10 ** 17, 990).transact({"from": wanter, "value": fee + floor})
+    factbond.functions.assert_(subj_q, escrow.address, 4 * 10 ** 17, 990, 0, 5000).transact({"from": wanter, "value": fee + floor})
     id_q = factbond.functions.count().call()
     assert escrow.functions.reservation(offer, quiet).call()[6]                    # held
     assert "a claim is open" in _reverts(w3, escrow.functions.settle(offer, quiet), giver)
@@ -266,7 +266,7 @@ def test_factbond_as_the_resolver(chain):
     assert escrow.functions.reservation(offer, quiet).call()[7]                    # settled
     # disputed and refuted: the giver contests, the adjudicator rules against the claim, the giver is refunded
     subj_r = escrow.functions.key(offer, refuted).call()
-    factbond.functions.assert_(subj_r, escrow.address, 4 * 10 ** 17, 990).transact({"from": wanter, "value": fee + floor})
+    factbond.functions.assert_(subj_r, escrow.address, 4 * 10 ** 17, 990, 0, 5000).transact({"from": wanter, "value": fee + floor})
     id_r = factbond.functions.count().call()
     factbond.functions.dispute(id_r).transact({"from": giver, "value": factbond.functions.stakeFor(floor, 990).call()})
     before = w3.eth.get_balance(giver)
