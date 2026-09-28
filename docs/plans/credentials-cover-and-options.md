@@ -200,6 +200,13 @@ and Weingast's condition (8)).
   carries a cure deadline. The giver may cure within it (deliver, refund
   at the ladder, correct the statement); only refusal or silence past the
   deadline opens the bonded dispute, and nothing is public before that.
+  *(Scoped 2026-09-28, Peter, in factbond: the notice step belongs to a
+  claim on a reservation, whose claimant relied and lost and whom a cure
+  makes whole. A dispute of a live assertion takes none: its challenger is
+  usually a hunter with nothing to cure, a cure would let the asserter
+  keep its bond and leave the hunter unpaid, and the dispute on chain is
+  itself the notice. Its cheap ending is the asserter's `concede`, which
+  hands the challenger the bond with no ruling.)*
 - **A5. The evidence period has a fixed shape.** For `self-knowable`
   claims, of the order of 7 to 14 days (the number is policy data); after
   lapse the adjudicator rules ex parte on the record.
