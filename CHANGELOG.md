@@ -21,6 +21,16 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Argument-only operators and `requires.legs` (D4)** (2026-09-29).
+  `Ontology.declare_argument_operator` declares `insure` and `inspect` as
+  operators by their argument alone (the `operator-argument` marker, no
+  ends); `check_composition` lets such a give attach to the thing when its
+  argument accepts it; `matching.legs_faults` checks a want's
+  `requires.legs` — a give under each named category from a giver the
+  entry admits, never a party to the leg — and the solver composes it. An
+  inspection and cover composed with a car clear as one circulation of
+  four makers. `escrow.cover_predicate` now recognises `insure(...)` terms;
+  `examples/triangle.od` seeds both operators.
 - **Options on plain offers, in memory (C1–C3)** (2026-09-29;
   `options-and-cover.md` §3). `Ontology.declare_graph_heads` makes
   `option(...)` a non-operator graph-kind head that matches by plain

@@ -117,6 +117,7 @@ DESCRIPTIVE = "descriptive"
 OPERATOR = "operator"
 OPERATOR_INPUT = "operator-input"
 OPERATOR_OUTPUT = "operator-output"
+OPERATOR_ARGUMENT = "operator-argument"   # an operator declared by its argument alone (D4)
 
 
 class Ontology:
@@ -227,16 +228,43 @@ class Ontology:
         never by the operator's want-within-give reading. Seed vocabulary,
         like `declare_operator`: `odag put option graph-dimension`."""
         for head in heads:
-            kind = self.head_kind(head)
-            if kind not in (None, _dims.KIND_GRAPH) or head in _dims.KINDS:
-                raise ValueError(f"{head!r} is a {kind} head, not a graph-kind head")
-            if kind is None:
-                if _dims.KIND_GRAPH not in self.dag.nodes:
-                    if _dims.DIMENSION_ROOT not in self.dag.nodes:
-                        from ontodag.prelude import apply as apply_prelude
-                        apply_prelude(self.dag)
-                    self.dag.put(_dims.KIND_GRAPH, [_dims.DIMENSION_ROOT])
-                self.dag.put(head, [_dims.KIND_GRAPH])
+            self._graph_kind(head)
+
+    def _graph_kind(self, head: str) -> None:
+        kind = self.head_kind(head)
+        if kind not in (None, _dims.KIND_GRAPH) or head in _dims.KINDS:
+            raise ValueError(f"{head!r} is a {kind} head, not a graph-kind head")
+        if kind is None:
+            if _dims.KIND_GRAPH not in self.dag.nodes:
+                if _dims.DIMENSION_ROOT not in self.dag.nodes:
+                    from ontodag.prelude import apply as apply_prelude
+                    apply_prelude(self.dag)
+                self.dag.put(_dims.KIND_GRAPH, [_dims.DIMENSION_ROOT])
+            self.dag.put(head, [_dims.KIND_GRAPH])
+
+    def declare_argument_operator(self, categories: Iterable[str]) -> None:
+        """Declare operators by their argument alone — `insure`, `inspect`
+        (D4, 2026-09-29): a graph-kind category under `operator` and the
+        marker `operator-argument`, with no ends. An operator declared by
+        ends moves a thing along a dimension; one declared by its argument
+        attaches to the thing and moves nothing (cover, a report, a
+        warranty): `check_composition` accepts such a give when its
+        argument accepts the thing, and `requires.legs` is what asks for
+        it, since nothing in a want's coordinates triggers it the way a gap
+        triggers `transport`. Seed vocabulary: `odag put insure
+        graph-dimension operator operator-argument`."""
+        for category in categories:
+            self._graph_kind(category)
+            if OPERATOR not in self.dag.nodes:
+                self.dag.put(OPERATOR, [])
+            if not self.dag.is_below(category, OPERATOR):
+                self.dag.add_edge(self.dag.nodes[OPERATOR], self.dag.nodes[category])
+            self._mark(OPERATOR_ARGUMENT, [category])
+
+    def argument_only(self, category: str | None) -> bool:
+        """Is `category` an operator declared by its argument alone?"""
+        return bool(category) and OPERATOR_ARGUMENT in self.dag.nodes \
+            and category in self.dag.nodes and self.dag.is_below(category, OPERATOR_ARGUMENT)
 
     def declare_operator(self, operators: Mapping[str, tuple[str, str]]) -> None:
         """Declare operators: {category: (input head, output head)} —

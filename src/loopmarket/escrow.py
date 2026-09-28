@@ -174,7 +174,16 @@ def cover_predicate(ontology, head: str = "insure"):
     for the reservation's flag."""
     if not ontology.known(head):
         return lambda give: False
-    return lambda give: give.kind == "give" and ontology.satisfies(give.thing.concepts, (head,))
+
+    def is_cover(give) -> bool:
+        if give.kind != "give":
+            return False
+        for c in give.thing.concepts:
+            op = ontology.operator_of(c)           # `insure(...)`: the term names its head (D4)
+            if op is not None and (op == head or ontology.covers(head, op)):
+                return True
+        return ontology.satisfies(give.thing.concepts, (head,))
+    return is_cover
 
 
 def _concepts(want):

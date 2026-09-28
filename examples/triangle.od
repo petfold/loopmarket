@@ -45,6 +45,12 @@ arrive time operator-output
 # not an operator — `option(flat ljubljana)` holds a plain offer for its
 # holder, and its argument matches one-way, as any category does
 option graph-dimension
+# operators declared by their argument alone (D4, 2026-09-29): cover and an
+# inspection attach to a thing and move nothing; a want asks for them with
+# `requires.legs`, and the solver composes them with the thing's give
+operator-argument
+insure graph-dimension operator operator-argument
+inspect graph-dimension operator operator-argument
 # the triangle's trades
 service
 lesson service

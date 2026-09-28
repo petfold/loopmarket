@@ -103,7 +103,7 @@ def admits(accept, key: str, *, parties=()) -> bool:
 
 
 def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=None,
-          held=None, gate=None) -> bool:
+          held=None, gate=None, legs_checked: bool = False) -> bool:
     """Does `other`'s declaration meet `mine`'s requirement (v5; admissibility
     by declaration, `P3-release-and-reclearing.md` §5d)? The witness type and
     the escrow kind must be accepted; and when the neutral point is above
@@ -136,8 +136,8 @@ def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=No
     req = mine.requires
     if req is None or req.empty:
         return True
-    if req.legs:
-        return False
+    if req.legs and not (legs_checked and mine.kind == WANT):
+        return False                    # a want's legs are the composed leg's to check (D4)
     if req.counterparty:
         if gate is None:
             return False
@@ -174,7 +174,7 @@ def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=No
 
 def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
            quantity: bool = True, thing: Thing | None = None,
-           available=None, taken=None, held=None, gate=None) -> bool:
+           available=None, taken=None, held=None, gate=None, legs_checked: bool = False) -> bool:
     """Everything `check_match` decides before meaning: kinds and makers,
     the record line, validity, the v1/v2 fields, quantity and unit (skipped
     for an operator give, which moves a lot rather than being one), pins.
@@ -198,7 +198,8 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
     wanted = thing if thing is not None else (None if want.composed else want.thing)
     give_taken = taken if taken is not None else \
         (q(wanted.qty) if (quantity and wanted is not None) else q(give.thing.qty))
-    if not meets(want, give, ontology, taken=give_taken, whole=q(give.thing.qty), held=held, gate=gate):
+    if not meets(want, give, ontology, taken=give_taken, whole=q(give.thing.qty), held=held, gate=gate,
+                 legs_checked=legs_checked):
         return False
     if not meets(give, want, ontology, held=held, gate=gate):
         return False
@@ -346,18 +347,22 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
     if not gives:
         return None
     thing, operators = gives[0], gives[1:]
-    if not _gates(thing, want, ontology, now=now, available=available, held=held, gate=gate):
+    if not _gates(thing, want, ontology, now=now, available=available, held=held, gate=gate, legs_checked=True):
         return None
     derived = list(thing.thing.concepts)
     for op in operators:
-        if not _gates(op, want, ontology, now=now, quantity=False, held=held, gate=gate):
+        if not _gates(op, want, ontology, now=now, quantity=False, held=held, gate=gate, legs_checked=True):
             return None
         terms = [c for c in op.thing.concepts if ontology.operator_of(c)]
-        moves = ontology.ends(op.thing.concepts)
-        if not terms or not moves:
-            return None                # not an operator give, or one that moves nothing
+        if not terms:
+            return None                # not an operator give
         if not ontology.accepts(thing.thing.concepts, terms):
             return None                # the operator does not take this thing
+        if all(ontology.argument_only(ontology.operator_of(t)) for t in terms):
+            continue                   # cover, an inspection: it attaches to the thing, moves nothing (D4)
+        moves = ontology.ends(op.thing.concepts)
+        if not moves:
+            return None                # an operator that moves nothing and was not declared by its argument
         for base, in_term, out_term in moves:
             here = ontology.coordinate(derived, base)
             if here is None:
@@ -369,7 +374,32 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
             derived.append(ontology.bare(out_term))
     if not ontology.satisfies(derived, want.thing.concepts):
         return None
+    if want.requires is not None and want.requires.legs and legs_faults(want, gives, ontology):
+        return None
     return Leg(want, gives)
+
+
+def legs_faults(want: Offer, gives, ontology: Ontology) -> list[str]:
+    """Every `requires.legs` entry of `want` the leg's gives do not answer
+    (D4): an operator give under the entry's category, whose argument
+    accepts the thing (the composition already checked it), from a giver
+    the entry's `accept` admits — never a party to the leg (E2's formality:
+    an inspector is not the seller or the buyer). Fail closed."""
+    gives = tuple(gives)
+    thing, ops = gives[0], gives[1:]
+    parties = (want.maker, thing.maker)
+    out = []
+    for entry in want.requires.legs:
+        found = False
+        for op in ops:
+            heads = [h for h in (ontology.operator_of(c) for c in op.thing.concepts) if h]
+            if any(h == entry.category or ontology.covers(entry.category, h) for h in heads) \
+                    and admits(entry.accept, op.maker, parties=parties):
+                found = True
+                break
+        if not found:
+            out.append(f"no {entry.category} leg from a giver {want.maker} accepts")
+    return out
 
 
 def check_parts(want: Offer, gives: Iterable[Offer], ontology: Ontology,
@@ -529,7 +559,9 @@ def composed_legs(offers: Iterable[Offer], ontology: Ontology, *,
                    key=lambda o: o.offer_id)
     ops = [g for g in gives
            if any(ontology.operator_of(c) for c in g.thing.concepts)
-           and ontology.ends(g.thing.concepts)]
+           and (ontology.ends(g.thing.concepts)
+                or all(ontology.argument_only(ontology.operator_of(c))
+                       for c in g.thing.concepts if ontology.operator_of(c)))]
     if not ops:
         return
     things = [g for g in gives if g not in ops]

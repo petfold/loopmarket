@@ -174,7 +174,11 @@ alone or composed with the thing. It **cannot** be "an operator leg, like
 ends of one dimension and `check_composition` returns nothing for an
 operator that moves nothing (`matching.py`, "not an operator give, or one
 that moves nothing"). Composition of legs that move nothing is a new shape,
-decided in plan D4.
+decided in plan D4. *(built 2026-09-29: `declare_argument_operator`, the
+`operator-argument` marker, `check_composition` accepting an argument-only
+give, `requires.legs` checked by `matching.legs_faults`;
+`tests/test_composed_cover.py`, an inspection and cover composed with a car
+and the four-maker circulation cleared.)*
 
 ### 4.2 At finalize
 

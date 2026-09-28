@@ -284,9 +284,10 @@ name factbond's redeployed `Assertions`. Hence:
    the settlement check). R5 (the root sequence and its consistency proofs)
    is the one left before R3b's chain half.
 7. **Track O in memory** — C1–C3 (options: the `option` head, holds in
-   registry and clearing, solver awareness) DONE 2026-09-29; next D4
-   (argument-only operators and `requires.legs`), I1–I2 (items), then the
-   one clearing-contract redeploy (C4 + I3 + R3b).
+   registry and clearing, solver awareness) DONE 2026-09-29; D4
+   (argument-only operators and `requires.legs`) DONE the same night; next
+   I1–I2 (items, on ontodag's identifier kind or the prefix stopgap), then
+   the one clearing-contract redeploy (C4 + I3 + R3b).
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust
