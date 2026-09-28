@@ -9,6 +9,16 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Fixed
+
+- **The escrow is the authority on aggregated and composed legs too**
+  (2026-09-29). The held rule of 2026-09-19 (a deposit naming an escrow
+  counts only up to what the contract holds) reached `check_match` and
+  `check_parts` but not `check_aggregate`, the pool of `aggregate_legs`, or
+  the operator gives of `check_composition`: there a declared, never-funded
+  deposit still met a counterparty's point. Every share and operator is
+  now gated with `held`.
+
 ### Added
 
 - **R3a: registers, separately rooted and pinned** (2026-09-29;

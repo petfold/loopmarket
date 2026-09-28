@@ -171,6 +171,25 @@ def test_the_chain_is_the_authority_on_a_deposit_when_an_escrow_is_consulted():
         assert bool(receipts and receipts[0].accepted) is accepted
 
 
+def test_the_escrow_is_the_authority_on_an_aggregated_or_composed_leg_too():
+    """2026-09-29: the held rule (2026-09-19) had reached check_match and
+    check_parts but not the aggregation path — `check_aggregate` and the
+    pool of `aggregate_legs` gated each share without `held`, so a declared,
+    never-funded deposit still met a point there. Now every share counts
+    only up to what the escrow holds."""
+    from loopmarket.matching import aggregate_legs
+    cat = _cat()
+    amara = want("amara", Thing(("apple",), 4), 50, **V, requires=Requires(point=2, accepts=(EUR,)))
+    halves = [give(f"f{i}", Thing(("apple",), 2, step=1), 20, **V, bond=_deposit(("stablecoin-eur",), 4, "EUR", 4))
+              for i in (1, 2)]
+    funded = {g.offer_id: 4 for g in halves}
+    assert check_aggregate(amara, halves, (2, 2), cat, now=NOW, held=funded) is not None
+    assert check_aggregate(amara, halves, (2, 2), cat, now=NOW, held={}) is None          # declared, never funded
+    assert check_aggregate(amara, halves, (2, 2), cat, now=NOW) is not None               # no escrow consulted
+    assert list(aggregate_legs([amara, *halves], cat, now=NOW, held=funded))
+    assert not list(aggregate_legs([amara, *halves], cat, now=NOW, held={}))
+
+
 def test_reservations_for_a_cleared_loop_name_the_share_the_wanter_and_the_ladder_in_the_asset():
     """`escrow.reservations_for` turns a cleared loop into what the clearing
     reserves: bond × taken / quantity in the asset's smallest units, the

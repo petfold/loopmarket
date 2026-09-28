@@ -335,7 +335,7 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
         return None
     derived = list(thing.thing.concepts)
     for op in operators:
-        if not _gates(op, want, ontology, now=now, quantity=False):
+        if not _gates(op, want, ontology, now=now, quantity=False, held=held):
             return None
         terms = [c for c in op.thing.concepts if ontology.operator_of(c)]
         moves = ontology.ends(op.thing.concepts)
@@ -393,7 +393,7 @@ def check_aggregate(want: Offer, gives: Iterable[Offer], quantities: Iterable,
     if sum(quantities, Fraction(0)) != q(want.thing.qty):
         return None
     for g, share in zip(gives, quantities):
-        if not _gates(g, want, ontology, now=now, quantity=False, taken=share):
+        if not _gates(g, want, ontology, now=now, quantity=False, taken=share, held=held):
             return None
         left = None if available is None else available.get(g.offer_id)
         if g.thing.unit != want.thing.unit or not g.thing.takes(share, left):
@@ -422,7 +422,7 @@ def aggregate_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,
         if any(check_match(g, w, ontology, now=now, available=available, held=held) for g in gives):
             continue                   # one give reaches: nothing to add up
         pool = [g for g in gives
-                if _gates(g, w, ontology, now=now, quantity=False)
+                if _gates(g, w, ontology, now=now, quantity=False, held=held)
                 and g.thing.unit == w.thing.unit
                 and ontology.satisfies(g.thing.concepts, w.thing.concepts)]
         need = q(w.thing.qty)
