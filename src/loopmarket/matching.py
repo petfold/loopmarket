@@ -185,10 +185,10 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
     if (give.v >= 3) != (want.v >= 3):
         return False
     if give.v >= 6 and give.underlying:
-        # an option clears only with its option record (options-and-cover.md
-        # §3.2, package C2); the v6 record carries it since R1, the clearing
-        # that writes the record does not exist yet, so it clears nowhere
-        return False
+        # an option (C2): its underlying must hold what it promises — read
+        # through the gate, which sees the book; no gate, no option (U7)
+        if gate is None or gate.option_fault(give):
+            return False
     # admissibility by declaration (v5, 2026-09-18): each side's requirement
     # of a counterparty — a bond floor, accepted witness types — must be met
     # by the other side's declaration; unmet is refused, fail closed (U7)
@@ -215,6 +215,8 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
         return False                    # a composed want is met part by part
     if quantity:
         left = None if available is None else available.get(give.offer_id)
+        if left is not None and gate is not None:
+            left += gate.held_by(give.offer_id, want.maker)   # the holder's own hold (C2)
         if not g.takes(w.qty, left):    # within what is left, above the floor, on the step
             return False
         if g.unit != w.unit:
@@ -409,6 +411,8 @@ def check_aggregate(want: Offer, gives: Iterable[Offer], quantities: Iterable,
         if not _gates(g, want, ontology, now=now, quantity=False, taken=share, held=held, gate=gate):
             return None
         left = None if available is None else available.get(g.offer_id)
+        if left is not None and gate is not None:
+            left += gate.held_by(g.offer_id, want.maker)       # the holder's own hold (C2)
         if g.thing.unit != want.thing.unit or not g.thing.takes(share, left):
             return None
         if not ontology.satisfies(g.thing.concepts, want.thing.concepts):

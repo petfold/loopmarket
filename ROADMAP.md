@@ -283,6 +283,10 @@ name factbond's redeployed `Assertions`. Hence:
    R7 DONE the same night (`witness.py`: possession, photo-match, door levels,
    the settlement check). R5 (the root sequence and its consistency proofs)
    is the one left before R3b's chain half.
+7. **Track O in memory** — C1–C3 (options: the `option` head, holds in
+   registry and clearing, solver awareness) DONE 2026-09-29; next D4
+   (argument-only operators and `requires.legs`), I1–I2 (items), then the
+   one clearing-contract redeploy (C4 + I3 + R3b).
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust

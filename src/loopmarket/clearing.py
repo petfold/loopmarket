@@ -178,7 +178,14 @@ class MockClearing:
                 if root:
                     registers[rid] = self.register_at(rid, root)
         held = None if self.escrow_held is None else _Held(self.escrow_held)
-        return CounterpartyGate.over(self.registry, registers, now=now, span=self.span, held=held)
+
+        def capacity(oid: str):
+            try:
+                return self.available([oid], now)[oid]
+            except KeyError:
+                return None
+        return CounterpartyGate.over(self.registry, registers, now=now, span=self.span, held=held,
+                                     capacity=capacity)
 
     def deposits(self, offer_ids) -> dict | None:
         """What the escrow holds behind each offer, or None when no escrow
@@ -187,9 +194,11 @@ class MockClearing:
             return None
         return {oid: q(self.escrow_held(oid)) for oid in offer_ids}
 
-    def available(self, offer_ids) -> dict:
+    def available(self, offer_ids, now: int | None = None) -> dict:
         """What may still be taken from each offer: the book's remainder,
-        less what the chain has recorded (a composed want is whole or gone)."""
+        less what the chain has recorded (a composed want is whole or gone),
+        and, given `now`, less what active holds keep (C2) — a holder's own
+        exercise adds its hold back at the gate."""
         out = {}
         for oid in offer_ids:
             left = self.registry.available(oid)
@@ -200,6 +209,8 @@ class MockClearing:
                     left = Fraction(0) if on_chain > 0 else left
                 else:
                     left = min(left, q(offer.thing.qty) - on_chain)
+            if now is not None:
+                left -= self.registry.held(oid, now)
             out[oid] = left
         return out
 
@@ -262,7 +273,7 @@ class MockClearing:
         #    composed leg is re-composed (`check_composition`) from the
         #    current book, operators included, against what fills have
         #    left of every give (a partial fill's remainder)
-        available = self.available(loop.offer_ids)
+        available = self.available(loop.offer_ids, now)
         gate = self.gate(proposal.register_roots, now=now)
         for leg in loop.legs:
             reason = self.verify_leg(leg, now=now, available=available, gate=gate)
@@ -279,8 +290,11 @@ class MockClearing:
                 and not loop.per_node_ok:
             return reject("indivisible legs without per-node surplus")
 
-        # 4. atomic commitment: all fills land under one new root, or none
-        self.registry.mark_filled(proposal.fills(), lid, proposal.to_record())
+        # 4. atomic commitment: all fills land under one new root, or none —
+        #    with the holds an option leg writes and the exercises that
+        #    consume them (C2), in the same commit
+        self.registry.mark_filled(proposal.fills(), lid, proposal.to_record(),
+                                  extra=self.hold_records(loop, lid, now))
         root = self.registry.commit()
         return Receipt(True, lid, book_root=root)
 
@@ -321,6 +335,23 @@ class MockClearing:
             faults = self.gate_faults(fresh_want, fresh_gives, gate)
             return reason + (" — the counterparty gate: " + " | ".join(faults) if faults else "")
         return None
+
+    def hold_records(self, loop, lid: str, now: int) -> dict:
+        """The `option/` records an option leg writes — a hold on its
+        underlying for the leg's wanter until the exercise window ends, of
+        what the leg took — and the `exercise/` records a holder's leg on a
+        held offer writes (options-and-cover.md §3.2, §3.5)."""
+        out: dict = {}
+        for leg in loop.legs:
+            for i, g in enumerate(leg.gives):
+                taken = leg.taken(i)
+                if g.v >= 6 and g.underlying:
+                    out[f"option/{g.underlying}/{lid}"] = {
+                        "option": g.offer_id, "holder": leg.want.maker,
+                        "until": int(g.exercise.end), "qty": rat(taken)}
+                elif self.registry.held_by(g.offer_id, leg.want.maker, now) > 0:
+                    out.update(self.registry.exercise_records(g.offer_id, leg.want.maker, taken, now, lid))
+        return out
 
     def gate_faults(self, want: Offer, gives, gate: CounterpartyGate) -> list[str]:
         """Every failing step of either side's credential requirement on a

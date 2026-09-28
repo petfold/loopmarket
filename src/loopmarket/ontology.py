@@ -217,6 +217,27 @@ class Ontology:
             if not self.dag.is_below(head, marker):
                 self.dag.add_edge(node, self.dag.nodes[head])
 
+    def declare_graph_heads(self, heads: Iterable[str]) -> None:
+        """Declare heads whose argument is a conjunction ontodag's graph kind
+        orders, and which are *not* operators — `option(apartment item(h)
+        ljubljana-center)` (C1, 2026-09-29; options-and-cover.md §3.1). The
+        head goes under `graph-dimension` only, so a term matches by plain
+        one-way containment (a narrower argument lies below a wider one: the
+        held flat in the centre fits a want for an apartment in the city),
+        never by the operator's want-within-give reading. Seed vocabulary,
+        like `declare_operator`: `odag put option graph-dimension`."""
+        for head in heads:
+            kind = self.head_kind(head)
+            if kind not in (None, _dims.KIND_GRAPH) or head in _dims.KINDS:
+                raise ValueError(f"{head!r} is a {kind} head, not a graph-kind head")
+            if kind is None:
+                if _dims.KIND_GRAPH not in self.dag.nodes:
+                    if _dims.DIMENSION_ROOT not in self.dag.nodes:
+                        from ontodag.prelude import apply as apply_prelude
+                        apply_prelude(self.dag)
+                    self.dag.put(_dims.KIND_GRAPH, [_dims.DIMENSION_ROOT])
+                self.dag.put(head, [_dims.KIND_GRAPH])
+
     def declare_operator(self, operators: Mapping[str, tuple[str, str]]) -> None:
         """Declare operators: {category: (input head, output head)} —
         `{"transport": ("from", "to"), "storage": ("depart", "arrive")}`.

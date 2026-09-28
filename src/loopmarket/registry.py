@@ -18,6 +18,10 @@ Layout (one book = one RecordStore, one root reference per version):
                                         divisible give (2026-09-14): the remainder stays open, and
                                         the fills of one give sum to at most its quantity (U11)
     loop/<loop_id>                   -> the cleared loop record
+    option/<offer_id>/<loop_id>      -> a hold on a plain offer, written with an option's fill (C2,
+                                        2026-09-29): {"option", "holder", "until", "qty"}; active while
+                                        now < until, the offer admissible only to the holder meanwhile
+    exercise/<offer_id>/<option loop>/<loop_id> -> {"qty"}: what an exercise took of that hold
 
 There is no index in the book. The `idx/{c,t,g}` prefixes (per concept,
 per touched day bucket, per geohash prefix) were written by maker books
@@ -53,7 +57,7 @@ from __future__ import annotations
 from fractions import Fraction
 from typing import Iterable, Iterator
 
-from .schema import q, Offer, Statement
+from .schema import q, rat, Offer, Statement
 
 OFFER = "offer/"
 SIG = "sig/"
@@ -63,6 +67,8 @@ LOOP = "loop/"
 HANDOFF = "handoff/"   # handoff/<loop_id>/<offer_id> -> sealed text (see handoff.py)
 CRED = "cred/"         # cred/<subject>/<statement_id> -> a presented statement (R2)
 NOTICE = "notice/"     # notice/<loop_id>/<offer_id> -> a sealed notice (R6)
+OPTION = "option/"     # option/<offer_id>/<loop_id> -> a hold (C2)
+EXERCISE = "exercise/"  # exercise/<offer_id>/<option loop>/<loop_id> -> what an exercise took (C2)
 CURE = "cure/"         # cure/<loop_id>/<offer_id> -> a sealed cure (R6)
 
 
@@ -204,18 +210,82 @@ class OfferRegistry:
             total += q(rec["qty"]) if isinstance(rec, dict) and "qty" in rec else 0
         return total
 
-    def available(self, offer_id: str) -> Fraction:
+    def available(self, offer_id: str, now: int | None = None) -> Fraction:
         """What a fill may still take from a give: its quantity less what
-        fills took (0 for a want or a composed want once filled)."""
+        fills took (0 for a want or a composed want once filled) and, given
+        `now`, less what active holds keep for their holders (C2)."""
         offer = self.get(offer_id)
         if offer.composed:
             return Fraction(0) if self.store.contains(FILL + offer_id) else Fraction(1)
-        return q(offer.thing.qty) - self.taken(offer_id)
+        left = q(offer.thing.qty) - self.taken(offer_id)
+        if now is not None:
+            left -= self.held(offer_id, now)
+        return left
 
-    def availability(self, offers) -> dict[str, Fraction]:
+    def availability(self, offers, now: int | None = None) -> dict[str, Fraction]:
         """{offer_id: available} for the offers given — what the solver and
         clearing pass to the matching checks."""
-        return {o.offer_id: self.available(o.offer_id) for o in offers}
+        return {o.offer_id: self.available(o.offer_id, now) for o in offers}
+
+    # -- holds (options on plain offers, C2, options-and-cover.md §3) ------------
+
+    def holds(self, offer_id: str) -> list[tuple[str, dict]]:
+        """Every (option loop, hold record) on an offer, in key order."""
+        prefix = f"{OPTION}{offer_id}/"
+        return [(k[len(prefix):], rec) for k, rec in self.store.items(prefix)]
+
+    def hold_left(self, offer_id: str, option_loop: str) -> Fraction:
+        """What of one hold its exercises have not taken yet."""
+        rec = self.store.get(f"{OPTION}{offer_id}/{option_loop}")
+        taken = sum((q(r["qty"]) for _, r in self.store.items(f"{EXERCISE}{offer_id}/{option_loop}/")),
+                    Fraction(0))
+        return q(rec["qty"]) - taken
+
+    def held(self, offer_id: str, now: int) -> Fraction:
+        """What active holds keep of an offer at `now`: a function of time,
+        so expiry needs no write (§3.6)."""
+        return sum((self.hold_left(offer_id, lid) for lid, rec in self.holds(offer_id)
+                    if now < int(rec["until"])), Fraction(0))
+
+    def held_by(self, offer_id: str, holder: str, now: int) -> Fraction:
+        """What `holder` may take of the offer by exercising at `now`: its
+        holds whose option's exercise window is open (§3.5)."""
+        total = Fraction(0)
+        for lid, rec in self.holds(offer_id):
+            if rec["holder"] == holder and self._exercisable(rec, now):
+                total += self.hold_left(offer_id, lid)
+        return total
+
+    def exercisable(self, offer_id: str, now: int) -> Fraction:
+        """What all holders together may exercise of the offer at `now`."""
+        return sum((self.hold_left(offer_id, lid) for lid, rec in self.holds(offer_id)
+                    if self._exercisable(rec, now)), Fraction(0))
+
+    def _exercisable(self, rec: dict, now: int) -> bool:
+        if not now < int(rec["until"]):
+            return False
+        try:
+            option = self.get(rec["option"])
+        except KeyError:
+            return False
+        return option.exercise is not None and option.exercise.start <= now
+
+    def exercise_records(self, offer_id: str, holder: str, taken, now: int, loop_id: str) -> dict:
+        """The `exercise/` records an exercise leg taking `taken` of the
+        offer writes: the holder's open holds consumed in key order, the
+        rest from the free remainder. Deterministic in the book and the
+        decision (U2's discipline for fills)."""
+        out, need = {}, q(taken)
+        for lid, rec in self.holds(offer_id):
+            if need <= 0:
+                break
+            if rec["holder"] != holder or not self._exercisable(rec, now):
+                continue
+            use = min(need, self.hold_left(offer_id, lid))
+            if use > 0:
+                out[f"{EXERCISE}{offer_id}/{lid}/{loop_id}"] = {"qty": rat(use)}
+                need -= use
+        return out
 
     def attach_handoff(self, loop_id: str, offer_id: str, record: dict, *,
                        fold=None) -> None:
@@ -290,7 +360,7 @@ class OfferRegistry:
         for _key, rec in self.store.items(prefix):
             yield Statement.from_record(rec["statement"]), rec.get("presentation")
 
-    def mark_filled(self, fills, loop_id: str, loop_record: dict) -> None:
+    def mark_filled(self, fills, loop_id: str, loop_record: dict, extra: dict | None = None) -> None:
         """Claim every offer for the loop; a pure function of the decision.
 
         No wall clock: the same logical clearing must produce
@@ -306,6 +376,8 @@ class OfferRegistry:
         else:                                # ids alone: the 2026-08 fill
             for oid in fills:
                 self.store.put(FILL + oid, {"loop": loop_id})
+        for key, rec in sorted((extra or {}).items()):   # holds and exercises, in the same commit (C2)
+            self.store.put(key, rec)
         self.store.put(LOOP + loop_id, loop_record)
 
     def commit(self, *, reconcile: bool = True) -> str:
@@ -361,6 +433,16 @@ class OfferRegistry:
                 raise PartialLoopError(
                     f"offer {oid[:12]} oversold: fills take {total} of "
                     f"{q(self.get(oid).thing.qty)}")
+        # U11 extended (C2): a hold, and every exercise of it, names a present loop
+        for key, _rec in self.store.items(OPTION):
+            lid = key[len(OPTION):].partition("/")[2]
+            if not self.store.contains(LOOP + lid):
+                raise PartialLoopError(f"hold {key[len(OPTION):][:12]} points at absent loop")
+        for key, _rec in self.store.items(EXERCISE):
+            _oid, _, rest = key[len(EXERCISE):].partition("/")
+            opt, _, lid = rest.partition("/")
+            if not (self.store.contains(LOOP + opt) and self.store.contains(LOOP + lid)):
+                raise PartialLoopError(f"exercise {key[len(EXERCISE):][:12]} points at absent loop")
 
     # -- reading ---------------------------------------------------------------
 

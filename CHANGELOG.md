@@ -21,6 +21,17 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Options on plain offers, in memory (C1–C3)** (2026-09-29;
+  `options-and-cover.md` §3). `Ontology.declare_graph_heads` makes
+  `option(...)` a non-operator graph-kind head that matches by plain
+  containment (the seed in `examples/triangle.od`). An option give names
+  its `underlying` and `exercise`; the gate's `option_fault` checks the
+  underlying; clearing writes `option/<P>/<loop>` with the option's fill
+  and `exercise/` records when the holder takes it; `available(oid, now)`
+  subtracts active holds, the holder's exercise adds its own back inside the
+  window, and a hold expires with no write; the solver's packing capacity
+  counts what holders may exercise; U11's fold check covers holds and
+  exercises. Not built: holds on chain (C4), transfers.
 - **R7: the door's witness types** (2026-09-29; `counterparty-gate.md`
   §7). `witness.py`: `possession` — a fresh challenge signed by the giver's
   key with the id it vouches for, spent by `DoorCheck` on its first

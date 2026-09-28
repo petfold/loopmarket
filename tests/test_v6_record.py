@@ -172,7 +172,8 @@ def test_the_statement_is_one_content_addressed_shape():
 def test_requirements_this_build_cannot_check_meet_nothing_and_options_clear_nowhere():
     """Fail closed (U7): a credential meets nothing without the gate's
     reads (R4, `test_gate.py`), a required leg nothing until D4's operators,
-    an option clears nowhere until C2's records; an empty v6 requirement
+    an option nothing without the gate that sees its underlying (C2,
+    `test_options.py`); an empty v6 requirement
     changes nothing; a claim period is met by a give whose claim_max
     reaches it."""
     ont = _cat()
@@ -195,7 +196,7 @@ def test_requirements_this_build_cannot_check_meet_nothing_and_options_clear_now
     assert check_match(dentist, asks(90 * 86_400), ont, now=NOW) is None
     v5_dentist = give("0x" + "44" * 20, Thing(("dentistry",), 1, "visit"), 35, **V, nonce=12, bond=bond)
     assert check_match(v5_dentist, asks(1), ont, now=NOW) is None      # no claim_max declared: reaches nothing
-    # an option clears nowhere until its record exists
+    # an option clears nowhere without the gate that reads its underlying
     hold = give("w", Thing(("apple",), 1, "kg"), 5, **V, nonce=13, underlying=H, exercise=TimeWindow(100, 200))
     assert check_match(hold, want("b", Thing(("apple",), 1, "kg"), 9, **V, nonce=24), ont, now=NOW) is None
     # an empty requirement on a v6 offer changes nothing

@@ -102,7 +102,7 @@ class SolverAgent:
         now = int(_time.time()) if now is None else now
         root, book = self.registry.snapshot()
         offers = list(book.offers(now=now))
-        available = book.availability(offers)      # partial fills leave remainders
+        available = book.availability(offers, now)  # partial fills leave remainders, holds keep theirs
         if self.chain_fills is not None:           # and the chain's fills are the authority
             kept = []
             for o in offers:
@@ -111,9 +111,10 @@ class SolverAgent:
                     if on_chain > 0:
                         continue
                 else:
-                    available[o.offer_id] = min(available[o.offer_id], q(o.thing.qty) - on_chain)
-                    if o.thing.exhausted(available[o.offer_id]):
-                        continue
+                    available[o.offer_id] = min(available[o.offer_id],
+                                                q(o.thing.qty) - on_chain - book.held(o.offer_id, now))
+                    if o.thing.exhausted(available[o.offer_id] + book.exercisable(o.offer_id, now)):
+                        continue                   # spent; a held offer stays for its holder
                 kept.append(o)
             offers = kept
         held = None
@@ -141,7 +142,11 @@ class SolverAgent:
             for circ in find_circulations(legs, min_surplus=self.min_surplus,
                                           limit=self.max_loops_per_step):
                 candidates.setdefault(circ.loop_id, circ)
-        capacity = {o.offer_id: (Fraction(1) if o.composed else available[o.offer_id])
+        # a held offer's capacity includes what its holders may exercise now:
+        # only a holder's leg reaches that part (the gate adds its own hold),
+        # and clearing re-verifies every loop against the book it commits to
+        capacity = {o.offer_id: (Fraction(1) if o.composed
+                                 else available[o.offer_id] + book.exercisable(o.offer_id, now))
                     for o in offers}
         packing = pack([item_of(c) for c in candidates.values()], capacity,
                        prior=self.failure_prior, exact_up_to=self.exact_up_to,

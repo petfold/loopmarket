@@ -62,10 +62,18 @@ class CounterpartyGate:
     span: Callable[[str], Window] | None = None
     offer: Callable[[str], Offer | None] = field(default=lambda oid: None)
     held: Mapping[str, Fraction] | None = None
+    # options (C2, 2026-09-29; options-and-cover.md §3): what a holder may
+    # take of an offer by exercising now, what is left of an offer after
+    # fills and active holds, whether it was withdrawn
+    held_by: Callable[[str, str], Fraction] = field(default=lambda oid, holder: Fraction(0))
+    capacity: Callable[[str], Fraction | None] = field(default=lambda oid: None)
+    withdrawn: Callable[[str], bool] = field(default=lambda oid: False)
 
     @classmethod
-    def over(cls, book, registers: Mapping[str, object], *, now: int, span=None, held=None) -> "CounterpartyGate":
-        """The gate over an offer book's presented statements and offers."""
+    def over(cls, book, registers: Mapping[str, object], *, now: int, span=None, held=None,
+             capacity=None) -> "CounterpartyGate":
+        """The gate over an offer book's presented statements, offers and
+        holds; `capacity` (offer id -> what is left) defaults to the book's."""
         def statements(subject: str):
             return [s for s, _ in book.statements(subject)]
 
@@ -74,7 +82,39 @@ class CounterpartyGate:
                 return book.get(oid)
             except KeyError:
                 return None
-        return cls(statements, dict(registers), int(now), span, offer, held)
+
+        def left(oid: str):
+            try:
+                return book.available(oid, now)
+            except KeyError:
+                return None
+        return cls(statements, dict(registers), int(now), span, offer, held,
+                   lambda oid, holder: book.held_by(oid, holder, now), capacity or left, book.is_withdrawn)
+
+    # -- options ------------------------------------------------------------------
+
+    def option_fault(self, option: Offer) -> str:
+        """Why an option give cannot clear now, or "" (§3.4): its underlying
+        is in the book, made by the option's own writer, not withdrawn,
+        valid through the exercise window, in the option's unit, and has the
+        held quantity free after fills and active holds."""
+        p = self.offer(option.underlying)
+        if p is None:
+            return "option on an offer not in the book"
+        if p.maker != option.maker:
+            return "option by another maker than its underlying's"
+        if self.withdrawn(p.offer_id):
+            return "the underlying is withdrawn"
+        if p.composed:
+            return "an option holds one thing: its underlying is a composed want"
+        if not p.valid.contains(option.exercise):
+            return "the underlying is not valid through the exercise window"
+        if option.thing.unit != p.thing.unit:
+            return "the option's unit is not its underlying's"
+        left = self.capacity(p.offer_id)
+        if left is None or left < q(option.thing.qty):
+            return "no free capacity on the underlying for the hold"
+        return ""
 
     @property
     def roots(self) -> tuple[tuple[str, str], ...]:
