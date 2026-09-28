@@ -274,7 +274,11 @@ name factbond's redeployed `Assertions`. Hence:
    the `register` role, `register_roots`, loop record v2) DONE the same day;
    R4 (the gate, the dentist case in memory, every failing step listed) DONE
    the same night in the solo form — the practice form's door binding is R7's.
-   M1 needs hansa A0 producing the statements.
+   **Milestone M1 met 2026-09-29** in that form: hansa A0 (the attester adapter,
+   possession and photo at the door) produces the statement, loopmarket's gate
+   passes and the loop clears; revoked in the attester's register, refused
+   (hansa `tests/test_a0.py`). Next in Track G: R5 (root sequence), R6
+   (`notice/` with the cure deadline), R7 (the door's witness types).
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust
