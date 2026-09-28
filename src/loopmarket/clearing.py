@@ -32,6 +32,7 @@ from .schema import q, rat
 from .matching import check_aggregate, check_composition, check_match, check_parts
 from .ontology import Ontology
 from .registry import OfferRegistry
+from .register import named_registers
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +42,10 @@ class LoopProposal:
     ontology_root: str    # the catalogue version subsumption was checked under
     solver: str           # who found it (fee/reputation address)
     found_at: int
+    # R3a (2026-09-29): the registers the proposal read statements' status
+    # under, as sorted (register id, root) pairs — U4's pin for everything
+    # the counterparty gate reads outside the book (counterparty-gate.md §3.3)
+    register_roots: tuple = ()
 
     @property
     def circulation(self) -> Circulation:
@@ -66,8 +71,8 @@ class LoopProposal:
             if leg.simple and not leg.parts:
                 rec["rate"] = rat(leg.want.unit_price / leg.gives[0].unit_price)
             legs.append(rec)
-        return {
-            "v": 1,
+        rec = {
+            "v": 2 if self.register_roots else 1,
             "loop_id": circ.loop_id,
             "solver": self.solver,
             "found_at": self.found_at,
@@ -78,6 +83,11 @@ class LoopProposal:
             "legs": legs,
             "potentials": {m: rat(e) for m, e in sorted(circ.potentials().items())},
         }
+        if self.register_roots:
+            # loop record v2 (R3a): the register pins; a proposal with none
+            # writes v1, byte for byte as before
+            rec["register_roots"] = {r: root for r, root in sorted(self.register_roots)}
+        return rec
 
     def fills(self) -> dict[str, dict]:
         """The `fill/` records, keyed under `fill/`: a want's, `<offer>`,
@@ -197,6 +207,14 @@ class MockClearing:
         #    confirm; '' == '' keeps the in-memory flow working.
         if proposal.ontology_root != self.ontology.root:
             return reject("ontology pin mismatch")
+        #    and every register a leg's requirement names as a trust root is
+        #    pinned (R3a): a statement's status is read under a root the
+        #    proposal fixed, never a live lookup, or not at all (U4, U7)
+        pinned = dict(proposal.register_roots)
+        for name in sorted(named_registers(leg.want for leg in loop.legs)
+                           | named_registers(g for leg in loop.legs for g in leg.gives)):
+            if not pinned.get(name):
+                return reject(f"unpinned register: {name}")
 
         # 1. every offer must exist in the *current* book, be unfilled, and
         #    name a witness type this clearing can actually verify

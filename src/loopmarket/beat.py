@@ -204,13 +204,16 @@ def legs_from_record(rec: dict, book: OfferRegistry) -> tuple[Leg, ...]:
 def proposal_from_record(rec: dict, snapshot: OfferRegistry) -> LoopProposal:
     """The proposal a `loop/` record is the trace of, over the snapshot it
     pins — what a challenger re-derives and re-submits, byte for byte."""
-    if rec.get("v") != 1:
+    if rec.get("v") not in (1, 2):
         raise ValueError(f"loop record v{rec.get('v')}: not a version this reader knows")
+    if (rec["v"] == 2) != ("register_roots" in rec):
+        raise ValueError("a loop record v2 carries register_roots, v1 none")
     circ = Circulation(legs_from_record(rec, snapshot))
     if circ.loop_id != rec["loop_id"]:
         raise ValueError("the record's legs do not hash to its loop_id")
     return LoopProposal(circ, rec["book_root"], rec.get("ontology_root", ""),
-                        rec.get("solver", ""), int(rec.get("found_at", 0)))
+                        rec.get("solver", ""), int(rec.get("found_at", 0)),
+                        tuple(sorted(rec.get("register_roots", {}).items())))
 
 
 def snapshot_of(book: OfferRegistry, root: str) -> OfferRegistry:

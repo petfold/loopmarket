@@ -56,7 +56,9 @@ from typing import Iterable, Protocol
 
 MAKER = "maker"
 CLEARING = "clearing"
-_ROLES = (MAKER, CLEARING)
+REGISTER = "register"   # R3a, 2026-09-29: a register's own book, separately rooted (register.py)
+_ROLES = (MAKER, CLEARING, REGISTER)
+_CHAIN_ROLE = {MAKER: 0, CLEARING: 1, REGISTER: 2}   # LoopBookRegistry emits the uint8 unread
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,7 +215,7 @@ class ChainAnnouncements:
         events = []
         for log in contract.events.Announce.get_logs(from_block=self._from_block):
             owner = log["args"]["owner"]
-            role = CLEARING if log["args"]["role"] == 1 else MAKER
+            role = {1: CLEARING, 2: REGISTER}.get(log["args"]["role"], MAKER)
             events.append((self._seq(log), owner,
                            Announcement(owner, log["args"]["book"], role, self._seq(log))))
         for log in contract.events.Retract.get_logs(from_block=self._from_block):
@@ -239,7 +241,7 @@ class ChainAnnouncements:
         if not self._key:
             raise ValueError("announcing needs the maker's key (bee_signer)")
         address, receipt = self._send(
-            self._contract().functions.announce(book, 1 if role == CLEARING else 0))
+            self._contract().functions.announce(book, _CHAIN_ROLE[role]))
         return Announcement(address, book, role, receipt["blockNumber"] * 1_000_000)
 
     def retract(self, *, owner: str | None = None) -> None:

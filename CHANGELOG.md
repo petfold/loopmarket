@@ -11,6 +11,18 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **R3a: registers, separately rooted and pinned** (2026-09-29;
+  `counterparty-gate.md` §3.3). `register.Register` over its own store:
+  `status/`, `revoked/` (monotone; absence under a pinned root is a proof
+  anyone verifies), `suspended/` (`reinstate` clears it), `accredit/`
+  with `scheme`. The announcement channel carries a third role,
+  `register` (uint8 2 on chain; the contract emits it unread), and the
+  aggregator records a register's root in the announcement set without
+  folding it. `LoopProposal.register_roots` pins every register a leg's
+  requirement names (`named_registers`); the loop record carries them as
+  its v2 (v1, without pins, is unchanged); `MockClearing` refuses a
+  proposal missing one before any leg work, and the challenger's reader
+  takes v2. The chain half (R3b) waits for the clearing-contract redeploy.
 - **R2: the `cred/` sidecar** (2026-09-29; `counterparty-gate.md` §3.2).
   `OfferRegistry.present(statement, presentation)` writes
   `cred/<subject>/<statement id>` beside `sig/` and `handoff/`;

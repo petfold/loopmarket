@@ -48,11 +48,14 @@ from .registry import (
 )
 from .schema import Offer, Statement
 
-#: Roles an announced book may carry: makers speak offers, signatures and
-#: tombstones; a clearing instance speaks fills and loops. Every other
-#: key class in a book is outside its writer's authority and is refused.
+#: Roles an announced book may carry: makers speak offers, signatures,
+#: tombstones and statements about themselves; a clearing instance speaks
+#: fills and loops; a register speaks statuses and accreditations in its own
+#: separately rooted book, which is announced and never folded (R3a). Every
+#: other key class in a book is outside its writer's authority and is refused.
 MAKER = "maker"
 CLEARING = "clearing"
+REGISTER = "register"
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,7 +104,7 @@ class Aggregator:
         feed. Re-announcing an owner replaces the entry; un-announcing
         (admission-by-reference's teeth) is `retract`.
         """
-        if role not in (MAKER, CLEARING):
+        if role not in (MAKER, CLEARING, REGISTER):
             raise ValueError(f"unknown book role: {role!r}")
         self._announced[owner] = (role, store)
 
@@ -151,7 +154,10 @@ class Aggregator:
             root = store.root
             announcement.put(f"announce/{owner}",
                              {"role": role, "root": root or ""})
-            if not root:
+            if not root or role == REGISTER:
+                # a register is separately rooted (R3a): its root is in the
+                # announcement set, where a solver finds it to pin, and it
+                # never enters the offer book
                 continue
             blobs, store_type = store.blobs, type(store)
             source = store_type.at(root, blobs)
