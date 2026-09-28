@@ -2441,7 +2441,9 @@ def cmd_finalize(args, session, out):
     for r in reservations:
         try:
             escrow.reserve(r["offer_id"], r["loop_id"], r["wanter"], r["resolver"], r["amount"],
-                           window=r["window"], claim_seconds=r["claim_seconds"], ladder=r["ladder"])
+                           window=r["window"], claim_seconds=r["claim_seconds"], ladder=r["ladder"],
+                           claim_only=r["claim_only"], min_challenge=r["min_challenge"],
+                           min_ruling=r["min_ruling"])
             print(f"reserved {_num(Fraction(r['amount'], 10 ** 18))} behind {r['offer_id'][:16]}… "
                   f"for {r['wanter']}", file=out)
         except Exception as exc:  # noqa: BLE001 — a reservation the contract refuses is reported, not fatal

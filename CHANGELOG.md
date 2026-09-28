@@ -9,6 +9,41 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Changed
+
+- **`LoopEscrow`: the parties' four acts and the claim read at `hold`**
+  (2026-09-28, E1 of the development sequence of 2026-09-25; local EVM,
+  not yet deployed). `reserve` takes a `Terms` tuple (window, claim
+  seconds, `minChallenge`, `minRuling`, `claimOnly`); a `claimOnly`
+  reservation (cover) refuses `countersign`; `assign(offer, loop, to)` by
+  the wanter to any key, not while a claim is open; `settle(offer, loop,
+  toWanter)` settles at a split once the wanter and the giver have each
+  signed it, held and cover reservations included; `extendClaim` by the
+  giver, only longer. With a contract resolver, `hold` reads the claim
+  and opens only the wanter's own, naming the giver as `about`, a payout
+  above 0 and within the reservation, windows no shorter than the
+  reservation's, one at a time; a retraction reopens the reservation; a
+  close after the parties settled moves nothing; a settlement payout the
+  recipient refuses is credited to `owed` for `collect`. `EscrowClient`
+  gains `assign`, `settle(to_wanter=)`, `extend_claim`, `collect`, `owed`
+  and the terms in `reservation`; `reservations_for` takes `claim_only`,
+  `min_challenge`, `min_ruling` (none set by the CLI yet: E2 reads them
+  from v6). The shipped artifact is rebuilt; the other three are
+  unchanged.
+
+### Security
+
+- **THREATS T18: claim hijack at the escrow's consumer edge** (found
+  2026-09-28 while building E1, confirmed on a local EVM). Anyone could
+  void a reservation whose resolver is factbond's `Assertions` by
+  asserting a claim on it and retracting it at once: the retraction's
+  outcome 0 refunded the giver, bypassing the claim and the cancellation
+  ladder, for the assertion fee. A claim above the reservation could never
+  certify, and a recipient refusing payment could block any settlement,
+  a ruling's included. Closed in the contract source above; the Gnosis
+  pair (`0x299CE4…69Bf` with `0xfa6f…BF99`) keeps the hole until the E3
+  redeploy.
+
 ### Documentation
 
 - **factbond's documentation is factbond's** (2026-09-28): what was a

@@ -22,11 +22,21 @@ a contested claim is factbond's bonded assertion about (offer, loop): the
 resolver fixed at clearing calls `hold` and `resolve`, nothing more. Until
 factbond's contract exists the resolver is one key.
 
+A held reservation is released only by a ruling or by both parties
+(2026-09-28, E1 of the development sequence of 2026-09-25): with factbond
+as resolver the contract reads the claim inside `hold` and opens only the
+wanter's own, naming the giver, within the reservation and the windows it
+requires; a retraction reopens the reservation instead of refunding it; a
+cover reservation (`claim_only`) is never countersigned; the wanter may
+`assign` the claim to any key, the two parties `settle` at a split each
+signs, the giver `extend_claim`; a payout an address refuses is credited
+for `collect` rather than blocking the settlement.
+
 `EscrowClient` sends and reads; web3 loads lazily behind the `chain`
 extra (boundary B2). `reserve` is the clearing's call, with the leg's
-wanter, window, resolver and the ladder in asset units; wiring
-`BeatClearing`'s finalization to it is the next step, and until then the
-notice period on withdrawal is the guard.
+wanter, window, resolver, claim terms and the ladder in asset units;
+`loop finalize` sends it, and the notice period on withdrawal guards the
+gap between clearing and finalization.
 """
 
 from __future__ import annotations
@@ -76,7 +86,8 @@ def is_address(text: str) -> bool:
 
 
 def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int, now: int,
-                     span=None, decimals: int = 18) -> list[dict]:
+                     span=None, decimals: int = 18, claim_only=None, min_challenge: int = 0,
+                     min_ruling: int = 0) -> list[dict]:
     """What the clearing reserves on the escrow for a cleared loop: one
     reservation per give whose `bond` names `escrow` — the share bond ×
     taken / quantity (§3a rule 8) in smallest units, the leg's wanter (its
@@ -86,7 +97,12 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
     (`span(text)` reads the first `time(...)` term of the want, else the
     window is `now`), the claim period, and the wanter's ladder converted
     at her acceptance price for the deposit's asset into that asset —
-    rounded down, capped at the reservation. Pure: nothing is sent."""
+    rounded down, capped at the reservation. `claim_only(give)` says which
+    reservations are cover (never countersigned; the `insure` reading is
+    C5's, none today); `min_challenge` and `min_ruling` are the least
+    windows a claim must name, 0 leaving the resolver's own bounds (the
+    matched periods of v6 replace these constants, E2). Pure: nothing is
+    sent."""
     out = []
     escrow = escrow.lower()
     for leg in proposal.circulation.legs:
@@ -123,7 +139,9 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
                         "wanter": want.maker,
                         "resolver": give.arbitrator if is_address(give.arbitrator) else resolver,
                         "amount": amount, "window": (int(window[0]), int(window[1])),
-                        "claim_seconds": int(claim_seconds), "ladder": ladder})
+                        "claim_seconds": int(claim_seconds), "ladder": ladder,
+                        "claim_only": bool(claim_only(give)) if claim_only else False,
+                        "min_challenge": int(min_challenge), "min_ruling": int(min_ruling)})
     return out
 
 
@@ -190,28 +208,50 @@ class EscrowClient:
     # ---- the clearing, the wanter, the resolver ------------------------------
 
     def reserve(self, offer_id: str, loop_id: str, wanter: str, resolver: str, amount: int, *,
-                window: tuple[int, int], claim_seconds: int, ladder: list[tuple[int, int]] = ()) -> dict:
+                window: tuple[int, int], claim_seconds: int, ladder: list[tuple[int, int]] = (),
+                claim_only: bool = False, min_challenge: int = 0, min_ruling: int = 0) -> dict:
         """Reserve `amount` for one fill (the clearing's key): the leg's
         wanter and handover window (unix seconds), the resolver both
-        offers declared acceptable, the claim period after the window and
-        the ladder as (lead seconds, amount in smallest units), descending."""
+        offers declared acceptable, the claim period after the window, the
+        least windows a claim must name, whether it is cover, and the
+        ladder as (lead seconds, amount in smallest units), descending."""
         leads = [int(lead) for lead, _ in ladder]
         amounts = [int(a) for _, a in ladder]
+        terms = (int(window[0]), int(window[1]), int(claim_seconds), int(min_challenge), int(min_ruling),
+                 bool(claim_only))
         return self._send(self.contract().functions.reserve(
-            offer_key(offer_id), offer_key(loop_id), wanter, resolver, amount,
-            int(window[0]), int(window[1]), int(claim_seconds), leads, amounts))
+            offer_key(offer_id), offer_key(loop_id), wanter, resolver, amount, terms, leads, amounts))
 
     def cancel(self, offer_id: str, loop_id: str) -> dict:
         """The giver's cancellation: the ladder's amount to the wanter."""
         return self._send(self.contract().functions.cancel(offer_key(offer_id), offer_key(loop_id)))
 
     def countersign(self, offer_id: str, loop_id: str) -> dict:
-        """The wanter's countersignature of delivery: the reservation returns now."""
+        """The wanter's countersignature of delivery: the reservation returns
+        now (refused on cover)."""
         return self._send(self.contract().functions.countersign(offer_key(offer_id), offer_key(loop_id)))
 
-    def settle(self, offer_id: str, loop_id: str) -> dict:
-        """Quiet after the claim period: anyone returns the reservation."""
-        return self._send(self.contract().functions.settle(offer_key(offer_id), offer_key(loop_id)))
+    def settle(self, offer_id: str, loop_id: str, to_wanter: int | None = None) -> dict:
+        """Quiet after the claim period (no `to_wanter`): anyone returns the
+        reservation. With `to_wanter`, this key's signature of a split — the
+        wanter's or the giver's; the second matching signature settles it."""
+        c = self.contract().functions
+        if to_wanter is None:
+            return self._send(c.settle(offer_key(offer_id), offer_key(loop_id)))
+        return self._send(c.settle(offer_key(offer_id), offer_key(loop_id), int(to_wanter)))
+
+    def assign(self, offer_id: str, loop_id: str, to: str) -> dict:
+        """The wanter assigns its claim on the reservation to any key."""
+        return self._send(self.contract().functions.assign(offer_key(offer_id), offer_key(loop_id), to))
+
+    def extend_claim(self, offer_id: str, loop_id: str, seconds: int) -> dict:
+        """The giver lengthens the claim period (tail cover)."""
+        return self._send(self.contract().functions.extendClaim(
+            offer_key(offer_id), offer_key(loop_id), int(seconds)))
+
+    def collect(self, token: str | None = None) -> dict:
+        """Collect payouts this key's address refused when they were pushed."""
+        return self._send(self.contract().functions.collect(token or NATIVE))
 
     def hold(self, offer_id: str, loop_id: str) -> dict:
         """The resolver: a claim is open."""
@@ -230,9 +270,16 @@ class EscrowClient:
         return self.contract().functions.free(offer_key(offer_id)).call()
 
     def reservation(self, offer_id: str, loop_id: str) -> dict:
-        r = self.contract().functions.reservation(offer_key(offer_id), offer_key(loop_id)).call()
+        c = self.contract().functions
+        r = c.reservation(offer_key(offer_id), offer_key(loop_id)).call()
+        t = c.terms(offer_key(offer_id), offer_key(loop_id)).call()
         return {"wanter": r[0], "resolver": r[1], "amount": r[2], "window": (r[3], r[4]),
-                "claim_until": r[5], "held": r[6], "settled": r[7], "ladder": list(zip(r[8], r[9]))}
+                "claim_until": r[5], "held": r[6], "settled": r[7], "ladder": list(zip(r[8], r[9])),
+                "claim_only": t[0], "min_challenge": t[1], "min_ruling": t[2], "claim": t[3]}
+
+    def owed(self, to: str, token: str | None = None) -> int:
+        """Payouts `to`'s address refused, waiting for its `collect`."""
+        return self.contract().functions.owed(token or NATIVE, to).call()
 
     def subject(self, offer_id: str, loop_id: str) -> bytes:
         """The reservation's key — the `subject` a generic resolver (factbond's

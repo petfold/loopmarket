@@ -198,6 +198,10 @@ def test_reservations_for_a_cleared_loop_name_the_share_the_wanter_and_the_ladde
     assert r["amount"] == to_wei(Fraction(4))                         # 10 EUR × 40 / 100
     assert r["window"] == (1_789_898_400, 1_789_905_600) and r["claim_seconds"] == 600
     assert r["ladder"] == [(86_400, to_wei(1)), (0, to_wei(4))]        # at 1 per EUR
+    assert (r["claim_only"], r["min_challenge"], r["min_ruling"]) == (False, 0, 0)   # no cover, the resolver's bounds
+    cover = reservations_for(proposal, escrow="0xescrow", resolver=W, claim_seconds=1, now=NOW,
+                             claim_only=lambda g: g.offer_id == farm.offer_id, min_challenge=3600, min_ruling=86_400)[0]
+    assert (cover["claim_only"], cover["min_challenge"], cover["min_ruling"]) == (True, 3600, 86_400)
     # no span reader: the window is now; another escrow: nothing; no arbitrator: the stand-in
     assert reservations_for(proposal, escrow="0xescrow", resolver=W, claim_seconds=1, now=NOW)[0]["window"] == (NOW, NOW)
     assert reservations_for(proposal, escrow="0xother", resolver=W, claim_seconds=1, now=NOW) == []
