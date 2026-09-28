@@ -533,8 +533,32 @@ without anyone ruling: the reservation returns to the giver after a
 quiet claim period (anyone may settle), or now on the wanter's
 countersignature, and a giver who cancels pays the ladder's amount for
 that lead. Only a *contested* claim needs a ruling, and that is
-factbond's: the resolver fixed at clearing (your key today) holds and
-resolves the reservation, nothing more.
+factbond's: the resolver fixed at clearing (`set resolver`: factbond's
+`Assertions` contract, or your own key when empty) holds and resolves
+the reservation, nothing more.
+
+How a contested claim runs once factbond is the resolver (factbond's
+contract as of 2026-09-28, live after its redeploy and the escrow's):
+
+- **Notice first.** A wanter who was let down tells the giver which fact
+  is wrong and gives it the cure deadline to deliver, refund or correct.
+  A cure ends the matter, and nothing about it becomes public.
+- **Then the claim.** Past the deadline, the wanter asserts the claim on
+  factbond with a small bond; the escrow is told to hold the reservation.
+  The giver either disputes it within the challenge window, staking at
+  the odds the claim's confidence sets, or lets it certify, and the
+  reservation pays the wanter.
+- **Giving up.** The giver gives up by not disputing. The wanter can
+  give up a disputed claim with `concede`, which hands the giver the
+  claim's bond with no ruling and no fee.
+- **The ruling.** Otherwise the adjudicator rules, and the loser pays its
+  fee and nothing more. Where an arbiter is named, the payout waits
+  through a short appeal window, and the loser may appeal at double its
+  own stake; a reversal also pays the appellant the first adjudicator's
+  deposit.
+- **Nobody walks away with the stakes.** An adjudicator that lets its
+  window lapse sends the case up to the arbiter with everything still
+  held; only a ruling, or a party's own act, releases money.
 
 ## 8. The solver agent — and then federation
 

@@ -211,9 +211,18 @@ built 2026-09-13 to 2026-09-19 (0.5.0–0.11.0). What follows is what stands.
       `loopmarket-coupling.md` §3b) takes the resolver's address; the
       escrow does not change. **Live on Gnosis since 2026-09-19** (0.12.0:
       a claim on beat 2's reservation certified by timeout and paid through
-      the escrow); this line was stale until 2026-09-25. The no-ruling
-      escalation and the repair supersession (a cancellation a re-clearing
-      replaced pays nothing) live there and in §3's superseding records.
+      the escrow); this line was stale until 2026-09-25. The repair
+      supersession (a cancellation a re-clearing replaced pays nothing)
+      lives in §3's superseding records. *(2026-09-28, factbond's side:
+      the contract now takes per-assertion challenge and ruling windows,
+      charges the loser a ruling fee instead of a 25% slice, lets the
+      asserter concede, names an arbiter as the final rung with first
+      rulings held for appeal, and moves a lapsed case up with the stakes
+      held instead of returning them; a claim may name the key it
+      concerns. The live resolver stays the 2026-09-19 source until
+      factbond redeploys, and the escrow's one redeploy below names the
+      new address. The cross-repo gate, `test_factbond_as_the_resolver`,
+      runs against factbond's current source.)*
 - [ ] Release prices and re-clearing · [plan](docs/plans/P3-release-and-reclearing.md)
       (direction, 2026-09-18): the required floor as the maker's true
       neutral point, permissionless cancellation at that price, cancel-and-
@@ -239,7 +248,10 @@ Nothing here blocks P3's open items; the sequencing is the plan's §6.
       registers as separately rooted transparency logs under a `register`
       role, pinned per proposal in `register_roots` (proposal, loop record,
       `Beat`); `verifyAbsence` and consistency proofs on the leg path;
-      `notice/` with a cure deadline as rung zero of every claim; the door
+      `notice/` with a cure deadline as rung zero of every claim on a
+      reservation (a dispute of a live factbond assertion takes none, since
+      the dispute is the notice and the asserter's concession its cheap
+      ending: factbond, 2026-09-28); the door
       scale and issuance sources as witness types through the roster; the
       rejection record enumerating every failing step. R1–R7.
 - [ ] **Options and cover** · [design](docs/plans/options-and-cover.md) —
@@ -256,7 +268,10 @@ Nothing here blocks P3's open items; the sequencing is the plan's §6.
       in the bump after v6. I1–I6.
 - [ ] **Small escrow changes first** (plan §6 step 2): `claimOnly`,
       `assign`, `settle(split)`, `extendClaim`, per-leg claim seconds, the
-      accepted-resolver check at `reserve`.
+      accepted-resolver check at `reserve`. With factbond's 2026-09-28
+      contract the escrow can also read the claim in `hold`
+      (`assertions(count())`) and refuse windows it does not accept, and the
+      redeploy names factbond's redeployed address.
 
 ## P4 — staged privacy · [plan](docs/plans/P4-privacy.md)
 

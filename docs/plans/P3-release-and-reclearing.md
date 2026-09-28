@@ -342,6 +342,9 @@ leg from the record's declarations (`arbitrator` on the give, the
 wanter's accepted witness types), never a system in front of it; the
 escalation when no ruling arrives in the agreed period is factbond's
 constitution (`mechanism-design.md`'s ladder), not the escrow's.
+*(2026-09-28, factbond: a rung that lets its window lapse sends the case
+up to the arbiter with the stakes held; nothing is released without a
+ruling or a party's own act, so a held reservation waits for one.)*
 
 **The interface is one call each way**, and it is generic on factbond's
 side — a subject hash and a consumer callback, so the same market
