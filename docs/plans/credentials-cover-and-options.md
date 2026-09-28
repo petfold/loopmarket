@@ -706,7 +706,11 @@ factbond that was not accurate. The mutual's own rules were unspecified.
   50%`, which reads a boolean assertion as 0. factbond adds a per-fact-type
   escalation value to the policy (for a boolean, "unresolved", which a
   consumer treats as neither, and which for a cover claim means the hold
-  persists) before any long-lived boolean use.
+  persists) before any long-lived boolean use. *(Superseded 2026-09-28,
+  Peter, in factbond: only a ruling moves money. A lapsed first rung's
+  case moves up to the arbiter with the stakes held, the arbiter may rule
+  late, and nothing resolves at a share, so every lapse keeps the hold,
+  as "unresolved" asked; the per-fact-type value is withdrawn.)*
 - **Good practice, not compliance.** loopmarket is open source on the
   internet with no organisation behind it; compliance with any
   jurisdiction's law is entirely the makers' responsibility, stated as a
