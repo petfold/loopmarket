@@ -242,7 +242,8 @@ def test_factbond_as_the_resolver(chain):
     fee, floor = 10 ** 15, 10 ** 16
     receipt = w3.eth.wait_for_transaction_receipt(
         w3.eth.contract(abi=art["abi"], bytecode=art["bin"]).constructor(
-            adjudicator, treasury, fee, floor, 100, 10, 60 * 86400, 100, 90 * 86400, floor // 2, 5000).transact())
+            adjudicator, treasury, fee, floor, 100, 10, 60 * 86400, 100, 90 * 86400, floor // 2, 5000,
+            ("0x" + "00" * 20, 0, 0, 0)).transact())
     factbond = w3.eth.contract(address=receipt["contractAddress"], abi=art["abi"])
     offer = bytes.fromhex("77" * 32)
     escrow.functions.deposit(offer).transact({"from": giver, "value": 10 ** 18})
