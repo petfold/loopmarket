@@ -170,16 +170,18 @@ def test_the_statement_is_one_content_addressed_shape():
 
 
 def test_requirements_this_build_cannot_check_meet_nothing_and_options_clear_nowhere():
-    """Fail closed (U7) until R4's gate and C2's option records exist; an
-    empty v6 requirement changes nothing; a claim period is met by a give
-    whose claim_max reaches it."""
+    """Fail closed (U7): a credential meets nothing without the gate's
+    reads (R4, `test_gate.py`), a required leg nothing until D4's operators,
+    an option clears nowhere until C2's records; an empty v6 requirement
+    changes nothing; a claim period is met by a give whose claim_max
+    reaches it."""
     ont = _cat()
     bond = Bond(Thing(("stablecoin-eur",), 50, "EUR"), 50, "0xE")
     dentist = give("0x" + "44" * 20, Thing(("dentistry",), 1, "visit"), 35, **V, nonce=12, claim_max=60 * 86_400,
                    bond=bond)
     plain = want("amara", Thing(("dentistry",), 1, "visit"), 40, **V, nonce=21)
     assert check_match(dentist, plain, ont, now=NOW) is not None
-    # each v6 entry alone refuses the leg until its gate exists
+    # each v6 entry alone refuses the leg without its reads
     for req in (Requires(counterparty=(Credential("dentist-licensed", ("signed",)),)),
                 Requires(legs=(RequiredLeg("insure", Accept(keys=("0xi",))),)),
                 Requires(resolvers=Accept(keys=("0xr",)))):

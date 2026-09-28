@@ -21,6 +21,22 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **R4: the counterparty gate** (2026-09-29; `counterparty-gate.md` §4).
+  `gate.CounterpartyGate` checks each `requires.counterparty` credential
+  against the statements the other side presented (`cred/`), under the
+  pinned registers: category and kind; a path through `accredit/` to a
+  named trust root, every register on it pinned; not revoked; each
+  register fresh (`Register.heartbeat`, within `max_root_age`); valid
+  through the handover window; a named deposit's free share after this
+  fill's reservation covering `min_bond` at the requirer's price; not
+  suspended. `faults` returns every failing step (plan E4) and clearing's
+  refusal lists them. `meets`, `_gates`, the `check_*` functions and the
+  candidate generators take `gate=`; `SolverAgent(registers=, span=)`
+  builds it over its snapshot and pins every register;
+  `MockClearing(register_at=, span=)` re-reads the pinned roots (U3).
+  `rehearse` now also consults the clearing's `escrow_held`. The dentist
+  case passes and clears in memory (`tests/test_gate.py`), and each
+  failure is refused with its step named.
 - **R3a: registers, separately rooted and pinned** (2026-09-29;
   `counterparty-gate.md` §3.3). `register.Register` over its own store:
   `status/`, `revoked/` (monotone; absence under a pinned root is a proof

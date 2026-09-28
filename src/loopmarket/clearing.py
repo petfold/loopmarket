@@ -33,6 +33,8 @@ from .matching import check_aggregate, check_composition, check_match, check_par
 from .ontology import Ontology
 from .registry import OfferRegistry
 from .register import named_registers
+from .gate import CounterpartyGate
+from .schema import Offer
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,7 +138,7 @@ class MockClearing:
     def __init__(self, registry: OfferRegistry, ontology: Ontology, *,
                  min_surplus: float = 0.0, require_per_node: bool = True,
                  clock=_time.time, verifiable_oracles=VERIFIABLE_ORACLES,
-                 chain_fills=None, escrow_held=None):
+                 chain_fills=None, escrow_held=None, register_at=None, span=None):
         self.registry = registry
         self.ontology = ontology
         self.min_surplus = min_surplus
@@ -157,6 +159,25 @@ class MockClearing:
         #: (`matching.meets`, 2026-09-19) — the chain is the authority on
         #: the deposit as on the fills.
         self.escrow_held = escrow_held
+        #: (register id, root) -> the `Register` read at that root, or None
+        #: (R4, 2026-09-29): the counterparty gate re-reads every register
+        #: the proposal pinned, here, never the solver's copy (U3); without
+        #: it only a self-bonded statement can meet a credential.
+        self.register_at = register_at
+        #: a `time(...)` term's text -> (start, end), for the leg's handover
+        #: window the gate checks validity through; None: the clock's instant
+        self.span = span
+
+    def gate(self, register_roots=(), *, now: int) -> CounterpartyGate:
+        """The counterparty gate over this clearing's own book, the
+        registers read at the pinned roots, what the escrow holds."""
+        registers = {}
+        if self.register_at is not None:
+            for rid, root in register_roots:
+                if root:
+                    registers[rid] = self.register_at(rid, root)
+        held = None if self.escrow_held is None else _Held(self.escrow_held)
+        return CounterpartyGate.over(self.registry, registers, now=now, span=self.span, held=held)
 
     def deposits(self, offer_ids) -> dict | None:
         """What the escrow holds behind each offer, or None when no escrow
@@ -241,8 +262,9 @@ class MockClearing:
         #    current book, operators included, against what fills have
         #    left of every give (a partial fill's remainder)
         available = self.available(loop.offer_ids)
+        gate = self.gate(proposal.register_roots, now=now)
         for leg in loop.legs:
-            reason = self.verify_leg(leg, now=now, available=available)
+            reason = self.verify_leg(leg, now=now, available=available, gate=gate)
             if reason:
                 return reject(reason)
 
@@ -261,7 +283,8 @@ class MockClearing:
         root = self.registry.commit()
         return Receipt(True, lid, book_root=root)
 
-    def verify_leg(self, leg, *, now: int, available: dict, held: dict | None = None) -> str | None:
+    def verify_leg(self, leg, *, now: int, available: dict, held: dict | None = None,
+                   gate: CounterpartyGate | None = None) -> str | None:
         """Re-derive one leg from this clearing's book and ontology — the
         exact check for its shape: `check_aggregate` for explicit shares,
         `check_parts` for a composed want, `check_match` for one give,
@@ -274,25 +297,45 @@ class MockClearing:
         convicts it."""
         if held is None:
             held = self.deposits(leg.offer_ids)
+        if gate is None:
+            gate = self.gate(now=now)
         fresh_want = self.registry.get(leg.want.offer_id)
         fresh_gives = [self.registry.get(g.offer_id) for g in leg.gives]
         if leg.quantities is not None:
             ok = check_aggregate(fresh_want, fresh_gives, leg.quantities, self.ontology,
-                                 now=now, available=available, held=held)
+                                 now=now, available=available, held=held, gate=gate)
         elif fresh_want.composed:
             ok = check_parts(fresh_want, fresh_gives, self.ontology, now=now,
-                             available=available, held=held)
+                             available=available, held=held, gate=gate)
         elif leg.simple:
             ok = check_match(fresh_gives[0], fresh_want, self.ontology, now=now,
-                             available=available, held=held)
+                             available=available, held=held, gate=gate)
         else:
             ok = check_composition(fresh_want, fresh_gives, self.ontology, now=now,
-                                   available=available, held=held)
+                                   available=available, held=held, gate=gate)
         if ok is None:
-            return (f"leg fails re-verification: "
-                    f"{'+'.join(g.offer_id[:8] for g in leg.gives)}"
-                    f" -> {leg.want.offer_id[:8]}")
+            reason = (f"leg fails re-verification: "
+                      f"{'+'.join(g.offer_id[:8] for g in leg.gives)}"
+                      f" -> {leg.want.offer_id[:8]}")
+            faults = self.gate_faults(fresh_want, fresh_gives, gate)
+            return reason + (" — the counterparty gate: " + " | ".join(faults) if faults else "")
         return None
+
+    def gate_faults(self, want: Offer, gives, gate: CounterpartyGate) -> list[str]:
+        """Every failing step of either side's credential requirement on a
+        leg (plan E4: one refusal listing every discrepancy, so a
+        re-presentation cures in one round)."""
+        window = gate.window(want)
+        out = []
+        for give in gives:
+            for mine, other in ((want, give), (give, want)):
+                if mine.requires is not None and mine.requires.counterparty:
+                    taken = q(want.thing.qty) if other is give and not want.composed else None
+                    whole = q(give.thing.qty) if other is give else None
+                    out += [f"{mine.maker} of {other.maker}: {f}"
+                            for f in gate.faults(mine, other, self.ontology, window=window,
+                                                 taken=taken, whole=whole)]
+        return out
 
     def rehearse(self, proposal: LoopProposal) -> Receipt:
         """The whole checklist, nothing committed: the verdict a proposal
@@ -300,7 +343,8 @@ class MockClearing:
         challenger runs it against the beat's snapshot."""
         dry = MockClearing(_Dry(self.registry), self.ontology, min_surplus=self.min_surplus,
                            require_per_node=self.require_per_node, clock=self.clock,
-                           verifiable_oracles=self.verifiable_oracles, chain_fills=self.chain_fills)
+                           verifiable_oracles=self.verifiable_oracles, chain_fills=self.chain_fills,
+                           escrow_held=self.escrow_held, register_at=self.register_at, span=self.span)
         return dry.submit(proposal)
 
 
@@ -371,3 +415,14 @@ class _Dry:
 
     def commit(self, *a, **k):
         return self._r.store.root
+
+
+class _Held:
+    """The escrow's holdings as the mapping the gate reads, asked lazily
+    (a statement's deposit may be any offer in the book)."""
+
+    def __init__(self, escrow_held) -> None:
+        self._held = escrow_held
+
+    def get(self, offer_id: str, default=0):
+        return q(self._held(offer_id))

@@ -271,7 +271,10 @@ name factbond's redeployed `Assertions`. Hence:
    test amounts.
 6. **R2–R4 with hansa A0** — Milestone M1, the dentist case in memory.
    R2 (the `cred/` sidecar and its fold rule) DONE 2026-09-29; R3a (registers,
-   the `register` role, `register_roots`, loop record v2) DONE the same day.
+   the `register` role, `register_roots`, loop record v2) DONE the same day;
+   R4 (the gate, the dentist case in memory, every failing step listed) DONE
+   the same night in the solo form — the practice form's door binding is R7's.
+   M1 needs hansa A0 producing the statements.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust

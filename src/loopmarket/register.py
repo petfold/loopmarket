@@ -25,6 +25,7 @@ Pure over a duck-typed RecordStore, like the offer book (B1).
 from __future__ import annotations
 
 ISSUED, SUSPENDED, REVOKED = "issued", "suspended", "revoked"
+HEARTBEAT = "heartbeat"      # {"at": t}: when this root was published (R4's freshness; R5 proves the sequence)
 STATUS = "status/"
 REVOKED_KEYS = "revoked/"
 SUSPENDED_KEYS = "suspended/"
@@ -45,6 +46,19 @@ class Register:
         return self.store.commit()
 
     # -- writes (the register's owner) -------------------------------------------
+
+    def heartbeat(self, at: int) -> None:
+        """Stamp the root about to be committed with its publication time:
+        the root's age against a clearing's clock is what `max_root_age`
+        bounds (counterparty-gate.md §5). A register heartbeats at least at
+        its declared cadence; a silent one outruns strict requirers. That a
+        root extends its predecessor, and is the latest as of t, is R5's."""
+        self.store.put(HEARTBEAT, {"at": int(at)})
+
+    @property
+    def as_of(self) -> int | None:
+        """The heartbeat of the root this register is read at, or None."""
+        return self.store.get(HEARTBEAT)["at"] if self.store.contains(HEARTBEAT) else None
 
     def issue(self, statement_id: str, at: int) -> None:
         self._state(statement_id, ISSUED, at)

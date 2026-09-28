@@ -102,7 +102,7 @@ def admits(accept, key: str, *, parties=()) -> bool:
 
 
 def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=None,
-          held=None) -> bool:
+          held=None, gate=None) -> bool:
     """Does `other`'s declaration meet `mine`'s requirement (v5; admissibility
     by declaration, `P3-release-and-reclearing.md` §5d)? The witness type and
     the escrow kind must be accepted; and when the neutral point is above
@@ -125,12 +125,24 @@ def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=No
     (`admits`, E2: by key today). A credential or a required leg meets
     nothing yet: the record carries them since R1 and the gate that checks
     them is R4, so until then a requirement this build cannot check refuses
-    the leg (U7) rather than passing it unread."""
+    the leg (U7) rather than passing it unread.
+
+    R4 (2026-09-29): `counterparty` credentials are checked by `gate` (a
+    `gate.CounterpartyGate`: the statements presented, the registers at their
+    pinned roots, the clock) — every entry met by a statement passing the
+    seven steps; no gate, no pass. `legs` still meets nothing (D4's
+    argument-only operators are Track O's)."""
     req = mine.requires
     if req is None or req.empty:
         return True
-    if req.counterparty or req.legs:
+    if req.legs:
         return False
+    if req.counterparty:
+        if gate is None:
+            return False
+        want = mine if mine.kind == WANT else other
+        if gate.faults(mine, other, ontology, window=gate.window(want), taken=taken, whole=whole):
+            return False
     if req.resolvers is not None and not (
             other.kind == GIVE and admits(req.resolvers, other.arbitrator, parties=(mine.maker, other.maker))):
         return False
@@ -161,7 +173,7 @@ def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=No
 
 def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
            quantity: bool = True, thing: Thing | None = None,
-           available=None, taken=None, held=None) -> bool:
+           available=None, taken=None, held=None, gate=None) -> bool:
     """Everything `check_match` decides before meaning: kinds and makers,
     the record line, validity, the v1/v2 fields, quantity and unit (skipped
     for an operator give, which moves a lot rather than being one), pins.
@@ -185,9 +197,9 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
     wanted = thing if thing is not None else (None if want.composed else want.thing)
     give_taken = taken if taken is not None else \
         (q(wanted.qty) if (quantity and wanted is not None) else q(give.thing.qty))
-    if not meets(want, give, ontology, taken=give_taken, whole=q(give.thing.qty), held=held):
+    if not meets(want, give, ontology, taken=give_taken, whole=q(give.thing.qty), held=held, gate=gate):
         return False
-    if not meets(give, want, ontology, held=held):
+    if not meets(give, want, ontology, held=held, gate=gate):
         return False
     if not (give.valid.is_open_at(now) and want.valid.is_open_at(now)):
         return False
@@ -230,12 +242,12 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
 
 
 def check_match(give: Offer, want: Offer, ontology: Ontology, *,
-                now: int, available=None, held=None) -> Match | None:
+                now: int, available=None, held=None, gate=None) -> Match | None:
     """The exact pairwise check; returns a Match or None. A composed
     want is never met by one give: `check_parts`. `available` maps offer
     ids to what fills have left of them (`OfferRegistry.availability`);
     None means the whole quantity."""
-    if want.composed or not _gates(give, want, ontology, now=now, available=available, held=held):
+    if want.composed or not _gates(give, want, ontology, now=now, available=available, held=held, gate=gate):
         return None
     if not ontology.satisfies(give.thing.concepts, want.thing.concepts):
         return None
@@ -313,7 +325,7 @@ class Leg:
 
 
 def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
-                      *, now: int, available=None, held=None) -> Leg | None:
+                      *, now: int, available=None, held=None, gate=None) -> Leg | None:
     """The exact check of a composed leg (`P2-loop-selection.md` §10, the
     discovered form): the first give is the thing, every further give an
     operator — a give naming a category under `operator` (`transport`) and
@@ -331,11 +343,11 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
     if not gives:
         return None
     thing, operators = gives[0], gives[1:]
-    if not _gates(thing, want, ontology, now=now, available=available, held=held):
+    if not _gates(thing, want, ontology, now=now, available=available, held=held, gate=gate):
         return None
     derived = list(thing.thing.concepts)
     for op in operators:
-        if not _gates(op, want, ontology, now=now, quantity=False, held=held):
+        if not _gates(op, want, ontology, now=now, quantity=False, held=held, gate=gate):
             return None
         terms = [c for c in op.thing.concepts if ontology.operator_of(c)]
         moves = ontology.ends(op.thing.concepts)
@@ -358,7 +370,7 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
 
 
 def check_parts(want: Offer, gives: Iterable[Offer], ontology: Ontology,
-                *, now: int, available=None, held=None) -> Leg | None:
+                *, now: int, available=None, held=None, gate=None) -> Leg | None:
     """The exact check of a composed want's leg (v4, `P2-loop-selection.md`
     §10's declared form): give `i` serves part `i` — the gates against
     that part (quantity on the give's step and floor, units, pins) and
@@ -370,7 +382,7 @@ def check_parts(want: Offer, gives: Iterable[Offer], ontology: Ontology,
     if len({g.offer_id for g in gives}) != len(gives):
         return None
     for g, part in zip(gives, want.parts):
-        if not _gates(g, want, ontology, now=now, thing=part, available=available, held=held):
+        if not _gates(g, want, ontology, now=now, thing=part, available=available, held=held, gate=gate):
             return None
         if not ontology.satisfies(g.thing.concepts, part.concepts):
             return None
@@ -378,7 +390,7 @@ def check_parts(want: Offer, gives: Iterable[Offer], ontology: Ontology,
 
 
 def check_aggregate(want: Offer, gives: Iterable[Offer], quantities: Iterable,
-                    ontology: Ontology, *, now: int, available=None, held=None) -> Leg | None:
+                    ontology: Ontology, *, now: int, available=None, held=None, gate=None) -> Leg | None:
     """The exact check of an aggregated leg (`P2-loop-selection.md` §10, the
     six lifters, 2026-09-14): one want of one thing met by several gives of
     it, each contributing a share — every give passes the gates against the
@@ -393,7 +405,7 @@ def check_aggregate(want: Offer, gives: Iterable[Offer], quantities: Iterable,
     if sum(quantities, Fraction(0)) != q(want.thing.qty):
         return None
     for g, share in zip(gives, quantities):
-        if not _gates(g, want, ontology, now=now, quantity=False, taken=share, held=held):
+        if not _gates(g, want, ontology, now=now, quantity=False, taken=share, held=held, gate=gate):
             return None
         left = None if available is None else available.get(g.offer_id)
         if g.thing.unit != want.thing.unit or not g.thing.takes(share, left):
@@ -404,7 +416,7 @@ def check_aggregate(want: Offer, gives: Iterable[Offer], quantities: Iterable,
 
 
 def aggregate_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,
-                   available=None, held=None, max_gives: int = 6,
+                   available=None, held=None, gate=None, max_gives: int = 6,
                    max_alternatives: int = 8) -> Iterator[Leg]:
     """Baseline aggregation search: for every simple want no single give
     serves, the gives of its thing in id order, each contributing a share it
@@ -419,10 +431,10 @@ def aggregate_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,
     gives = sorted((o for o in offers if o.kind == GIVE), key=lambda o: o.offer_id)
     for w in sorted((o for o in offers if o.kind == WANT and not o.composed),
                     key=lambda o: o.offer_id):
-        if any(check_match(g, w, ontology, now=now, available=available, held=held) for g in gives):
+        if any(check_match(g, w, ontology, now=now, available=available, held=held, gate=gate) for g in gives):
             continue                   # one give reaches: nothing to add up
         pool = [g for g in gives
-                if _gates(g, w, ontology, now=now, quantity=False, held=held)
+                if _gates(g, w, ontology, now=now, quantity=False, held=held, gate=gate)
                 and g.thing.unit == w.thing.unit
                 and ontology.satisfies(g.thing.concepts, w.thing.concepts)]
         need = q(w.thing.qty)
@@ -459,13 +471,13 @@ def aggregate_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,
 
         found = dfs(0, need, [], [])
         if found is not None and len(found[0]) >= 2:
-            leg = check_aggregate(w, found[0], found[1], ontology, now=now, available=available, held=held)
+            leg = check_aggregate(w, found[0], found[1], ontology, now=now, available=available, held=held, gate=gate)
             if leg is not None:
                 yield leg
 
 
 def parts_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,
-               limit: int = 64, available=None, held=None) -> Iterator[Leg]:
+               limit: int = 64, available=None, held=None, gate=None) -> Iterator[Leg]:
     """Baseline search for composed wants: per part the gives that serve
     it, then every combination of distinct gives (at most `limit` per
     want, deterministic order) checked exactly."""
@@ -475,14 +487,14 @@ def parts_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,
     for w in sorted((o for o in offers if o.kind == WANT and o.composed),
                     key=lambda o: o.offer_id):
         per_part = [[g for g in gives
-                     if _gates(g, w, ontology, now=now, thing=part, available=available, held=held)
+                     if _gates(g, w, ontology, now=now, thing=part, available=available, held=held, gate=gate)
                      and ontology.satisfies(g.thing.concepts, part.concepts)]
                     for part in w.parts]
         found = 0
         for combo in _product(*per_part):
             if len({g.offer_id for g in combo}) != len(combo):
                 continue
-            leg = check_parts(w, combo, ontology, now=now, available=available, held=held)
+            leg = check_parts(w, combo, ontology, now=now, available=available, held=held, gate=gate)
             if leg is not None:
                 yield leg
                 found += 1
@@ -491,7 +503,7 @@ def parts_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,
 
 
 def composed_legs(offers: Iterable[Offer], ontology: Ontology, *,
-                  now: int, max_hops: int = 2, available=None, held=None) -> Iterator[Leg]:
+                  now: int, max_hops: int = 2, available=None, held=None, gate=None) -> Iterator[Leg]:
     """Baseline composition search: every want × every thing-give that does
     not already satisfy it × every chain of up to `max_hops` distinct
     operator gives, checked exactly — an operator is composed only where it
@@ -518,7 +530,7 @@ def composed_legs(offers: Iterable[Offer], ontology: Ontology, *,
     things = [g for g in gives if g not in ops]
     for w in wants:
         for thing in things:
-            if check_match(thing, w, ontology, now=now, available=available, held=held) is not None:
+            if check_match(thing, w, ontology, now=now, available=available, held=held, gate=gate) is not None:
                 continue           # the thing already reaches: no operator needed
             reached = False
             for hops in range(1, max_hops + 1):
@@ -526,14 +538,14 @@ def composed_legs(offers: Iterable[Offer], ontology: Ontology, *,
                     break          # a shorter chain reaches: no longer one
                 for chain in permutations(ops, hops):
                     leg = check_composition(w, (thing, *chain), ontology, now=now,
-                                            available=available, held=held)
+                                            available=available, held=held, gate=gate)
                     if leg is not None:
                         reached = True
                         yield leg
 
 
 def candidate_matches(offers: Iterable[Offer], ontology: Ontology, *,
-                      now: int, available=None, held=None) -> Iterator[Match]:
+                      now: int, available=None, held=None, gate=None) -> Iterator[Match]:
     """All feasible handoffs among `offers`.
 
     Prototype strategy: exact check over the give x want product, with the
@@ -546,6 +558,6 @@ def candidate_matches(offers: Iterable[Offer], ontology: Ontology, *,
     gives = [o for o in offers if o.kind == GIVE]
     wants = [o for o in offers if o.kind == WANT and not o.composed]
     for g, w in product(gives, wants):
-        m = check_match(g, w, ontology, now=now, available=available, held=held)
+        m = check_match(g, w, ontology, now=now, available=available, held=held, gate=gate)
         if m is not None:
             yield m

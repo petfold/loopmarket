@@ -39,6 +39,7 @@ import time as _time
 from dataclasses import dataclass, field
 
 from ..graph import Circulation, ExchangeGraph, Loop, find_circulations, enumerate_cycles
+from ..gate import CounterpartyGate
 from ..matching import Leg, aggregate_legs, candidate_matches, composed_legs, parts_legs
 from ..schema import q
 from ..selection import item_of, pack, weight
@@ -75,6 +76,13 @@ class SolverAgent:
     exact_up_to: int = 24
     pack_budget: int = 200_000
     failure_prior: object = 0
+    #: The counterparty gate's reads (R4, 2026-09-29): register id ->
+    #: `Register` at the root this solver pins, and a reader of a `time(...)`
+    #: term's span for the handover window. Statements come from the
+    #: snapshot's `cred/` records; every register given is pinned in the
+    #: proposals' `register_roots`, the clearing re-reading them there (U3).
+    registers: dict = field(default_factory=dict)
+    span: object = None
 
     def find_loops(self, *, now: int | None = None
                    ) -> tuple[str, list[Loop | Circulation]]:
@@ -112,8 +120,9 @@ class SolverAgent:
         if self.escrow_held is not None:
             held = {o.offer_id: q(self.escrow_held(o.offer_id)) for o in offers
                     if o.v >= 5 and o.bond is not None and o.bond.escrow}
+        gate = self.gate(book, now=now, held=held)
         matches = list(candidate_matches(offers, self.ontology, now=now,
-                                         available=available, held=held))
+                                         available=available, held=held, gate=gate))
         cycles, complete = enumerate_cycles(matches, max_legs=self.max_legs,
                                             limit=self.cycle_limit, min_surplus=self.min_surplus)
         candidates: dict[str, Loop | Circulation] = {c.loop_id: c for c in cycles}
@@ -123,9 +132,10 @@ class SolverAgent:
             for loop in graph.find_profitable_loops(min_surplus=self.min_surplus,
                                                     limit=self.max_loops_per_step):
                 candidates.setdefault(loop.loop_id, loop)
-        composed = list(composed_legs(offers, self.ontology, now=now, available=available, held=held)) \
-            + list(parts_legs(offers, self.ontology, now=now, available=available, held=held)) \
-            + list(aggregate_legs(offers, self.ontology, now=now, available=available, held=held))
+        composed = list(composed_legs(offers, self.ontology, now=now, available=available, held=held,
+                                      gate=gate)) \
+            + list(parts_legs(offers, self.ontology, now=now, available=available, held=held, gate=gate)) \
+            + list(aggregate_legs(offers, self.ontology, now=now, available=available, held=held, gate=gate))
         if composed:
             legs = composed + [Leg.from_match(m) for m in matches]
             for circ in find_circulations(legs, min_surplus=self.min_surplus,
@@ -146,6 +156,15 @@ class SolverAgent:
         )
         return root, loops
 
+    def gate(self, book, *, now: int, held=None) -> CounterpartyGate:
+        """The counterparty gate over the snapshot: its presented statements,
+        this solver's registers, the clock."""
+        return CounterpartyGate.over(book, self.registers, now=now, span=self.span, held=held)
+
+    @property
+    def register_roots(self) -> tuple:
+        return tuple(sorted((rid, reg.root) for rid, reg in self.registers.items() if reg.root))
+
     def step(self, *, now: int | None = None) -> list[Receipt]:
         """One full solve-and-propose pass; returns clearing receipts."""
         found_at = int(_time.time()) if now is None else now
@@ -158,6 +177,7 @@ class SolverAgent:
                 ontology_root=self.ontology.root,
                 solver=self.solver_id,
                 found_at=found_at,
+                register_roots=self.register_roots,
             )
             receipt = self.clearing.submit(proposal)
             log.info(
