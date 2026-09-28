@@ -237,6 +237,8 @@ order, and settlement's behavior toward it.
 | digital-proof | a web-visible record         | zkTLS transport             |
 | attested-photo| physical state at capture    | Truepic-class attestation   |
 | location      | presence at a place          | none person-grade in 2026   |
+| possession    | the giver's key at the door  | a fresh challenge, spent once (R7, 2026-09-29) |
+| photo-match   | the person holding that key  | possession + the attester's photo commitment (R7) |
 
 **Countersign is the default**: mutual silence past the liveness window
 confirms a leg, and disagreement, never a vote, opens the dispute path; a

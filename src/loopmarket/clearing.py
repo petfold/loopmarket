@@ -131,9 +131,10 @@ class MockClearing:
     #: gate (docs/plans/P3-guarantee-coupling.md, enforcement rule 1): a leg
     #: naming a witness type outside this set never clears here, in U7's
     #: shape — unknown fails closed rather than silently clearing with a
-    #: guarantee nobody can check. The mock declares exactly the P0
-    #: countersign semantics.
-    VERIFIABLE_ORACLES = frozenset({"countersign"})
+    #: guarantee nobody can check. The mock declares the P0 countersign
+    #: semantics and, since R7 (2026-09-29), the door's two witness types,
+    #: whose settlement check is `witness.countersign_ready`.
+    VERIFIABLE_ORACLES = frozenset({"countersign", "possession", "photo-match"})
 
     def __init__(self, registry: OfferRegistry, ontology: Ontology, *,
                  min_surplus: float = 0.0, require_per_node: bool = True,

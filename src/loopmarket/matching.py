@@ -46,6 +46,7 @@ from typing import Iterable, Iterator
 
 from .ontology import Ontology
 from .schema import GIVE, WANT, Offer, Thing, q
+from .witness import accepted_types
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,8 +149,8 @@ def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=No
         return False
     if req.claim_period and (other.kind != GIVE or other.v < 6 or other.claim_max < req.claim_period):
         return False
-    if req.oracles and other.oracle not in req.oracles:
-        return False
+    if req.oracles and other.oracle not in accepted_types(req.oracles):
+        return False                    # a door level stands for every type meeting it (R7)
     if req.point == 0:
         return True
     bond = other.bond if other.v >= 5 else None

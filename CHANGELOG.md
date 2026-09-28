@@ -21,6 +21,18 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **R7: the door's witness types** (2026-09-29; `counterparty-gate.md`
+  §7). `witness.py`: `possession` — a fresh challenge signed by the giver's
+  key with the id it vouches for, spent by `DoorCheck` on its first
+  response (a replay, another key or a foreign challenge fails) — and
+  `photo-match` — possession plus the attester's salted photo commitment
+  opened at the door and confirmed by the counterparty. A requirement's
+  `oracles` may name a door level, a cumulative category
+  (`door-at-least-possession`, `door-at-least-photo`; `accepted_types`);
+  both types are in clearing's verifiable set; `countersign_ready` is the
+  settlement check a wanter's client runs before countersigning. hansa's
+  `binding` is now the device side over it. The roster rows are in
+  factbond's evidence policy.
 - **R6: notices before claims** (2026-09-29; `counterparty-gate.md` §6).
   `notice.py`: a claimant's `notice/<loop>/<offer>` sealed to the giver
   and the giver's `cure/<loop>/<offer>` sealed back, each beside a salted
