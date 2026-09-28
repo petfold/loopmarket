@@ -330,7 +330,7 @@ required by the protocol.**
 | # | Package | Gate |
 |---|---|---|
 | R1 | v6 `requires.counterparty` + statement type in `schema.py` | round-trip; v5 byte for byte; empty requirement changes nothing — *met 2026-09-29* (`tests/test_v6_record.py`; the checks themselves fail closed until R4) |
-| R2 | `cred/` sidecar + its own fold rule (`subject == owner`) | a foreign statement in a fold is rejected with attributed provenance (U8) |
+| R2 | `cred/` sidecar + its own fold rule (`subject == owner`) | a foreign statement in a fold is rejected with attributed provenance (U8) — *met 2026-09-29* (`tests/test_cred.py`; `OfferRegistry.present`/`statements`) |
 | R3 | registers as keyspaces + `register` role (announcement reading) + `register_roots` in `LoopProposal`, the `loop/` record, `Beat` and `beat.submission`; `verifyAbsence` on the leg path | a proposal missing a named register's root is refused; a revoked statement's absence proof fails on chain |
 | R4 | the gate in `meets` (§4) incl. handover-window validity | the dentist case, in its primary form (plan D1): a **practice** is the maker, its deposit backs an *attested* statement about each dentist's key, and the dentist's key is checked at the door; licensed passes; revoked, expired-before-window, unaccredited issuer, silent register, and a floor not free after this fill's reservation each refused; the solo dentist's *self-bonded* statement is the degenerate case with subject = maker |
 | R5 | "latest root as of t" + heartbeat + consistency proofs between roots (§3.3, §5) | a proposal pinning a stale root is refused when a newer one precedes clearing; a root that does not extend its predecessor is refused; two inconsistent roots signed by one register are a refutable fact |

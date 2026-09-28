@@ -5,6 +5,9 @@ Layout (one book = one RecordStore, one root reference per version):
     offer/<offer_id>                 -> the offer record (immutable value)
     sig/<offer_id>                   -> detached maker signature (U8, off-feed)
     handoff/<loop_id>/<offer_id>     -> sealed settlement text (handoff.py)
+    cred/<subject>/<statement_id>    -> {"statement": ..., "presentation": ...} — a statement about
+                                        the book owner's key, presented for the counterparty gate
+                                        (v6, R2, 2026-09-29; counterparty-gate.md §3.2)
     withdraw/<offer_id>              -> 1  (monotone tombstone: offer closed)
     fill/<offer_id>                  -> {"loop": <loop_id>, "qty": <taken>} for a give taken whole,
                                         {"loop": <loop_id>, "gives": [{"offer", "qty"}]} for a want
@@ -48,7 +51,7 @@ from __future__ import annotations
 from fractions import Fraction
 from typing import Iterable, Iterator
 
-from .schema import q, Offer
+from .schema import q, Offer, Statement
 
 OFFER = "offer/"
 SIG = "sig/"
@@ -56,6 +59,7 @@ WITHDRAW = "withdraw/"
 FILL = "fill/"
 LOOP = "loop/"
 HANDOFF = "handoff/"   # handoff/<loop_id>/<offer_id> -> sealed text (see handoff.py)
+CRED = "cred/"         # cred/<subject>/<statement_id> -> a presented statement (R2)
 
 
 class PartialLoopError(RuntimeError):
@@ -234,6 +238,29 @@ class OfferRegistry:
         for key, rec in self.store.items(HANDOFF):
             loop_id, _, offer_id = key[len(HANDOFF):].partition("/")
             yield loop_id, offer_id, rec
+
+    def present(self, statement: Statement, presentation: dict | None = None) -> str:
+        """Present a statement about a key in this book: `cred/<subject>/
+        <statement id>` → the statement and the presentation it was derived
+        from (`counterparty-gate.md` §3.2, R2). A sidecar like `sig/` and
+        `handoff/`: never in any offer's identity, so a credential renews or
+        is revoked without re-signing an offer; public, because the gate is
+        a matching gate and the solver must see it before proposing. The
+        fold admits it only in the subject's own book; `presentation` is
+        the adapter's (an issuer's signature, a selective disclosure) and
+        opaque here — never the documents themselves (§7)."""
+        if presentation is not None and not isinstance(presentation, dict):
+            raise ValueError("a presentation is a record")
+        sid = statement.statement_id
+        self.store.put(f"{CRED}{statement.subject}/{sid}",
+                       {"statement": statement.to_record(), "presentation": presentation})
+        return sid
+
+    def statements(self, subject: str | None = None) -> Iterator[tuple[Statement, dict | None]]:
+        """Every presented (statement, presentation), or those about `subject`."""
+        prefix = CRED if subject is None else f"{CRED}{subject}/"
+        for _key, rec in self.store.items(prefix):
+            yield Statement.from_record(rec["statement"]), rec.get("presentation")
 
     def mark_filled(self, fills, loop_id: str, loop_record: dict) -> None:
         """Claim every offer for the loop; a pure function of the decision.

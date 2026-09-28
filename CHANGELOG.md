@@ -11,6 +11,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **R2: the `cred/` sidecar** (2026-09-29; `counterparty-gate.md` §3.2).
+  `OfferRegistry.present(statement, presentation)` writes
+  `cred/<subject>/<statement id>` beside `sig/` and `handoff/`;
+  `statements(subject)` reads them. The fold admits a presentation only in
+  its subject's own maker book under the statement's own content address,
+  and rejects every other with attributed provenance (U8): a statement
+  about another key, a mis-addressed or unreadable record, a presentation
+  outside a maker book. Whether a statement is true is R4's gate.
 - **E2: the claim period and the resolver per leg** (2026-09-29, on the
   v6 record). `escrow.reservations_for` takes the leg's claim period —
   the want's `claim_period`, else `escrow_claim`, never beyond the give's

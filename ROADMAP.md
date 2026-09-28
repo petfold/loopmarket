@@ -270,6 +270,7 @@ name factbond's redeployed `Assertions`. Hence:
    (`0x299CE4…69Bf` with `0xfa6f…BF99`) keeps T18's hole; its stakes are
    test amounts.
 6. **R2–R4 with hansa A0** — Milestone M1, the dentist case in memory.
+   R2 (the `cred/` sidecar and its fold rule) DONE 2026-09-29.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust

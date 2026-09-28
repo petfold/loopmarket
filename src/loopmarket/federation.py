@@ -42,11 +42,11 @@ from dataclasses import dataclass
 from recordstore import RecordStore
 
 from .registry import (
-    HANDOFF,
+    CRED, HANDOFF,
     FILL, LOOP, OFFER, SIG, WITHDRAW, OfferRegistry,
     or_set_resolver,
 )
-from .schema import Offer
+from .schema import Offer, Statement
 
 #: Roles an announced book may carry: makers speak offers, signatures and
 #: tombstones; a clearing instance speaks fills and loops. Every other
@@ -261,6 +261,12 @@ class Aggregator:
                     reject(key, "handoff outside a maker book")
                     continue
                 deferred.append((key, rec))   # handoff/ sorts before offer/
+            elif key.startswith(CRED):
+                reason = self._cred_fault(owner, role, key, rec)
+                if reason:
+                    reject(key, reason)
+                    continue
+                staged.put(key, rec)
             else:
                 reject(key, "unknown keyspace")
         for key, rec in deferred:
@@ -277,6 +283,31 @@ class Aggregator:
                 continue
             staged.put(key, rec)
         return staged
+
+    @staticmethod
+    def _cred_fault(owner: str, role: str, key: str, rec) -> str:
+        """Why a `cred/` record is not this book's speech, or "" (R2). A
+        statement about a key is its *subject's* presentation
+        (counterparty-gate.md §3.2): admitted only in the subject's own
+        maker book, under the subject and the statement's own content
+        address. Why not `handoff/`'s rule: that one is per offer, and a
+        statement about a key has no offer to sit beside. Whether the
+        statement is true — its issuer, its path to a root, its status in a
+        register — is the gate's to check (R4), not the fold's."""
+        if role != MAKER:
+            return "statement outside a maker book"
+        subject, _, sid = key[len(CRED):].partition("/")
+        try:
+            statement = Statement.from_record(rec["statement"])
+        except (ValueError, KeyError, TypeError):
+            return "unreadable statement record"
+        if statement.statement_id != sid or statement.subject != subject:
+            return "content address mismatch"
+        if subject != owner:
+            return "statement about a key other than the book's owner"
+        if rec.get("presentation") is not None and not isinstance(rec["presentation"], dict):
+            return "unreadable presentation"
+        return ""
 
     @staticmethod
     def _sig_recovers(offer_id: str, sig, maker: str) -> bool:
