@@ -247,7 +247,9 @@ name factbond's redeployed `Assertions`. Hence:
 1. **E1** — `LoopEscrow`'s four acts and the claim read at `hold`
    (THREATS T18). DONE 2026-09-28, local EVM.
 2. **R1** — the v6 record, one bump (`counterparty-gate.md` §1,
-   `options-and-cover.md` §2): next, and first on M1's path.
+   `options-and-cover.md` §2). DONE 2026-09-29: the shapes, `Statement`,
+   `requires.claim_period` beside the decided fields, the new requirements
+   failing closed until R4 and options until C2.
 3. **E2** on v6 — the claim period matched per leg (`claim_max` against
    the want's ask, the catalogue's default and cap), the accepted-resolver
    check in `reservations_for`, `min_challenge`/`min_ruling` from the claim

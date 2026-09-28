@@ -375,7 +375,7 @@ per hold (the last clause is this draft's addition, not in U11 today).
 | # | Package | Gate |
 |---|---|---|
 | ~~C0~~ | `finalize` cap check (§6.1) — **shipped in 0.12.0, 2026-09-23** | met: `test_two_beats_racing_over_one_book_cannot_overfill`, live Gnosis gate |
-| C1 | v6 record: `underlying`, `exercise`; `option` as a non-operator graph-kind head in `triangle.od`'s seed (one v6 bump shared with `counterparty-gate.md`, plan D7) | v5 corpus re-encodes byte for byte; v6 round-trips; unknown `v` raises; a graph-kind non-operator give matches by containment |
+| C1 | v6 record: `underlying`, `exercise`; `option` as a non-operator graph-kind head in `triangle.od`'s seed (one v6 bump shared with `counterparty-gate.md`, plan D7) | v5 corpus re-encodes byte for byte; v6 round-trips; unknown `v` raises; a graph-kind non-operator give matches by containment — *the record half met 2026-09-29 with R1 (an option is a give; its exercise window ends; it clears nowhere until C2); the seed and the containment path remain* |
 | C2 | holds in registry + clearing (§3.2–3.6) | option then exercise clears; second option refused; W's exit during the hold is priced at the ladder (plan D6), not void; after expiry P clears to anyone; divisible 200/1000 |
 | C3 | solver awareness (§5) | the baseline never proposes a leg on held capacity except the holder's exercise |
 | C4 | holds on chain (§6.2), across `BeatClearing` and `LegVerifier` | an exercise by a non-holder is convicted by `challenge`; an honest one verifies; a `fill/` inclusion proof verifies on chain |

@@ -100,10 +100,22 @@ def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=No
     `held` (offer id -> quantity the escrow contract holds, in the asset's
     unit; 2026-09-19) makes the chain the authority on a deposit that
     names an escrow: the declaration counts only up to what is held, so a
-    bond declared and never funded meets nothing."""
+    bond declared and never funded meets nothing.
+
+    v6 (2026-09-29): a `claim_period` is met by a give whose `claim_max`
+    reaches it (plan A1's matched term; an undeclared maximum reaches
+    nothing until the catalogue's default exists, E2). A credential, a
+    required leg or a resolver acceptance meets nothing yet: the record
+    carries them since R1 and the gate that checks them is R4, so until then
+    a requirement this build cannot check refuses the leg (U7) rather than
+    passing it unread."""
     req = mine.requires
     if req is None or req.empty:
         return True
+    if req.counterparty or req.legs or req.resolvers is not None:
+        return False
+    if req.claim_period and (other.kind != GIVE or other.v < 6 or other.claim_max < req.claim_period):
+        return False
     if req.oracles and other.oracle not in req.oracles:
         return False
     if req.point == 0:
@@ -138,6 +150,11 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
     if give.kind != GIVE or want.kind != WANT or give.maker == want.maker:
         return False
     if (give.v >= 3) != (want.v >= 3):
+        return False
+    if give.v >= 6 and give.underlying:
+        # an option clears only with its option record (options-and-cover.md
+        # §3.2, package C2); the v6 record carries it since R1, the clearing
+        # that writes the record does not exist yet, so it clears nowhere
         return False
     # admissibility by declaration (v5, 2026-09-18): each side's requirement
     # of a counterparty — a bond floor, accepted witness types — must be met

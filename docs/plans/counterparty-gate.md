@@ -68,6 +68,19 @@ Cross-category alternatives ("an EU or a UK licence") live in the catalogue
 as recognition edges under one node, not in the record. Empty
 `counterparty` (the default) requires nothing; most trades need nothing.
 
+*(built 2026-09-29, R1)* In `schema.py` the entries are `Credential`,
+`RequiredLeg` and `Accept`. Amounts in a requirement are on the requirer's
+own scale, as `point` is: `min_bond` and an acceptance's `min_deposit` are
+converted at the requirer's acceptance price for the deposit's asset, once,
+at clearing (U14). An `Accept` reads *who* as alternatives (a key in `keys`,
+or accredited under one of `roots`; neither named admits anyone the floors
+admit) and its *floors* (`min_deposit`, `clean_for`, `issuance`) all
+together; an `Accept` naming nothing is refused, so "no requirement" has one
+spelling. One field was added beside the decided list: `requires.claim_period`,
+the want's side of A1's matched claim period ("the want asks for at most
+that" needs a place, and a second bump for it would break D7's one bump);
+it is met by a give whose `claim_max` reaches it.
+
 `legs` is the composed-cover and inspection requirement (D4): each named
 category must appear as a give in the loop whose argument accepts the
 wanted thing, composed by the solver like `transport`.
@@ -316,7 +329,7 @@ required by the protocol.**
 
 | # | Package | Gate |
 |---|---|---|
-| R1 | v6 `requires.counterparty` + statement type in `schema.py` | round-trip; v5 byte for byte; empty requirement changes nothing |
+| R1 | v6 `requires.counterparty` + statement type in `schema.py` | round-trip; v5 byte for byte; empty requirement changes nothing — *met 2026-09-29* (`tests/test_v6_record.py`; the checks themselves fail closed until R4) |
 | R2 | `cred/` sidecar + its own fold rule (`subject == owner`) | a foreign statement in a fold is rejected with attributed provenance (U8) |
 | R3 | registers as keyspaces + `register` role (announcement reading) + `register_roots` in `LoopProposal`, the `loop/` record, `Beat` and `beat.submission`; `verifyAbsence` on the leg path | a proposal missing a named register's root is refused; a revoked statement's absence proof fails on chain |
 | R4 | the gate in `meets` (§4) incl. handover-window validity | the dentist case, in its primary form (plan D1): a **practice** is the maker, its deposit backs an *attested* statement about each dentist's key, and the dentist's key is checked at the door; licensed passes; revoked, expired-before-window, unaccredited issuer, silent register, and a floor not free after this fill's reservation each refused; the solo dentist's *self-bonded* statement is the degenerate case with subject = maker |

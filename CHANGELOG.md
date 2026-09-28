@@ -9,6 +9,27 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Added
+
+- **The v6 record** (2026-09-29, R1; `docs/plans/counterparty-gate.md` §1–§2,
+  `options-and-cover.md` §3.1, one bump as decided in D7). `Requires` gains
+  `counterparty` (`Credential`: category, kinds, `min_bond`, trust
+  `roots`, `max_root_age`), `legs` (`RequiredLeg`: category, `Accept`),
+  `resolvers` (`Accept`: keys or accrediting roots, floors on deposit,
+  look-back without reversal, issuance source; never a count) and
+  `claim_period`, the want's ask in the matched claim period; an offer
+  gains `claim_max` (a give's) and an option's `underlying` and
+  `exercise`; `Statement` is the one statement shape (subject, category,
+  issuer, kind, validity, evidence, path, `paid_by`, deposit, scheme,
+  issuance), content addressed. Any v6 field selects v6; a v4/v5 corpus
+  keeps the ids the previous code computed. Fail closed until the gates
+  exist: a credential, a required leg or a resolver acceptance meets
+  nothing (R4), an option clears nowhere (C2); a claim period is met by a
+  give whose `claim_max` reaches it. `requires.claim_period` is the one
+  field the decided list did not name: plan A1's "the want asks for at
+  most that" needs a place, and a later bump for it would break "one v6
+  bump".
+
 ### Changed
 
 - **`LoopEscrow`: the parties' four acts and the claim read at `hold`**

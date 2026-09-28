@@ -387,6 +387,131 @@ class Bond:
                    q(rec["value"]), rec.get("escrow", ""))
 
 
+# v6 (2026-09-29, R1 of the development sequence; `docs/plans/counterparty-gate.md`
+# §1–§2, decided 2026-09-25 as D7 of `credentials-cover-and-options.md`):
+# what a maker may require of the other side of a leg beyond a deposit — a
+# credential, a composed leg, an acceptable resolver — and the one shape of
+# the statement that answers a credential. The record fixes the shapes; the
+# checks are R4's gate, and until it exists a requirement using them meets
+# nothing (U7).
+
+STATEMENT_KINDS = ("attested", "self-bonded", "signed")   # "insured" after pooled cover (D4, D9)
+PAID_BY = ("relier", "subject")                           # who paid the attester (G5)
+
+
+def _hex64(text, what: str) -> None:
+    if not (isinstance(text, str) and len(text) == 64 and all(c in "0123456789abcdef" for c in text)):
+        raise ValueError(f"{what} is a 64-hex digest")
+
+
+def _names(values) -> tuple[str, ...]:
+    return tuple(sorted(set(values)))
+
+
+@dataclass(frozen=True, slots=True)
+class Accept:
+    """How a requirement admits a third party: the resolver of the leg's
+    reservation, or the giver of a required leg (D7, C4, E2). *Who*: a key
+    in `keys`, or a key accredited under one of `roots` — alternatives, and
+    neither named admits anyone the floors admit. *Floors*, all of them: a
+    deposit of at least `min_deposit` on the requirer's own scale (like
+    `point`, converted at the requirer's acceptance price for the deposit's
+    asset), no reversal of its rulings within the last `clean_for` seconds,
+    and an issuance source among `issuance` (D8). Why no count of rulings
+    or inspections: puppet cases manufacture counts for the price of a fee,
+    stake and accreditation they cannot (THREATS T16). An acceptance naming
+    nothing is refused, so "no requirement" has one spelling: none."""
+
+    keys: tuple[str, ...] = ()
+    roots: tuple[str, ...] = ()
+    min_deposit: Fraction = Fraction(0)
+    clean_for: int = 0                  # seconds of look-back with no reversal
+    issuance: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for name in ("keys", "roots", "issuance"):
+            object.__setattr__(self, name, _names(getattr(self, name)))
+        object.__setattr__(self, "min_deposit", q(self.min_deposit))
+        object.__setattr__(self, "clean_for", int(self.clean_for))
+        if self.min_deposit < 0 or self.clean_for < 0:
+            raise ValueError("an acceptance's floors are non-negative")
+        if not (self.keys or self.roots or self.min_deposit or self.clean_for or self.issuance):
+            raise ValueError("an acceptance names a key, a root or a floor")
+
+    def to_record(self) -> dict[str, Any]:
+        return {"keys": list(self.keys), "roots": list(self.roots), "min_deposit": rat(self.min_deposit),
+                "clean_for": self.clean_for, "issuance": list(self.issuance)}
+
+    @classmethod
+    def from_record(cls, rec: dict[str, Any]) -> "Accept":
+        return cls(tuple(rec["keys"]), tuple(rec["roots"]), q(rec["min_deposit"]), int(rec["clean_for"]),
+                   tuple(rec["issuance"]))
+
+
+@dataclass(frozen=True, slots=True)
+class Credential:
+    """One entry of `requires.counterparty` (counterparty-gate.md §1): the
+    other side of the leg — whichever side the requirer is on — must present
+    a statement of a category below `category` (the catalogue decides,
+    one-way), of one of `kinds`, reaching one of the trust `roots` through
+    registers pinned no older than `max_root_age` seconds; whenever that
+    statement names a deposit, what is free of it after this fill's
+    reservation is at least `min_bond` on the requirer's scale. Entries are
+    conjunctive; the one disjunction is `kinds` with `min_bond` ("licensed
+    or self-bonded ≥ B" is one entry)."""
+
+    category: str
+    kinds: tuple[str, ...]
+    min_bond: Fraction = Fraction(0)
+    roots: tuple[str, ...] = ()
+    max_root_age: int = 0               # seconds
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "kinds", _names(self.kinds))
+        object.__setattr__(self, "roots", _names(self.roots))
+        object.__setattr__(self, "min_bond", q(self.min_bond))
+        object.__setattr__(self, "max_root_age", int(self.max_root_age))
+        if not self.category or not self.kinds:
+            raise ValueError("a credential requirement names a category and the kinds that answer it")
+        if any(k not in STATEMENT_KINDS for k in self.kinds):
+            raise ValueError(f"a statement kind is one of {STATEMENT_KINDS}")
+        if self.min_bond < 0 or self.max_root_age < 0:
+            raise ValueError("a credential requirement's floor and age are non-negative")
+        if self.roots and not self.max_root_age:
+            raise ValueError("a trust root is read under a maximum root age")
+
+    def to_record(self) -> dict[str, Any]:
+        return {"category": self.category, "kinds": list(self.kinds), "min_bond": rat(self.min_bond),
+                "roots": list(self.roots), "max_root_age": self.max_root_age}
+
+    @classmethod
+    def from_record(cls, rec: dict[str, Any]) -> "Credential":
+        return cls(rec["category"], tuple(rec["kinds"]), q(rec["min_bond"]), tuple(rec["roots"]),
+                   int(rec["max_root_age"]))
+
+
+@dataclass(frozen=True, slots=True)
+class RequiredLeg:
+    """One entry of `requires.legs` (D4): the loop must also contain a give
+    of `category` — cover, an inspection — whose argument accepts the
+    wanted thing, composed by the solver as `transport` is, from a giver
+    `accept` admits."""
+
+    category: str
+    accept: Accept
+
+    def __post_init__(self) -> None:
+        if not self.category or not isinstance(self.accept, Accept):
+            raise ValueError("a required leg names a category and an acceptance of its giver")
+
+    def to_record(self) -> dict[str, Any]:
+        return {"category": self.category, "accept": self.accept.to_record()}
+
+    @classmethod
+    def from_record(cls, rec: dict[str, Any]) -> "RequiredLeg":
+        return cls(rec["category"], Accept.from_record(rec["accept"]))
+
+
 @dataclass(frozen=True, slots=True)
 class Requires:
     """What a maker requires of any counterparty on a leg through this
@@ -409,6 +534,14 @@ class Requires:
     accepts: tuple = ()                 # Acceptance, ...
     oracles: tuple[str, ...] = ()
     escrows: tuple[str, ...] = ()
+    # v6 (2026-09-29): `counterparty` credentials, `legs` the loop must also
+    # contain, the `resolvers` acceptable for this leg's reservation, and
+    # the `claim_period` a want asks of the giver's deposit (seconds; the
+    # giver's `claim_max` must reach it — plan A1's matched term).
+    counterparty: tuple = ()            # Credential, ...
+    legs: tuple = ()                    # RequiredLeg, ...
+    resolvers: "Accept | None" = None
+    claim_period: int = 0
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "point", q(self.point))
@@ -426,11 +559,27 @@ class Requires:
                                                    for a in self.accepts))
         object.__setattr__(self, "oracles", tuple(sorted(set(self.oracles))))
         object.__setattr__(self, "escrows", tuple(sorted(set(self.escrows))))
+        object.__setattr__(self, "counterparty", tuple(
+            sorted((c if isinstance(c, Credential) else Credential(*c) for c in self.counterparty),
+                   key=lambda c: _canonical_bytes(c.to_record()))))
+        object.__setattr__(self, "legs", tuple(
+            sorted((l if isinstance(l, RequiredLeg) else RequiredLeg(*l) for l in self.legs),
+                   key=lambda l: _canonical_bytes(l.to_record()))))
+        if self.resolvers is not None and not isinstance(self.resolvers, Accept):
+            raise ValueError("resolvers is an Accept")
+        object.__setattr__(self, "claim_period", int(self.claim_period))
+        if self.claim_period < 0:
+            raise ValueError("a claim period is non-negative")
+
+    @property
+    def v6(self) -> bool:
+        """Whether this requirement uses a v6 field."""
+        return bool(self.counterparty or self.legs or self.resolvers is not None or self.claim_period)
 
     @property
     def empty(self) -> bool:
         return self.point == 0 and not self.ladder and not self.accepts \
-            and not self.oracles and not self.escrows
+            and not self.oracles and not self.escrows and not self.v6
 
     def at(self, lead_seconds) -> Fraction:
         """The cancellation cost at `lead_seconds` before the window: the
@@ -452,21 +601,123 @@ class Requires:
         """The quantity of `acceptance`'s asset that covers the neutral point."""
         return self.point / acceptance.price
 
-    def to_record(self) -> dict[str, Any]:
+    def to_record(self, v: int = 5) -> dict[str, Any]:
         rec: dict[str, Any] = {"point": rat(self.point), "oracles": list(self.oracles),
                                "accepts": [a.to_record() for a in self.accepts]}
         if self.ladder:
             rec["ladder"] = [[str(lead), rat(amount)] for lead, amount in self.ladder]
         if self.escrows:
             rec["escrows"] = list(self.escrows)
+        if self.v6:
+            if v < 6:
+                raise ValueError("a credential, a required leg, a resolver or a claim period is a v6 form")
+            if self.counterparty:
+                rec["counterparty"] = [c.to_record() for c in self.counterparty]
+            if self.legs:
+                rec["legs"] = [l.to_record() for l in self.legs]
+            if self.resolvers is not None:
+                rec["resolvers"] = self.resolvers.to_record()
+            if self.claim_period:
+                rec["claim_period"] = self.claim_period
         return rec
 
     @classmethod
-    def from_record(cls, rec: dict[str, Any]) -> "Requires":
+    def from_record(cls, rec: dict[str, Any], v: int = 5) -> "Requires":
+        if v < 6 and any(k in rec for k in _REQUIRES_V6):
+            raise ValueError("a credential, a required leg, a resolver or a claim period is a v6 form")
         return cls(q(rec["point"]),
                    tuple((int(l), q(a)) for l, a in rec.get("ladder", [])),
                    tuple(Acceptance.from_record(a) for a in rec.get("accepts", [])),
-                   tuple(rec.get("oracles", [])), tuple(rec.get("escrows", [])))
+                   tuple(rec.get("oracles", [])), tuple(rec.get("escrows", [])),
+                   tuple(Credential.from_record(c) for c in rec.get("counterparty", [])),
+                   tuple(RequiredLeg.from_record(l) for l in rec.get("legs", [])),
+                   Accept.from_record(rec["resolvers"]) if "resolvers" in rec else None,
+                   int(rec.get("claim_period", 0)))
+
+
+_REQUIRES_V6 = ("counterparty", "legs", "resolvers", "claim_period")
+_OFFER_V6 = ("claim_max", "underlying", "exercise")
+
+
+@dataclass(frozen=True, slots=True)
+class Statement:
+    """The one statement shape the counterparty gate reads, whatever its
+    source (counterparty-gate.md §2; produced outside loopmarket, by
+    hansa's adapters): `issuer` says `subject`'s key holds `category`, of
+    `kind`, valid from `as_of` to `until` (unix seconds; validity through
+    the leg's handover window is the gate's check, and short lifetimes are
+    the rule, G2), on `evidence` (a digest of what was presented), reaching
+    a trust root along `path` (issuer first). `deposit` — (offer id, escrow)
+    — names the deposit backing it when one does (D1; it may be another
+    maker's, a practice's for its dentists); `paid_by` who paid the
+    attester (G5); `scheme` the digest of the check procedure applied (E3);
+    `issuance` the source that bound the key to the person (D8). Content
+    addressed like an offer; presented in the subject's book under
+    `cred/` (R2), its status read from the issuer's register (R3)."""
+
+    subject: str
+    category: str
+    issuer: str
+    kind: str
+    as_of: int
+    until: int
+    evidence: str
+    path: tuple[str, ...]
+    paid_by: str
+    deposit: tuple[str, str] | None = None
+    scheme: str = ""
+    issuance: str = ""
+    v: int = 1
+
+    def __post_init__(self) -> None:
+        if self.v != 1:
+            raise ValueError(f"unknown statement record version: {self.v!r}")
+        object.__setattr__(self, "path", tuple(self.path))
+        object.__setattr__(self, "as_of", int(self.as_of))
+        object.__setattr__(self, "until", int(self.until))
+        if not (self.subject and self.category and self.issuer):
+            raise ValueError("a statement names its subject, category and issuer")
+        if self.kind not in STATEMENT_KINDS:
+            raise ValueError(f"a statement kind is one of {STATEMENT_KINDS}")
+        if self.paid_by not in PAID_BY:
+            raise ValueError(f"paid_by is one of {PAID_BY}")
+        if not self.as_of < self.until:
+            raise ValueError("a statement is valid from as_of until a later until")
+        _hex64(self.evidence, "a statement's evidence")
+        if self.scheme:
+            _hex64(self.scheme, "a statement's scheme")
+        if not self.path or self.path[0] != self.issuer:
+            raise ValueError("a statement's path starts at its issuer")
+        if self.deposit is not None:
+            object.__setattr__(self, "deposit", tuple(self.deposit))
+            if len(self.deposit) != 2 or not self.deposit[1]:
+                raise ValueError("a statement's deposit is (offer id, escrow)")
+            _hex64(self.deposit[0], "a statement's deposit offer")
+        if self.kind == "self-bonded" and (self.issuer != self.subject or self.deposit is None):
+            raise ValueError("a self-bonded statement is its subject's own, backed by a deposit")
+
+    def to_record(self) -> dict[str, Any]:
+        return {"v": self.v, "subject": self.subject, "category": self.category, "issuer": self.issuer,
+                "kind": self.kind, "as_of": self.as_of, "until": self.until, "evidence": self.evidence,
+                "path": list(self.path), "paid_by": self.paid_by,
+                "deposit": {"offer": self.deposit[0], "escrow": self.deposit[1]} if self.deposit else None,
+                "scheme": self.scheme, "issuance": self.issuance}
+
+    @classmethod
+    def from_record(cls, rec: dict[str, Any]) -> "Statement":
+        if rec.get("v") != 1:
+            raise ValueError(f"unknown statement record version: {rec.get('v')!r}")
+        d = rec["deposit"]
+        return cls(rec["subject"], rec["category"], rec["issuer"], rec["kind"], rec["as_of"], rec["until"],
+                   rec["evidence"], tuple(rec["path"]), rec["paid_by"],
+                   (d["offer"], d["escrow"]) if d is not None else None, rec["scheme"], rec["issuance"])
+
+    def canonical_bytes(self) -> bytes:
+        return _canonical_bytes(self.to_record())
+
+    @property
+    def statement_id(self) -> str:
+        return hashlib.sha256(self.canonical_bytes()).hexdigest()
 
 
 # -------------------------------------------------------------------------- offer
@@ -505,13 +756,22 @@ class Offer:
     # `**ontology.pins` into give/want to fill all three at once.
     registry_version: str = ""    # ontodag dimension-registry version
     contract_version: str = ""    # ontodag contract version (G1-G6 guarantees)
+    # v6 (2026-09-29): `claim_max` — the longest claim period, in seconds,
+    # a give's deposit carries after the handover window (plan A1; 0: none
+    # declared) — and an option's `underlying` (the id of the plain offer
+    # it holds) and `exercise` window (options-and-cover.md §3.1, D6).
+    claim_max: int = 0
+    underlying: str = ""
+    exercise: TimeWindow | None = None
     # v3 (2026-09-12): `service`/`where` leave the record — spacetime lives
     # in the conjunction as role terms — and `valid` may be open-ended.
     # v4 (2026-09-14): exact numbers as `n/d` strings (U9), `step` and
     # `min` on a thing in place of `divisible`, and a want may be `Parts`.
     # v5 (2026-09-18/19): `requires` — admissibility by declaration — and
     # `bond` as a deposit (`Bond`: asset, value, escrow). A v4 offer
-    # re-encodes as v4.
+    # re-encodes as v4. v6 (2026-09-29): the counterparty gate's
+    # requirements, `claim_max` and the option's two fields; a v5 offer
+    # re-encodes as v5.
     v: int = 4                    # record version; identity includes it
 
     def __post_init__(self) -> None:
@@ -525,8 +785,14 @@ class Offer:
             raise ValueError(
                 "uniform offer form: the token side must be the maker's own token"
             )
-        if self.v not in (1, 2, 3, 4, 5):
+        if self.v not in (1, 2, 3, 4, 5, 6):
             raise ValueError(f"unknown offer record version: {self.v!r}")
+        if self.v < 6:
+            if self.claim_max or self.underlying or self.exercise is not None \
+                    or (self.requires is not None and self.requires.v6):
+                raise ValueError("claim_max, an option and the counterparty gate's requirements are v6 forms")
+        else:
+            self._check_v6()
         if self.v < 5:
             if self.requires is not None:
                 raise ValueError("a counterparty requirement is a v5 form")
@@ -564,6 +830,24 @@ class Offer:
                 raise ValueError("v1/v2 offers require service and where")
             if self.valid.open_ended or self.service.open_ended:
                 raise ValueError("an open-ended window is a v3 form")
+
+    def _check_v6(self) -> None:
+        is_give = isinstance(self.gives, Thing)
+        object.__setattr__(self, "claim_max", int(self.claim_max))
+        if self.claim_max < 0:
+            raise ValueError("claim_max is non-negative")
+        if self.claim_max and not is_give:
+            raise ValueError("claim_max is a give's: the longest claim period its deposit carries")
+        if bool(self.underlying) != (self.exercise is not None):
+            raise ValueError("an option names its underlying and its exercise window together")
+        if self.underlying:
+            _hex64(self.underlying, "an option's underlying")
+            if not is_give:
+                raise ValueError("an option is its writer's give")
+            if self.exercise.open_ended:
+                raise ValueError("an option's exercise window ends: an unending hold is an unpriced lock")
+        if self.requires is not None and self.requires.claim_period and is_give:
+            raise ValueError("a claim period is asked of a giver, by a want")
 
     # -- derived ------------------------------------------------------------
 
@@ -638,7 +922,11 @@ class Offer:
             "nonce": self.nonce,
         }
         if self.v >= 5:
-            rec["requires"] = self.requires.to_record()
+            rec["requires"] = self.requires.to_record(self.v)
+        if self.v >= 6:
+            rec["claim_max"] = self.claim_max
+            rec["underlying"] = self.underlying
+            rec["exercise"] = self.exercise.to_record() if self.exercise is not None else None
         if self.v < 3:
             rec["service"] = self.service.to_record()
             rec["where"] = self.where.to_record()
@@ -657,8 +945,12 @@ class Offer:
         vocabulary.
         """
         v = rec.get("v")
-        if v not in (1, 2, 3, 4, 5):
+        if v not in (1, 2, 3, 4, 5, 6):
             raise ValueError(f"unknown offer record version: {v!r}")
+        if v < 6 and any(k in rec for k in _OFFER_V6):
+            raise ValueError("claim_max and an option are v6 forms")
+        if v >= 6 and not all(k in rec for k in _OFFER_V6):
+            raise ValueError("a v6 offer record carries claim_max, underlying and exercise")
         if v < 5 and "requires" in rec:
             raise ValueError("a counterparty requirement is a v5 form")
         if v >= 5 and "requires" not in rec:
@@ -699,10 +991,13 @@ class Offer:
                  if v >= 5 else rec.get("bond", 0.0),
             oracle=rec.get("oracle", "countersign"),
             arbitrator=rec.get("arbitrator", ""),
-            requires=Requires.from_record(rec["requires"]) if v >= 5 else None,
+            requires=Requires.from_record(rec["requires"], v) if v >= 5 else None,
             nonce=rec["nonce"],
             registry_version=rec.get("registry_version", ""),
             contract_version=rec.get("contract_version", ""),
+            claim_max=int(rec["claim_max"]) if v >= 6 else 0,
+            underlying=rec["underlying"] if v >= 6 else "",
+            exercise=TimeWindow(*rec["exercise"]) if v >= 6 and rec["exercise"] is not None else None,
             v=v,
         )
 
@@ -723,8 +1018,13 @@ def _field_form(service, where, kw: dict[str, Any]) -> dict[str, Any]:
     current record, whose spacetime is in the conjunction."""
     if (service is not None or where is not None) and "v" not in kw:
         kw = dict(kw, v=2)
-    if (kw.get("requires") is not None or isinstance(kw.get("bond"), Bond)) and "v" not in kw:
-        kw = dict(kw, v=5)              # a requirement or a deposit is a v5 form
+    if "v" not in kw:
+        req = kw.get("requires")
+        if kw.get("claim_max") or kw.get("underlying") or kw.get("exercise") is not None \
+                or (req is not None and req.v6):
+            kw = dict(kw, v=6)          # the counterparty gate's fields, claim_max, an option
+        elif req is not None or isinstance(kw.get("bond"), Bond):
+            kw = dict(kw, v=5)          # a requirement or a deposit is a v5 form
     return dict(kw, service=service, where=where)
 
 
