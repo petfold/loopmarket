@@ -235,7 +235,33 @@ built 2026-09-13 to 2026-09-19 (0.5.0–0.11.0). What follows is what stands.
 Decided 2026-09-25 with the assurance drafts; the cross-repository plan
 carries the decisions, three design documents carry the detail, and
 `commercial-practice-review.md` is the record they were checked against.
-Nothing here blocks P3's open items; the sequencing is the plan's §6.
+Nothing here blocks P3's open items; the sequencing is the plan's §6,
+refined by the development sequence of 2026-09-25 and amended below.
+
+**Order of work (amended 2026-09-29).** The development sequence ran
+Track E (E1–E3) beside R1 as independent. They are not wholly independent:
+E2's matched claim period and accepted-resolver check read v6 fields
+(`claim_max`, `requires.resolvers`), and E3's one escrow redeploy should
+name factbond's redeployed `Assertions`. Hence:
+
+1. **E1** — `LoopEscrow`'s four acts and the claim read at `hold`
+   (THREATS T18). DONE 2026-09-28, local EVM.
+2. **R1** — the v6 record, one bump (`counterparty-gate.md` §1,
+   `options-and-cover.md` §2): next, and first on M1's path.
+3. **E2** on v6 — the claim period matched per leg (`claim_max` against
+   the want's ask, the catalogue's default and cap), the accepted-resolver
+   check in `reservations_for`, `min_challenge`/`min_ruling` from the claim
+   class's rule; `claim_only` from `insure` waits for C5's grammar.
+4. **factbond: isolate consumer reverts, then redeploy** (factbond's
+   roadmap): a consumer that reverts in `resolve` must not strand a case
+   and its stakes (T18's residual), fixed before the address loopmarket
+   pins is fixed.
+5. **E3** — the one `LoopEscrow` redeploy on Gnosis, naming factbond's new
+   address; live gate: a `claimOnly` reservation, a split, an extension,
+   and a stranger's claim refused at `hold`. Until then the Gnosis pair
+   (`0x299CE4…69Bf` with `0xfa6f…BF99`) keeps T18's hole; its stakes are
+   test amounts.
+6. **R2–R4 with hansa A0** — Milestone M1, the dentist case in memory.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust

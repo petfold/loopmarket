@@ -42,4 +42,6 @@ nothing resolves without a ruling.
 What lands in loopmarket's documents (the README's disclaimer, CLAUDE.md's
 invariants, P2, P3, P4, THREATS, the ROADMAP) is the full text's §4, under
 "loopmarket"; the sequencing is its §6, refined by the development sequence
-of 2026-09-25.
+of 2026-09-25 and amended 2026-09-29 (the ROADMAP's P3b "order of work":
+E1 built; R1 before E2, which reads v6; E3 paired with factbond's redeploy,
+after factbond isolates consumer reverts).
