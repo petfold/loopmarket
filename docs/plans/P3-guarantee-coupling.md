@@ -238,34 +238,14 @@ order, and settlement's behavior toward it.
 | attested-photo| physical state at capture    | Truepic-class attestation   |
 | location      | presence at a place          | none person-grade in 2026   |
 
-**Countersign is the default**, with optimistic semantics: mutual silence
-past the liveness window confirms the leg; disagreement — not a vote — opens
-the dispute path. It is the optimistic-assertion pattern in miniature and
-needs zero infrastructure. Its structural bound: a countersigned leg never
-unlocks more value than both parties have at risk, so collusive
-countersigning (both legs of a fake handover attesting happily) is capped by
-the colluders' own escrow; pool-funded random audits price the residual.
-**Locker** is the first infrastructure oracle: parcel networks (InPost
-ShipX-class) emit timestamped, operator-signed deposit and QR-code-collection
-events — a disinterested machine witness for exactly the handover legs the
-triangle demo has — readable via zkTLS off the operator's tracking surface,
-no partnership required; it attests handover, never contents or quality.
-**Digital-proof (zkTLS)** covers every leg whose fulfillment leaves a
-web-visible trace, with mature 2026 SDKs (Reclaim, zkPass, TLSNotary); it
-proves what a website said and inherits the website's truthfulness — hence
-the **parametric-first doctrine**: wherever a canonical digital feed exists,
-settle parametrically with no dispute layer at all and spend all scrutiny on
-feed selection (the Etherisc FlightDelay pattern — parametric payouts in
-USDC on Gnosis Chain, loopmarket's own chain). **Attested-photo** requires
-Truepic-class hardware-attested capture with revocation checks; bare C2PA is
-corroboration only — it strips on re-encode, and one device exploit (Nikon
-Z6III, Sept 2025) revoked a fleet's certificates; post-genAI, an unattested
-photo is dispute *input* for a staked tribunal, never an oracle.
-**Location is carried, not implemented** — the carried-in-the-encoding
-discipline of `bond`/`oracle`/`arbitrator` today: no 2026 network offers
-person-grade presence (Witness Chain: server-grade confidence regions; FOAM:
-~a dozen zones; GEODNET: positioning correction, not presence). Naming the
-slot keeps offer ids stable when one matures.
+**Countersign is the default**: mutual silence past the liveness window
+confirms a leg, and disagreement, never a vote, opens the dispute path; a
+countersigned leg never unlocks more value than both parties have at
+risk. The rulings on every type (the locker's operator-signed events, zkTLS
+and the parametric-first doctrine, attested capture against bare C2PA,
+location carried but not implemented) are factbond's and are stated only
+there: [`evidence-policy.md` §3](https://github.com/petfold/factbond/blob/main/docs/plans/evidence-policy.md).
+Here they matter through the two rules below.
 
 Two enforcement rules bind settlement, both the U7 shape — unknown fails
 closed, drift breaks loudly:
@@ -282,11 +262,12 @@ closed, drift breaks loudly:
    §5.2) follow that route, and a requirement names a door level by
    cumulative category, never a bare type.
 2. **Hash-pinned policies** (decided 2026-08; deferred at the 2026-08-20
-   bump — the adjudication policy documents the hash would pin are
-   factbond `evidence-policy` deliverables that do not exist yet, and a
-   hash with nothing behind it is worse than a bare string; lands with the
-   first policy documents, as an `oracle`-value convention that touches no
-   record structure): an
+   bump — the adjudication policy documents the hash would pin did not
+   exist, and a hash with nothing behind it is worse than a bare string;
+   *since 2026-09-28 they exist as data, `factbond.policy`, with a
+   placeholder `credential` policy*; lands with the first published
+   policy, as an `oracle`-value convention that touches no record
+   structure): an
    offer's `oracle` field stops being a bare string and references a
    hash-pinned adjudication policy document. Policy ambiguity is the
    cheapest attack in every deployed dispute system — Augur's chronic
@@ -540,17 +521,10 @@ module load (the B2 shape).
 
 ## 8. Sequencing
 
-Mirrored, verbatim in substance, with
-`factbond/docs/plans/loopmarket-coupling.md` §5: **the coupling ships only
-after factbond Phase-0 is green AND loopmarket's P2 record formats are
-frozen.** Phase-0 green means all four pre-registered panels of
-`factbond/docs/plans/phase0-simulation.md` §1 pass — half-life first among
-them — a fabric
-that cannot make honest verification profitable would let settlement sell
-hedges that certify nothing. The P2 freeze matters because the reliance
-proof consumes P2's inclusion artifacts (`proof-fabric.md`'s pin table and
-proofs) and the policy-hash field needs the v2 offer record; coupling to a
-moving format would churn every hash-pinned policy reference. One piece
+The sequencing is factbond's
+[`loopmarket-coupling.md` §5](https://github.com/petfold/factbond/blob/main/docs/plans/loopmarket-coupling.md):
+**the coupling ships only after factbond Phase-0 is green AND loopmarket's
+P2 record formats are frozen**, for the reasons stated there. One piece
 deliberately jumps the gate: §2's witness instrumentation — pure telemetry
 with no factbond dependency, whose accumulated feed lets premiums start
 from data rather than priors on day one.

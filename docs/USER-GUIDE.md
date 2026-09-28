@@ -537,28 +537,11 @@ factbond's: the resolver fixed at clearing (`set resolver`: factbond's
 `Assertions` contract, or your own key when empty) holds and resolves
 the reservation, nothing more.
 
-How a contested claim runs once factbond is the resolver (factbond's
-contract as of 2026-09-28, live after its redeploy and the escrow's):
-
-- **Notice first.** A wanter who was let down tells the giver which fact
-  is wrong and gives it the cure deadline to deliver, refund or correct.
-  A cure ends the matter, and nothing about it becomes public.
-- **Then the claim.** Past the deadline, the wanter asserts the claim on
-  factbond with a small bond; the escrow is told to hold the reservation.
-  The giver either disputes it within the challenge window, staking at
-  the odds the claim's confidence sets, or lets it certify, and the
-  reservation pays the wanter.
-- **Giving up.** The giver gives up by not disputing. The wanter can
-  give up a disputed claim with `concede`, which hands the giver the
-  claim's bond with no ruling and no fee.
-- **The ruling.** Otherwise the adjudicator rules, and the loser pays its
-  fee and nothing more. Where an arbiter is named, the payout waits
-  through a short appeal window, and the loser may appeal at double its
-  own stake; a reversal also pays the appellant the first adjudicator's
-  deposit.
-- **Nobody walks away with the stakes.** An adjudicator that lets its
-  window lapse sends the case up to the arbiter with everything still
-  held; only a ruling, or a party's own act, releases money.
+How a contested claim runs once factbond resolves it (notice to the
+giver first, then the claim, the giver's dispute or the claim certifying,
+concession, the ruling and its appeal) is factbond's to document: its
+[User Guide](https://github.com/petfold/factbond/blob/main/docs/USER-GUIDE.md)
+§2–§3, and §12 for this escrow as the consumer.
 
 ## 8. The solver agent — and then federation
 
@@ -998,7 +981,10 @@ spent offer, and a bond counts only as far as the escrow holds it.
   [README](../README.md)) — where the marketplace is going: batch
   auctions, verifiable clearing, the guarantee fabric, privacy.
 - **factbond** (`github.com/petfold/factbond`) — where a contested claim
-  on a deposit is adjudicated: custody here, adjudication there.
+  on a deposit is adjudicated: custody here, adjudication there. Its
+  [User Guide](https://github.com/petfold/factbond/blob/main/docs/USER-GUIDE.md)
+  and [Roadmap](https://github.com/petfold/factbond/blob/main/ROADMAP.md)
+  cover that side.
 - **The demos** — `examples/triangle.loop` (P0 as a script),
   `examples/demo_triangle.py` (the same through the API),
   `examples/demo_federation.py` (P1 in one file, memory or live).

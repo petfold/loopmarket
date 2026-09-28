@@ -48,13 +48,14 @@ while any entry lacks an owning work package or, once its surface is
 live, an instrumented tripwire.** P2 blocks specifically on T1/T3
 (the phase↔document map on the repo front page, `../../README.md`).
 
-**Content-sync rule.** Mirrored entries name a primary owner: T1–T3, T7,
-T8 and T14 here; T4–T6, T9 and T10–T13 in
-`factbond/docs/plans/THREATS.md`. Secondary copies
-carry every column's *substance* (wording may condense, content may not)
-plus a cross-reference; edits land primary-first. The factbond-native
-entries T10–T13 were imported below on 2026-08-21, per this rule's
-next-dated-edit clause.
+**Content-sync rule.** Every entry names a primary owner: T1–T3, T7, T8
+and T14–T16 here; T4–T6, T9–T13 and T17 in
+`factbond/docs/plans/THREATS.md`. *(Revised 2026-09-28, to stop keeping two
+full copies:)* an entry whose primary is factbond appears here as a short
+stub — the attack in a sentence, loopmarket's own part of the defense,
+tripwire and work package, and a link to the full entry — and is edited
+there only. factbond's register still carries this register's primaries
+in condensed full form; edits land primary-first.
 
 ## T1 — Rebate/reward-farmed wash loops
 
@@ -196,123 +197,35 @@ beat's revealed losers.
 
 ## T4 — Adjudication capture & dispute griefing — primary: `factbond/docs/plans/THREATS.md`
 
-**Attack.** Buy the dispute ladder's final rung when downstream reliance
-exceeds its capture cost; or grief — spam cheap disputes to freeze
-settlement and wear down honest disputers. p+ε bribery (Buterin 2015)
-makes vote-buying free on success: pay bribed voters only if the attack
-loses.
-
-**Economics.** Polymarket/UMA, March 2025: one whale with **~25% of DVM
-voting power** (5M UMA across 3 accounts) flipped a **$7M** market whose
-proposer bond was **$750** — notional/bond ≈ 10⁴, the profit sitting in
-the market position outside the oracle game. The Zelenskyy-suit market
-($160–237M volume) resolved NO twice against the photographic record,
-slashing honest disputers both times — dispute, lose bond, learn to stop.
-UMA's patch (UMIP-189, whitelisted proposers) is a retreat to partial
-permissioning with the DVM rung still capturable.
-
-**Defense (by construction).** factbond's revised bond doctrine: the
-final rung's integrity cost scales with **aggregate open reliance**, and
-F4 — "reliance-bounded adjudication + fail-closed caps" — stops selling
-exposure as it approaches that cost (Nexus Mutual's stake > 5× claim
-quorum is the production precedent). F5 — "tribunal independence +
-soulbound stake": the top rung is an *independent* arbitrator (the
-reality.eth → Kleros composition), never a same-token DVM; escalation
-enlarges the juror base faster than p+ε liability; disputer bonds cover
-delay externalities, pricing out dispute spam; conduct and removal rules
-precede the first dispute; rulings reopen on new evidence. loopmarket's
-side: payouts **auto-fund the dispute** on the edge that lied —
-institutionalized disputer-side funding against wear-down — and the four
-adversarial fixtures of `P3-guarantee-coupling.md` §4 must reject or
-bound by construction.
-
-**Residual.** The correlated bad-ruling tail — a captured rung poisons
-every downstream statistic at once; reserves and reopenability mitigate
-(`factbond/docs/plans/netting-and-reserves.md`). Any proposer whitelist
-is itself a new capture target.
-
-**Tripwire.** Top-principal share of final-rung power vs aggregate open
-reliance per subject; per-claim (per-edge in the coupling) cap
-utilization pages at 80%; honest-disputer attrition (repeat disputers who
-lose and exit) trending up.
-
-**Work package.** `factbond/docs/plans/mechanism-design.md` (the
-adjudication constitution); here: `P3-guarantee-coupling.md`.
+Buying the final rung of the dispute ladder when the reliance riding on
+it exceeds its capture cost, or griefing with cheap disputes until honest
+disputers give up. **Here:** a payout auto-funds the dispute on the edge
+that lied (disputer-side funding against wear-down), and the four
+adversarial fixtures of `P3-guarantee-coupling.md` §4 must reject or bound
+their attacks by construction; per-edge cap utilization pages at 80%.
+Work package here: `P3-guarantee-coupling.md`. Full entry: [`factbond/docs/plans/THREATS.md`](https://github.com/petfold/factbond/blob/main/docs/plans/THREATS.md).
 
 ## T5 — Insurance arson — primary: `factbond/docs/plans/THREATS.md`
 
-**Attack.** Buy insurance on a catalogue edge, then make it wrong or
-corrupt its adjudication — the assassination-politics generalization: a
-market paying on an adverse event is a purse for causing it.
-
-**Economics.** Profit = payout − premium − corruption cost; unbounded
-whenever payout is unlinked to real loss. Insurance law's answer is the
-indemnity principle: payout ≤ demonstrable insurable interest.
-
-**Defense (by construction).** F3 — "indemnity (payout ≤ provable
-reliance; payout-cap proxy where unprovable)". loopmarket is the one
-deployment where reliance is provable for free: settlement roots pin
-which settled legs walked the insured edge (`P3-guarantee-coupling.md`
-§2–3), so breaking an edge you insured pays at most what you provably had
-at stake, minus premium. Outside settlement (the agents-first wedge) the
-proxy is micro-scale payout caps sized so arson cannot pay even on wholly
-fabricated reliance (`factbond/docs/plans/insurance-products.md`). F4's
-per-edge aggregate caps fail closed; a buyer-controls-source exclusion
-bars insuring facts the buyer can cheaply falsify.
-
-**Residual.** Reliance inflation via colluding loops — real settlements
-run through the edge to raise the ceiling; a T1 fixture in a different
-mask, bounded by the same arithmetic (inflating reliance costs real fees,
-U13; only settled fee-paid loops count, U12). Many small policies across
-sybils still press on the per-edge caps.
-
-**Tripwire.** Per-edge open-insurance / final-rung-integrity-cost ratio
-pages at 80% utilization, before the fail-closed stop; payouts where the
-buyer's funding cluster intersects the edge's asserter/disputer cluster;
-pre-launch: the Phase-0 arson-ROI surface must stay negative.
-
-**Work package.** `factbond/docs/plans/insurance-products.md` +
-`phase0-simulation.md`; here: `P3-guarantee-coupling.md` §3.
+Insure a fact, then make it wrong. **Here:** a clearing root proves
+which cleared legs relied on the insured edge, so cover pays at most what
+the insured provably had at stake, minus the premium (F3 exact); per-edge
+caps fail closed. Outside clearing, factbond covers a fact someone controls
+only by its controller's reserved deposit or a surety (2026-09-28). Work
+package here: `P3-guarantee-coupling.md` §3. Full entry: [`factbond/docs/plans/THREATS.md`](https://github.com/petfold/factbond/blob/main/docs/plans/THREATS.md).
 
 ## T6 — Catalogue governance capture — primary: `factbond/docs/plans/THREATS.md`
 
-**Attack.** Patient accumulation of assertion/adjudication power over hub
-edges; bribe markets for edge disputes; re-meaning categories under
-settled offers; category-stuffing to game solvers.
-
-**Economics.** Croatian Wikipedia: **~10 admins held the project for 9
-years**; the comparative CSCW study (TeBlunthuis et al., CSCW 2024)
-attributes capture to missing *rules about rulers* — no admin-conduct or
-removal pages — not to content rules. Curve wars: a liquid governance
-token spawned an industrial bribe market (Votium; Convex > ⅓ of veCRV),
-and the Mochi attack was stopped only by an ad hoc Emergency DAO. A hub
-edge (`organic-food ⊑ food`) underwrites vastly more settlement value
-than a leaf; capture there buys everything routed through it.
-
-**Defense (by construction).** Bonds scale with **settlement-weighted
-centrality** — realized reliance from the witness feed, never static
-degree, which attackers farm cheaply (`P3-guarantee-coupling.md` §2). F5
-keeps adjudication stake soulbound: no transferable token for a Votium to
-price. Governance norms are protocol rules in `catalogue-bootstrap.md`:
-schema gated and bonded, offers permissionless; "never re-mean a
-category" (content addressing enforces it); "don't tag for the solver"
-(OSM's don't-tag-for-the-renderer, instrumented below). Arbitrator
-conduct and removal rules precede the first dispute — the Wikipedia
-lesson verbatim — and the emergency brake is constituted with removal
-rules, not improvised Curve-style. Per-edge loss experience is the
-standing reliability audit.
-
-**Residual.** Slow semantic drift inside accepted vocabulary that never
-trips a dispute; the emergency brake itself; cultural capture of the
-import pipeline's seed choices.
-
-**Tripwire.** Single-principal bonded share over the top decile of
-settlement-weighted edges pages at > 25% (initial); stuffing metric —
-offers whose concept sets include high-traffic categories their fills
-never exercise; schema-merge review latency.
-
-**Work package.** `catalogue-bootstrap.md` (norms, import pipeline) +
-`factbond/docs/plans/mechanism-design.md` (anti-capture economics).
+Patient capture of assertion and adjudication power over hub edges,
+bribe markets for edge disputes, re-meaning categories, stuffing offers for
+the solver. **Here:** bonds scale with settlement-weighted centrality from
+the witness feed, never static degree (`P3-guarantee-coupling.md` §2); the
+governance norms are protocol rules in `catalogue-bootstrap.md` (schema
+gated and bonded, never re-mean a category, don't tag for the solver);
+tripwires: one principal's bonded share over the top decile of
+settlement-weighted edges above 25%, offers whose categories their fills
+never exercise, schema-merge review latency. Work package here:
+`catalogue-bootstrap.md`. Full entry: [`factbond/docs/plans/THREATS.md`](https://github.com/petfold/factbond/blob/main/docs/plans/THREATS.md).
 
 ## T7 — Lemons routing
 
@@ -410,188 +323,38 @@ vertical.
 
 ## T9 — Basis-risk disputes — primary: `factbond/docs/plans/THREATS.md`
 
-**Attack.** An erosion, not an attacker: the insured loss is real but the
-edge is technically "true", or the trigger pays when nothing was lost.
-The index-insurance literature is unambiguous that **basis risk, not
-fraud, is the #1 uptake killer**; parametric products show near-zero
-measured claims fraud, displacing failure into trigger–loss mismatch.
-Every deployed dispute system pays the same tax through wording: Augur's
-chronic invalid-market problem, Proof-of-Humanity's photo-angle
-pedantry, the Zelenskyy "wearing a suit" market — policy ambiguity is the
-cheapest attack surface of all.
-
-**Economics.** Each publicly wrong-feeling resolution burns trust in the
-whole product class; the Zelenskyy market burned $160–237M of volume's
-credibility and taught honest disputers to exit (T4's wear-down arriving
-through wording rather than capture).
-
-**Defense (by construction).** F8 — "structural claims settle by
-certificate only": the fits-within half of every dispute is
-machine-checkable against the pinned root (`proof-fabric.md`) — genuinely
-lower basis risk than any weather index. The worldly half is fought at
-wording time: hash-pinned adjudication policies (decided 2026-08, lands
-with the v2 bump; `P3-guarantee-coupling.md` §4) — rulings converge on
-the letter of the referenced policy, so the policy hash *is* the
-contract; parametric-first wherever a canonical digital feed exists (the
-Etherisc FlightDelay pattern); the oracle roster scoped per category
-under F7 — "'certified ≠ true' on every surface".
-
-**Residual.** Semantic edges ("suitable-for-X") retain irreducible
-interpretive basis risk; no wording closes it, only pricing it and
-saying so.
-
-**Tripwire.** Per policy hash: share of disputes ending "policy
-technically satisfied, consumer claims loss" (or the inverse) pages at
-> 10% over a rolling quarter (initial) and forces a policy rewrite with a
-version bump, never an in-place edit.
-
-**Work package.** `factbond/docs/plans/evidence-policy.md`; here:
-`P3-guarantee-coupling.md` §4.
+Basis risk, the uptake killer: a real loss on a technically true edge, or
+a payout with nothing lost; policy ambiguity is its cheapest form.
+**Here:** the fits-within half of every dispute is checked against the
+pinned root (F8, `proof-fabric.md`); an offer's `oracle` field carries the
+policy hash, so the policy is the contract (`P3-guarantee-coupling.md`
+§4). Work package here: `P3-guarantee-coupling.md` §4. Full entry: [`factbond/docs/plans/THREATS.md`](https://github.com/petfold/factbond/blob/main/docs/plans/THREATS.md).
 
 ## T10 — Assertion-mining & assertion spam — primary: `factbond/docs/plans/THREATS.md`
 
-*(Imported 2026-08-21 per the content-sync rule; condensed, substance
-complete.)*
-
-**Attack & economics.** Farm any reward proportional to assertion volume
-by asserting garbage at scale; failing that, spam assertions to
-manufacture a calibration track record from certified-by-timeout claims
-nobody watched, or to bury the claims that matter. Terminal precedents:
-FCoin's trans-fee mining reached (with copycats) ~40% of global reported
-exchange volume before insolvency inside 20 months; LooksRare's
-volume-linked emissions returned a measured 1.34%/day on wash capital.
-Assertion-mining would be the FCoin of facts, and the farm's statistics
-would poison the very dataset the system exists to produce.
-
-**Defense (by construction).** F9 — no volume-linked emissions anywhere:
-an asserter's income paths are exactly yield on pool stake, a share of
-assertion fees as an LP, slash winnings, and the underwriting business
-(factbond `mechanism-design.md` §3; fees land with Phase 1). Assertions
-cost a fee accruing to the pool — the spam price. The calibration ledger
-counts only resolutions that carried consumption or survived a real
-dispute (the U12 shape applied to reputation), so a manufactured record
-buys nothing.
-
-**Residual.** Off-protocol subsidies re-fund the farm from outside —
-T1's residual wearing factbond's mask; a future token would add the
-reflexive surface factbond `DESIGN.md` §9 refuses, revisitable only
-after modelling the FCoin scenario.
-
-**Tripwire & work package.** Assertions per principal never touching
-consumption or dispute; certified-by-timeout share per asserter funding
-cluster; the G-M6 audit finding any volume-proportional path pages
-immediately, no threshold. factbond `mechanism-design.md` §3 (Phase 1) +
-`phase0-simulation.md` §5 (the F9 check, kept forever).
+Farming a reward for asserting, or spamming assertions. Closed by
+factbond's F9 (nothing is ever paid for asserting); nothing on loopmarket's
+side. Full entry: [`factbond/docs/plans/THREATS.md`](https://github.com/petfold/factbond/blob/main/docs/plans/THREATS.md).
 
 ## T11 — Self-dispute laundering — primary: `factbond/docs/plans/THREATS.md`
 
-*(Imported 2026-08-21; condensed, substance complete.)*
-
-**Attack & economics.** Dispute your own assertion from a second
-identity and wash stake through the winner's share — manufacturing
-dispute history, farming the calibration ledger's dispute-survival gate,
-or laundering through a dispute-triggered market. Without a burn, one
-principal on both sides recycles its capital at ~zero cost while
-printing fake track record and fake loss experience — corrupting T7's
-feed and T8's ledger at once.
-
-**Defense (by construction).** The slash-split's burned slice (factbond
-`DESIGN.md` §8; decided 2026-08, lands with Phase 1) makes the launder
-loop strictly negative — loopmarket's wash-loop inequality applied to
-disputes. **The burn is load-bearing**: any future split change must
-re-verify the inequality. Dispute-market size caps bound the channel's
-throughput; the ledger's consumption gate keeps even a paid-for history
-thin.
-
-**Residual.** The general asserter–challenger collusion form is open
-(factbond `mechanism-design.md` §8 q4); the burn size is a parameter,
-not a law — UMA burns half the loser's bond; the right slice is a
-Phase-0 output.
-
-**Tripwire & work package.** Asserter/challenger funding-cluster
-intersection on resolved disputes (analytics only, never enforcement);
-dispute-win share within common-funder clusters; the scripted Phase-0
-laundering playbook stays strictly negative across the grid. factbond
-`mechanism-design.md` §3/§8 + `phase0-simulation.md` §7.
+Disputing your own assertion from a second key to wash stake or history.
+A loss on the fees alone, and surviving a dispute is never a positive
+signal (factbond, 2026-09-28); loopmarket's wash-loop inequality (U13)
+applied to disputes. Full entry: [`factbond/docs/plans/THREATS.md`](https://github.com/petfold/factbond/blob/main/docs/plans/THREATS.md).
 
 ## T12 — Correlated adjudicator failure as reserve shock — primary: `factbond/docs/plans/THREATS.md`
 
-*(Imported 2026-08-21; condensed, substance complete.)*
-
-**Attack & economics.** Not an actor but the tail T4 leaves: every claim
-whose escalation path ends at the same final rung fails together if that
-rung is captured or conformist — a failure that respects no DAG
-structure, so the min-cut cluster term cannot see it. The reserve's
-Lundberg arm (u = max(worst correlated claim cluster, ln(1/ε)/R)) dies
-under correlation, and heavy tails void the bound unless per-fact
-notional caps force a finite MGF. Nexus Mutual's collapsed model is the
-production shape: MCR = active cover / 4.8 at Solvency II's 99.5%
-one-year survival, ~20% concentration cap per listing.
-
-**Defense (by construction).** The shock enters the reserve as an
-explicit cluster — all open exposure sharing a final rung — with its own
-loading (factbond `netting-and-reserves.md` §7; reserve v0 lands with
-Phase 2). Per-fact notional caps enforce the model's assumptions; they
-are F4's per-claim arm — at the cap the pool stops selling, never
-re-prices and carries on. F4's final-rung condition caps what any single
-rung is asked to defend; reopenability plus retroactive refunds make a
-reversed capture recoverable. The go/no-go demands ≥99.5% solvency under
-scripted cluster shocks.
-
-**Residual.** The loading's size is the registered open problem: if it
-dominates at realistic ladder concentration, adjudicator *diversity*
-becomes a capital requirement, not a governance nicety. A captured rung
-also poisons the loss tables — no reserve line item restores a corrupted
-dataset.
-
-**Tripwire & work package.** Share of open exposure terminating at any
-single final rung; ruin runs re-run at every reserve or ladder change;
-a loss-table divergence review forced after any final-rung reversal.
-factbond `netting-and-reserves.md` §7 (Phase 2) + `mechanism-design.md`
-+ `phase0-simulation.md` §7.
+One final rung failing, or captured, poisons every exposure that ends at
+it at once: a reserve shock. factbond's reserve and ladder; nothing on
+loopmarket's side beyond T4's fixtures. Full entry: [`factbond/docs/plans/THREATS.md`](https://github.com/petfold/factbond/blob/main/docs/plans/THREATS.md).
 
 ## T13 — Evidence-class rot — primary: `factbond/docs/plans/THREATS.md`
 
-*(Imported 2026-08-21; condensed, substance complete.)*
-
-**Attack & economics.** The fabrication cost of an admissible evidence
-class decays — continuously under generative media, discontinuously on a
-per-model exploit that is expensive to find and ~zero to reuse until
-revoked. Design precedent: September 2025, an AI-generated image
-injected via multiple-exposure mode into a validly signed Nikon Z6III
-NEF; Nikon revoked all Z6III certificates and suspended its Authenticity
-Service — one exploit, a fleet's evidentiary standing gone, and until
-demotion lands every open claim admitting the class is simultaneously
-attackable: a correlated evidence shock, T5's cheapest input. A $100
-payout is a $100 bounty on fabricating one admissible artifact; bare
-C2PA fabrication is near zero and falling. **Revocation latency is the
-binding parameter.**
-
-**Defense (by construction).** Admissibility is data, not code (factbond
-`evidence-policy.md` §1; classes land with Phase 1): a demotion is a
-signed catalogue edit binding every ruling not yet issued the moment it
-publishes — demote fast, promote slow, fail closed. Policies pin rules
-naming live inputs ("valid and unrevoked at ruling time"), so a claim
-pinned to policy v1 stops admitting the rotted class without its hash
-changing. Closed rulings never rebind (F1), but a fleet revocation is
-evidence that did not exist at ruling time, so the reopening path
-applies. The reserve treats a demotion as a correlated shock — the
-affected cluster caps immediately (F4 at fleet scale). The
-fabrication-bound gate (Phase 2) keeps every sole-evidence class's
-sourced, dated fabrication-cost estimate above its payout cap or drops
-it to corroboration-only.
-
-**Residual.** Revocation latency itself; the demotion authority is a
-T6-adjacent capture vector; the fabrication-cost curve E(t) has no
-defensible empirical anchor — the sim sweeps it and treats fragility as
-a gate, but the arms race is carried, not closed.
-
-**Tripwire & work package.** Revocation-to-demotion propagation time
-across open adjudications; per-class realized loss vs the class's dated
-fabrication-cost estimate (paying out above it pages); red-team bounty
-claim rate per class; the Phase-0 mass-revocation drill must show the
-ladder degrading, never certifying garbage. factbond `evidence-policy.md`
-§4/§5 + `phase0-simulation.md` §7; reopening: `mechanism-design.md` §4.
+An evidence class decays (a camera fleet's certificates revoked): rulings
+that relied on it must degrade, never certify garbage. factbond's evidence
+policy owns the roster, demotion and reopening; loopmarket consumes the
+roster (`P3-guarantee-coupling.md` §4). Full entry: [`factbond/docs/plans/THREATS.md`](https://github.com/petfold/factbond/blob/main/docs/plans/THREATS.md).
 
 ## T14 — Aggregator omission & centralization (added 2026-08-21)
 

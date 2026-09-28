@@ -213,16 +213,12 @@ built 2026-09-13 to 2026-09-19 (0.5.0–0.11.0). What follows is what stands.
       a claim on beat 2's reservation certified by timeout and paid through
       the escrow); this line was stale until 2026-09-25. The repair
       supersession (a cancellation a re-clearing replaced pays nothing)
-      lives in §3's superseding records. *(2026-09-28, factbond's side:
-      the contract now takes per-assertion challenge and ruling windows,
-      charges the loser a ruling fee instead of a 25% slice, lets the
-      asserter concede, names an arbiter as the final rung with first
-      rulings held for appeal, and moves a lapsed case up with the stakes
-      held instead of returning them; a claim may name the key it
-      concerns. The live resolver stays the 2026-09-19 source until
-      factbond redeploys, and the escrow's one redeploy below names the
-      new address. The cross-repo gate, `test_factbond_as_the_resolver`,
-      runs against factbond's current source.)*
+      lives in §3's superseding records. factbond's contract changed on
+      2026-09-28 and awaits its redeploy, which the escrow's one redeploy
+      below names; what changed is factbond's
+      [roadmap](https://github.com/petfold/factbond/blob/main/ROADMAP.md).
+      The cross-repo gate, `test_factbond_as_the_resolver`, runs against
+      factbond's current source.
 - [ ] Release prices and re-clearing · [plan](docs/plans/P3-release-and-reclearing.md)
       (direction, 2026-09-18): the required floor as the maker's true
       neutral point, permissionless cancellation at that price, cancel-and-

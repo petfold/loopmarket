@@ -9,6 +9,22 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Documentation
+
+- **factbond's documentation is factbond's** (2026-09-28): what was a
+  second copy of factbond material now points to factbond. The
+  cross-repository plan `docs/plans/credentials-cover-and-options.md`
+  becomes an index (which decisions are carried out here, where) linking
+  factbond's single full text; the threat register's factbond-primary
+  entries (T4–T6, T9–T13) become stubs holding loopmarket's own part and
+  a link, under a revised content-sync rule; `P3-guarantee-coupling.md`
+  §4 keeps the oracle roster's table and its enforcement rules and links
+  factbond's `evidence-policy.md` §3 for the rulings, and §8 points to
+  factbond's `loopmarket-coupling.md` §5 for the coupling's sequencing;
+  the User Guide (§7) and the Roadmap mention factbond's contested-claim
+  procedure and changes briefly and link factbond's new User Guide and
+  Roadmap.
+
 ### Added
 
 - **Plans: credentials, cover and options** (2026-09-25). Five documents
