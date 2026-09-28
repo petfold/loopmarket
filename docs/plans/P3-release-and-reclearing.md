@@ -460,6 +460,12 @@ cross-repository plan `credentials-cover-and-options.md`.
   a claim must cite a prior `notice/` with a cure deadline (D1's A1, A2).
 - **Staged release** of a reservation (a fraction at countersign, the rest
   at claim-period end) is accepted in principle and deferred (D-5).
+- *(built 2026-09-28, E1; local EVM)* `claimOnly`, `assign`, the
+  two-signature `settle`, `extendClaim` are in `LoopEscrow`, with the claim
+  read inside `hold` (the wanter's own, naming the giver, within the
+  reservation and its least windows), a retraction reopening, and refused
+  payouts credited for `collect` (THREATS T18). The claim period as a
+  matched term waits for v6 (E2).
 
 ## Open problems
 

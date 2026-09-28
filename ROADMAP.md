@@ -264,10 +264,16 @@ Nothing here blocks P3's open items; the sequencing is the plan's §6.
       in the bump after v6. I1–I6.
 - [ ] **Small escrow changes first** (plan §6 step 2): `claimOnly`,
       `assign`, `settle(split)`, `extendClaim`, per-leg claim seconds, the
-      accepted-resolver check at `reserve`. With factbond's 2026-09-28
-      contract the escrow can also read the claim in `hold`
-      (`assertions(count())`) and refuse windows it does not accept, and the
-      redeploy names factbond's redeployed address.
+      accepted-resolver check at `reserve`. **The contract half built
+      2026-09-28 (E1)**, local EVM only: the four acts; the claim read in
+      `hold` — only the wanter's, naming the giver, within the reservation
+      and its least windows, one at a time; a retraction reopens; a close
+      after the parties settled moves nothing; refused payouts credited for
+      `collect` (THREATS T18: before, anyone could void a
+      factbond-resolved reservation by asserting and retracting). Still
+      open: per-leg claim seconds and the accepted-resolver check, which
+      read v6's `claim_max` and `requires.resolvers` (E2, after R1), and
+      the one redeploy (E3), paired with factbond's.
 
 ## P4 — staged privacy · [plan](docs/plans/P4-privacy.md)
 

@@ -48,8 +48,8 @@ while any entry lacks an owning work package or, once its surface is
 live, an instrumented tripwire.** P2 blocks specifically on T1/T3
 (the phase↔document map on the repo front page, `../../README.md`).
 
-**Content-sync rule.** Every entry names a primary owner: T1–T3, T7, T8
-and T14–T16 here; T4–T6, T9–T13 and T17 in
+**Content-sync rule.** Every entry names a primary owner: T1–T3, T7, T8,
+T14–T16 and T18 here; T4–T6, T9–T13 and T17 in
 `factbond/docs/plans/THREATS.md`. *(Revised 2026-09-28, to stop keeping two
 full copies:)* an entry whose primary is factbond appears here as a short
 stub — the attack in a sentence, loopmarket's own part of the defense,
@@ -504,6 +504,49 @@ favour; the `notice/` of rung zero passes between the parties and is
 public only when a bonded act cites it after the cure deadline, so a
 cured matter leaves nothing public (R6's gate here). Residual: the bonded
 act itself stays public, marked by its refusal.
+
+## T18 — Claim hijack at the escrow's consumer edge (added 2026-09-29)
+
+**Attack.** A reservation whose resolver is factbond's `Assertions` is
+held by whatever claim names it: `assert_` is open to anyone, and the
+escrow's `hold` accepted every call from its resolver. factbond's
+`retract` closes a claim with outcome 0, which the escrow read as a
+refutation and refunded the giver. So anyone could assert and at once
+retract a claim on any such reservation and void it: the giver's friend,
+or the giver, escaping a reservation before its window for the assertion
+fee, with the claim and the cancellation ladder bypassed. Two neighbours:
+a claim above the reservation, which the escrow's `resolve` refused, so
+it could never certify and its stakes waited on a refutation; and a
+recipient whose address refuses payment, which blocked any settlement
+paying it, a ruling included.
+
+**Economics.** The void costs factbond's fee (0.001 xDAI on the Gnosis
+deployment) against the whole reservation. The blocked payout costs the
+refuser nothing and holds the wanter's payout and both factbond stakes.
+
+**Defense (by construction; E1 of the 2026-09-25 development sequence,
+built 2026-09-28).** The escrow reads the claim inside `hold` (factbond
+writes it before calling, USER-GUIDE §6) and opens only the wanter's own,
+naming the giver as `about` so the giver's watcher is told, with a payout
+above 0 and within the reservation, and challenge and ruling windows no
+shorter than the reservation's `minChallenge`/`minRuling`; one claim at a
+time. A retraction reopens the reservation, since nobody ruled; a close
+that arrives after the parties settled (a split, a countersign) is
+acknowledged without moving anything, so the resolver's case always ends;
+a settlement's payout that is refused (or that burns the forwarded gas)
+is credited to `owed` for the recipient to `collect`. `assign` is refused
+while a claim is open, so a claimant cannot sell a claim and then drop it.
+Gates: `tests/test_escrow.py` (`test_the_escrow_opens_only_the_wanters_claim_and_a_retraction_reopens`,
+`test_a_split_while_a_claim_is_open_lets_the_resolvers_case_end`,
+`test_a_refused_payout_is_credited_and_never_blocks_the_ruling`).
+**Live exposure:** the Gnosis pair (escrow `0x299CE4…69Bf`, Assertions
+`0xfa6f…BF99`) has the hole until E3's redeploy; its one factbond-resolved
+reservation settled at the 2026-09-19 gate. **Residual, factbond's:**
+`Assertions` calls its consumer without isolating a revert, so a consumer
+that reverts in `resolve` strands the case and both stakes, and one that
+reverts only on 0 makes its claims unrefutable; the defense here makes
+this escrow's `resolve` never revert on a claim it opened, and the
+general fix is on factbond's side.
 
 ## The ten fee/bond rules (by construction)
 

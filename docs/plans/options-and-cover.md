@@ -198,7 +198,9 @@ Then *(applied plan D3, 2026-09-25)*:
 
 - **the reservation is marked `claimOnly`** at `reserve` (set by
   `reservations_for` from the give being under `insure`): `countersign` is
-  refused on it; it settles only by `resolve` or by the quiet `settle`;
+  refused on it; it settles only by `resolve` or by the quiet `settle`
+  *(built 2026-09-28 in the contract and as `reservations_for`'s
+  `claim_only` predicate; reading `insure` is C5's)*;
 - the cover period and claim period come from the `insure` term's
   `period(…)`, and `claim_seconds` is per leg;
 - no claim: `settle` after the claim period returns the deposit to I;
@@ -341,6 +343,22 @@ same size:
 - **`extendClaim(key, seconds)`** (D-4): the giver alone may lengthen a
   reservation's claim period; tail cover in one primitive.
 
+*(built 2026-09-28, E1 of the development sequence; local EVM, not yet
+deployed)* `LoopEscrow` has the three acts, spelled by (offer, loop) like
+the parties' other acts: `assign(offer, loop, to)`, refused while a claim
+is open so a claimant cannot sell a claim and then drop it, and voiding
+splits signed before it; `settle(offer, loop, toWanter)`, each party's own
+transaction naming the same split, the second one settling, on held and
+`claimOnly` reservations too; `extendClaim(offer, loop, seconds)`. Found
+while building it (THREATS T18): factbond's `assert_` is open to anyone
+and its `retract` closes with 0, so the escrow now reads the claim inside
+`hold` — only the wanter's, naming the giver as `about`, a payout within
+the reservation, windows no shorter than the reservation's
+`minChallenge`/`minRuling` — and a retraction reopens the reservation
+instead of refunding the giver. A close arriving after a split moves
+nothing, and a refused payout is credited for `collect`, so a ruling can
+always complete.
+
 ## 7. Invariants
 
 U1 (O and P uniform) · U2 (v6; v5 byte for byte) · U3 (option records, holder and
@@ -362,7 +380,7 @@ per hold (the last clause is this draft's addition, not in U11 today).
 | C3 | solver awareness (§5) | the baseline never proposes a leg on held capacity except the holder's exercise |
 | C4 | holds on chain (§6.2), across `BeatClearing` and `LegVerifier` | an exercise by a non-holder is convicted by `challenge`; an honest one verifies; a `fill/` inclusion proof verifies on chain |
 | C5 | cover via escrow, end to end (§4): `claimOnly`, presentation, matched periods, acceptable resolver | local EVM: cover cleared, finalized, reserved; the insured asserts, I disputes, a certified claim pays `min(limit, loss) − deductible` net of what the giver's reservation paid, after assignment; a countersign on a `claimOnly` reservation is refused; a false presentation reduces the payout proportionately; a leg whose resolver is outside the insured's accepted set does not clear; quiet period returns when no claim was asserted; a held reservation is never released by the quiet path |
-| C6 | `LoopEscrow.assign` to any key, `settle(split)`, `extendClaim` (§6.3) | only the wanter can assign, to anyone; payout goes to the assignee; a split needs both signatures and nobody else can trigger it; only the giver can extend, and only lengthen |
+| C6 | `LoopEscrow.assign` to any key, `settle(split)`, `extendClaim` (§6.3) | only the wanter can assign, to anyone; payout goes to the assignee; a split needs both signatures and nobody else can trigger it; only the giver can extend, and only lengthen — *the contract gates met 2026-09-28 (E1, `tests/test_escrow.py`); the CLI verbs remain* |
 | C7 | CLI: `option ID [--until T] [--premium X]`, `exercise OPTION`, `options` | G-style CLI gates; an `examples/apartment.loop` viewing → option → exercise |
 
 C1–C3 are the in-memory core; C4–C7 follow.
