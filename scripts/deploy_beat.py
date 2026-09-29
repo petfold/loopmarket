@@ -1,14 +1,14 @@
-"""Deploy contracts/BeatClearing.sol (and the LegVerifier it calls) from the
-compiled artifacts.
+"""Deploy contracts/BeatClearing.sol (and the LegVerifier and, since
+2026-09-29, the StatementVerifier it calls) from the compiled artifacts.
 
     pip install 'loopmarket[chain]'
     LOOP_CHAIN_RPC=https://rpc.gnosischain.com LOOP_CHAIN_KEY=0x... \\
       python scripts/deploy_beat.py BOND_XDAI WINDOW_BLOCKS [ARBITER]
-          [--predecessors 0xA,0xB,...] [--verifier 0xV] [--retire 0xOLD]
+          [--predecessors 0xA,0xB,...] [--verifier 0xV] [--statements 0xS] [--retire 0xOLD]
 
-Prints the clearing and verifier addresses; the setting is then
+Prints the clearing, verifier and statement-verifier addresses; the setting is then
 `loop set beat chain:https://rpc.gnosischain.com@0xCLEARING`. The artifacts
-are `loopmarket/contracts/{BeatClearing,LegVerifier}.json` (inside the
+are `loopmarket/contracts/{BeatClearing,LegVerifier,StatementVerifier}.json` (inside the
 package; solc 0.8.24 via IR, optimizer 200 runs), so this needs no compiler.
 `BOND_XDAI` is what a submitter locks per beat and a successful challenger
 wins; `WINDOW_BLOCKS` the challenge window (Gnosis: ~5 s blocks, 720 ≈ one
@@ -18,7 +18,10 @@ deployer — replace with factbond's adjudication when it exists).
 
 `--predecessors`: every earlier clearing contract that has recorded fills —
 their fills are the new contract's floor, so an offer they cleared cannot
-clear again (2026-09-23). `--verifier` reuses a deployed LegVerifier.
+clear again (2026-09-23). `--verifier` reuses a deployed LegVerifier,
+`--statements` a deployed StatementVerifier — only one built from the same
+sources: the leg shape changed on 2026-09-29 (holds, item claims, register
+pins, statements), so the verifiers before it do not fit this contract.
 `--retire`: after deploying, retire that (2026-09-23 or later) contract to the
 new one, from the same key (its arbiter): it takes no new beat after that.
 """
@@ -41,6 +44,7 @@ def main() -> None:
     ap.add_argument("arbiter", nargs="?")
     ap.add_argument("--predecessors", default="")
     ap.add_argument("--verifier")
+    ap.add_argument("--statements")
     ap.add_argument("--retire")
     args = ap.parse_args()
     if not rpc or not key:
@@ -48,9 +52,11 @@ def main() -> None:
     w3 = Web3(Web3.HTTPProvider(rpc))
     predecessors = [p for p in args.predecessors.split(",") if p]
     clearing, verifier = deploy(w3, Web3.to_wei(args.bond, "ether"), args.window, args.arbiter,
-                                predecessors=predecessors, verifier=args.verifier, key=key)
+                                predecessors=predecessors, verifier=args.verifier,
+                                statements=args.statements, key=key)
     print(f"clearing {clearing}")
     print(f"verifier {verifier}")
+    print(f"statements {BeatClient(rpc, clearing, client=w3).contract().functions.statements().call()}")
     if args.retire:
         BeatClient(rpc, args.retire, key=key).retire(clearing)
         print(f"retired {args.retire} -> {clearing}")

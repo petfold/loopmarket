@@ -31,6 +31,21 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Holds, item claims and statements on chain (C4, I3, R3b)** (2026-09-29;
+  local EVM, not yet deployed). `LoopVerifier` reads v6 records; an option
+  leg carries its underlying's record and a beat commits the holds its
+  option legs write, the item claims its gives write and its register pins,
+  each give's fill naming its taker. A challenge checks them against the
+  leg; `finalize` records holds and claims, consumes a holder's holds with
+  its fill and cancels a beat whose hold or claim races what the chain has
+  recorded since. The remainder a leg is checked against counts every
+  active hold but the taker's own, so a non-holder's exercise is convicted.
+  Statements go in each leg's commitment and a new `StatementVerifier`
+  (split from `LegVerifier` at EIP-170) checks their `cred/` inclusion and
+  their `revoked/`/`suspended/` absence under the issuer's pinned register
+  root: a revoked statement is convicted by challenge. The leg ABI changed,
+  so the clearing contracts are redeployed together; the verifier's record
+  scanning is word-at-a-time (an option leg had cost ~11 M gas; now 4.2 M, a plain leg 2.4 M).
 - **Register roots form a checked sequence (R5, option A)** (2026-09-29).
   Every register root names its predecessor and number (`chain`, written by
   `Register.commit`), and the counterparty gate refuses a root that drops a

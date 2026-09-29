@@ -427,8 +427,16 @@ class ChainClearing(MockClearing):
     def submit(self, proposal: LoopProposal) -> Receipt:
         from .beat import submission
         lid = proposal.circulation.loop_id
+        now = self.clock()
         try:
-            sub = submission(proposal, self.snapshot_of(proposal.book_root))
+            snapshot = self.snapshot_of(proposal.book_root)
+            # the holds and item claims this clearing would write, and the
+            # statements the gate accepts over the pinned snapshot (C4, I3, R3b)
+            records = self.hold_records(proposal.circulation, lid, now)
+            gate = self.gate(proposal.register_roots, now=now)
+            gate = CounterpartyGate.over(snapshot, gate.registers, now=now, span=self.span,
+                                         held=gate.held, capacity=gate.capacity)
+            sub = submission(proposal, snapshot, records=records, gate=gate, ontology=self.ontology)
         except Exception as exc:  # noqa: BLE001 — the proposal's evidence cannot be built
             return Receipt(False, lid, f"beat: {exc}")
         # the local checklist first, without committing

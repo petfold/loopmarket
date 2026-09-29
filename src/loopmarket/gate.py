@@ -42,7 +42,7 @@ from fractions import Fraction
 from typing import Callable, Iterable, Mapping
 
 from .ontology import Ontology
-from .schema import Credential, Offer, Statement, q
+from .schema import GIVE, Credential, Offer, Statement, q
 
 Window = tuple[int, int]
 
@@ -126,8 +126,8 @@ class CounterpartyGate:
             return "option by another maker than its underlying's"
         if self.withdrawn(p.offer_id):
             return "the underlying is withdrawn"
-        if p.composed:
-            return "an option holds one thing: its underlying is a composed want"
+        if p.kind != GIVE:
+            return "an option holds a give: its underlying is a want"
         if not p.valid.contains(option.exercise):
             return "the underlying is not valid through the exercise window"
         if option.thing.unit != p.thing.unit:
@@ -184,6 +184,17 @@ class CounterpartyGate:
             elif best:
                 out.append(f"{entry.category}: " + "; ".join(best))
         return out
+
+    def chosen(self, entry: Credential, requirer: Offer, counterparty: Offer, ontology: Ontology, *,
+               window: Window, taken=None, whole=None) -> Statement | None:
+        """The statement that meets `entry` — the first presented one with no
+        failing step, the one `faults` accepts — or None: what a beat's leg
+        carries for the entry (R3b)."""
+        for s in self.statements(counterparty.maker):
+            if not self.statement_faults(entry, s, requirer, counterparty, ontology, window=window,
+                                         taken=taken, whole=whole):
+                return s
+        return None
 
     def statement_faults(self, entry: Credential, s: Statement, requirer: Offer, counterparty: Offer,
                          ontology: Ontology, *, window: Window, taken=None, whole=None) -> list[str]:

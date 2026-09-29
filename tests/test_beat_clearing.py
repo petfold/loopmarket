@@ -37,14 +37,15 @@ HERE = os.path.dirname(__file__)
 NOW = 5_000
 V = dict(valid=TimeWindow(0, 1_000_000))
 PINS = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
-LEG_TYPE = "((bytes32,bytes,bytes[]),(bytes32,bytes,bytes[])[],(uint256,uint256)[])"
+from loopmarket.beat import LEG_TYPE, NO_UNDERLYING, STATEMENTS_TYPE  # noqa: E402
 BOND = 10 ** 16
 WINDOW = 5
 
 
 @pytest.fixture(scope="module")
 def compiled():
-    """BeatClearing and the LegVerifier it calls, compiled from the sources."""
+    """BeatClearing and the LegVerifier and StatementVerifier it calls,
+    compiled from the sources."""
     solcx, Web3, EthereumTesterProvider = _evm()
     solcx.install_solc("0.8.24")
     out = solcx.compile_files([os.path.join(HERE, "..", "contracts", f)
@@ -55,18 +56,20 @@ def compiled():
     pick = lambda name: next(v for k, v in out.items() if k.endswith(":" + name))
     w3 = Web3(EthereumTesterProvider())
     w3.eth.default_account = w3.eth.accounts[0]
-    ver = pick("LegVerifier")
-    r = w3.eth.wait_for_transaction_receipt(
-        w3.eth.contract(abi=ver["abi"], bytecode=ver["bin"]).constructor().transact())
-    return w3, pick("BeatClearing"), r["contractAddress"]
+    deployed = []
+    for name in ("LegVerifier", "StatementVerifier"):
+        art = pick(name)
+        deployed.append(w3.eth.wait_for_transaction_receipt(
+            w3.eth.contract(abi=art["abi"], bytecode=art["bin"]).constructor().transact())["contractAddress"])
+    return (w3, pick("BeatClearing"), *deployed)
 
 
 def _clearing(compiled, predecessors=()):
     """A fresh BeatClearing on the module's chain, with `predecessors`."""
-    w3, art, verifier = compiled
+    w3, art, verifier, statements = compiled
     c = w3.eth.contract(abi=art["abi"], bytecode=art["bin"])
     receipt = w3.eth.wait_for_transaction_receipt(
-        c.constructor(BOND, WINDOW, w3.eth.accounts[2], verifier, list(predecessors)).transact())
+        c.constructor(BOND, WINDOW, w3.eth.accounts[2], verifier, statements, list(predecessors)).transact())
     return w3.eth.contract(address=receipt["contractAddress"], abi=art["abi"])
 
 
@@ -101,29 +104,46 @@ def _legs(snapshot, rec):
     def proof(oid):
         p = snapshot.store.prove("offer/" + oid)
         return (bytes.fromhex(oid), bytes.fromhex(p["value"]), [bytes.fromhex(n) for n in p["nodes"]])
-    legs = [(proof(l["want"]), [proof(g) for g in l["gives"]], [_rat(t) for t in l["taken"]])
-            for l in rec["legs"]]
-    hashes = [Web3.keccak(encode([LEG_TYPE], [leg])) for leg in legs]
-    fills = []                                  # (offer, n, d, cap n, cap d)
+    legs = [(proof(l["want"]), [proof(g) for g in l["gives"]], [_rat(t) for t in l["taken"]],
+             [NO_UNDERLYING] * len(l["gives"])) for l in rec["legs"]]
+    hashes = _hashes(legs)
+    fills = []                                  # (offer, n, d, cap n, cap d, taker)
     for l in rec["legs"]:
-        fills.append((bytes.fromhex(l["want"]), 1, 1, 1, 1))
+        taker = Web3.keccak(snapshot.get(l["want"]).maker.encode())
+        fills.append((bytes.fromhex(l["want"]), 1, 1, 1, 1, bytes(32)))
         for g, t in zip(l["gives"], l["taken"]):
             cap = snapshot.get(g).thing.qty
-            fills.append((bytes.fromhex(g), *_rat(t), cap.numerator, cap.denominator))
+            fills.append((bytes.fromhex(g), *_rat(t), cap.numerator, cap.denominator, taker))
     makers = sorted(rec["potentials"])
     potentials = [_rat(rec["potentials"][m]) for m in makers]
     return legs, hashes, fills, [m.encode() for m in makers], potentials
+
+
+def _hashes(legs):
+    """Each leg's commitment: over the leg and its statements (none here)."""
+    from eth_abi import encode
+    from web3 import Web3
+    return [Web3.keccak(encode([LEG_TYPE, STATEMENTS_TYPE], [leg, []])) for leg in legs]
 
 
 def _pins(root):
     return (bytes.fromhex(root), bytes.fromhex(PINS["ontology_root"]), b"4.2", b"0.1", 0)
 
 
+def _submit_fn(beat, root, hashes, fills, makers, potentials):
+    """`submit` with no registers, holds or claims."""
+    return beat.functions.submit(_pins(root), [], hashes, fills, [], [], makers, potentials)
+
+
+def _challenge_fn(beat, bid, index, hashes, leg, makers, potentials):
+    return beat.functions.challenge(bid, index, [], hashes, leg, [], makers, potentials)
+
+
 def test_submit_challenge_and_finalize(chain):
     w3, beat = chain
     snapshot, root, rec, offers = _cleared()
     legs, hashes, fills, makers, potentials = _legs(snapshot, rec)
-    tx = beat.functions.submit(_pins(root), hashes, fills, makers, potentials).transact({"value": BOND})
+    tx = _submit_fn(beat, root, hashes, fills, makers, potentials).transact({"value": BOND})
     receipt = w3.eth.wait_for_transaction_receipt(tx)
     bid = beat.events.Submitted().process_receipt(receipt)[0]["args"]["beat"]
     print("\nsubmit gas:", receipt["gasUsed"])
@@ -132,13 +152,13 @@ def test_submit_challenge_and_finalize(chain):
     # where the inner verification runs out of gas and is caught.)
     challenger = w3.eth.accounts[1]
     rc = w3.eth.wait_for_transaction_receipt(
-        beat.functions.challenge(bid, 0, hashes, legs[0], makers, potentials).transact({"from": challenger, "gas": 12_000_000}))
+        _challenge_fn(beat, bid, 0, hashes, legs[0], makers, potentials).transact({"from": challenger, "gas": 12_000_000}))
     ev = beat.events.Challenged().process_receipt(rc)[0]["args"]
     assert ev["reason"] == "leg verifies" and not beat.functions.beats(bid).call()[8]
     print("challenge gas (leg verifies):", rc["gasUsed"])
     # data that is not what was committed is refused outright
     with pytest.raises(Exception, match="committed"):
-        beat.functions.challenge(bid, 1, hashes, legs[0], makers, potentials).call({"from": challenger})
+        _challenge_fn(beat, bid, 1, hashes, legs[0], makers, potentials).call({"from": challenger})
     # finalizing inside the window is refused
     with pytest.raises(Exception, match="window open"):
         beat.functions.finalize(bid).call()
@@ -162,18 +182,16 @@ def test_a_bad_leg_is_challenged_and_the_bond_goes_to_the_challenger(chain):
     snapshot, root, rec, offers = _cleared()
     legs, hashes, fills, makers, potentials = _legs(snapshot, rec)
     apples = next(i for i, l in enumerate(rec["legs"]) if l["taken"] == ["40"])
-    want_p, gives_p, _ = legs[apples]
-    legs[apples] = (want_p, gives_p, [(105, 1)])                    # forged: 105 kg of a 100 kg give
-    from eth_abi import encode
-    from web3 import Web3
-    hashes = [Web3.keccak(encode([LEG_TYPE], [leg])) for leg in legs]
-    fills = [(f[0], 105, 1, 105, 1) if f[0] == gives_p[0][0] else f for f in fills]
-    tx = beat.functions.submit(_pins(root), hashes, fills, makers, potentials).transact({"value": BOND})
+    want_p, gives_p, _, under = legs[apples]
+    legs[apples] = (want_p, gives_p, [(105, 1)], under)             # forged: 105 kg of a 100 kg give
+    hashes = _hashes(legs)
+    fills = [(f[0], 105, 1, 105, 1, f[5]) if f[0] == gives_p[0][0] else f for f in fills]
+    tx = _submit_fn(beat, root, hashes, fills, makers, potentials).transact({"value": BOND})
     bid = beat.events.Submitted().process_receipt(w3.eth.wait_for_transaction_receipt(tx))[0]["args"]["beat"]
     challenger = w3.eth.accounts[1]
     before = w3.eth.get_balance(challenger)
     rc = w3.eth.wait_for_transaction_receipt(
-        beat.functions.challenge(bid, apples, hashes, legs[apples], makers, potentials).transact({"from": challenger, "gas": 12_000_000}))
+        _challenge_fn(beat, bid, apples, hashes, legs[apples], makers, potentials).transact({"from": challenger, "gas": 12_000_000}))
     ev = beat.events.Challenged().process_receipt(rc)[0]["args"]
     assert "left" in ev["reason"], ev["reason"]
     assert beat.functions.beats(bid).call()[8]                       # cancelled
@@ -182,7 +200,7 @@ def test_a_bad_leg_is_challenged_and_the_bond_goes_to_the_challenger(chain):
     with pytest.raises(Exception, match="no open beat"):
         beat.functions.finalize(bid).call()
     # the arbiter may cancel what the contract cannot compute
-    tx = beat.functions.submit(_pins(root), hashes, fills, makers, potentials).transact({"value": BOND})
+    tx = _submit_fn(beat, root, hashes, fills, makers, potentials).transact({"value": BOND})
     bid2 = beat.events.Submitted().process_receipt(w3.eth.wait_for_transaction_receipt(tx))[0]["args"]["beat"]
     with pytest.raises(Exception, match="not the arbiter"):
         beat.functions.cancelByArbiter(bid2, "x").call({"from": challenger})
@@ -192,7 +210,7 @@ def test_a_bad_leg_is_challenged_and_the_bond_goes_to_the_challenger(chain):
 
 
 def _submit(w3, beat, root, hashes, fills, makers, potentials):
-    tx = beat.functions.submit(_pins(root), hashes, fills, makers, potentials).transact({"value": BOND})
+    tx = _submit_fn(beat, root, hashes, fills, makers, potentials).transact({"value": BOND})
     return beat.events.Submitted().process_receipt(w3.eth.wait_for_transaction_receipt(tx))[0]["args"]["beat"]
 
 
@@ -209,7 +227,7 @@ def test_two_beats_racing_over_one_book_cannot_overfill(chain):
     legs, hashes, fills, makers, potentials = _legs(snapshot, rec)
     first = _submit(w3, beat, root, hashes, fills, makers, potentials)
     racer = w3.eth.accounts[3]
-    tx = beat.functions.submit(_pins(root), hashes, fills, makers, potentials).transact({"value": BOND, "from": racer})
+    tx = _submit_fn(beat, root, hashes, fills, makers, potentials).transact({"value": BOND, "from": racer})
     second = beat.events.Submitted().process_receipt(w3.eth.wait_for_transaction_receipt(tx))[0]["args"]["beat"]
     w3.provider.ethereum_tester.mine_blocks(WINDOW + 1)
     w3.eth.wait_for_transaction_receipt(beat.functions.finalize(first).transact())
@@ -269,22 +287,20 @@ def test_a_false_cap_or_a_partial_want_fill_is_convicted(chain):
     apples = next(i for i, l in enumerate(rec["legs"]) if l["taken"] == ["40"])
     farm = bytes.fromhex(offers[0].offer_id)
     challenger = w3.eth.accounts[1]
-    inflated = [(f[0], f[1], f[2], 1000, 1) if f[0] == farm else f for f in fills]
+    inflated = [(f[0], f[1], f[2], 1000, 1, f[5]) if f[0] == farm else f for f in fills]
     bid = _submit(w3, beat, root, hashes, inflated, makers, potentials)
-    rc = w3.eth.wait_for_transaction_receipt(beat.functions.challenge(
-        bid, apples, hashes, legs[apples], makers, potentials).transact({"from": challenger, "gas": 12_000_000}))
+    rc = w3.eth.wait_for_transaction_receipt(_challenge_fn(beat, bid, apples, hashes, legs[apples], makers, potentials).transact({"from": challenger, "gas": 12_000_000}))
     assert beat.events.Challenged().process_receipt(rc)[0]["args"]["reason"] == "a cap is not its give's quantity"
     assert beat.functions.beats(bid).call()[8]
     b1 = bytes.fromhex(rec["legs"][apples]["want"])
-    halved = [(f[0], 1, 2, 1, 1) if f[0] == b1 else f for f in fills]
+    halved = [(f[0], 1, 2, 1, 1, f[5]) if f[0] == b1 else f for f in fills]
     bid = _submit(w3, beat, root, hashes, halved, makers, potentials)
-    rc = w3.eth.wait_for_transaction_receipt(beat.functions.challenge(
-        bid, apples, hashes, legs[apples], makers, potentials).transact({"from": challenger, "gas": 12_000_000}))
+    rc = w3.eth.wait_for_transaction_receipt(_challenge_fn(beat, bid, apples, hashes, legs[apples], makers, potentials).transact({"from": challenger, "gas": 12_000_000}))
     assert beat.events.Challenged().process_receipt(rc)[0]["args"]["reason"] == "the want's fill is not whole"
     # and a fill beyond its own cap is refused at submit
     with pytest.raises(Exception, match="beyond its cap"):
-        beat.functions.submit(_pins(root), hashes, [(f[0], f[1], f[2], 1, 1) if f[0] == farm else f
-                                                    for f in fills], makers, potentials).call({"value": BOND})
+        _submit_fn(beat, root, hashes, [(f[0], f[1], f[2], 1, 1, f[5]) if f[0] == farm else f
+                                        for f in fills], makers, potentials).call({"value": BOND})
 
 
 def _finalize_after_window(w3, beat, bid):
@@ -338,8 +354,7 @@ def test_a_give_used_up_before_the_redeploy_convicts_on_challenge(compiled):
     new = _clearing(compiled, [old.address])
     bid = _submit(w3, new, root, hashes, fills, makers, potentials)
     apples = next(i for i, l in enumerate(rec["legs"]) if l["taken"] == ["40"])
-    rc = w3.eth.wait_for_transaction_receipt(new.functions.challenge(
-        bid, apples, hashes, legs[apples], makers, potentials).transact({"from": w3.eth.accounts[1], "gas": 12_000_000}))
+    rc = w3.eth.wait_for_transaction_receipt(_challenge_fn(new, bid, apples, hashes, legs[apples], makers, potentials).transact({"from": w3.eth.accounts[1], "gas": 12_000_000}))
     assert "left" in new.events.Challenged().process_receipt(rc)[0]["args"]["reason"]
 
 
@@ -359,7 +374,7 @@ def test_a_retired_contract_takes_no_beat_and_its_open_beats_see_the_successor(c
     w3.eth.wait_for_transaction_receipt(old.functions.retire(new.address).transact({"from": w3.eth.accounts[2]}))
     assert old.functions.successor().call() == new.address
     with pytest.raises(Exception, match="retired"):
-        old.functions.submit(_pins(root), hashes, fills, makers, potentials).call({"value": BOND})
+        _submit_fn(old, root, hashes, fills, makers, potentials).call({"value": BOND})
     with pytest.raises(Exception, match="already retired"):
         old.functions.retire(new.address).call({"from": w3.eth.accounts[2]})
     fresh = _submit(w3, new, root, hashes, fills, makers, potentials)

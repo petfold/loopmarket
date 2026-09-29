@@ -2588,7 +2588,7 @@ def cmd_finalize(args, session, out):
     print(f"finalized beat {args.beat}: {state['fills']} fills, gas {receipt['gasUsed']}", file=out)
     if not (_configured("escrow") or "").startswith("chain:"):
         return 0
-    ev = find_evidence(state, _evidence_books(session, state, None))
+    ev = find_evidence(state, _evidence_books(session, state, None), ontology=session.catalogue)
     if ev is None:
         print(f"loop: beat {args.beat}: no loop record found, nothing reserved on the escrow", file=_err())
         return 2

@@ -30,6 +30,17 @@ window, a withdrawn offer — is reported as the arbiter's (P3). A beat with
 no record behind it anywhere is reported as unverifiable: the contract
 cannot convict what nobody has seen, so the bond is the only deterrent
 there (`docs/plans/proof-fabric.md`, publication of the anchored root).
+
+Holds, item claims and registers (2026-09-29: C4, I3, R3b). A submission
+also carries what the beat commits beside its fills: the holds its option
+legs write (derived from the legs), the item claims its gives write (their
+ends are the clearing's `item/` records, `records`), the register roots the
+proposal pins, and — hashed into each leg's commitment — the statements
+each credential entry needs, chosen by the counterparty gate over the
+snapshot (`gate`), each with its `cred/` inclusion proof under the book
+root and its `revoked/` and `suspended/` absence proofs under the issuer's
+pinned root. Each give's fill names its taker (keccak of the wanter), whose
+holds it consumes.
 """
 
 from __future__ import annotations
@@ -44,7 +55,12 @@ from .matching import Leg
 from .registry import OfferRegistry
 from .schema import q
 
-LEG_TYPE = "((bytes32,bytes,bytes[]),(bytes32,bytes,bytes[])[],(uint256,uint256)[])"
+OFFER_PROOF_TYPE = "(bytes32,bytes,bytes[])"
+LEG_TYPE = f"({OFFER_PROOF_TYPE},{OFFER_PROOF_TYPE}[],(uint256,uint256)[],{OFFER_PROOF_TYPE}[])"
+STATEMENTS_TYPE = "(uint32,bool,bytes,bytes[],bytes[],bytes[])[]"
+REGISTERS_TYPE = "(bytes,bytes32,uint8)[]"
+#: No underlying: a plain give's slot in `Leg.underlying`.
+NO_UNDERLYING = (bytes(32), b"", [])
 
 
 def abi() -> dict:
@@ -70,9 +86,11 @@ def _artifact(name: str) -> dict:
 
 
 def deploy(w3, bond_wei: int, window_blocks: int, arbiter: str | None = None, *,
-           predecessors=(), verifier: str | None = None, key: str | None = None) -> tuple[str, str]:
-    """Deploy a `BeatClearing` (and, unless `verifier` names one already on
-    the chain, a `LegVerifier` for it) and return (clearing, verifier).
+           predecessors=(), verifier: str | None = None, statements: str | None = None,
+           key: str | None = None) -> tuple[str, str]:
+    """Deploy a `BeatClearing` (and, unless `verifier`/`statements` name
+    them already on the chain, a `LegVerifier` and a `StatementVerifier` for
+    it) and return (clearing, verifier).
     `predecessors` are the earlier clearing contracts whose fills are the new
     one's floor — list every address that has recorded fills, so an offer
     they cleared cannot clear again. `key` signs raw transactions (a remote
@@ -92,9 +110,13 @@ def deploy(w3, bond_wei: int, window_blocks: int, arbiter: str | None = None, *,
     if verifier is None:
         art = verifier_abi()
         verifier = send(w3.eth.contract(abi=art["abi"], bytecode=art["bytecode"]).constructor())
+    if statements is None:
+        art = _artifact("StatementVerifier.json")
+        statements = send(w3.eth.contract(abi=art["abi"], bytecode=art["bytecode"]).constructor())
     art = abi()
     clearing = send(w3.eth.contract(abi=art["abi"], bytecode=art["bytecode"]).constructor(
-        bond_wei, window_blocks, arbiter or sender, verifier, [w3.to_checksum_address(p) for p in predecessors]))
+        bond_wei, window_blocks, arbiter or sender, verifier, statements,
+        [w3.to_checksum_address(p) for p in predecessors]))
     return clearing, verifier
 
 
@@ -108,10 +130,14 @@ ADDRESSING_NAMES = {v: k for k, v in ADDRESSING.items()}
 class Submission:
     pins: tuple            # (bookRoot, ontologyRoot, registryVersion, contractVersion, addressing)
     legs: list             # LoopVerifier.Leg tuples, in the loop record's order
-    leg_hashes: list       # keccak256(abi.encode(leg)) each
-    fills: list            # (offer id bytes, n, d, cap n, cap d): a give's cap its quantity, a want's 1/1
+    leg_hashes: list       # keccak256(abi.encode(leg, statements)) each
+    fills: list            # (offer id, n, d, cap n, cap d, taker): a give's cap its quantity, a want's 1/1
     makers: list           # bytes
     potentials: list       # (n, d)
+    registers: list = ()   # (register id bytes, root, addressing): the pinned register roots (R3b)
+    statements: list = ()  # per leg, its StatementProof tuples (R3b)
+    holds: list = ()       # LoopVerifier.Hold tuples (C4)
+    claims: list = ()      # LoopVerifier.ItemClaim tuples (I3)
 
 
 def _rat(x) -> tuple[int, int]:
@@ -139,28 +165,58 @@ def _addressing(snapshot: OfferRegistry, offer_id: str) -> int:
 
 
 def submission(proposal: LoopProposal, snapshot: OfferRegistry, *,
-               potentials: dict | None = None) -> Submission:
+               potentials: dict | None = None, records: dict | None = None, gate=None,
+               ontology=None) -> Submission:
     """Everything `BeatClearing.submit` and a later `challenge` need, from
     the proposal and the frozen book it was solved against (U4: the
     snapshot's root is the beat's book root). `potentials` overrides the
     recomputed ones: a challenger commits to what the *submitter* posted,
-    so the contract hears the challenge, and lets the verifier judge them."""
+    so the contract hears the challenge, and lets the verifier judge them.
+    `records` are the clearing's `item/` records of this loop (a fill's
+    item claim ends where the clearing said; an option's where its window
+    does); `gate` and `ontology` choose the statements a credential entry
+    needs, over the snapshot. A leg that needs either and is not given it
+    is refused here: a beat the contract would convict is never built."""
     from eth_abi import encode
     from eth_hash.auto import keccak
+
+    from . import items
 
     if snapshot.store.root != proposal.book_root:
         raise ValueError("the snapshot is not the proposal's book root")
     circ = proposal.circulation
-    legs, fills = [], []
-    for leg in sorted(circ.legs, key=lambda l: l.key):
+    lid = circ.loop_id
+    legs, fills, statements, holds, claims = [], [], [], [], []
+    for li, leg in enumerate(sorted(circ.legs, key=lambda l: l.key)):
         want = _proof(snapshot, leg.want.offer_id)
         gives = [_proof(snapshot, g.offer_id) for g in leg.gives]
         taken = [_rat(leg.taken(i)) for i in range(len(leg.gives))]
-        legs.append((want, gives, taken))
-        fills.append((bytes.fromhex(leg.want.offer_id), 1, 1, 1, 1))
-        for g, t in zip(leg.gives, taken):
-            fills.append((bytes.fromhex(g.offer_id), *t, *_rat(g.thing.qty)))
-    hashes = [keccak(encode([LEG_TYPE], [leg])) for leg in legs]
+        taker = keccak(leg.want.maker.encode())
+        under = []
+        fills.append((bytes.fromhex(leg.want.offer_id), 1, 1, 1, 1, bytes(32)))
+        for i, (g, t) in enumerate(zip(leg.gives, taken)):
+            fills.append((bytes.fromhex(g.offer_id), *t, *_rat(g.thing.qty), taker))
+            subject, until = g, None
+            if g.v >= 6 and g.underlying:
+                p = snapshot.get(g.underlying)
+                under.append(_proof(snapshot, g.underlying))
+                holds.append((bytes.fromhex(g.offer_id), bytes.fromhex(g.underlying), t, _rat(p.thing.qty),
+                              taker, int(g.exercise.start), int(g.exercise.end), li))
+                subject, until = p, int(g.exercise.end)
+            else:
+                under.append(NO_UNDERLYING)
+            for h in items.ids(subject.thing.concepts):
+                end = until
+                if end is None:
+                    rec = (records or {}).get(f"item/{h}/{g.maker}/{lid}")
+                    if rec is None:
+                        raise ValueError(f"the item claim on {h[:12]} needs the clearing's record of its end")
+                    end = int(rec["until"])
+                claims.append((bytes.fromhex(h), keccak(g.maker.encode()), bytes.fromhex(subject.offer_id),
+                               end, li))
+        legs.append((want, gives, taken, under))
+        statements.append(_statement_proofs(leg, snapshot, gate, ontology))
+    hashes = [keccak(encode([LEG_TYPE, STATEMENTS_TYPE], [leg, st])) for leg, st in zip(legs, statements)]
     if potentials is None:
         potentials = circ.potentials()
     makers = sorted(potentials)
@@ -169,18 +225,76 @@ def submission(proposal: LoopProposal, snapshot: OfferRegistry, *,
             bytes.fromhex(proposal.ontology_root) if proposal.ontology_root else bytes(32),
             first.registry_version.encode(), first.contract_version.encode(),
             _addressing(snapshot, first.offer_id))
+    registers = []
+    for rid, root in sorted(proposal.register_roots):
+        reg = gate.registers.get(rid) if gate is not None else None
+        name = reg.prove(REVOKED_PROBE).get("addressing", "sha256") if reg is not None else "sha256"
+        registers.append((rid.encode(), bytes.fromhex(root), ADDRESSING.get(name, 0)))
     return Submission(pins, legs, hashes, fills, [m.encode() for m in makers],
-                      [_rat(potentials[m]) for m in makers])
+                      [_rat(potentials[m]) for m in makers], registers, statements, holds, claims)
 
 
-def commitment(sub: Submission) -> tuple[bytes, bytes]:
-    """(legsHash, potentialsHash) exactly as `BeatClearing.submit` stores
-    them: keccak over the ABI encoding of the leg hashes, and of (makers,
-    potentials). What a rebuilt submission must equal to be the beat's."""
+#: A key probed only to learn a register root's addressing scheme.
+REVOKED_PROBE = "revoked/"
+
+
+def _statement_proofs(leg: Leg, snapshot: OfferRegistry, gate, ontology) -> list:
+    """The statements leg `leg` needs (R3b): for each give, one per
+    credential entry the want requires of it and one per entry it requires
+    of the want — the one the gate accepts, as `StatementProof` tuples."""
+    out = []
+    for i, give in enumerate(leg.gives):
+        for mine, other, of_give in ((leg.want, give, True), (give, leg.want, False)):
+            entries = mine.requires.counterparty if mine.v >= 6 and mine.requires is not None else ()
+            if not entries:
+                continue
+            if gate is None or ontology is None:
+                raise ValueError("a credential requirement needs the gate to choose its statements")
+            window = gate.window(leg.want)
+            taken = q(leg.want.thing.qty) if of_give and not leg.want.composed else None
+            whole = q(give.thing.qty) if of_give else None
+            for entry in entries:
+                s = gate.chosen(entry, mine, other, ontology, window=window, taken=taken, whole=whole)
+                if s is None:
+                    raise ValueError(f"no statement of {other.maker} meets {entry.category}")
+                out.append(_statement_proof(i, of_give, s, snapshot, gate))
+    return out
+
+
+def _statement_proof(give: int, of_give: bool, s, snapshot: OfferRegistry, gate) -> tuple:
+    sid = s.statement_id
+    p = snapshot.store.prove(f"cred/{s.subject}/{sid}")
+    if not p["present"]:
+        raise ValueError(f"statement {sid[:12]} is not presented under the book root")
+    revoked = suspended = []
+    if s.kind != "self-bonded":
+        reg = gate.registers.get(s.issuer)
+        if reg is None:
+            raise ValueError(f"the register of {s.issuer} is not pinned")
+        rp, sp = reg.prove("revoked/" + sid), reg.prove("suspended/" + sid)
+        if rp["present"] or sp["present"]:
+            raise ValueError(f"statement {sid[:12]} does not stand under its register's pinned root")
+        revoked, suspended = ([bytes.fromhex(n) for n in x["nodes"]] for x in (rp, sp))
+    return (give, of_give, bytes.fromhex(p["value"]), [bytes.fromhex(n) for n in p["nodes"]],
+            revoked, suspended)
+
+
+def loop_records(book: OfferRegistry, loop_id: str) -> dict:
+    """The clearing's `item/` records of one loop, from its book — what a
+    rebuilt submission reads its item claims' ends from."""
+    return {k: v for k, v in book.store.items("item/") if k.endswith("/" + loop_id)}
+
+
+def commitment(sub: Submission) -> tuple[bytes, bytes, bytes]:
+    """(legsHash, potentialsHash, registersHash) exactly as
+    `BeatClearing.submit` stores them: keccak over the ABI encoding of the
+    leg hashes, of (makers, potentials), and of the register pins. What a
+    rebuilt submission must equal to be the beat's."""
     from eth_abi import encode
     from eth_hash.auto import keccak
     return (keccak(encode(["bytes32[]"], [sub.leg_hashes])),
-            keccak(encode(["bytes[]", "(uint256,uint256)[]"], [sub.makers, sub.potentials])))
+            keccak(encode(["bytes[]", "(uint256,uint256)[]"], [sub.makers, sub.potentials])),
+            keccak(encode([REGISTERS_TYPE], [list(sub.registers)])))
 
 
 def legs_from_record(rec: dict, book: OfferRegistry) -> tuple[Leg, ...]:
@@ -233,12 +347,17 @@ class Evidence:
     book: OfferRegistry
 
 
-def find_evidence(state: dict, books) -> Evidence | None:
+def find_evidence(state: dict, books, *, ontology=None, register_at=None, span=None) -> Evidence | None:
     """The `loop/` record behind a beat, from the first of `books` that
     holds one under the beat's book root whose rebuilt submission hashes to
-    the committed legs and potentials — so what is re-derived is exactly
-    what was posted, whatever the record claims. None when no book has it:
-    the submitter has published no evidence, or not where anyone looks."""
+    the committed legs, potentials and register pins — so what is
+    re-derived is exactly what was posted, whatever the record claims. None
+    when no book has it: the submitter has published no evidence, or not
+    where anyone looks. A beat whose legs need statements is rebuilt with
+    the gate over the snapshot, the registers read at the record's pins by
+    `register_at(id, root)` and the handover windows by `span`, at the
+    beat's time; without them such a record is not found."""
+    from .gate import CounterpartyGate
     root = state["book_root"]
     for book in books:
         for key, rec in book.store.items("loop/"):
@@ -248,10 +367,15 @@ def find_evidence(state: dict, books) -> Evidence | None:
                 snapshot = snapshot_of(book, root)
                 proposal = proposal_from_record(rec, snapshot)
                 potentials = {m: q(e) for m, e in rec.get("potentials", {}).items()} or None
-                sub = submission(proposal, snapshot, potentials=potentials)
+                registers = {rid: register_at(rid, r) for rid, r in proposal.register_roots
+                             if r} if register_at is not None else {}
+                gate = CounterpartyGate.over(snapshot, registers, now=int(state.get("time", 0)), span=span)
+                sub = submission(proposal, snapshot, potentials=potentials,
+                                 records=loop_records(book, rec["loop_id"]), gate=gate, ontology=ontology)
             except Exception:                   # noqa: BLE001 — a record that is not this beat's
                 continue
-            if commitment(sub) == (state["legs_hash"], state["potentials_hash"]):
+            if commitment(sub) == (state["legs_hash"], state["potentials_hash"],
+                                   state.get("registers_hash", commitment(sub)[2])):
                 return Evidence(rec, snapshot, sub, book)
     return None
 
@@ -286,7 +410,8 @@ class Challenge:
 
 
 def challenge_beat(client: "BeatClient", beat: int, books, ontology, *, now: int | None = None,
-                   index: int | None = None, send: bool = True) -> Challenge:
+                   index: int | None = None, send: bool = True, register_at=None,
+                   span=None) -> Challenge:
     """Verify beat `beat` as a challenger and act on it. `books` are where
     the evidence may be (the submitter's clearing book first); `ontology`
     the pinned catalogue the legs are re-derived under; `now` the moment
@@ -295,7 +420,7 @@ def challenge_beat(client: "BeatClient", beat: int, books, ontology, *, now: int
     otherwise the first leg the contract would convict is, when `send`.
     Nothing is sent for a fault the contract cannot compute."""
     state = client.beat(beat)
-    ev = find_evidence(state, books)
+    ev = find_evidence(state, books, ontology=ontology, register_at=register_at, span=span)
     if ev is None:
         return Challenge(beat, state, None, "no evidence", ())
     if now is None:
@@ -310,7 +435,7 @@ def challenge_beat(client: "BeatClient", beat: int, books, ontology, *, now: int
         if not offer.composed:
             left = min(left, q(offer.thing.qty) - client.filled(oid))
         available[oid] = left
-    mock = MockClearing(ev.snapshot, ontology, clock=lambda: now)
+    mock = MockClearing(ev.snapshot, ontology, clock=lambda: now, register_at=register_at, span=span)
     overall = mock.rehearse(proposal)
     legs = []
     for i, leg in enumerate(sorted(proposal.circulation.legs, key=lambda l: l.key)):
@@ -370,16 +495,18 @@ class BeatClient:
     def submit(self, sub: Submission) -> tuple[int, dict]:
         """Post the beat; returns (beat id, receipt)."""
         c = self.contract()
-        receipt = self._send(c.functions.submit(sub.pins, sub.leg_hashes, sub.fills,
-                                                sub.makers, sub.potentials), value=self.bond())
+        receipt = self._send(c.functions.submit(sub.pins, list(sub.registers), sub.leg_hashes, sub.fills,
+                                                list(sub.holds), list(sub.claims), sub.makers,
+                                                sub.potentials), value=self.bond())
         beat = c.events.Submitted().process_receipt(receipt)[0]["args"]["beat"]
         return beat, receipt
 
     def challenge(self, beat: int, index: int, sub: Submission, *, gas: int = 12_000_000) -> str:
         """Re-verify leg `index` on chain; returns the contract's reason."""
         c = self.contract()
-        receipt = self._send(c.functions.challenge(beat, index, sub.leg_hashes, sub.legs[index],
-                                                   sub.makers, sub.potentials), gas=gas)
+        receipt = self._send(c.functions.challenge(beat, index, list(sub.registers), sub.leg_hashes,
+                                                   sub.legs[index], sub.statements[index], sub.makers,
+                                                   sub.potentials), gas=gas)
         return c.events.Challenged().process_receipt(receipt)[0]["args"]["reason"]
 
     def finalize(self, beat: int) -> dict:
@@ -426,6 +553,7 @@ class BeatClient:
                 "addressing": ADDRESSING_NAMES.get(pins[4], str(pins[4])),
                 "legs_hash": bytes(b[4]), "potentials_hash": bytes(b[5]), "fills": b[6],
                 "finalized": b[7], "cancelled": b[8], "window_end": window_end,
+                "time": b[9], "registers_hash": bytes(b[10]),
                 "open": not b[7] and not b[8]
                 and self._web3().eth.block_number <= window_end}
 
@@ -438,6 +566,33 @@ class BeatClient:
         """The fills beat `beat` would record: (offer id, taken, the offer's cap)."""
         return [(f[0].hex(), Fraction(f[1], f[2]), Fraction(f[3], f[4]))
                 for f in self.contract().functions.pendingFills(beat).call()]
+
+    def pending_takers(self, beat: int) -> dict[str, bytes]:
+        """Each offer's committed taker in beat `beat` (the first fill's, as
+        the contract reads)."""
+        out: dict = {}
+        for f in self.contract().functions.pendingFills(beat).call():
+            out.setdefault(f[0].hex(), bytes(f[5]))
+        return out
+
+    def pending_holds(self, beat: int) -> list:
+        """The holds beat `beat` would record, as the contract's tuples."""
+        return [tuple(h) for h in self.contract().functions.pendingHolds(beat).call()]
+
+    def pending_claims(self, beat: int) -> list:
+        """The item claims beat `beat` would record, as the contract's tuples."""
+        return [tuple(c) for c in self.contract().functions.pendingClaims(beat).call()]
+
+    def held_against(self, offer_id: str, taker: bytes = bytes(32), at: int = 0) -> Fraction:
+        """What active holds keep of the offer from `taker` at `at` (C4)."""
+        n, d = self.contract().functions.heldAgainst(bytes.fromhex(offer_id), taker, at).call()
+        return Fraction(n, d)
+
+    def item_claim(self, item: str, maker: str) -> tuple[str | None, int]:
+        """A maker's recorded claim on an item: (offer id or None, until)."""
+        from eth_hash.auto import keccak
+        offer, until = self.contract().functions.itemClaim(bytes.fromhex(item), keccak(maker.encode())).call()
+        return (None if int.from_bytes(offer, "big") == 0 else bytes(offer).hex(), until)
 
     def timestamp_of(self, block: int) -> int:
         return int(self._web3().eth.get_block(block)["timestamp"])
@@ -455,10 +610,12 @@ class BeatClient:
         pins = (bytes.fromhex(state["book_root"]), bytes.fromhex(state["ontology_root"]),
                 state["registry_version"].encode(), state["contract_version"].encode(),
                 ADDRESSING.get(state["addressing"], 255))
-        verdict = self.verdict_of(sub, index, pins=pins, gas=gas)
+        verdict = self.verdict_of(sub, index, pins=pins, gas=gas, holds=self.pending_holds(state["beat"]),
+                                  claims=self.pending_claims(state["beat"]), at=int(state.get("time", 0)))
         if verdict != "leg verifies":
             return verdict
-        return self.cap_fault(state["beat"], index, sub) or verdict
+        return self.cap_fault(state["beat"], index, sub) or self.taker_fault(state["beat"], index, sub) \
+            or verdict
 
     def fill_fault(self, beat: int, index: int, sub: Submission) -> str | None:
         """Why beat `beat`'s committed fills are not leg `index`'s — the want
@@ -466,7 +623,7 @@ class BeatClient:
         takes — in the contract's words, or None. `sub` is the submission
         rebuilt from the record."""
         committed = self._committed(beat)
-        want, gives, taken = sub.legs[index]
+        want, gives, taken, _under = sub.legs[index]
         if committed.get(want[0].hex()) != (1, 1):
             return "the want's fill is not whole"
         for g, t in zip(gives, taken):
@@ -486,26 +643,42 @@ class BeatClient:
                 return "a cap is not its give's quantity"
         return None
 
+    def taker_fault(self, beat: int, index: int, sub: Submission) -> str | None:
+        """Why a committed give fill of leg `index` does not name the leg's
+        wanter as its taker, or None."""
+        committed = self.pending_takers(beat)
+        truth = {f[0].hex(): f[5] for f in sub.fills}
+        for g in sub.legs[index][1]:
+            if committed.get(g[0].hex()) != truth[g[0].hex()]:
+                return "a fill's taker is not the leg's wanter"
+        return None
+
     def _committed(self, beat: int) -> dict:
         committed: dict = {}
         for oid, taken, cap in self.pending_fills(beat):
             committed.setdefault(oid, (taken, cap))          # the first, as the contract reads
         return committed
 
-    def verdict_of(self, sub: Submission, index: int, *, pins=None,
+    def verdict_of(self, sub: Submission, index: int, *, pins=None, holds=None, claims=None, at: int = 0,
                    gas: int = 12_000_000) -> str | None:
         """What the contract's verifier says about leg `index` of a
         submission, without a transaction: `verifyLegExternal` run through
         `eth_call` with the contract itself as sender (the only sender it
         accepts), against the chain's current fills, under `pins` (the
         submission's own by default — so a submitter asks *before* paying a
-        bond, and a challenger asks under the beat's). "leg verifies", or
+        bond, and a challenger asks under the beat's), with the holds and
+        claims given (the submission's; a challenger passes the beat's
+        committed ones) at time `at` (0: the chain's now; a challenger: the
+        beat's own clock). "leg verifies", or
         the revert reason — the same string a challenge would put in its
         event; None when the node would not run the call (never a
         conviction)."""
         c = self.contract()
         pins = sub.pins if pins is None else pins
-        fn = c.functions.verifyLegExternal(pins, sub.legs[index], sub.makers, sub.potentials)
+        fn = c.functions.verifyLegExternal(pins, list(sub.registers), sub.legs[index], sub.statements[index],
+                                           sub.makers, sub.potentials,
+                                           list(sub.holds if holds is None else holds),
+                                           list(sub.claims if claims is None else claims), index, at)
         w3 = self._web3()
         params = {"from": self.address, "gas": gas}
         # The contract's balance is only the bonds it holds, and some nodes
@@ -524,7 +697,10 @@ class BeatClient:
             try:
                 attempt()
             except Exception as exc:            # noqa: BLE001
-                if _is_revert(exc):             # a revert: the verifier's reason
+                # a revert with a reason is the verifier's; one without (the
+                # gas the call could afford ran out, 2026-09-29: an option
+                # leg verifies in ~11 M) is no verdict, like a refused call
+                if _is_revert(exc) and _revert_reason(exc):
                     return _revert_reason(exc)
                 continue                        # the node refused the call itself
             return "leg verifies"
@@ -550,4 +726,6 @@ def _revert_reason(exc: Exception) -> str:
     text = str(getattr(exc, "message", None) or exc)
     if ":" in text and text.startswith("execution reverted"):
         text = text.split(":", 1)[1].strip()
+    if text in ("b''", 'b""', "0x"):
+        return ""
     return text.strip("'\" ") or "leg fails: reverted without a reason"

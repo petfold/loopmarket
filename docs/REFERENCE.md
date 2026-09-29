@@ -424,9 +424,11 @@ node `potentials`. A simple cycle's record is byte-identical to before.
 
 | name | one line |
 |---|---|
-| `submission(proposal, snapshot) -> Submission` | pure: every leg as `LoopVerifier.Leg` (value blobs and trie paths under the snapshot's root, quantities taken as `n/d`), `leg_hashes` = keccak of each leg's ABI encoding, `fills`, `makers`/`potentials`, `pins`; refuses a snapshot that is not the proposal's book root |
-| `BeatClient(rpc_url, address, *, key=None, client=None)` | `.bond()`, `.submit(sub) -> (beat, receipt)`, `.challenge(beat, index, sub) -> reason`, `.finalize(beat)`, `.filled(offer_id) -> Fraction`, `.beat(beat) -> dict`; web3 lazy (`chain` extra) |
-| `abi()` | the compiled `BeatClearing` (ABI, bytecode) from `loopmarket/contracts/BeatClearing.json` (inside the package) |
+| `submission(proposal, snapshot, *, potentials=None, records=None, gate=None, ontology=None) -> Submission` | pure: every leg as `LoopVerifier.Leg` (value blobs and trie paths under the snapshot's root, quantities taken as `n/d`, each option give's underlying record), `leg_hashes` = keccak of each leg's and its statements' ABI encoding, `fills` (with each give's taker), `holds` and `claims` (C4, I3: an item claim's end from the clearing's `item/` `records`), `registers` (the pinned register roots), `statements` (R3b: the ones `gate.chosen` accepts over the snapshot, with their proofs), `makers`/`potentials`, `pins`; refuses a snapshot that is not the proposal's book root, and a leg whose evidence it cannot build |
+| `commitment(sub) -> (legs, potentials, registers)` | the three hashes `BeatClearing.submit` stores — what a rebuilt submission must equal |
+| `find_evidence(state, books, *, ontology=None, register_at=None, span=None)` | the `loop/` record behind a beat whose rebuilt submission hashes to its commitments |
+| `BeatClient(rpc_url, address, *, key=None, client=None)` | `.bond()`, `.submit(sub) -> (beat, receipt)`, `.challenge(beat, index, sub) -> reason`, `.finalize(beat)`, `.filled(offer_id) -> Fraction`, `.beat(beat) -> dict`, `.pending_holds/pending_claims(beat)`, `.held_against(offer_id, taker, at)`, `.item_claim(item, maker)`, `.verdict_of(sub, index, ...)`; web3 lazy (`chain` extra) |
+| `abi()` | the compiled `BeatClearing` (ABI, bytecode) from `loopmarket/contracts/BeatClearing.json` (inside the package); `LegVerifier.json` and, since 2026-09-29, `StatementVerifier.json` beside it, all three deployed by `deploy(...)` |
 | `clearing.ChainClearing(registry, ontology, *, beat_client, ...)` | `MockClearing`'s checklist, then the beat posted; the receipt's `reason` is `beat N` |
 
 ## 8c. `loopmarket.auction` — the sealed-proposal beat (P2, 2026-09-18)

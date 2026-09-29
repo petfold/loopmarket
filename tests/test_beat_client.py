@@ -135,7 +135,7 @@ def test_an_honest_beat_verifies_from_its_record_and_nothing_is_sent(chain):
     # the record alone rebuilds exactly what was committed
     ev = find_evidence(state, [book])
     assert ev is not None and ev.record["loop_id"] == loop_id
-    assert commitment(ev.submission) == (state["legs_hash"], state["potentials_hash"])
+    assert commitment(ev.submission) == (state["legs_hash"], state["potentials_hash"], state["registers_hash"])
     assert proposal_from_record(ev.record, ev.snapshot).circulation.loop_id == loop_id
     # every leg holds off chain and on: the contract's verdict costs no transaction
     result = challenge_beat(client, beat, [book], cat, now=NOW)
@@ -176,7 +176,7 @@ def test_a_structural_forgery_is_convicted_and_the_bond_paid(chain):
     with pytest.raises(Exception, match="beyond its cap"):
         submitter.submit(honest_caps)
     import dataclasses
-    sub = dataclasses.replace(honest_caps, fills=[f if f[1:3] != (105, 1) else (*f[:3], 105, 1)
+    sub = dataclasses.replace(honest_caps, fills=[f if f[1:3] != (105, 1) else (*f[:3], 105, 1, f[5])
                                                   for f in honest_caps.fills])
     beat, _ = submitter.submit(sub)
     # the forger's clearing book: U11 refuses an oversold fill at a registry

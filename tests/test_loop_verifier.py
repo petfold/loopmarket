@@ -88,7 +88,13 @@ def _leg_args(snapshot, rec, leg):
     def proof(oid):
         p = snapshot.store.prove("offer/" + oid)
         return (bytes.fromhex(oid), bytes.fromhex(p["value"]), [bytes.fromhex(n) for n in p["nodes"]])
-    return (proof(leg["want"]), [proof(g) for g in leg["gives"]], [_rat(t) for t in leg["taken"]])
+    return _L(proof(leg["want"]), [proof(g) for g in leg["gives"]], [_rat(t) for t in leg["taken"]])
+
+
+def _L(want, gives, taken):
+    """A leg with no options: every give's underlying slot empty (C4)."""
+    from loopmarket.beat import NO_UNDERLYING
+    return (want, gives, taken, [NO_UNDERLYING] * len(gives))
 
 
 def _beat(root, pins):
@@ -131,19 +137,19 @@ def test_every_structural_fault_is_refused(face):
         if match:
             assert match in str(exc.value), str(exc.value)
 
-    want_p, gives_p, taken = good
+    want_p, gives_p, taken, _u = good
     # a record altered by a byte no longer hashes to its id
     gid, grec, gnodes = gives_p[0]
     i = grec.index(b'"nonce":') + 8                                   # a digit inside the record
     tampered = grec[:i] + bytes([grec[i] ^ 1]) + grec[i + 1:]
-    refused((want_p, [(gid, tampered, gnodes)], taken), match="hash")
-    refused((want_p, [(gid, grec[:-1] + b" ", gnodes)], taken), match="envelope")
+    refused(_L(want_p, [(gid, tampered, gnodes)], taken), match="hash")
+    refused(_L(want_p, [(gid, grec[:-1] + b" ", gnodes)], taken), match="envelope")
     # off the 5 kg step; more than the whole give; below a floor is the same gate
-    refused((want_p, gives_p, [(42, 1)]), match="step")
-    refused((want_p, gives_p, [(105, 1)]), match="left")
+    refused(_L(want_p, gives_p, [(42, 1)]), match="step")
+    refused(_L(want_p, gives_p, [(105, 1)]), match="left")
     # the contract has already recorded 70 kg filled: 40 more is too much
     verifier.functions.setFilled(gid, 70, 1).transact()
-    refused((want_p, gives_p, taken), match="left")
+    refused(_L(want_p, gives_p, taken), match="left")
     verifier.functions.setFilled(gid, 0, 1).transact()
     # pins: the beat names another catalogue root, registry, contract
     refused(good, beat_=(bytes.fromhex(root), bytes(32), b"4.2", b"0.1", 0), match="ontology pin")
@@ -223,27 +229,27 @@ def test_a_composed_want_verifies_leg_by_leg(face):
         assert want_maker.decode() == snapshot.get(leg["want"]).maker
     args = _leg_args(snapshot, rec, composed)
     print("\ngas for the composed leg (two parts):", verifier.functions.verifyLeg(beat, args).estimate_gas())
-    want_p, gives_p, taken = args
+    want_p, gives_p, taken, _u = args
 
     def refused(a, match):
         with pytest.raises(Exception, match=match):
             verifier.functions.verifyLeg(beat, a).call()
 
-    refused((want_p, gives_p, [(1, 1), (1, 1)]), "not the part's quantity")     # one ticket for a part of two
-    refused((want_p, gives_p, [(2, 1), (2, 1)]), "left|not the part")           # two runs of one
-    refused((want_p, gives_p[:1], taken[:1]), "one give per part")              # the transport missing
-    refused((want_p, [gives_p[1], gives_p[0]], [taken[1], taken[0]]), "left|unit|part")  # gives swapped
+    refused(_L(want_p, gives_p, [(1, 1), (1, 1)]), "not the part's quantity")     # one ticket for a part of two
+    refused(_L(want_p, gives_p, [(2, 1), (2, 1)]), "left|not the part")           # two runs of one
+    refused(_L(want_p, gives_p[:1], taken[:1]), "one give per part")              # the transport missing
+    refused(_L(want_p, [gives_p[1], gives_p[0]], [taken[1], taken[0]]), "left|unit|part")  # gives swapped
     # the want-quantity rule on a plain leg: the driver's want of one lesson
     # "served" by two of the theatre's tickets — the give allows two (by the
     # piece), the want is for one; what the tickets are is the semantic half's
     driver_want = next(l for l in rec["legs"] if len(l["gives"]) == 1
                        and snapshot.get(l["want"]).maker == "driver")
-    w2, _g2, _t2 = _leg_args(snapshot, rec, driver_want)
-    refused((w2, [gives_p[0]], [(2, 1)]), "not the want's quantity")
+    w2, _g2, _t2, _u2 = _leg_args(snapshot, rec, driver_want)
+    refused(_L(w2, [gives_p[0]], [(2, 1)]), "not the want's quantity")
     theatre_want = next(l for l in rec["legs"] if len(l["gives"]) == 1
                         and snapshot.get(l["want"]).maker == "theatre")
-    w3_, _g3, _t3 = _leg_args(snapshot, rec, theatre_want)
-    refused((w3_, [gives_p[1]], [(1, 1)]), "the want's unit")                   # the driver's run for a lesson
+    w3_, _g3, _t3, _u3 = _leg_args(snapshot, rec, theatre_want)
+    refused(_L(w3_, [gives_p[1]], [(1, 1)]), "the want's unit")                   # the driver's run for a lesson
 
 
 # --------------------------------------------------------------------------- #

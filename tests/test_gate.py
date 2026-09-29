@@ -49,7 +49,9 @@ def _cat():
 class World:
     """The dentist's book, the two registers, and the offers of the loop."""
 
-    def __init__(self, *, until=WINDOW[1] + 86_400, accredit=True, heartbeat=NOW - 100, arbitrator=JUDGE):
+    def __init__(self, *, until=WINDOW[1] + 86_400, accredit=True, heartbeat=NOW - 100, arbitrator=JUDGE,
+                 pins=None):
+        V = dict(valid=TimeWindow(NOW - 10, NOW + 30 * 86_400), **(pins or {}))
         self.blobs = MemoryBytesStore()
         self.book = OfferRegistry(RecordStore(self.blobs))
         # ten visits, a 500 EUR deposit: this fill reserves 50, the rest backs the statement

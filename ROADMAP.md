@@ -296,7 +296,13 @@ name factbond's redeployed `Assertions`. Hence:
    inspection rules E1/E2 (certificate-final, independence), C7's CLI verbs
    (built 2026-09-29 but `examples/apartment.loop`, which needs an id-free
    way to name an offer in a script), then the one clearing-contract
-   redeploy (C4 + I3 + R3b).
+   redeploy (C4 + I3 + R3b) — **built 2026-09-29 on a local EVM**
+   (`tests/test_beat_v6.py`: holds on chain with the holder, the non-holder
+   convicted and the holder's exercise verifying and consuming the hold;
+   item claims committed and raced at finalize; register pins and
+   statements, a revoked statement convicted — M2's chain half). The
+   deployment of `BeatClearing` + `LegVerifier` + the new
+   `StatementVerifier`, retiring `0xaF1BBE…691e`, is the next live step.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust

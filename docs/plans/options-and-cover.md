@@ -326,6 +326,31 @@ through an `IFills` callback. Holds on chain therefore span two contracts.
   inclusion proof is a **new proof type** on chain, not evidence it already
   reads.
 
+*(built 2026-09-29, C4; local EVM, not yet deployed)* The holder check
+needs no `fill/` proof: the hold itself is recorded **on chain**, naming
+its holder, so the chain answers who holds what as it answers what is
+filled. A beat commits the holds its option legs write (option,
+underlying, quantity, the underlying's quantity as cap, the holder as
+keccak of the wanter's key, the exercise window, the leg) beside its
+fills; a challenge on an option leg verifies the underlying's record under
+the same root — the writer's give, in the option's unit, valid through the
+window, the option's quantity free of fills and active holds (`gate.option_fault`
+off chain) — and that the committed hold is exactly the leg's; `finalize`
+records it. The remainder `LegVerifier` checks a give against is then its
+quantity less fills and every active hold but the taker's own exercisable
+ones (`BeatClearing.heldAgainst`, the second callback beside `filled`), so a
+non-holder's leg on held capacity fails *more than is left of the give*,
+and each give's committed fill names its taker, whose holds it consumes at
+finalize, first and in the order recorded (off chain: loop-id order; the
+two differ only for one holder with several holds on one offer). A hold
+that would overfill its underlying against what the chain recorded since
+is `finalize`'s race, cancelled like an overfill. Every time question is
+asked at the beat's own clock, its submission's block time. Holds live in
+the contract that recorded them: a successor does not read them, so a
+contract with holds is retired only after their windows close. Gas: the
+record scanning went word-at-a-time the same day (the byte loops had made
+an option leg's verification cost ~11 M; after, 4.2 M, and a plain leg 2.4 M).
+
 ### 6.3 `LoopEscrow.assign`
 
 The reservation's `wanter` is fixed at `reserve` (confirmed: no setter,
@@ -384,7 +409,7 @@ per hold (the last clause is this draft's addition, not in U11 today).
 | C1 | v6 record: `underlying`, `exercise`; `option` as a non-operator graph-kind head in `triangle.od`'s seed (one v6 bump shared with `counterparty-gate.md`, plan D7) | v5 corpus re-encodes byte for byte; v6 round-trips; unknown `v` raises; a graph-kind non-operator give matches by containment — *met 2026-09-29: the record with R1, `declare_graph_heads` and the `triangle.od` seed with C2* |
 | C2 *(met in memory 2026-09-29, `tests/test_options.py`: option then exercise clears, a second option finds no capacity, after expiry the flat clears to anyone with no write, 200 of 1000 held; W's priced exit is the escrow's cancel on the option's reservation, which `finalize` already reserves for the holder)* | holds in registry + clearing (§3.2–3.6) | option then exercise clears; second option refused; W's exit during the hold is priced at the ladder (plan D6), not void; after expiry P clears to anyone; divisible 200/1000 |
 | C3 *(met 2026-09-29)* | solver awareness (§5) | the baseline never proposes a leg on held capacity except the holder's exercise |
-| C4 | holds on chain (§6.2), across `BeatClearing` and `LegVerifier` | an exercise by a non-holder is convicted by `challenge`; an honest one verifies; a `fill/` inclusion proof verifies on chain |
+| C4 *(met 2026-09-29 on a local EVM, `tests/test_beat_v6.py`; deployment waits for the clearing trio's redeploy — see §6.2's note for the one deviation: no `fill/` proof type, the hold being the chain's own record)* | holds on chain (§6.2), across `BeatClearing` and `LegVerifier` | an exercise by a non-holder is convicted by `challenge`; an honest one verifies; a `fill/` inclusion proof verifies on chain |
 | C5 | cover via escrow, end to end (§4): `claimOnly`, presentation, matched periods, acceptable resolver | local EVM: cover cleared, finalized, reserved; the insured asserts, I disputes, a certified claim pays `min(limit, loss) − deductible` net of what the giver's reservation paid, after assignment; a countersign on a `claimOnly` reservation is refused; a false presentation reduces the payout proportionately; a leg whose resolver is outside the insured's accepted set does not clear; quiet period returns when no claim was asserted; a held reservation is never released by the quiet path |
 | C6 | `LoopEscrow.assign` to any key, `settle(split)`, `extendClaim` (§6.3) | only the wanter can assign, to anyone; payout goes to the assignee; a split needs both signatures and nobody else can trigger it; only the giver can extend, and only lengthen — *the contract gates met 2026-09-28 (E1, `tests/test_escrow.py`); the CLI verbs remain* |
 | C7 *(verbs built 2026-09-29: `option ID --until T --premium X`, `exercise OPTION PRICE` — the price is the holder's own, the exercise being a want — and `options`; the CLI gate in `tests/test_cli.py`. `examples/apartment.loop` waits for a way to name an offer in a script without its id, a CLI decision)* | CLI: `option ID [--until T] [--premium X]`, `exercise OPTION`, `options` | G-style CLI gates; an `examples/apartment.loop` viewing → option → exercise |
