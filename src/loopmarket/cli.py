@@ -167,6 +167,24 @@ _SETTINGS = {
         "the longest claim period my give's deposit carries after the "
         "handover window (v6, plan A1); a want asking longer is not matched. "
         "The clearing contracts read v6 records since their 2026-09-29 redeploy"),
+    "options": _Setting(
+        "LOOP_OPTIONS", "off", "--options on|off",
+        "on: every plain give I publish also writes its option — the right "
+        "to hold it, for `option_window` at `option_premium` — both shown in "
+        "one approval block (2026-09-29); off by default"),
+    "option_window": _Setting(
+        "LOOP_OPTION_WINDOW", "1/4", "--option-window FRACTION|DURATION",
+        "how long an option on my offer may be held: a fraction of the lead "
+        "to the offer's handover time (its validity's end without one), or a "
+        "duration; the window closes before the handover, so a lapsed hold "
+        "leaves time to sell again"),
+    "option_premium": _Setting(
+        "LOOP_OPTION_PREMIUM", "suggest", "--option-premium suggest|N%|AMOUNT",
+        "what an option on my offer costs, on my scale: `suggest` (the "
+        "chance a buyer comes during the hold and none after it, from the "
+        "book's demand for the thing, times the price, the holder assumed to "
+        "exercise half the time), a percentage of the offer's price, or an "
+        "amount"),
     "require_claim": _Setting(
         "LOOP_REQUIRE_CLAIM", "", "--require-claim DURATION",
         "the claim period I ask of a giver's deposit (v6): only gives whose "
@@ -1831,30 +1849,44 @@ def _publish_offer(session: Session, offer: Offer, notes: list[str],
     verb shares. `addresses` are the named places' settlement texts: shown
     here (this is what the counterparty will read), kept in
     `$LOOP_HOME/handoffs`, sealed by `watch` once the offer clears."""
-    print(render_offer(offer), file=out)
-    for note in notes:
-        print(f"  note     {note}", file=out)
+    return _publish_offers(session, [(offer, notes)], reused, out, addresses)
+
+
+def _publish_offers(session: Session, items, reused: bool, out, addresses=()) -> int:
+    """`_publish_offer` for offers approved together — a give and the
+    option `options on` writes with it: every block shown, one question,
+    every id printed in order. `addresses` belong to the first."""
+    for i, (offer, notes) in enumerate(items):
+        if i:
+            print("and", file=out)
+        print(render_offer(offer), file=out)
+        for note in notes:
+            print(f"  note     {note}", file=out)
     for address in addresses:
         print(f"  note     handoff {address} — sealed to the counterparty "
               f"at clearing", file=out)
     if not _confirm(reused, out):
         print("not published", file=_err())
         return 1
-    oid = session.book.publish(offer)
-    signer = _configured("bee_signer")
-    if signer:
-        try:
-            from .sigs import maker_address, sign_offer
-            if maker_address(signer) == offer.maker:
-                session.book.attach_signature(oid, sign_offer(offer, signer))
-        except Exception:  # noqa: BLE001 — signing is the optional layer
-            pass
+    ids = []
+    for offer, _notes in items:
+        oid = session.book.publish(offer)
+        signer = _configured("bee_signer")
+        if signer:
+            try:
+                from .sigs import maker_address, sign_offer
+                if maker_address(signer) == offer.maker:
+                    session.book.attach_signature(oid, sign_offer(offer, signer))
+            except Exception:  # noqa: BLE001 — signing is the optional layer
+                pass
+        ids.append(oid)
     session.book.commit()
     if addresses:
-        _remember_handoff(oid, "\n".join(addresses))
+        _remember_handoff(ids[0], "\n".join(addresses))
     # By exception to odag's silent-on-success rule: publishing is a
     # commitment, and the id is what `withdraw` needs.
-    print(oid, file=out)
+    for oid in ids:
+        print(oid, file=out)
     return 0
 
 
@@ -1932,8 +1964,16 @@ def _publish(args, session: Session, out, side: str) -> int:
     offer, notes, reused = _offer_from_part(
         session, side, part, parsed.price, session.catalogue,
         valid_text=parsed.heads.get("valid"))
-    return _publish_offer(session, offer, notes, reused, out,
-                          addresses=part.addresses)
+    items = [(offer, notes)]
+    if side == GIVE and (_configured("options") or "off").strip().lower() == "on":
+        # `options on` (2026-09-29): the give and its option, approved
+        # together; a give that cannot carry one says why and goes alone
+        try:
+            until, premium, onotes = _option_plan(session, offer, session.now)
+            items.append((_option_offer(session, offer, until, premium, onotes), onotes))
+        except ValueError as exc:
+            notes.append(f"no option (options on): {exc}")
+    return _publish_offers(session, items, reused, out, addresses=part.addresses)
 
 
 def cmd_give(args, session, out):
@@ -1978,39 +2018,213 @@ def _until(text: str, now: int) -> int:
         return parse_now(text)
 
 
-def cmd_option(args, session, out):
-    """`option ID --until T --premium X` (C7, 2026-09-29; options-and-cover.md
-    §3.1): write an option on my own plain offer — a give of
-    `option(<its concepts>)` for its quantity, priced at the premium on my
-    scale, naming the offer as its `underlying` and exercisable from now
-    until T. When it clears the offer is held for the option's holder until
-    T (a hold, C2); my exit meanwhile is a priced cancellation of the option
-    leg, never a free withdrawal. The guarantee settings apply as to any give."""
-    if not args.until or not args.premium:
-        raise ValueError("option ID --until T --premium X")
-    oid = _resolve_id(session, args.id, mine_only=True)
-    p = session.book.get(oid)
-    if p.composed:
-        raise ValueError("an option holds one thing: a composed want has parts")
-    if p.v >= 6 and p.underlying:
-        raise ValueError("an option on an option is a transfer of the right (§3.8), not built")
-    if session.book.is_filled(oid) or session.book.is_withdrawn(oid):
-        raise ValueError(f"{oid[:12]} is no longer open")
-    now = session.now
-    until = _until(args.until, now)
+#: How far back the book's demand is read for a suggested premium.
+DEMAND_LOOKBACK = 30 * 86_400
+
+
+def _window_rule(text: str):
+    """`option_window`: a fraction in (0, 1) of the lead, or a duration."""
+    if re.match(r"^\d+/\d+$", text.strip()):
+        f = q(text.strip())
+        if not 0 < f < 1:
+            raise ValueError("option_window as a fraction of the lead is between 0 and 1")
+        return f
+    return duration_s(text)
+
+
+def _premium_rule(text: str):
+    """`option_premium`: `suggest`, a percentage of the price, or an amount."""
+    t = text.strip()
+    if t == "suggest":
+        return t
+    if t.endswith("%"):
+        pct = q(t[:-1])
+        if pct <= 0:
+            raise ValueError("option_premium as a percentage is above 0")
+        return ("%", pct)
+    amount = q(t)
+    if amount <= 0:
+        raise ValueError("option_premium is suggest, N% or an amount above 0")
+    return amount
+
+
+def _option_lead(p: Offer, now: int) -> tuple[int | None, str]:
+    """The lead an option's window is a fraction of: to the offer's handover
+    time term, else to its validity's end; None when it has neither."""
+    lead = _handover_lead(p.thing.concepts, now)
+    if lead is not None:
+        return lead, "the lead to the handover"
+    if p.valid.end is not None:
+        return p.valid.end - now, "the offer's remaining validity"
+    return None, ""
+
+
+def _demand_rate(fold, p: Offer, ontology, now: int) -> int:
+    """How many wants the offer could have served appeared in the book over
+    the lookback — filled ones too: demand that came, whoever met it."""
+    n = 0
+    for w in fold.offers(include_filled=True):
+        if w.kind != WANT or w.composed or w.maker == p.maker:
+            continue
+        if not now - DEMAND_LOOKBACK <= w.valid.start <= now:
+            continue
+        if w.thing.unit == p.thing.unit and ontology.satisfies(p.thing.concepts, w.thing.concepts):
+            n += 1
+    return n
+
+
+def _round_amount(x) -> Fraction:
+    return Fraction(round(float(x) * 100), 100)
+
+
+def _option_plan(session, p: Offer, now: int, until_text: str | None = None,
+                 premium_text: str | None = None) -> tuple[int, Fraction, list[str]]:
+    """The window and premium of an option on `p`: what was typed, else the
+    settings (`option_window`, `option_premium`), the premium `suggest`ed
+    from the book's demand — the maker approves what is shown, as with the
+    price memory. A default in the protocol would be wrong: what a hold
+    costs is the maker's own risk judgement (Peter, 2026-09-29)."""
+    notes: list[str] = []
+    lead, lead_name = _option_lead(p, now)
+    if until_text:
+        until = _until(until_text, now)
+    else:
+        text = (_configured("option_window") or "1/4").strip()
+        rule = _window_rule(text)
+        if isinstance(rule, Fraction):
+            if lead is None or lead <= 0:
+                raise ValueError(f"{p.offer_id[:12]} has no handover time and stands until withdrawn: "
+                                 f"no lead to take {rule} of — pass --until, or set option_window "
+                                 f"to a duration")
+            until = now + int(lead * rule)
+            notes.append(f"window {text} of {lead_name} ({_duration_text(until - now)}), "
+                         f"until {_iso(until)}")
+        else:
+            until = now + rule
+            notes.append(f"window {_duration_text(rule)}, until {_iso(until)}")
     if until <= now:
         raise ValueError("the exercise window ends after now")
     if p.valid.end is not None and until > p.valid.end:
-        raise ValueError(f"{oid[:12]} stands only until {_iso(p.valid.end)}: the window must end by then")
+        raise ValueError(f"{p.offer_id[:12]} stands only until {_iso(p.valid.end)}: the window must end by then")
+    handover = _handover_lead(p.thing.concepts, now)
+    if handover is not None and until > now + handover:
+        raise ValueError(f"the window must close before the handover begins ({_iso(now + handover)})")
+    if premium_text:
+        return until, _number(premium_text), notes
+    rule = _premium_rule(_configured("option_premium") or "suggest")
+    price = q(p.tokens.amount)
+    if isinstance(rule, tuple):
+        premium = _round_amount(price * rule[1] / 100)
+        notes.append(f"premium {_num(rule[1])}% of the price")
+    elif rule != "suggest":
+        premium = rule
+    else:
+        import math
+        w = until - now
+        span = lead if lead and lead > 0 else w
+        n = _demand_rate(session.fold(), p, session.catalogue, now)
+        if n == 0:
+            premium = _round_amount(price * Fraction(w, span) / 2)
+            notes.append("premium suggested: no demand for this in the book in 30 days — a guess, "
+                         "price × window/lead × ½")
+        else:
+            rate = n / DEMAND_LOOKBACK
+            loss = math.exp(-rate * max(span - w, 0)) - math.exp(-rate * span)
+            premium = _round_amount(float(price) * 0.5 * loss)
+            notes.append(f"premium suggested: {n} want(s) for this in 30 days, a buyer every "
+                         f"~{_duration_text(int(DEMAND_LOOKBACK / n))}; the chance one comes during the "
+                         f"hold and none after it, the holder exercising half the time")
+    floor = _round_amount(max(price / 100, Fraction(1, 100)))
+    if premium < floor:
+        notes.append(f"premium raised to the floor {_num(floor)} (1% of the price): a hold is never free")
+        premium = floor
+    return until, premium, notes
+
+
+def _duration_text(seconds: int) -> str:
+    for unit, size in (("d", 86_400), ("h", 3_600), ("m", 60)):
+        if seconds >= size:
+            value = Fraction(seconds, size)
+            return f"{_num(_round_amount(value))}{unit}"
+    return f"{seconds}s"
+
+
+def _option_offer(session, p: Offer, until: int, premium, notes: list[str]) -> Offer:
+    """The option on my plain give `p`: a give of `option(<its concepts>)`
+    for its quantity at `premium` on my scale, naming `p` as its
+    `underlying`, exercisable from now until `until` (v6)."""
+    if p.kind != GIVE or p.composed:
+        raise ValueError("an option holds a give: a want is met, not held")
+    if p.v >= 6 and p.underlying:
+        raise ValueError("an option on an option is a transfer of the right (§3.8), not built")
+    now = session.now
     ontology = session.catalogue
-    notes: list[str] = []
     term = _canonical(f"option({' '.join(p.thing.concepts)})", ontology.dag, notes)
     window = TimeWindow(now, until)
     kw = _guarantees(now, p.thing.concepts, side=GIVE)
     kw.pop("v", None)                                  # the underlying makes it v6
-    nonce = now * 1000 + sum(1 for o in session.book.offers(include_filled=True) if o.maker == session.maker)
-    offer = give(session.maker, Thing((term,), p.thing.qty, p.thing.unit), _number(args.premium),
-                 valid=window, nonce=nonce, underlying=oid, exercise=window, **ontology.pins, **kw)
+    nonce = now * 1000 + sum(1 for o in session.book.offers(include_filled=True) if o.maker == session.maker) + 1
+    return give(session.maker, Thing((term,), p.thing.qty, p.thing.unit), premium,
+                valid=window, nonce=nonce, underlying=p.offer_id, exercise=window, **ontology.pins, **kw)
+
+
+def _option_demand(session, fold, p: Offer, now: int) -> list[Offer]:
+    """The open wants of an option that an option on `p` would meet — the
+    demand signal (2026-09-29): someone would pay to hold a thing like it."""
+    if p.kind != GIVE or p.composed or (p.v >= 6 and p.underlying):
+        return []
+    try:
+        term = _canonical(f"option({' '.join(p.thing.concepts)})", session.catalogue.dag, [])
+    except Exception:                                  # noqa: BLE001 — no option head in this catalogue
+        return []
+    out = []
+    for w in fold.offers(now=now):
+        if w.kind != WANT or w.composed or w.maker == p.maker:
+            continue
+        if not any(isinstance(c, str) and c.startswith("option(") for c in w.thing.concepts):
+            continue
+        if w.thing.unit == p.thing.unit and q(w.thing.qty) <= q(p.thing.qty) \
+                and session.catalogue.satisfies((term,), w.thing.concepts):
+            out.append(w)
+    return sorted(out, key=lambda w: w.offer_id)
+
+
+def _options_on(fold, p: Offer, now: int) -> list[Offer]:
+    """The open options written on `p`."""
+    return sorted((o for o in fold.offers(now=now)
+                   if o.v >= 6 and o.underlying == p.offer_id and o.kind == GIVE),
+                  key=lambda o: o.offer_id)
+
+
+def cmd_option(args, session, out):
+    """`option ID [--until T] [--premium X] [--for WANT]` (C7, 2026-09-29;
+    options-and-cover.md §3.1): write an option on my own plain give — a give
+    of `option(<its concepts>)` for its quantity, priced at the premium on my
+    scale, naming the offer as its `underlying` and exercisable from now
+    until T. When it clears the offer is held for the option's holder until
+    T (a hold, C2); my exit meanwhile is a priced cancellation of the option
+    leg, never a free withdrawal. The guarantee settings apply as to any give.
+
+    Both numbers may be left out (the same day, Peter: options are used only
+    if they are easy to write): the window is `option_window` of the lead,
+    the premium `option_premium` — suggested from the book's demand by
+    default — shown with their reasons in the approval block. `--for WANT`
+    answers someone's want of an option on a thing like mine (the demand
+    `show` and `watch` report): the option is checked to meet it."""
+    oid = _resolve_id(session, args.id, mine_only=True)
+    p = session.book.get(oid)
+    if session.book.is_filled(oid) or session.book.is_withdrawn(oid):
+        raise ValueError(f"{oid[:12]} is no longer open")
+    now = session.now
+    until, premium, notes = _option_plan(session, p, now, args.until, args.premium)
+    offer = _option_offer(session, p, until, premium, notes)
+    if args.for_want:
+        fold = session.fold()
+        wid = _resolve_id(session, args.for_want, mine_only=False)
+        if wid not in {w.offer_id for w in _option_demand(session, fold, p, now)}:
+            raise ValueError(f"{wid[:12]} is not an open want of an option this offer's would meet")
+        w = fold.get(wid)
+        notes.append(f"for {w.maker}'s want {wid[:12]} (bids {_num(w.tokens.amount)} on their scale)")
     return _publish_offer(session, offer, notes, False, out)
 
 
@@ -2297,6 +2511,21 @@ def _watch_pass(session: Session, out) -> bool:
               f"{other.maker}", file=out)
         seen["fills"].append(oid)
         news = True
+    # the demand signal (2026-09-29): someone would pay to hold what I give
+    seen.setdefault("demand", [])
+    now = session.now
+    for offer in fold.offers(now=now):
+        if offer.maker != me or offer.kind != GIVE:
+            continue
+        for w in _option_demand(session, fold, offer, now):
+            key = f"{offer.offer_id}/{w.offer_id}"
+            if key in seen["demand"]:
+                continue
+            print(f"hold?    {w.maker} wants to hold a thing like your {offer.offer_id[:12]} "
+                  f"(bids {_num(w.tokens.amount)} on their scale): "
+                  f"loop option {offer.offer_id[:12]} --for {w.offer_id[:12]}", file=out)
+            seen["demand"].append(key)
+            news = True
     news = _seal_pending(session, fold, out) or news
     news = _open_incoming(session, fold, out, seen["handoffs"]) or news
     _write_json(_seen_path(), seen)
@@ -2356,8 +2585,18 @@ def cmd_show(args, session, out):
     oid = _resolve_id(session, args.id, mine_only=False)
     fold = session.fold()
     offer = fold.get(oid)
+    now = session.now
     print(render_offer(offer), file=out)
-    print(f"  state    {_state(fold, offer, session.now)}", file=out)
+    print(f"  state    {_state(fold, offer, now)}", file=out)
+    # options (2026-09-29): what may be held of it, and who would pay to hold it
+    for o in _options_on(fold, offer, now):
+        print(f"  option   {o.offer_id[:12]}: holdable until {_iso(o.exercise.end)} "
+              f"for {_num(o.tokens.amount)} (on {o.maker}'s scale)", file=out)
+    if offer.maker == session.maker:
+        for w in _option_demand(session, fold, offer, now):
+            print(f"  demand   {w.maker} wants to hold a thing like this ({_concepts(w)}, bids "
+                  f"{_num(w.tokens.amount)} on their scale): loop option {oid[:12]} --for {w.offer_id[:12]}",
+                  file=out)
     return 0
 
 
@@ -3005,6 +3244,12 @@ def cmd_set(args, session, out):
             raise ValueError(f"{args.key} is a non-negative amount")
     if args.key == "ladder" and value and value not in ("linear", "late", "early", "flat"):
         raise ValueError("ladder is linear, late, early or flat")
+    if args.key == "options" and value and value not in ("on", "off"):
+        raise ValueError("options is on or off")
+    if args.key == "option_window" and value:
+        _window_rule(value)
+    if args.key == "option_premium" and value:
+        _premium_rule(value)
     if args.key == "terms":
         for term in shlex.split(value):
             # a name is checked when an offer uses it (fails closed, U7);
@@ -3044,7 +3289,8 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop drafts | discard [NAME...]  list drafts / drop them (all, if none named)
   loop offer NAME [PRICE]          a draft becomes an offer: block, question, publish
   loop withdraw ID           tombstone one of my offers (id or unique prefix)
-  loop option ID --until T --premium X   an option on my offer: held for its holder until T (v6)
+  loop option ID [--until T] [--premium X] [--for WANT]  an option on my give: held for its holder until T;
+                             left out, the window and premium are option_window/option_premium's (v6)
   loop exercise OPTION... PRICE  want the options' offers as their holder, while the windows are open;
                              several: one composed want, all or nothing
   loop holds                 every hold in the fold, its holder and what is left of it
@@ -3164,6 +3410,7 @@ def build_parser():
     p.add_argument("id")
     p.add_argument("--until", default=None)
     p.add_argument("--premium", default=None)
+    p.add_argument("--for", dest="for_want", default=None)
     p.set_defaults(func=cmd_option)
     p = sub.add_parser("exercise", add_help=False)
     p.add_argument("args", nargs="*")               # OPTION [OPTION...] PRICE

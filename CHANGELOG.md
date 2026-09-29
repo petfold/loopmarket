@@ -61,6 +61,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Options made easy to write** (2026-09-29, Peter: useful only if makers
+  write them). `loop option ID` needs no numbers: the window is
+  `option_window` of the lead (a quarter by default) and the premium
+  `option_premium` — `suggest`ed from the book's demand for the thing, a
+  flagged guess while there is none, a percentage or an amount otherwise —
+  shown with their reasons for approval; `set options on` writes a give's
+  option with it, in one approval block. And the demand signal: a want of
+  an option on a thing like mine shows in `show` and `watch`, and `option
+  ID --for WANT` answers it; `show` lists the options written on an offer.
 - **Several options exercised together** (2026-09-29, Peter): `loop exercise
   O1 O2 … PRICE` wants every held offer as one composed want — a part per
   offer, one price, open until the first window closes — so a bundle's

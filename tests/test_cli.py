@@ -1180,8 +1180,8 @@ def test_an_option_is_written_held_and_exercised_from_the_command_line(env, tmp_
     run = Runner()
     run.ok("set", "maker", "lena")
     p = run.ok("give", "flat", "1000").strip().splitlines()[-1]
-    code, out, err = run("option", p[:12], "--premium", "20")
-    assert code != 0 and "option ID --until T --premium X" in err
+    code, out, err = run("option", "ffffffffffff", "--premium", "20")
+    assert code != 0 and "no such offer of yours" in err
     out = run.ok("option", p[:12], "--until", "3d", "--premium", "20")
     assert "v6" in out and f"option on {p[:16]}" in out
     o = out.strip().splitlines()[-1]
@@ -1248,3 +1248,63 @@ def test_several_options_are_exercised_as_one_composed_want(env, tmp_path, monke
     assert code != 0 and "you hold no such option" in err                  # noa holds neither
     run.ok("clearing")
     assert run.session.book.is_filled(flat) and run.session.book.is_filled(car)
+
+
+def test_options_are_easy_to_write_suggested_and_asked_for(env, tmp_path, monkeypatch):
+    """2026-09-29 (Peter: options are useful only if makers write them).
+    `option ID` needs no numbers: the window is `option_window` of the lead
+    (a quarter of the offer's remaining validity here), the premium
+    suggested from the book's demand — a flagged guess while there is none,
+    the chance a buyer comes during the hold and none after it once there
+    is; a percentage and a duration are settings too. `options on` writes a
+    give's option with it, one approval block. And the demand signal: a want
+    of an option on a thing like mine shows in `show` and `watch`, and
+    `option ID --for WANT` answers it."""
+    from fractions import Fraction
+    _od_with_prelude(tmp_path / "flats.od",
+                     [("graph-dimension", ["dimension"]), ("option", ["graph-dimension"]),
+                      ("apartment", []), ("flat", ["apartment"]), ("cleaning", [])])
+    monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "flats.od"))
+    monkeypatch.delenv("LOOP_MAKER")
+    run = Runner()
+    run.ok("set", "maker", "lena")
+    p = run.ok("give", "flat", "1000").strip().splitlines()[-1]
+    out = run.ok("option", p[:12])
+    assert "window 1/4 of the offer's remaining validity (7.5d)" in out and "a guess" in out
+    o = run.session.book.get(out.strip().splitlines()[-1])
+    assert o.exercise.end - NOW == 30 * 86_400 // 4 and o.tokens.amount == 125      # 1000 × 1/4 × ½
+    # demand seen in the book: the suggestion reads it
+    run.ok("set", "maker", "mia")
+    run.ok("want", "flat", "1100")
+    run.ok("set", "maker", "lena")
+    p2 = run.ok("give", "flat", "1000").strip().splitlines()[-1]
+    out = run.ok("option", p2[:12])
+    assert "1 want(s) for this in 30 days" in out
+    assert run.session.book.get(out.strip().splitlines()[-1]).tokens.amount == Fraction(5224, 100)                # 1000 × ½ × (e^-0.75 − e^-1)
+    # a duration and a percentage; bad values refused
+    run.ok("set", "option_window", "3d")
+    run.ok("set", "option_premium", "5%")
+    p3 = run.ok("give", "flat", "800").strip().splitlines()[-1]
+    o3 = run.session.book.get(run.ok("option", p3[:12]).strip().splitlines()[-1])
+    assert o3.exercise.end - NOW == 3 * 86_400 and o3.tokens.amount == 40
+    for key, bad in (("option_window", "3/2"), ("option_premium", "0"), ("options", "maybe")):
+        assert run("set", key, bad)[0] != 0
+    # options on: the give and its option in one approval block
+    run.ok("set", "options", "on")
+    out = run.ok("give", "flat", "900")
+    give_id, option_id = out.strip().splitlines()[-2:]
+    assert "\nand\n" in out and run.session.book.get(option_id).underlying == give_id
+    run.ok("set", "options", "off")
+    # the demand signal: mia would pay to hold an apartment
+    run.ok("set", "maker", "mia")
+    w = run.ok("want", "option(apartment)", "30").strip().splitlines()[-1]
+    run.ok("set", "maker", "lena")
+    out = run.ok("show", p[:12])
+    assert f"option   {o.offer_id[:12]}" in out and f"--for {w[:12]}" in out and "demand   mia" in out
+    code, out, err = run("watch", "--once")
+    assert code == 0 and f"hold?    mia wants to hold a thing like your {p[:12]}" in out
+    assert "hold?" not in run("watch", "--once")[1]                          # reported once
+    out = run.ok("option", p[:12], "--for", w[:12])
+    assert "for mia's want" in out
+    code, out, err = run("option", p[:12], "--for", p[:12])
+    assert code != 0 and "not an open want of an option" in err

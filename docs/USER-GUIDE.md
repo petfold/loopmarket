@@ -575,8 +575,37 @@ your scale (here in a catalogue with `flat` and a `ljubljana` place):
 ```console
 $ loop give flat ljubljana 1 lease 900          # the offer: a flat, one lease, at 900
 $ loop option 4f2a --until 7d --premium 20      # an option on it: exercisable for a week, for 20
+$ loop option 4f2a                              # or let the window and the premium be suggested (below)
 $ loop holds                                    # every hold in the fold: offer, option, holder, until, left
 ```
+
+**Without the numbers.** How long a hold may last and what it costs are
+your judgement — what a hold costs you is the chance another buyer comes
+while it blocks the offer and none after it lapses — so there is no
+default in the protocol; the command line *suggests*, and you approve what
+the block shows, as with the price memory:
+
+- the window is `option_window` of the lead (default `1/4`: a quarter of
+  the time to the offer's handover, or to its validity's end without one),
+  closing before the handover so a lapsed hold leaves time to sell again;
+  or a duration (`set option_window 3d`);
+- the premium is `option_premium`: `suggest` (default) reads how many wants
+  for a thing like yours appeared in the book over 30 days and prices the
+  chance a buyer comes during the hold and none after it, the holder
+  exercising half the time — cheap in a thick market, dear close to the
+  handover in a thin one; with no demand in the book it says so and falls
+  back to price × window/lead × ½. Or a percentage (`set option_premium
+  5%`), or an amount. Never below 1% of the price: a hold is never free.
+
+`set options on` writes the option with every plain give, both shown in one
+approval block.
+
+**When someone asks.** A buyer can want an option nobody has written yet —
+`loop want option(apartment) 30` — and that is a signal to sellers:
+`loop show` on your offer and `loop watch` tell you someone would pay to
+hold a thing like it, and `loop option ID --for WANT` writes the option
+that meets that want. `show` on any offer also lists the options written
+on it, so a buyer sees what may be held.
 
 The option is an ordinary give of `option(flat ljubljana)`: a want of
 `option(flat)` matches it by containment, and it clears in a loop like

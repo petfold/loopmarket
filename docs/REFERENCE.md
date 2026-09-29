@@ -914,7 +914,7 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | maker | `give [QTY] CAT\|TERM... [PRICE]` | resolve, show the block, confirm, publish, commit, print the id |
 | | `want [QTY] CAT\|TERM... [PRICE]` | the other side |
 | | `withdraw ID` | tombstone one of my open offers (id or unique prefix); filled refuses |
-| | `option ID --until T --premium X` | write an option on my open offer: a give of `option(<its concepts>)` naming it as `underlying`, exercisable from now until T (a duration or an instant), priced at the premium; v6, its hold recorded on chain since the 2026-09-29 clearing contracts |
+| | `option ID [--until T] [--premium X] [--for WANT]` | write an option on my open give: a give of `option(<its concepts>)` naming it as `underlying`, exercisable from now until T (a duration or an instant), priced at the premium; left out, the window is `option_window` of the lead and the premium `option_premium`'s (suggested from the book's demand by default), both shown with their reasons; `--for WANT` answers a want of an option on a thing like mine (checked to meet it); v6, its hold recorded on chain since the 2026-09-29 clearing contracts |
 | | `exercise OPTION... PRICE` | as the options' holder, want their offers (the quantities held) at PRICE while the windows are open; anyone else is refused; several options: one composed want of their offers, all or nothing, open until the first window closes (2026-09-29) |
 | | `holds` | every hold in the fold: offer, option, holder, until, what is left, active (named `options` until 2026-09-29) |
 | | `mine` | my offers, all states |
@@ -998,6 +998,9 @@ loop config (owner-readable, 0600); secrets print masked.
 | `claim_min_challenge`, `claim_min_ruling` | `LOOP_CLAIM_MIN_*` | none | the least dispute and ruling windows a claim on the reservations `finalize` makes must name (the escrow refuses shorter at `hold`) |
 | `arbitrator` | `LOOP_ARBITRATOR` | none | the resolver my gives name for claims on their deposit (never my own key); a want requiring resolvers matches only a give naming one it accepts |
 | `claim_max` | `LOOP_CLAIM_MAX` | none | the longest claim period my gives' deposits carry (v6) |
+| `options` | `LOOP_OPTIONS` | `off` | `on`: every plain give I publish also writes its option, both in one approval block |
+| `option_window` | `LOOP_OPTION_WINDOW` | `1/4` | an option's window: a fraction in (0, 1) of the lead to the offer's handover time (its validity's end without one), or a duration; it closes before the handover |
+| `option_premium` | `LOOP_OPTION_PREMIUM` | `suggest` | an option's premium on my scale: `suggest` (price × ½ × the chance a buyer comes during the hold and none after it, the rate read from the book's wants for the thing over 30 days; with none, price × window/lead × ½, flagged as a guess), `N%` of the price, or an amount; never below 1% of the price |
 | `require_claim`, `require_resolvers` | `LOOP_REQUIRE_*` | none | the claim period I ask of a giver's deposit; the resolvers I accept, by key (v6) |
 | `bond` | `LOOP_BOND` | none | my deposit on every give: an amount on my scale (deposited as `default_asset` at my price) or `QTY[UNIT] CATEGORY... VALUE` (v5) |
 | `default_asset` | `LOOP_DEFAULT_ASSET` | `xdai xDAI 1` | the asset a bare `bond` deposits and a bare `require_point` accepts, with its price per unit on my scale |
