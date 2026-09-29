@@ -313,8 +313,29 @@ name factbond's redeployed `Assertions`. Hence:
    period as the reservation's window, and the deductible on the deposit
    (Peter), a v7 record; the escrow and the clearing trio redeployed the
    same evening (`LoopEscrow` `0x3936…F3f2`, `BeatClearing` `0xC475…11d4`)
-   and gated live. Stage 2 is factbond's: assignment and netting before a
-   cover payout, fair presentation, contra proferentem — Milestone M4.
+   and gated live. **Stage 2, D-2** (assignment and netting, Peter's taxi
+   case) DONE the same night in the escrow, as D3's consequences put it
+   (`covers`: the cover's claim opens only after the covered reservation is
+   assigned to the insurer; the payout nets what it already paid her),
+   redeployed at `0xddDB…b5A9` and gated live (`scripts/gate_cover.py`).
+   Open for M4: D-1 (a false presentation reduces the payout: a ruling that
+   states an amount, factbond's decision) and D-3's doctrine (factbond's
+   adjudicators; its structural half holds).
+9. **Also built 2026-09-29, outside the sequence** (Peter's calls through
+   the day): options made easy (a suggested window and premium, `options
+   on`, the demand signal, `option --for`), several options exercised as
+   one composed want, the CLI's `options` renamed `holds`, money on each
+   maker's own scale with no default price (`default_asset`), possession as
+   the door's default (THREATS T19), and — as direction — arbitrators as
+   credentialed roles (`counterparty-gate.md` §7a).
+10. **Next, in order (2026-09-29 night):** arbitrator acceptance by property
+   (accreditation under a trust root, the resolver's deposit floor, a
+   clean record; a give's own acceptance, the clearing choosing a resolver
+   both admit); C6's CLI verbs for the escrow's acts (`assign`, `settle`,
+   `extend-claim`, `collect`); R6's `watch` re-check with a `notice` verb;
+   the inspection rules (certificate-final, independence). Waiting on
+   Peter: D-1's mechanism, the named final rung, `examples/apartment.loop`'s
+   naming, K1.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust
