@@ -491,7 +491,7 @@ node `potentials`. A simple cycle's record is byte-identical to before.
 
 | name | one line |
 |---|---|
-| `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder=(), claim_only=False, min_challenge=0, min_ruling=0, deductible=0)`, `.cancel`, `.countersign`, `.settle(offer_id, loop_id, to_wanter=None)` (no split: the quiet path after the claim period; a split: this party's signature, the second pays it out), `.assign(offer_id, loop_id, to)` (the wanter's), `.extend_claim(offer_id, loop_id, seconds)` (the giver's), `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.collect(token=None)` (a refused payout credited to `owed`), `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.owed(to, token=None)`, `.subject(offer_id, loop_id)` (the reservation's key, factbond's subject), `.ladder_at`, `.deposit_of`; web3 lazy (`chain` extra) |
+| `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder=(), claim_only=False, min_challenge=0, min_ruling=0, deductible=0)`, `.cancel`, `.countersign`, `.cover_of(offer_id, loop_id)` (what a cover covers, what a reservation paid its wanter), `.settle(offer_id, loop_id, to_wanter=None)` (no split: the quiet path after the claim period; a split: this party's signature, the second pays it out), `.assign(offer_id, loop_id, to)` (the wanter's), `.extend_claim(offer_id, loop_id, seconds)` (the giver's), `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.collect(token=None)` (a refused payout credited to `owed`), `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.owed(to, token=None)`, `.subject(offer_id, loop_id)` (the reservation's key, factbond's subject), `.ladder_at`, `.deposit_of`; web3 lazy (`chain` extra) |
 | `to_wei(qty, decimals=18)` / `floor_wei` | an exact quantity as the asset's smallest unit — refused when not representable (U9) / rounded down (the ladder) |
 | `held_units(client)` | offer id → what the escrow holds, in the asset's unit: the `escrow_held` the agent and the clearing take |
 | `reservations_for(proposal, *, escrow, resolver, claim_seconds, now, span=None, decimals=18, claim_only=None, min_challenge=0, min_ruling=0)` | pure: one reservation per give whose bond names `escrow` — the share in smallest units, the wanter's key, the give's `arbitrator` or `resolver` (never a party, and one the want's `resolvers` admit), the want's `time(...)` term as the window (through `span`), the claim period per leg (the want's `claim_period`, else `claim_seconds`, never past the give's `claim_max`), the ladder converted at the wanter's acceptance price; `claim_only` for cover (`cover_predicate`) |
@@ -507,8 +507,8 @@ giver withdraws what no fill holds after a notice period. Since E1
 parties: `hold` opens only the wanter's own claim (naming the giver, within
 the reservation, windows at least `minChallenge`/`minRuling`), a retraction
 reopens it, and a payout the recipient refuses waits in `owed`. Deployed on
-Gnosis at `0x3936E3B8A736814Ae8850Da3e75C02B476CdF3f2` (2026-09-29 evening, with the deductible; the
-earlier `0x7bee…c55F`, `0x299C…69Bf` and `0xA49C…D936` keep their reservations), factbond's
+Gnosis at `0xddDB7276F705671673F0885aEf93B99b890Eb5A9` (2026-09-29 night, with assignment and netting; the
+earlier `0x7bee…c55F`, `0x299C…69Bf`, `0xA49C…D936` and `0x3936…F3f2` keep their reservations), factbond's
 `Assertions` at `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270` as resolver.
 
 ## 8f. `loopmarket.gate` — the counterparty gate (R4, 2026-09-29)

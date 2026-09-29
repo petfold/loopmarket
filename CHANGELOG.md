@@ -11,6 +11,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Deployed
 
+- **The escrow redeployed with assignment and netting** (2026-09-29 night,
+  C5 stage 2): `LoopEscrow` at `0xddDB7276F705671673F0885aEf93B99b890Eb5A9`.
+  Live, the taxi case: a cover claim refused until the insured assigned her
+  claim on the driver, the insurer recovering the driver's deposit as the
+  assignee, and a cover payout netting what the driver's deposit had
+  already paid.
 - **The escrow and the clearing contracts redeployed with the deductible**
   (2026-09-29 evening, C5): `LoopEscrow` at
   `0x3936E3B8A736814Ae8850Da3e75C02B476CdF3f2`; `BeatClearing` at

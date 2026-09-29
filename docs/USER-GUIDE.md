@@ -555,8 +555,9 @@ split and the second signature pays it out; the wanter may assign the
 claim to anyone, and the giver may lengthen the claim period (tail
 cover). A reservation behind a give under the catalogue's `insure` is
 cover: it is never ended by a countersignature. The Gnosis escrow has
-these acts since its 2026-09-29 redeploy, and the deductible since that
-evening's (`0x3936E3B8A736814Ae8850Da3e75C02B476CdF3f2`,
+these acts since its 2026-09-29 redeploy, the deductible since that
+evening's, and cover covering a reservation since that night's
+(`0xddDB7276F705671673F0885aEf93B99b890Eb5A9`,
 factbond's `Assertions` at `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270` as its
 resolver).
 
@@ -569,6 +570,18 @@ refused, since it could pay nothing; and a deposit counts against a
 wanter's neutral point only up to what it can pay. For cover — an
 `insure(car theft time(…))` give whose deposit is the limit — it is the
 insurance deductible: the part of any loss the insured bears herself.
+
+**Cover over a counterparty's deposit** (the taxi case). When cover is
+composed with a thing whose give carries its own deposit — a driver's
+small deposit, an insurer's cover above it — the cover *covers* that
+deposit's reservation: before the cover pays, the insured assigns her
+claim on the driver's reservation to the insurer (`loop` does this through
+the escrow's `assign`; the cover's claim is refused until she has), and
+the insurer recovers the driver's deposit itself; or, if she has already
+collected from the driver, the cover pays only the rest. She is paid once,
+the insurer's cost is the loss less the driver's deposit, and the
+driver's own fault costs him his deposit — nobody has to judge why the
+ride did not happen.
 
 How a contested claim runs once factbond resolves it (notice to the
 giver first, then the claim, the giver's dispute or the claim certifying,
@@ -1145,7 +1158,7 @@ every session with the settings sees the same beats:
 ```console
 $ loop set beat chain:https://rpc.gnosischain.com@0xC47575b57E08b389c344AaBf415606Cd0B3011d4      # BeatClearing
 $ loop set auction chain:https://rpc.gnosischain.com@0x513731eC7ca8012F296E54e1b148044c5e9B0Bd9   # SealedBeat
-$ loop set escrow chain:https://rpc.gnosischain.com@0x3936E3B8A736814Ae8850Da3e75C02B476CdF3f2    # LoopEscrow
+$ loop set escrow chain:https://rpc.gnosischain.com@0xddDB7276F705671673F0885aEf93B99b890Eb5A9    # LoopEscrow
 $ loop set resolver 0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270                                       # factbond's Assertions
 $ loop propose                       # clear locally, post each loop as one beat (a bond, a challenge window)
 $ loop beats --open                  # what stands
