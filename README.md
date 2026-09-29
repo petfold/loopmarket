@@ -156,7 +156,7 @@ a contested claim is factbond's. Since 2026-09-28/29 (the v6 record, on
 checked by the counterparty gate in seven steps, the registers' roots a
 checked sequence (each keeps every earlier revocation: recordstore 0.21.0's
 extension proofs) — an offer can be held for someone by an **option**
-(`loop option`, `exercise`, `options`), one particular thing is named by
+(`loop option`, `exercise`, `holds`), one particular thing is named by
 **`item(h)`** with one open claim per maker, and cover and inspections
 compose with the thing as argument-only operators; the escrow releases a
 held reservation only by a ruling or both parties (redeployed on Gnosis

@@ -76,10 +76,10 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   newer root published by clearing's clock refuses a leg whose statement it
   revokes or suspends: a stale pin cannot hide what the register has said.
   Needs recordstore's extension proofs: the pin is now `recordstore>=0.21.0`.
-- **CLI: `option`, `exercise`, `options` (C7)** (2026-09-29). `loop option
+- **CLI: `option`, `exercise`, `holds` (C7)** (2026-09-29). `loop option
   ID --until T --premium X` writes an option on my own open offer (v6);
   `loop exercise OPTION PRICE` wants its offer as the holder while the
-  window is open, anyone else refused; `loop options` lists the holds in the
+  window is open, anyone else refused; `loop holds` (first spelled `options`) lists the holds in the
   fold. `examples/apartment.loop` waits for a way to name an offer in a
   script without its id.
 - **Items: `item(h)` and the per-item rule, per maker (I1–I2)**

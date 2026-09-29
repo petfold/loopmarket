@@ -2043,9 +2043,12 @@ def cmd_exercise(args, session, out):
     return _publish_offer(session, offer, [f"exercising {oid[:12]} on {o.underlying[:12]}"], False, out)
 
 
-def cmd_options(args, session, out):
-    """`options`: every hold in the fold — the offer held, the option, its
-    holder, until when, what is left of it, and whether it is active now."""
+def cmd_holds(args, session, out):
+    """`holds`: every hold in the fold — the offer held, the option, its
+    holder, until when, what is left of it, and whether it is active now.
+    Named for what it lists (renamed from `options` 2026-09-29, Peter: the
+    plural of `option` read as "the options I wrote" — which appear here
+    only once they clear — and, at a command line, as settings)."""
     fold = session.fold()
     now = session.now
     rows = []
@@ -3021,7 +3024,7 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop withdraw ID           tombstone one of my offers (id or unique prefix)
   loop option ID --until T --premium X   an option on my offer: held for its holder until T (v6)
   loop exercise OPTION PRICE want an option's offer as its holder, while the window is open
-  loop options               every hold in the fold, its holder and what is left of it
+  loop holds                 every hold in the fold, its holder and what is left of it
   loop mine                  my offers, all states
   loop place NAME LAT,LON,R [ADDRESS...]  a place node under its cell; the address
                              is settlement text, sealed to the cleared counterparty
@@ -3143,8 +3146,8 @@ def build_parser():
     p.add_argument("option")
     p.add_argument("price")
     p.set_defaults(func=cmd_exercise)
-    p = sub.add_parser("options", add_help=False)
-    p.set_defaults(func=cmd_options)
+    p = sub.add_parser("holds", add_help=False)
+    p.set_defaults(func=cmd_holds)
 
     p = sub.add_parser("mine", add_help=False)
     _add_output_flags(p)

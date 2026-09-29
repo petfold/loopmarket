@@ -1169,7 +1169,7 @@ def test_the_settings_table_names_each_setting_once():
 
 def test_an_option_is_written_held_and_exercised_from_the_command_line(env, tmp_path, monkeypatch):
     """C7 (2026-09-29): `option ID --until T --premium X` writes an option on
-    my own offer; once it clears, `options` shows the hold for its holder;
+    my own offer; once it clears, `holds` shows the hold for its holder;
     `exercise OPTION PRICE` wants the offer as the holder, and only the
     holder, and that loop clears too."""
     _od_with_prelude(tmp_path / "flats.od",
@@ -1192,7 +1192,8 @@ def test_an_option_is_written_held_and_exercised_from_the_command_line(env, tmp_
     run.ok("want", "option(apartment)", "30")
     run.ok("give", "cleaning", "5")
     run.ok("clearing")
-    out = run.ok("options")
+    out = run.ok("holds")
+    assert run("options")[0] != 0                                          # renamed 2026-09-29
     assert f"holder mia" in out and "active yes" in out and p[:16] in out
     out = run.ok("exercise", o[:12], "1500")
     assert f"exercising {o[:12]}" in out

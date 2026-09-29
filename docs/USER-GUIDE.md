@@ -575,7 +575,7 @@ your scale (here in a catalogue with `flat` and a `ljubljana` place):
 ```console
 $ loop give flat ljubljana 1 lease 900          # the offer: a flat, one lease, at 900
 $ loop option 4f2a --until 7d --premium 20      # an option on it: exercisable for a week, for 20
-$ loop options                                  # every hold in the fold: offer, option, holder, until, left
+$ loop holds                                    # every hold in the fold: offer, option, holder, until, left
 ```
 
 The option is an ordinary give of `option(flat ljubljana)`: a want of
