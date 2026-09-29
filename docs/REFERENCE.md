@@ -793,6 +793,9 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | maker | `give [QTY] CAT\|TERM... [PRICE]` | resolve, show the block, confirm, publish, commit, print the id |
 | | `want [QTY] CAT\|TERM... [PRICE]` | the other side |
 | | `withdraw ID` | tombstone one of my open offers (id or unique prefix); filled refuses |
+| | `option ID --until T --premium X` | write an option on my open offer: a give of `option(<its concepts>)` naming it as `underlying`, exercisable from now until T (a duration or an instant), priced at the premium; v6, off-chain clearing until the next clearing-contract redeploy |
+| | `exercise OPTION PRICE` | as the option's holder, want its offer (the quantity held) at PRICE while the window is open; anyone else is refused |
+| | `options` | every hold in the fold: offer, option, holder, until, what is left, active |
 | | `mine` | my offers, all states |
 | | `place NAME LAT,LON,RADIUS [ADDRESS...]` | a place node under the cell containing that radius, written to odag's active store (temporary bridge; adopts the prelude there if absent); the address is settlement text on the node, shown in the block of an offer naming the place and sealed to the cleared counterparty |
 | | `handoff ID TEXT...` | what my offer's cleared counterparty may read (replaces the place text for this offer); kept in `$LOOP_HOME/handoffs`, sealed by `watch` once filled |

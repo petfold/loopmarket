@@ -287,8 +287,10 @@ name factbond's redeployed `Assertions`. Hence:
    registry and clearing, solver awareness) DONE 2026-09-29; D4
    (argument-only operators and `requires.legs`) DONE the same night; I1–I2
    (items on the prefix stopgap, the per-maker claim) DONE too; next the
-   inspection rules E1/E2 (certificate-final, independence), C7's CLI verbs,
-   then the one clearing-contract redeploy (C4 + I3 + R3b).
+   inspection rules E1/E2 (certificate-final, independence), C7's CLI verbs
+   (built 2026-09-29 but `examples/apartment.loop`, which needs an id-free
+   way to name an offer in a script), then the one clearing-contract
+   redeploy (C4 + I3 + R3b).
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust

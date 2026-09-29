@@ -1970,6 +1970,99 @@ def cmd_withdraw(args, session, out):
     return 0
 
 
+def _until(text: str, now: int) -> int:
+    """`--until`: a duration from now (`3d`, `12h`) or an instant (ISO-8601,
+    unix seconds)."""
+    try:
+        return now + duration_s(text)
+    except ValueError:
+        return parse_now(text)
+
+
+def cmd_option(args, session, out):
+    """`option ID --until T --premium X` (C7, 2026-09-29; options-and-cover.md
+    §3.1): write an option on my own plain offer — a give of
+    `option(<its concepts>)` for its quantity, priced at the premium on my
+    scale, naming the offer as its `underlying` and exercisable from now
+    until T. When it clears the offer is held for the option's holder until
+    T (a hold, C2); my exit meanwhile is a priced cancellation of the option
+    leg, never a free withdrawal. The guarantee settings apply as to any give."""
+    if not args.until or not args.premium:
+        raise ValueError("option ID --until T --premium X")
+    oid = _resolve_id(session, args.id, mine_only=True)
+    p = session.book.get(oid)
+    if p.composed:
+        raise ValueError("an option holds one thing: a composed want has parts")
+    if p.v >= 6 and p.underlying:
+        raise ValueError("an option on an option is a transfer of the right (§3.8), not built")
+    if session.book.is_filled(oid) or session.book.is_withdrawn(oid):
+        raise ValueError(f"{oid[:12]} is no longer open")
+    now = session.now
+    until = _until(args.until, now)
+    if until <= now:
+        raise ValueError("the exercise window ends after now")
+    if p.valid.end is not None and until > p.valid.end:
+        raise ValueError(f"{oid[:12]} stands only until {_iso(p.valid.end)}: the window must end by then")
+    ontology = session.catalogue
+    notes: list[str] = []
+    term = _canonical(f"option({' '.join(p.thing.concepts)})", ontology.dag, notes)
+    window = TimeWindow(now, until)
+    kw = _guarantees(now, p.thing.concepts, side=GIVE)
+    kw.pop("v", None)                                  # the underlying makes it v6
+    nonce = now * 1000 + sum(1 for o in session.book.offers(include_filled=True) if o.maker == session.maker)
+    offer = give(session.maker, Thing((term,), p.thing.qty, p.thing.unit), _number(args.premium),
+                 valid=window, nonce=nonce, underlying=oid, exercise=window, **ontology.pins, **kw)
+    return _publish_offer(session, offer, notes, False, out)
+
+
+def cmd_exercise(args, session, out):
+    """`exercise OPTION PRICE` (C7): as the option's holder, want its
+    underlying — the same thing, the quantity held — at PRICE on my scale,
+    while the exercise window is open. An exercise is a clearing (§3.5): the
+    want needs a closing loop like any other, and the hold lets only me take
+    the offer meanwhile."""
+    fold = session.fold()
+    oid = _resolve_id(session, args.option, mine_only=False)
+    o = fold.get(oid)
+    if not (o.v >= 6 and o.underlying):
+        raise ValueError(f"{oid[:12]} is not an option")
+    now = session.now
+    mine = [(lid, rec) for lid, rec in fold.holds(o.underlying)
+            if rec["option"] == oid and rec["holder"] == session.maker]
+    if not mine:
+        raise ValueError(f"{oid[:12]}: you hold no such option")
+    left = fold.held_by(o.underlying, session.maker, now)
+    if left <= 0:
+        raise ValueError(f"{oid[:12]}: not exercisable now (window {_span(o.exercise)})")
+    p = fold.get(o.underlying)
+    thing = Thing(p.thing.concepts, left, p.thing.unit)
+    kw = _guarantees(now, p.thing.concepts, side=WANT)
+    nonce = now * 1000 + sum(1 for x in session.book.offers(include_filled=True) if x.maker == session.maker)
+    offer = want(session.maker, thing, _number(args.price), valid=TimeWindow(now, o.exercise.end),
+                 nonce=nonce, **session.catalogue.pins, **kw)
+    return _publish_offer(session, offer, [f"exercising {oid[:12]} on {o.underlying[:12]}"], False, out)
+
+
+def cmd_options(args, session, out):
+    """`options`: every hold in the fold — the offer held, the option, its
+    holder, until when, what is left of it, and whether it is active now."""
+    fold = session.fold()
+    now = session.now
+    rows = []
+    for o in fold.offers(include_filled=True):
+        for lid, rec in fold.holds(o.offer_id):
+            rows.append({"offer": o.offer_id[:16], "option": rec["option"][:16], "holder": rec["holder"],
+                         "until": _iso(int(rec["until"])), "left": _num(fold.hold_left(o.offer_id, lid)),
+                         "active": "yes" if now < int(rec["until"]) else "no"})
+    if not rows:
+        print("no holds", file=out)
+        return 0
+    for r in sorted(rows, key=lambda r: (r["offer"], r["option"])):
+        print(f"{r['offer']}  option {r['option']}  holder {r['holder']}  until {r['until']}  "
+              f"left {r['left']}  active {r['active']}", file=out)
+    return 0
+
+
 def cmd_mine(args, session, out):
     now = session.now
     rows = [_row(o, now, session.book)
@@ -2926,6 +3019,9 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop drafts | discard [NAME...]  list drafts / drop them (all, if none named)
   loop offer NAME [PRICE]          a draft becomes an offer: block, question, publish
   loop withdraw ID           tombstone one of my offers (id or unique prefix)
+  loop option ID --until T --premium X   an option on my offer: held for its holder until T (v6)
+  loop exercise OPTION PRICE want an option's offer as its holder, while the window is open
+  loop options               every hold in the fold, its holder and what is left of it
   loop mine                  my offers, all states
   loop place NAME LAT,LON,R [ADDRESS...]  a place node under its cell; the address
                              is settlement text, sealed to the cleared counterparty
@@ -3037,6 +3133,18 @@ def build_parser():
     p = sub.add_parser("withdraw", add_help=False)
     p.add_argument("id")
     p.set_defaults(func=cmd_withdraw)
+
+    p = sub.add_parser("option", add_help=False)
+    p.add_argument("id")
+    p.add_argument("--until", default=None)
+    p.add_argument("--premium", default=None)
+    p.set_defaults(func=cmd_option)
+    p = sub.add_parser("exercise", add_help=False)
+    p.add_argument("option")
+    p.add_argument("price")
+    p.set_defaults(func=cmd_exercise)
+    p = sub.add_parser("options", add_help=False)
+    p.set_defaults(func=cmd_options)
 
     p = sub.add_parser("mine", add_help=False)
     _add_output_flags(p)

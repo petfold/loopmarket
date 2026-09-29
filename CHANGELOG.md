@@ -21,6 +21,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **CLI: `option`, `exercise`, `options` (C7)** (2026-09-29). `loop option
+  ID --until T --premium X` writes an option on my own open offer (v6);
+  `loop exercise OPTION PRICE` wants its offer as the holder while the
+  window is open, anyone else refused; `loop options` lists the holds in the
+  fold. `examples/apartment.loop` waits for a way to name an offer in a
+  script without its id.
 - **Items: `item(h)` and the per-item rule, per maker (I1–I2)**
   (2026-09-29; `items-and-ownership.md` §1–§2). `items.py` derives h from
   a VIN, a land-register number or a maker and serial (the same identifier

@@ -1165,3 +1165,42 @@ def test_the_settings_table_names_each_setting_once():
     assert len(names) == len(set(names)), sorted(n for n in names if names.count(n) > 1)
     assert "require_bond" not in names
     assert "deposit I hold against my performance" in cli._SETTINGS["bond"].help
+
+
+def test_an_option_is_written_held_and_exercised_from_the_command_line(env, tmp_path, monkeypatch):
+    """C7 (2026-09-29): `option ID --until T --premium X` writes an option on
+    my own offer; once it clears, `options` shows the hold for its holder;
+    `exercise OPTION PRICE` wants the offer as the holder, and only the
+    holder, and that loop clears too."""
+    _od_with_prelude(tmp_path / "flats.od",
+                     [("graph-dimension", ["dimension"]), ("option", ["graph-dimension"]),
+                      ("apartment", []), ("flat", ["apartment"]), ("cleaning", []), ("painting", [])])
+    monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "flats.od"))
+    monkeypatch.delenv("LOOP_MAKER")                   # `set maker` switches between the makers
+    run = Runner()
+    run.ok("set", "maker", "lena")
+    p = run.ok("give", "flat", "1000").strip().splitlines()[-1]
+    code, out, err = run("option", p[:12], "--premium", "20")
+    assert code != 0 and "option ID --until T --premium X" in err
+    out = run.ok("option", p[:12], "--until", "3d", "--premium", "20")
+    assert "v6" in out and f"option on {p[:16]}" in out
+    o = out.strip().splitlines()[-1]
+    run.ok("want", "cleaning", "30")
+    run.ok("set", "maker", "mia")
+    code, out, err = run("exercise", o[:12], "1500")
+    assert code != 0 and "you hold no such option" in err                  # not before the option clears
+    run.ok("want", "option(apartment)", "30")
+    run.ok("give", "cleaning", "5")
+    run.ok("clearing")
+    out = run.ok("options")
+    assert f"holder mia" in out and "active yes" in out and p[:16] in out
+    out = run.ok("exercise", o[:12], "1500")
+    assert f"exercising {o[:12]}" in out
+    run.ok("give", "painting", "10")
+    run.ok("set", "maker", "lena")
+    run.ok("want", "painting", "1100")
+    run.ok("clearing")
+    assert run.session.book.is_filled(p)
+    run.ok("set", "maker", "noa")
+    code, out, err = run("exercise", o[:12], "1500")
+    assert code != 0 and "you hold no such option" in err
