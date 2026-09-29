@@ -172,3 +172,114 @@ def test_a_deductible_is_the_only_v7_form_and_counts_against_the_point():
                     bond=Bond(Thing(("xdai",), "1/2", "xDAI"), 5, "0x" + "e5" * 20, "1/5"))
     assert check_match(plain, buyer, cat, now=1_790_000_001) is not None
     assert check_match(deducted, buyer, cat, now=1_790_000_001) is None
+
+
+def test_the_taxi_no_show_is_paid_once_the_drivers_deposit_first(chain):
+    """C5 stage 2 (D-2, 2026-09-29, Peter's taxi case). A traveller wants a
+    ride with cover (`requires.legs`: an `insure` leg from the insurer); the
+    driver posts a small deposit of his own, the insurer's deposit is the
+    limit, and the cover's reservation covers the driver's. The driver
+    forgets; the traveller's loss is 0.3 (the missed ferry). Two ways, the
+    same result — she is made whole once, the insurer's net cost is the loss
+    less the driver's deposit, and the driver's own fault costs him his:
+
+    - assignment: she cannot claim the cover until her claim on the driver's
+      reservation belongs to the insurer; she assigns it, the cover pays her
+      0.3, and the insurer recovers the driver's 0.05 as the assignee;
+    - netting: she claims the driver's 0.05 herself first, and the cover
+      then pays 0.25 — what the driver's reservation paid her is not paid
+      again."""
+    from loopmarket import Accept, RequiredLeg
+    from loopmarket.escrow import reservation_key
+    w3, escrow, coin, clearing = chain
+    factbond, adjudicator, fee, floor = _factbond(w3)
+    insurer, driver, bystander = w3.eth.accounts[2], w3.eth.accounts[7], w3.eth.accounts[8]
+    travellers = [w3.eth.accounts[3], w3.eth.accounts[6]]
+    t = _now(w3)
+    cat = Ontology(OntoDAG())
+    cat.declare_handover(["geo", "time"])
+    cat.declare_argument_operator(["insure"])
+    cat.load({"ride": [], "lesson": [], "painting": [], "xdai": []})
+    V = dict(valid=TimeWindow(t - 3_600, t + 86_400))
+    hour, day = f"{_iso(t + 60)}..{_iso(t + 3_660)}", f"{_iso(t - 600)}..{_iso(t + 86_400)}"
+    ride = give(driver, Thing(("ride", f"time({hour})"), 2, "ride", step=1), 30, **V, nonce=1,
+                bond=Bond(Thing(("xdai",), "1/10", "xDAI"), 50, escrow.address))              # 0.05 a ride
+    # one policy per offer: an operator's give is taken whole by the leg it
+    # serves (a courier's run moves a lot), so an insurer sells a policy an offer
+    covers = [give(insurer, Thing((f"insure(ride time({day}))",), 1, "policy"), 10, **V, nonce=2 + n,
+                   bond=Bond(Thing(("xdai",), "1/2", "xDAI"), 5, escrow.address), arbitrator=factbond.address)
+              for n in range(2)]
+    offers = [ride, *covers]
+    for n, traveller in enumerate(travellers):
+        offers += [want(traveller, Thing(("ride", f"time({hour})"), 1, "ride"), 100, **V, nonce=10 + n,
+                        requires=Requires(legs=(RequiredLeg("insure", Accept(keys=(insurer,))),))),
+                   give(traveller, Thing(("lesson",), 1, "hour"), 5, **V, nonce=20 + n),
+                   want(driver, Thing(("lesson",), 1, "hour"), 60, **V, nonce=30 + n),
+                   give(traveller, Thing(("painting",), 1, "piece"), 5, **V, nonce=40 + n),
+                   want(insurer, Thing(("painting",), 1, "piece"), 30, **V, nonce=50 + n)]
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    book.publish_many(offers)
+    book.commit()
+    root = book.store.root
+    agent = SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: t), solver_id="t")
+    receipts = []
+    for _ in range(3):                      # a composed circulation per pass: step until the book is quiet
+        receipts += [r for r in agent.step(now=t) if r.accepted]
+    assert len(receipts) == 2, [(r.accepted, r.reason) for r in receipts]
+    escrow.functions.deposit(bytes.fromhex(ride.offer_id)).transact({"from": driver, "value": to_wei("1/10")})
+    for cover in covers:
+        escrow.functions.deposit(bytes.fromhex(cover.offer_id)).transact({"from": insurer, "value": to_wei("1/2")})
+    loops, cover_of = {}, {}
+    for r in receipts:
+        proposal = proposal_from_record(book.store.get(f"loop/{r.loop_id}"), snapshot_of(book, root))
+        res = reservations_for(proposal, escrow=escrow.address, resolver=factbond.address, claim_seconds=86_400,
+                               now=t, span=_span, claim_only=cover_predicate(cat))
+        by = {x["offer_id"]: x for x in res}
+        cover = next(c for c in covers if c.offer_id in by)
+        assert by[cover.offer_id]["claim_only"] and not by[ride.offer_id]["claim_only"]
+        assert by[cover.offer_id]["covers"] == reservation_key(ride.offer_id, r.loop_id)
+        for x in res:
+            escrow.functions.reserve(bytes.fromhex(x["offer_id"]), bytes.fromhex(x["loop_id"]), x["wanter"],
+                                     x["resolver"], x["amount"],
+                                     _terms(*x["window"], x["claim_seconds"], claim_only=x["claim_only"],
+                                            covers=bytes.fromhex(x["covers"]) if x["covers"] else bytes(32)),
+                                     [], []).transact({"from": clearing})
+        loops[by[ride.offer_id]["wanter"]] = bytes.fromhex(r.loop_id)
+        cover_of[by[ride.offer_id]["wanter"]] = bytes.fromhex(cover.offer_id)
+    r_off = bytes.fromhex(ride.offer_id)
+
+    def claim(who, offer, loop, outcome, about):
+        factbond.functions.assert_(escrow.functions.key(offer, loop).call(), escrow.address, outcome, 990, 0, 0,
+                                   about).transact({"from": who, "value": fee + floor})
+        return factbond.functions.count().call()
+
+    def certify(claim_id, *watch):
+        _advance(w3, 200)
+        before = [w3.eth.get_balance(a) for a in watch]
+        factbond.functions.certify(claim_id).transact({"from": bystander})
+        return [w3.eth.get_balance(a) - b for a, b in zip(watch, before)]
+
+    # assignment: the first traveller
+    first, loop = travellers[0], loops[travellers[0]]
+    c_off = cover_of[first]
+    cover_claim = factbond.functions.assert_(escrow.functions.key(c_off, loop).call(), escrow.address,
+                                             to_wei("3/10"), 990, 0, 0, insurer)
+    assert "assign the claim on the covered reservation to the insurer first" in _reverts(
+        w3, cover_claim, first, value=fee + floor)
+    escrow.functions.assign(r_off, loop, insurer).transact({"from": first})
+    got, back = certify(claim(first, c_off, loop, to_wei("3/10"), insurer), first, insurer)
+    assert got == to_wei("3/10") + floor and back == to_wei("1/5")          # she is made whole; 0.2 of the limit back
+    assert "the claim is the wanter's" in _reverts(                         # her claim on the driver is the insurer's now
+        w3, factbond.functions.assert_(escrow.functions.key(r_off, loop).call(), escrow.address, to_wei("1/20"),
+                                       990, 0, 0, driver), first, value=fee + floor)
+    recovered, lost = certify(claim(insurer, r_off, loop, to_wei("1/20"), driver), insurer, driver)
+    assert recovered == to_wei("1/20") + floor and lost == 0                 # the insurer recovers the driver's 0.05
+
+    # netting: the second traveller claims the driver's deposit herself, then the cover
+    second, loop = travellers[1], loops[travellers[1]]
+    c_off = cover_of[second]
+    got_driver, = certify(claim(second, r_off, loop, to_wei("1/20"), driver), second)
+    got_cover, back = certify(claim(second, c_off, loop, to_wei("3/10"), insurer), second, insurer)
+    assert got_driver == to_wei("1/20") + floor and got_cover == to_wei("1/4") + floor   # 0.05 + 0.25: 0.3, once
+    assert back == to_wei("1/4")
+    assert escrow.functions.coverOf(c_off, loop).call()[0] == bytes.fromhex(reservation_key(ride.offer_id, loop.hex()))

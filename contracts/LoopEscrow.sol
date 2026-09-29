@@ -108,6 +108,9 @@ contract LoopEscrow {
         uint64 minRuling;   // the least ruling window a claim must name
         uint256 claim;      // the open claim's id at a contract resolver (0: none, or a key resolver)
         uint256 deductible; // C5: what a ruled payout leaves with the giver, this fill's share
+        bytes32 covers;     // C5 stage 2: cover of this reservation (its key; 0: none)
+        address paidTo;     // who this reservation's settlement paid as its wanter …
+        uint256 paidToWanter; // … and how much: what a cover over it nets (no double recovery)
         uint64[] ladderLead;   // the cancellation ladder: lead seconds, descending to 0 …
         uint256[] ladderAmount; // … and the amount owed at each, in the asset's unit
     }
@@ -121,6 +124,7 @@ contract LoopEscrow {
         uint64 minRuling;    // the claim class's evidence period plus its rung's ruling period
         bool claimOnly;      // set by the clearing for a give under `insure`
         uint256 deductible;  // C5 (v7 records): the deposit's deductible, this fill's share
+        bytes32 covers;      // C5 stage 2: the reservation this cover covers (0: none)
     }
 
     uint8 private constant RETRACTED = 5;   // IClaims.Claim.status
@@ -231,6 +235,14 @@ contract LoopEscrow {
         return (r.claimOnly, r.minChallenge, r.minRuling, r.claim, r.deductible);
     }
 
+    /// What a cover reservation covers, and what this reservation paid its
+    /// wanter at settlement (C5 stage 2, D-2).
+    function coverOf(bytes32 offer, bytes32 loop) external view returns (
+        bytes32 covers, address paidTo, uint256 paidToWanter) {
+        Reservation storage r = reservations[key(offer, loop)];
+        return (r.covers, r.paidTo, r.paidToWanter);
+    }
+
     /// Reserve `amount` of the deposit for one fill at clearing: the leg's
     /// wanter and window, the resolver both offers declared acceptable, the
     /// claim period after the window, what a claim must leave the giver and
@@ -254,6 +266,7 @@ contract LoopEscrow {
         require(resolver != wanter && resolver != deposits[offer].giver, "the resolver is no party");
         require(t.windowStart <= t.windowEnd, "a window");
         require(t.deductible < amount, "a deductible below the reservation");
+        require(t.covers != k, "a cover of itself");
         require(ladderLead.length == ladderAmount.length, "a ladder");
         for (uint256 i = 0; i < ladderLead.length; i++) {
             require(ladderAmount[i] <= amount, "ladder above the reservation");
@@ -263,6 +276,7 @@ contract LoopEscrow {
         r.windowStart = t.windowStart; r.windowEnd = t.windowEnd; r.claimUntil = t.windowEnd + t.claimSeconds;
         r.claimOnly = t.claimOnly; r.minChallenge = t.minChallenge; r.minRuling = t.minRuling;
         r.deductible = t.deductible;
+        r.covers = t.covers;
         r.ladderLead = ladderLead; r.ladderAmount = ladderAmount;
         reservedTotal[offer] += amount;
         emit Reserved(offer, loop, wanter, resolver, amount);
@@ -400,6 +414,15 @@ contract LoopEscrow {
         require(r.amount > 0 && !r.settled, "not open");
         require(!r.held, "a claim is open");
         require(block.timestamp <= r.claimUntil, "claim period over");
+        if (r.covers != bytes32(0)) {
+            // D-2, assignment before payout: the insured's claim on the covered
+            // reservation belongs to the insurer before the cover pays, so the
+            // insurer recovers there and nobody is paid twice — unless nothing
+            // is left to assign (never reserved here, or already settled)
+            Reservation storage u = reservations[r.covers];
+            require(u.amount == 0 || u.settled || u.wanter == deposits[r.offer].giver,
+                    "assign the claim on the covered reservation to the insurer first");
+        }
         if (msg.sender.code.length > 0) r.claim = _claimFits(k, r);
         r.held = true;
         emit Held(k);
@@ -450,7 +473,14 @@ contract LoopEscrow {
             return;
         }
         require(toWanter <= r.amount, "beyond the reservation");
-        _settle(k, r, toWanter > r.deductible ? toWanter - r.deductible : 0, "resolved");
+        uint256 less = r.deductible;
+        if (r.covers != bytes32(0)) {
+            // D-2, netting: what the covered reservation already paid this
+            // insured, by any path, is not paid again
+            Reservation storage u = reservations[r.covers];
+            if (u.settled && u.paidTo == r.wanter) less += u.paidToWanter;
+        }
+        _settle(k, r, toWanter > less ? toWanter - less : 0, "resolved");
     }
 
     function _settle(bytes32 k, Reservation storage r, uint256 toWanter, string memory how) private {
@@ -459,6 +489,8 @@ contract LoopEscrow {
         d.released += r.amount;
         reservedTotal[r.offer] -= r.amount;
         uint256 toGiver = r.amount - toWanter;
+        r.paidTo = r.wanter;
+        r.paidToWanter = toWanter;
         if (toWanter > 0) _payOut(d.token, r.wanter, toWanter);
         if (toGiver > 0) _payOut(d.token, d.giver, toGiver);
         emit Settled(k, toWanter, toGiver, how);

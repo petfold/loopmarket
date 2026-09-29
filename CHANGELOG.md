@@ -84,6 +84,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   of the deposit (the limit) and the rest returns to the insurer
   (`tests/test_cover.py`, local EVM). Stage 2's assignment, presentation
   and construction rules are not built.
+- **Cover stage 2: assignment and netting (D-2)** (2026-09-29, Peter's taxi
+  case). A cover composed with a bonded thing records the reservation it
+  covers; the insured's claim on the cover opens only once her claim on
+  the covered reservation is assigned to the insurer (unless nothing is
+  left there), and the cover's payout nets whatever that reservation
+  already paid her. `tests/test_cover.py`: a taxi no-show paid once, the
+  driver's deposit first — by assignment (the insurer recovers the
+  driver's 0.05) or by netting (the cover pays 0.25 after her 0.05).
 - **The deductible on the deposit, the v7 record** (2026-09-29, Peter).
   `Bond(asset, value, escrow, deductible)`: an amount of the deposit's own
   asset — money the wanter accepts, factbond's rule — for the give's whole

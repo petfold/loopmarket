@@ -120,12 +120,19 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
     claim period runs from that period's end: claims made and reported
     within it (`options-and-cover.md` §4.2). A v7 deposit's deductible is
     reserved with the share, in proportion as it (`Bond.deductible_share`),
-    in smallest units."""
+    in smallest units. C5 stage 2 (D-2): a cover composed with a bonded
+    thing in one leg **covers** that thing's reservation — `covers`, its key
+    on the escrow — so the insured assigns her claim there to the insurer
+    before the cover pays, and the cover nets whatever it already paid her."""
     out = []
     escrow = escrow.lower()
     for leg in proposal.circulation.legs:
         want = leg.want
         window = _period(_concepts(want), span, nested=False) or (now, now)
+        is_cover = [bool(claim_only(g)) if claim_only else False for g in leg.gives]
+        covered = next((g for g, c in zip(leg.gives, is_cover)
+                        if not c and g.v >= 5 and g.bond is not None and g.bond.escrow.lower() == escrow), None)
+        covered_key = reservation_key(covered.offer_id, proposal.circulation.loop_id) if covered else ""
         for i, give in enumerate(leg.gives):
             bond = give.bond if give.v >= 5 else None
             if bond is None or bond.escrow.lower() != escrow:
@@ -171,8 +178,16 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
                         "window": tuple(int(x) for x in (covered or window)),
                         "claim_seconds": claim, "ladder": ladder,
                         "claim_only": cover, "deductible": deductible,
+                        "covers": covered_key if cover else "",
                         "min_challenge": int(min_challenge), "min_ruling": int(min_ruling)})
     return out
+
+
+def reservation_key(offer_id: str, loop_id: str) -> str:
+    """The escrow's key of one fill's reservation, keccak(offer ‖ loop) —
+    what `LoopEscrow.key` computes, here without a chain call."""
+    from eth_hash.auto import keccak
+    return keccak(bytes.fromhex(offer_id) + bytes.fromhex(loop_id)).hex()
 
 
 _NESTED_TIME = re.compile(r"time\(([^()]*)\)")
@@ -296,18 +311,21 @@ class EscrowClient:
     def reserve(self, offer_id: str, loop_id: str, wanter: str, resolver: str, amount: int, *,
                 window: tuple[int, int], claim_seconds: int, ladder: list[tuple[int, int]] = (),
                 claim_only: bool = False, min_challenge: int = 0, min_ruling: int = 0,
-                deductible: int = 0) -> dict:
+                deductible: int = 0, covers: str | bytes = b"") -> dict:
         """Reserve `amount` for one fill (the clearing's key): the leg's
         wanter and handover window (unix seconds), the resolver both
         offers declared acceptable, the claim period after the window, the
         least windows a claim must name, whether it is cover, the ladder as
-        (lead seconds, amount in smallest units), descending, and the
+        (lead seconds, amount in smallest units), descending, the
         deductible's share for this fill (C5: a ruled payout leaves it with
-        the giver)."""
+        the giver), and for cover the key of the reservation it covers (C5
+        stage 2: the insured assigns her claim there to the insurer before
+        the cover pays, and the cover nets what it already paid her)."""
         leads = [int(lead) for lead, _ in ladder]
         amounts = [int(a) for _, a in ladder]
+        covers = bytes.fromhex(covers) if isinstance(covers, str) else bytes(covers)
         terms = (int(window[0]), int(window[1]), int(claim_seconds), int(min_challenge), int(min_ruling),
-                 bool(claim_only), int(deductible))
+                 bool(claim_only), int(deductible), covers.rjust(32, b"\0") if covers else bytes(32))
         return self._send(self.contract().functions.reserve(
             offer_key(offer_id), offer_key(loop_id), wanter, resolver, amount, terms, leads, amounts))
 
@@ -372,6 +390,13 @@ class EscrowClient:
                 "claim_until": r[5], "held": r[6], "settled": r[7], "ladder": list(zip(r[8], r[9])),
                 "claim_only": t[0], "min_challenge": t[1], "min_ruling": t[2], "claim": t[3],
                 "deductible": t[4]}
+
+    def cover_of(self, offer_id: str, loop_id: str) -> dict:
+        """What a cover reservation covers (the key, or None), and what this
+        reservation paid its wanter at settlement (C5 stage 2)."""
+        covers, paid_to, paid = self.contract().functions.coverOf(offer_key(offer_id), offer_key(loop_id)).call()
+        return {"covers": None if int.from_bytes(covers, "big") == 0 else bytes(covers).hex(),
+                "paid_to": paid_to, "paid_to_wanter": paid}
 
     def owed(self, to: str, token: str | None = None) -> int:
         """Payouts `to`'s address refused, waiting for its `collect`."""

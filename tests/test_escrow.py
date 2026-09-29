@@ -89,8 +89,8 @@ def test_to_wei_is_exact_or_refuses():
         to_wei(Fraction(1, 3))
 
 
-def _terms(start, end, claim=100, min_challenge=0, min_ruling=0, claim_only=False, deductible=0):
-    return (start, end, claim, min_challenge, min_ruling, claim_only, deductible)
+def _terms(start, end, claim=100, min_challenge=0, min_ruling=0, claim_only=False, deductible=0, covers=bytes(32)):
+    return (start, end, claim, min_challenge, min_ruling, claim_only, deductible, covers)
 
 
 def _reserve(escrow, clearing, offer, loop, wanter, resolver, amount, start, end, claim=100, ladder=(), **terms):
