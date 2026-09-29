@@ -166,8 +166,7 @@ _SETTINGS = {
         "LOOP_CLAIM_MAX", "", "--claim-max DURATION",
         "the longest claim period my give's deposit carries after the "
         "handover window (v6, plan A1); a want asking longer is not matched. "
-        "A v6 offer clears off chain; the on-chain verifier reads v6 after "
-        "the next clearing-contract redeploy"),
+        "The clearing contracts read v6 records since their 2026-09-29 redeploy"),
     "require_claim": _Setting(
         "LOOP_REQUIRE_CLAIM", "", "--require-claim DURATION",
         "the claim period I ask of a giver's deposit (v6): only gives whose "
@@ -175,7 +174,7 @@ _SETTINGS = {
     "require_resolvers": _Setting(
         "LOOP_REQUIRE_RESOLVERS", "", "--require-resolvers KEYS",
         "the resolvers I accept for a claim on a giver's deposit, by key "
-        "(v6, C4): only gives naming one of them as arbitrator are matched, "
+        "(v6, E2): only gives naming one of them as arbitrator are matched, "
         "and never a party to the leg"),
     "require_point": _Setting(
         "LOOP_REQUIRE_POINT", "", "--require-point AMOUNT",
