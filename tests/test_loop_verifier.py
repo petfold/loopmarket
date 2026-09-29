@@ -316,3 +316,31 @@ def test_the_share_reserved_for_a_partial_fill_is_what_the_chain_compares(face):
         else:
             with pytest.raises(Exception, match="deposit share below"):
                 verifier.functions.verifyLeg(beat, args).call()
+
+
+def test_a_v7_deposit_counts_on_chain_only_as_far_as_it_can_pay(face):
+    """C5 (2026-09-29): the farm's 100 kg with a 10 EUR deposit and a 2 EUR
+    deductible reserves 4 EUR for a 40 kg want, 0.8 of it the deductible's
+    share: 3.2 can be paid. A point of 3 verifies, a point of 4 — covered by
+    the reservation, not by what it pays — is convicted; the v7 record is
+    read like a v6 one."""
+    from loopmarket import Acceptance, Bond, Requires
+    w3, verifier = face
+    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    for point, ok in ((3, True), (4, False)):
+        book = OfferRegistry(RecordStore(MemoryBytesStore()))
+        farm = give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins,
+                    bond=Bond(Thing(("stablecoin-eur",), 10, "EUR"), 8, "0xE", deductible=2))
+        assert farm.v == 7
+        b1 = want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins,
+                  requires=Requires(point=point, accepts=(Acceptance(("stablecoin-eur",), "EUR", 1),)))
+        book.publish_many([farm, b1]); book.commit()
+        snapshot = OfferRegistry(RecordStore.at(book.store.root, book.store.blobs))
+        verifier.functions.setPotentials([b"farm", b"b1"], [1, 1], [1, 1]).transact()
+        args = _leg_args(snapshot, None, {"want": b1.offer_id, "gives": [farm.offer_id], "taken": ["40"]})
+        beat = _beat(book.store.root, pins)
+        if ok:
+            assert verifier.functions.verifyLeg(beat, args).call()[0] == b"b1"
+        else:
+            with pytest.raises(Exception, match="deposit share below"):
+                verifier.functions.verifyLeg(beat, args).call()

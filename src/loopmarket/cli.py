@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import contextvars
+import dataclasses
 import json
 import os
 import re
@@ -162,6 +163,13 @@ _SETTINGS = {
         "Assertions, or a key; never mine); a want requiring resolvers "
         "matches only a give naming one it accepts; empty: the clearing's "
         "`resolver`"),
+    "deductible": _Setting(
+        "LOOP_DEDUCTIBLE", "", "--deductible AMOUNT",
+        "what a ruled claim on my deposit leaves with me: an amount of the "
+        "deposit's own asset, for the give's whole quantity like the deposit "
+        "(a fill takes its share); a claim pays what it is, at most the "
+        "reservation, less it (C5, a v7 record). A deposit counts against a "
+        "wanter's neutral point only up to what it can pay"),
     "claim_max": _Setting(
         "LOOP_CLAIM_MAX", "", "--claim-max DURATION",
         "the longest claim period my give's deposit carries after the "
@@ -1227,7 +1235,8 @@ def _bond_text(offer: Offer) -> str:
     if b is None:
         return "bond -"
     return (f"bond {_num(b.asset.qty)}{b.asset.unit} {' '.join(b.asset.concepts)} "
-            f"worth {_num(b.value)}" + (f" in {b.escrow}" if b.escrow else " (not deposited)"))
+            f"worth {_num(b.value)}" + (f" in {b.escrow}" if b.escrow else " (not deposited)")
+            + (f" deductible {_num(b.deductible)}{b.asset.unit}" if b.deductible else ""))
 
 
 def render_offer(offer: Offer) -> str:
@@ -1520,6 +1529,9 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
                                  "the deposit by the grammar, its worth to me last")
             out["bond"] = Bond(Thing(tuple(parsed.concepts), parsed.qty, parsed.unit or "unit"),
                                parsed.price, _escrow_address())
+        if _configured("deductible"):
+            # C5 (v7): an amount of the deposit's own asset, as the deposit is stated
+            out["bond"] = dataclasses.replace(out["bond"], deductible=q(_configured("deductible")))
     point = q(_configured("require_point")) if _configured("require_point") else None
     accepts = []
     for entry in (e.strip() for e in (_configured("require_accepts") or "").split(";") if e.strip()):
@@ -1540,7 +1552,9 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
         out["requires"] = Requires(point=point or 0, ladder=ladder, accepts=tuple(accepts), escrows=escrows,
                                    claim_period=claim_period,
                                    resolvers=Accept(keys=resolver_keys) if resolver_keys else None)
-    if out.get("claim_max") or claim_period or resolver_keys:
+    if "bond" in out and out["bond"].deductible:
+        out["v"] = 7                               # a deposit's deductible (C5); v7 carries v6's fields
+    elif out.get("claim_max") or claim_period or resolver_keys:
         out["v"] = 6
     elif "requires" in out or "bond" in out:
         out["v"] = 5
@@ -2873,6 +2887,7 @@ def cmd_finalize(args, session, out):
             escrow.reserve(r["offer_id"], r["loop_id"], r["wanter"], r["resolver"], r["amount"],
                            window=r["window"], claim_seconds=r["claim_seconds"], ladder=r["ladder"],
                            claim_only=r["claim_only"], min_challenge=r["min_challenge"],
+                           deductible=r["deductible"],
                            min_ruling=r["min_ruling"])
             print(f"reserved {_num(Fraction(r['amount'], 10 ** 18))} behind {r['offer_id'][:16]}… "
                   f"for {r['wanter']}", file=out)
@@ -3244,6 +3259,13 @@ def cmd_set(args, session, out):
             raise ValueError(f"{args.key} is a non-negative amount")
     if args.key == "ladder" and value and value not in ("linear", "late", "early", "flat"):
         raise ValueError("ladder is linear, late, early or flat")
+    if args.key == "deductible" and value:
+        try:
+            amount = q(value)
+        except Exception as exc:              # noqa: BLE001
+            raise ValueError(f"deductible is an amount: {exc}") from None
+        if amount < 0:
+            raise ValueError("deductible is a non-negative amount")
     if args.key == "options" and value and value not in ("on", "off"):
         raise ValueError("options is on or off")
     if args.key == "option_window" and value:

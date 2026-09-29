@@ -1308,3 +1308,22 @@ def test_options_are_easy_to_write_suggested_and_asked_for(env, tmp_path, monkey
     assert "for mia's want" in out
     code, out, err = run("option", p[:12], "--for", p[:12])
     assert code != 0 and "not an open want of an option" in err
+
+
+def test_a_deductible_rides_on_the_deposit(env):
+    """C5 (2026-09-29): `set deductible` puts an amount of the deposit's own
+    asset on every bonded give — a v7 record, shown with the bond; without
+    a deposit it has nothing to ride on and the give stays as it was."""
+    from fractions import Fraction
+    run = Runner()
+    run.ok("set", "deductible", "1/2")
+    out = run.ok("give", "apple", "10")
+    assert run.session.book.get(out.strip().splitlines()[-1]).v == 4             # no deposit: nothing to deduct
+    run.ok("set", "bond", "5")
+    out = run.ok("give", "apple", "10")
+    offer = run.session.book.get(out.strip().splitlines()[-1])
+    assert offer.v == 7 and offer.bond.deductible == Fraction(1, 2) and "deductible 0.5xDAI" in out
+    assert run("set", "deductible", "-1")[0] != 0
+    run.ok("set", "deductible", "5")
+    code, out, err = run("give", "apple", "10")
+    assert code != 0 and "below the deposit" in err

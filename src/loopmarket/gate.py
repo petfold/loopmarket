@@ -297,6 +297,7 @@ class CounterpartyGate:
             qty = min(qty, q(self.held.get(oid, 0)))
         if oid == counterparty.offer_id and taken is not None and q(whole or 0) > 0:
             qty -= bond.reserved(taken, whole)                   # after this fill's own reservation
+        qty -= bond.deductible                                   # v7: what a claim on it cannot take
         req = requirer.requires
         for acc in req.accepts:
             if acc.unit == bond.asset.unit and ontology.satisfies(bond.asset.concepts, acc.concepts):

@@ -61,6 +61,24 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Cover paid by the escrow, stage 1 (C5)** (2026-09-29). A cover
+  reservation's window is the covered period — the `time(…)` inside the
+  insured's `insure(…)` want, else the insurer's, else the leg's handover —
+  with the claim period from its end; with the reservation cover-only, a
+  claim asserted on factbond, disputed and ruled for the insured is paid out
+  of the deposit (the limit) and the rest returns to the insurer
+  (`tests/test_cover.py`, local EVM). Stage 2's assignment, presentation
+  and construction rules are not built.
+- **The deductible on the deposit, the v7 record** (2026-09-29, Peter).
+  `Bond(asset, value, escrow, deductible)`: an amount of the deposit's own
+  asset — money the wanter accepts, factbond's rule — for the give's whole
+  quantity, a fill taking its share; only a deductible makes an offer v7
+  (v4–v6 ids unchanged, three pinned in `tests/test_cover.py`). The escrow
+  reserves the share with the fill, refuses a claim within it at `hold`,
+  and a ruling pays the claim less it; a deposit counts against a wanter's
+  neutral point only up to what it can pay, in `meets`, the gate and on
+  chain (`LoopVerifier` reads v7). `set deductible AMOUNT` at the command
+  line.
 - **Options made easy to write** (2026-09-29, Peter: useful only if makers
   write them). `loop option ID` needs no numbers: the window is
   `option_window` of the lead (a quarter by default) and the premium

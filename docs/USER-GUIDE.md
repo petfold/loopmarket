@@ -558,6 +558,15 @@ these acts since its 2026-09-29 redeploy (`0xA49Cc9F9dab95aAB7093F138A084027ef66
 factbond's `Assertions` at `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270` as its
 resolver).
 
+A deposit may carry a **deductible** (v7): `loop set deductible 0.002` —
+an amount of the deposit's own asset, for the give's whole quantity like
+the deposit (a fill takes its share). A ruled claim pays what it is, at
+most the reservation, less the deductible; a claim at or below it is
+refused, since it could pay nothing; and a deposit counts against a
+wanter's neutral point only up to what it can pay. For cover — an
+`insure(car theft time(…))` give whose deposit is the limit — it is the
+insurance deductible: the part of any loss the insured bears herself.
+
 How a contested claim runs once factbond resolves it (notice to the
 giver first, then the claim, the giver's dispute or the claim certifying,
 concession, the ruling and its appeal) is factbond's to document: its

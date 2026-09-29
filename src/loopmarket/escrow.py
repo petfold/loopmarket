@@ -42,6 +42,7 @@ gap between clearing and finalization.
 from __future__ import annotations
 
 import json
+import re
 from fractions import Fraction
 
 from .schema import q
@@ -110,20 +111,21 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
     the leg (C4's formality: the want's or the give's maker), and when the
     want requires `resolvers` it must be one they admit — the gate already
     refused the leg otherwise, so a failure here is a clearing that
-    bypassed the gate, and it raises."""
+    bypassed the gate, and it raises.
+
+    C5 (2026-09-29): a cover reservation's window is the **covered period** —
+    the `time(...)` inside the insured's `insure(...)` want, else inside the
+    insurer's give, else the leg's handover window (cover composed with the
+    thing, `requires.legs`, runs while the thing is handed over) — and its
+    claim period runs from that period's end: claims made and reported
+    within it (`options-and-cover.md` §4.2). A v7 deposit's deductible is
+    reserved with the share, in proportion as it (`Bond.deductible_share`),
+    in smallest units."""
     out = []
     escrow = escrow.lower()
     for leg in proposal.circulation.legs:
         want = leg.want
-        window = (now, now)
-        if span is not None:
-            for term in _concepts(want):
-                if isinstance(term, str) and term.startswith("time(") and term.endswith(")"):
-                    try:
-                        window = tuple(span(term[5:-1]))
-                        break
-                    except Exception:      # noqa: BLE001 — not a span this reader knows
-                        continue
+        window = _period(_concepts(want), span, nested=False) or (now, now)
         for i, give in enumerate(leg.gives):
             bond = give.bond if give.v >= 5 else None
             if bond is None or bond.escrow.lower() != escrow:
@@ -132,6 +134,8 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
                 raise ValueError(f"{want.maker!r} is not a key address: the payout has no destination")
             share = bond.reserved(leg.taken(i), give.thing.qty)
             amount = to_wei(share, decimals)
+            deductible = to_wei(bond.deductible_share(leg.taken(i), give.thing.qty), decimals) \
+                if give.v >= 7 else 0
             chosen = give.arbitrator if is_address(give.arbitrator) else resolver
             parties = (want.maker, give.maker)
             if chosen.lower() in {p.lower() for p in parties}:
@@ -140,6 +144,11 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
                 from .matching import admits
                 if not admits(want.requires.resolvers, chosen, parties=parties):
                     raise ValueError(f"the resolver {chosen} is not one {want.maker} accepts")
+            cover = bool(claim_only(give)) if claim_only else False
+            covered = None
+            if cover:
+                covered = _period(_concepts(want), span, nested=True) \
+                    or _period(give.thing.concepts, span, nested=True)
             claim = int(claim_seconds)
             if want.v >= 6 and want.requires is not None and want.requires.claim_period:
                 claim = want.requires.claim_period
@@ -158,11 +167,47 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
                               for lead, a in req.ladder]
             out.append({"offer_id": give.offer_id, "loop_id": proposal.circulation.loop_id,
                         "wanter": want.maker, "resolver": chosen,
-                        "amount": amount, "window": (int(window[0]), int(window[1])),
+                        "amount": amount,
+                        "window": tuple(int(x) for x in (covered or window)),
                         "claim_seconds": claim, "ladder": ladder,
-                        "claim_only": bool(claim_only(give)) if claim_only else False,
+                        "claim_only": cover, "deductible": deductible,
                         "min_challenge": int(min_challenge), "min_ruling": int(min_ruling)})
     return out
+
+
+_NESTED_TIME = re.compile(r"time\(([^()]*)\)")
+
+
+def _period(concepts, span, *, nested: bool):
+    """The first time span among `concepts` that `span` reads: a top-level
+    `time(...)` term, and with `nested` one inside another term too (the
+    covered period of an `insure(... time(...))`); None when there is none."""
+    if span is None:
+        return None
+    for term in concepts:
+        if not isinstance(term, str):
+            continue
+        if term.startswith("time(") and term.endswith(")"):
+            texts = [term[5:-1]]
+        elif nested:
+            texts = _NESTED_TIME.findall(term)
+        else:
+            continue
+        for text in texts:
+            try:
+                return tuple(span(text))
+            except Exception:              # noqa: BLE001 — not a span this reader knows
+                continue
+    return None
+
+
+#: `terms(bytes32,bytes32)` as the escrows before the deductible answer it
+#: (2026-09-28/29 until C5: four fields).
+_LEGACY_TERMS = {
+    "name": "terms", "type": "function", "stateMutability": "view",
+    "inputs": [{"name": "offer", "type": "bytes32"}, {"name": "loop", "type": "bytes32"}],
+    "outputs": [{"name": "claimOnly", "type": "bool"}, {"name": "minChallenge", "type": "uint64"},
+                {"name": "minRuling", "type": "uint64"}, {"name": "claim", "type": "uint256"}]}
 
 
 def cover_predicate(ontology, head: str = "insure"):
@@ -250,16 +295,19 @@ class EscrowClient:
 
     def reserve(self, offer_id: str, loop_id: str, wanter: str, resolver: str, amount: int, *,
                 window: tuple[int, int], claim_seconds: int, ladder: list[tuple[int, int]] = (),
-                claim_only: bool = False, min_challenge: int = 0, min_ruling: int = 0) -> dict:
+                claim_only: bool = False, min_challenge: int = 0, min_ruling: int = 0,
+                deductible: int = 0) -> dict:
         """Reserve `amount` for one fill (the clearing's key): the leg's
         wanter and handover window (unix seconds), the resolver both
         offers declared acceptable, the claim period after the window, the
-        least windows a claim must name, whether it is cover, and the
-        ladder as (lead seconds, amount in smallest units), descending."""
+        least windows a claim must name, whether it is cover, the ladder as
+        (lead seconds, amount in smallest units), descending, and the
+        deductible's share for this fill (C5: a ruled payout leaves it with
+        the giver)."""
         leads = [int(lead) for lead, _ in ladder]
         amounts = [int(a) for _, a in ladder]
         terms = (int(window[0]), int(window[1]), int(claim_seconds), int(min_challenge), int(min_ruling),
-                 bool(claim_only))
+                 bool(claim_only), int(deductible))
         return self._send(self.contract().functions.reserve(
             offer_key(offer_id), offer_key(loop_id), wanter, resolver, amount, terms, leads, amounts))
 
@@ -313,10 +361,17 @@ class EscrowClient:
     def reservation(self, offer_id: str, loop_id: str) -> dict:
         c = self.contract().functions
         r = c.reservation(offer_key(offer_id), offer_key(loop_id)).call()
-        t = c.terms(offer_key(offer_id), offer_key(loop_id)).call()
+        try:
+            t = c.terms(offer_key(offer_id), offer_key(loop_id)).call()
+        except Exception as exc:                # noqa: BLE001 — an escrow from before the deductible
+            if "decode" not in str(exc).lower():
+                raise
+            legacy = self._web3().eth.contract(address=self.address, abi=[_LEGACY_TERMS])
+            t = list(legacy.functions.terms(offer_key(offer_id), offer_key(loop_id)).call()) + [0]
         return {"wanter": r[0], "resolver": r[1], "amount": r[2], "window": (r[3], r[4]),
                 "claim_until": r[5], "held": r[6], "settled": r[7], "ladder": list(zip(r[8], r[9])),
-                "claim_only": t[0], "min_challenge": t[1], "min_ruling": t[2], "claim": t[3]}
+                "claim_only": t[0], "min_challenge": t[1], "min_ruling": t[2], "claim": t[3],
+                "deductible": t[4]}
 
     def owed(self, to: str, token: str | None = None) -> int:
         """Payouts `to`'s address refused, waiting for its `collect`."""

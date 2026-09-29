@@ -361,30 +361,60 @@ class Bond:
     `value` to the giver on its own scale ("the bond in the giver's unit").
     Marked as backing: never a give a solver could clear. A single deposit
     backs every fill of the give and is *reserved per fill* in proportion to
-    the quantity taken (Peter, 2026-09-18)."""
+    the quantity taken (Peter, 2026-09-18).
+
+    v7 (C5, Peter 2026-09-29): a **deductible**, an amount of the deposit's
+    own asset — money the wanter accepts, as her acceptance table says
+    (factbond's rule: whoever accepts a payment names what it is paid in),
+    never a catalogue term — that a ruled payout leaves with the giver: a
+    claim pays what it is, at most the reservation, less the deductible.
+    Like the deposit it is for the give's whole quantity, and a fill takes
+    its share. A deposit counts against a wanter's neutral point only up to
+    what it can pay (`payable`)."""
 
     asset: Thing
     value: Fraction = Fraction(0)
     escrow: str = ""                    # the escrow contract holding it; "" until deposited
+    deductible: Fraction = Fraction(0)  # v7: what a ruled payout leaves with the giver, in the asset
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "value", q(self.value))
+        object.__setattr__(self, "deductible", q(self.deductible))
         if self.value < 0:
             raise ValueError("a bond's value is non-negative")
+        if not 0 <= self.deductible < q(self.asset.qty):
+            raise ValueError("a deductible is non-negative and below the deposit: at or above it, "
+                             "no claim could ever be paid")
 
     def reserved(self, taken, whole) -> Fraction:
         """The deposit's share for a fill taking `taken` of a give of `whole`."""
         whole = q(whole)
         return q(self.asset.qty) if whole <= 0 else q(self.asset.qty) * q(taken) / whole
 
+    def deductible_share(self, taken, whole) -> Fraction:
+        """The deductible's share for a fill, in proportion as the deposit's."""
+        whole = q(whole)
+        return self.deductible if whole <= 0 else self.deductible * q(taken) / whole
+
+    def payable(self, taken, whole) -> Fraction:
+        """The most a ruled claim on this fill's reservation can pay."""
+        return self.reserved(taken, whole) - self.deductible_share(taken, whole)
+
     def to_record(self, v: int = 5) -> dict[str, Any]:
-        return {"asset": self.asset.to_record(v), "value": rat(self.value), "escrow": self.escrow}
+        rec = {"asset": self.asset.to_record(v), "value": rat(self.value), "escrow": self.escrow}
+        if v >= 7:
+            rec["deductible"] = rat(self.deductible)
+        elif self.deductible:
+            raise ValueError("a deductible is a v7 form")
+        return rec
 
     @classmethod
-    def from_record(cls, rec: dict[str, Any]) -> "Bond":
+    def from_record(cls, rec: dict[str, Any], v: int = 5) -> "Bond":
+        if (v >= 7) != ("deductible" in rec):
+            raise ValueError("a v7 deposit carries its deductible, an earlier one none")
         a = rec["asset"]
         return cls(Thing(tuple(a["concepts"]), q(a["qty"]), a["unit"], step=q(a["step"]), min=q(a["min"])),
-                   q(rec["value"]), rec.get("escrow", ""))
+                   q(rec["value"]), rec.get("escrow", ""), q(rec.get("deductible", 0)))
 
 
 # v6 (2026-09-29, R1 of the development sequence; `docs/plans/counterparty-gate.md`
@@ -785,8 +815,10 @@ class Offer:
             raise ValueError(
                 "uniform offer form: the token side must be the maker's own token"
             )
-        if self.v not in (1, 2, 3, 4, 5, 6):
+        if self.v not in (1, 2, 3, 4, 5, 6, 7):
             raise ValueError(f"unknown offer record version: {self.v!r}")
+        if self.v < 7 and isinstance(self.bond, Bond) and self.bond.deductible:
+            raise ValueError("a deductible is a v7 form")
         if self.v < 6:
             if self.claim_max or self.underlying or self.exercise is not None \
                     or (self.requires is not None and self.requires.v6):
@@ -945,7 +977,7 @@ class Offer:
         vocabulary.
         """
         v = rec.get("v")
-        if v not in (1, 2, 3, 4, 5, 6):
+        if v not in (1, 2, 3, 4, 5, 6, 7):
             raise ValueError(f"unknown offer record version: {v!r}")
         if v < 6 and any(k in rec for k in _OFFER_V6):
             raise ValueError("claim_max and an option are v6 forms")
@@ -987,7 +1019,7 @@ class Offer:
             service=TimeWindow(*rec["service"]) if v < 3 else None,
             where=GeoDisc(*rec["where"]) if v < 3 else None,
             ontology_root=rec.get("ontology_root", ""),
-            bond=(Bond.from_record(rec["bond"]) if rec.get("bond") is not None else None)
+            bond=(Bond.from_record(rec["bond"], v) if rec.get("bond") is not None else None)
                  if v >= 5 else rec.get("bond", 0.0),
             oracle=rec.get("oracle", "countersign"),
             arbitrator=rec.get("arbitrator", ""),
@@ -1020,7 +1052,10 @@ def _field_form(service, where, kw: dict[str, Any]) -> dict[str, Any]:
         kw = dict(kw, v=2)
     if "v" not in kw:
         req = kw.get("requires")
-        if kw.get("claim_max") or kw.get("underlying") or kw.get("exercise") is not None \
+        bond = kw.get("bond")
+        if isinstance(bond, Bond) and bond.deductible:
+            kw = dict(kw, v=7)          # a deposit's deductible (C5); v7 carries every v6 field
+        elif kw.get("claim_max") or kw.get("underlying") or kw.get("exercise") is not None \
                 or (req is not None and req.v6):
             kw = dict(kw, v=6)          # the counterparty gate's fields, claim_max, an option
         elif req is not None or isinstance(kw.get("bond"), Bond):

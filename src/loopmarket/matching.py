@@ -163,6 +163,8 @@ def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=No
     if held is not None and bond.escrow:
         qty = min(qty, q(held.get(other.offer_id, 0)))
     share = qty if taken is None or q(whole) <= 0 else qty * q(taken) / q(whole)
+    # v7 (C5): a claim on the fill pays at most the share less the deductible's
+    share -= bond.deductible if taken is None or q(whole) <= 0 else bond.deductible_share(taken, whole)
     for acc in req.accepts:
         if acc.unit != bond.asset.unit:
             continue

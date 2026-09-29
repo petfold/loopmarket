@@ -141,6 +141,7 @@ library LoopVerifier {
         bytes depositUnit;
         Rat depositQty;
         bool depositEscrowed;      // a non-empty escrow address
+        Rat deductible;            // v7 (C5): what a ruled payout leaves with the giver, for the whole give
         bool requiring;            // a v5 record with a counterparty requirement
         Rat point;                 // the neutral point, on the requirer's own scale
         bytes accepts;             // the `"accepts":[...]` array bytes
@@ -414,9 +415,9 @@ library LoopVerifier {
         require(TrieProofVerifier.verifyInclusion(beat.bookRoot, key, p.nodes, blob, beat.addressing),
                 "offer not under the book root");
         // version and pins
-        uint8 ver = _hasExact(r, bytes('"v":6,')) ? 6 : _hasExact(r, bytes('"v":5,')) ? 5
-            : _hasExact(r, bytes('"v":4,')) ? 4 : 0;
-        require(ver != 0, "not a v4, v5 or v6 record");
+        uint8 ver = _hasExact(r, bytes('"v":7,')) ? 7 : _hasExact(r, bytes('"v":6,')) ? 6
+            : _hasExact(r, bytes('"v":5,')) ? 5 : _hasExact(r, bytes('"v":4,')) ? 4 : 0;
+        require(ver != 0, "not a v4-v7 record");
         require(_hasExact(r, abi.encodePacked('"ontology_root":"', _hex(beat.ontologyRoot), '"')),
                 "ontology pin");
         require(_hasExact(r, abi.encodePacked('"registry_version":"', beat.registryVersion, '"')),
@@ -503,6 +504,7 @@ library LoopVerifier {
             f.depositUnit = _stringAt(r, unitAt + 8);
             uint256 escrowAt = _index(r, '"escrow":"', bondAt);
             f.depositEscrowed = escrowAt != type(uint256).max && escrowAt < givesAt && r[escrowAt + 10] != '"';
+            f.deductible = ver >= 7 ? _ratField(r, '"deductible":"', bondAt, givesAt) : Rat(0, 1);
         }
         uint256 reqAt = _index(r, '"requires":{', 0);
         require(reqAt != type(uint256).max, "v5: missing requires");
@@ -518,7 +520,7 @@ library LoopVerifier {
         // keys after it (claim_period, counterparty, ...) are not acceptances
         f.accepts = _slice(r, accAt + 10, _arrayEnd(r, accAt + 10) + 1);
         uint256 cp = _index(r, '"counterparty":[', reqAt);
-        if (ver == 6 && cp != type(uint256).max && cp < reqEnd) {
+        if (ver >= 6 && cp != type(uint256).max && cp < reqEnd) {
             uint256 end = _arrayEnd(r, cp + 15);
             uint256 k = _index(r, '{"category":"', cp);
             while (k != type(uint256).max && k < end) { f.entries++; k = _index(r, '{"category":"', k + 1); }
@@ -549,8 +551,13 @@ library LoopVerifier {
         if (requirer.point.n == 0) return;
         require(other.deposited, "no deposit against the counterparty's requirement");
         require(!requirer.reqEscrow || other.depositEscrowed, "the deposit is not in an escrow");
-        // reserved = qty * taken / whole
+        // reserved = qty * taken / whole, less the deductible's share (v7: a
+        // claim pays at most that)
         Rat memory reserved = whole.n == 0 ? other.depositQty : _div(_mul(other.depositQty, taken), whole);
+        if (other.deductible.n > 0) {
+            Rat memory d = whole.n == 0 ? other.deductible : _div(_mul(other.deductible, taken), whole);
+            reserved = _sub(reserved, d);          // a deductible above the share: "negative"
+        }
         // find an acceptance equal by name and unit: [<concepts>,"<unit>","<price>"]
         bytes memory needle = abi.encodePacked('[', other.depositConcepts, ',"', other.depositUnit, '","');
         uint256 at = _indexBytes(requirer.accepts, needle, 0);

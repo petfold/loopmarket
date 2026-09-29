@@ -131,6 +131,13 @@ it holds and its `TimeWindow`, given together). Any of them makes the
 offer v6; every requirement the build cannot check fails closed (U7), and
 `tests/test_v6_record.py` pins a v4/v5 corpus's ids.
 
+v7 (2026-09-29, C5): `Bond(asset, value, escrow, deductible=0)` — the
+deductible an amount of the deposit's own asset for the give's whole
+quantity (`deductible_share(taken, whole)`, `payable(taken, whole)` = the
+reserved share less it), `0 <= deductible < asset.qty`; a ruled claim pays
+at most the share less the deductible, and a deposit counts against a
+wanter's point only up to `payable`. A deductible is the only v7 form.
+
 ### `Statement(subject, category, issuer, kind, as_of, until, evidence, path, paid_by, deposit=None, scheme="", issuance="", v=1)` — frozen
 
 The one shape the counterparty gate reads (R1/R2): a claim about the key
@@ -484,7 +491,7 @@ node `potentials`. A simple cycle's record is byte-identical to before.
 
 | name | one line |
 |---|---|
-| `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder=(), claim_only=False, min_challenge=0, min_ruling=0)`, `.cancel`, `.countersign`, `.settle(offer_id, loop_id, to_wanter=None)` (no split: the quiet path after the claim period; a split: this party's signature, the second pays it out), `.assign(offer_id, loop_id, to)` (the wanter's), `.extend_claim(offer_id, loop_id, seconds)` (the giver's), `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.collect(token=None)` (a refused payout credited to `owed`), `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.owed(to, token=None)`, `.subject(offer_id, loop_id)` (the reservation's key, factbond's subject), `.ladder_at`, `.deposit_of`; web3 lazy (`chain` extra) |
+| `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder=(), claim_only=False, min_challenge=0, min_ruling=0, deductible=0)`, `.cancel`, `.countersign`, `.settle(offer_id, loop_id, to_wanter=None)` (no split: the quiet path after the claim period; a split: this party's signature, the second pays it out), `.assign(offer_id, loop_id, to)` (the wanter's), `.extend_claim(offer_id, loop_id, seconds)` (the giver's), `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.collect(token=None)` (a refused payout credited to `owed`), `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.owed(to, token=None)`, `.subject(offer_id, loop_id)` (the reservation's key, factbond's subject), `.ladder_at`, `.deposit_of`; web3 lazy (`chain` extra) |
 | `to_wei(qty, decimals=18)` / `floor_wei` | an exact quantity as the asset's smallest unit — refused when not representable (U9) / rounded down (the ladder) |
 | `held_units(client)` | offer id → what the escrow holds, in the asset's unit: the `escrow_held` the agent and the clearing take |
 | `reservations_for(proposal, *, escrow, resolver, claim_seconds, now, span=None, decimals=18, claim_only=None, min_challenge=0, min_ruling=0)` | pure: one reservation per give whose bond names `escrow` — the share in smallest units, the wanter's key, the give's `arbitrator` or `resolver` (never a party, and one the want's `resolvers` admit), the want's `time(...)` term as the window (through `span`), the claim period per leg (the want's `claim_period`, else `claim_seconds`, never past the give's `claim_max`), the ladder converted at the wanter's acceptance price; `claim_only` for cover (`cover_predicate`) |
@@ -998,6 +1005,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `claim_min_challenge`, `claim_min_ruling` | `LOOP_CLAIM_MIN_*` | none | the least dispute and ruling windows a claim on the reservations `finalize` makes must name (the escrow refuses shorter at `hold`) |
 | `arbitrator` | `LOOP_ARBITRATOR` | none | the resolver my gives name for claims on their deposit (never my own key); a want requiring resolvers matches only a give naming one it accepts |
 | `claim_max` | `LOOP_CLAIM_MAX` | none | the longest claim period my gives' deposits carry (v6) |
+| `deductible` | `LOOP_DEDUCTIBLE` | none | what a ruled claim on my deposit leaves with me: an amount of the deposit's asset, for the give's whole quantity (v7) |
 | `options` | `LOOP_OPTIONS` | `off` | `on`: every plain give I publish also writes its option, both in one approval block |
 | `option_window` | `LOOP_OPTION_WINDOW` | `1/4` | an option's window: a fraction in (0, 1) of the lead to the offer's handover time (its validity's end without one), or a duration; it closes before the handover |
 | `option_premium` | `LOOP_OPTION_PREMIUM` | `suggest` | an option's premium on my scale: `suggest` (price × ½ × the chance a buyer comes during the hold and none after it, the rate read from the book's wants for the thing over 30 days; with none, price × window/lead × ½, flagged as a guess), `N%` of the price, or an amount; never below 1% of the price |

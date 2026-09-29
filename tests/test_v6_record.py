@@ -119,7 +119,7 @@ def test_v6_forms_are_refused_in_earlier_records_and_unknown_versions_raise():
         Offer.from_record(dict(five, requires=dict(five["requires"], claim_period=5)))
     with pytest.raises(ValueError, match="carries claim_max, underlying and exercise"):
         Offer.from_record({k: v for k, v in rec.items() if k != "exercise"})
-    for v in (7, 0, None, "6"):
+    for v in (8, 0, None, "6"):                     # 7 is known since the deductible (C5)
         with pytest.raises(ValueError, match="unknown offer record version"):
             Offer.from_record(dict(rec, v=v))
 

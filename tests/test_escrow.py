@@ -89,8 +89,8 @@ def test_to_wei_is_exact_or_refuses():
         to_wei(Fraction(1, 3))
 
 
-def _terms(start, end, claim=100, min_challenge=0, min_ruling=0, claim_only=False):
-    return (start, end, claim, min_challenge, min_ruling, claim_only)
+def _terms(start, end, claim=100, min_challenge=0, min_ruling=0, claim_only=False, deductible=0):
+    return (start, end, claim, min_challenge, min_ruling, claim_only, deductible)
 
 
 def _reserve(escrow, clearing, offer, loop, wanter, resolver, amount, start, end, claim=100, ladder=(), **terms):
@@ -519,3 +519,34 @@ def test_a_refused_payout_is_credited_and_never_blocks_the_ruling(chain):
     refuser.functions.collect(escrow.address).transact()
     assert w3.eth.get_balance(refuser.address) == 6 * 10 ** 17
     assert escrow.functions.owed("0x" + "00" * 20, refuser.address).call() == 0
+
+
+def test_a_ruled_payout_leaves_the_deductible_with_the_giver(chain):
+    """C5 (2026-09-29): a reservation's deductible — the deposit's, this
+    fill's share — is what a ruled payout leaves with the giver. A claim at
+    or below it is refused at `hold` (it could pay nothing); a certified
+    claim of 0.3 on a deductible of 0.1 pays 0.2 and returns the rest; a
+    deductible at or above the reservation is refused at `reserve`."""
+    w3, escrow, coin, clearing = chain
+    factbond, adjudicator, fee, floor = _factbond(w3)
+    giver, wanter = w3.eth.accounts[2], w3.eth.accounts[3]
+    offer, loop = bytes.fromhex("79" * 32), bytes.fromhex("c1" * 32)
+    escrow.functions.deposit(offer).transact({"from": giver, "value": 10 ** 18})
+    now = _now(w3)
+    assert "a deductible below the reservation" in _reverts(
+        w3, escrow.functions.reserve(offer, loop, wanter, factbond.address, 4 * 10 ** 17,
+                                     _terms(now, now + 10, 1000, deductible=4 * 10 ** 17), [], []), clearing)
+    _reserve(escrow, clearing, offer, loop, wanter, factbond.address, 4 * 10 ** 17, now, now + 10, claim=1000,
+             deductible=10 ** 17)
+    assert escrow.functions.terms(offer, loop).call()[4] == 10 ** 17
+    subj = escrow.functions.key(offer, loop).call()
+    small = factbond.functions.assert_(subj, escrow.address, 10 ** 17, 990, 0, 0, giver)
+    assert "within the deductible" in _reverts(w3, small, wanter, value=fee + floor)
+    factbond.functions.assert_(subj, escrow.address, 3 * 10 ** 17, 990, 0, 0, giver).transact(
+        {"from": wanter, "value": fee + floor})
+    claim = factbond.functions.count().call()
+    _advance(w3, 200)
+    w_before, g_before = w3.eth.get_balance(wanter), w3.eth.get_balance(giver)
+    factbond.functions.certify(claim).transact({"from": w3.eth.accounts[4]})
+    assert w3.eth.get_balance(wanter) - w_before == 2 * 10 ** 17 + floor          # 0.3 less 0.1, and her bond back
+    assert w3.eth.get_balance(giver) - g_before == 2 * 10 ** 17                   # the rest of the reservation

@@ -107,6 +107,7 @@ contract LoopEscrow {
         uint64 minChallenge; // the least dispute window a claim must leave the giver
         uint64 minRuling;   // the least ruling window a claim must name
         uint256 claim;      // the open claim's id at a contract resolver (0: none, or a key resolver)
+        uint256 deductible; // C5: what a ruled payout leaves with the giver, this fill's share
         uint64[] ladderLead;   // the cancellation ladder: lead seconds, descending to 0 …
         uint256[] ladderAmount; // … and the amount owed at each, in the asset's unit
     }
@@ -119,6 +120,7 @@ contract LoopEscrow {
         uint64 minChallenge; // 0: the resolver's own bound suffices
         uint64 minRuling;    // the claim class's evidence period plus its rung's ruling period
         bool claimOnly;      // set by the clearing for a give under `insure`
+        uint256 deductible;  // C5 (v7 records): the deposit's deductible, this fill's share
     }
 
     uint8 private constant RETRACTED = 5;   // IClaims.Claim.status
@@ -222,11 +224,11 @@ contract LoopEscrow {
                 r.ladderLead, r.ladderAmount);
     }
 
-    /// The claim terms fixed at `reserve`, and the open claim's id.
+    /// The claim terms fixed at `reserve`, the open claim's id, the deductible.
     function terms(bytes32 offer, bytes32 loop) external view returns (
-        bool claimOnly, uint64 minChallenge, uint64 minRuling, uint256 claim) {
+        bool claimOnly, uint64 minChallenge, uint64 minRuling, uint256 claim, uint256 deductible) {
         Reservation storage r = reservations[key(offer, loop)];
-        return (r.claimOnly, r.minChallenge, r.minRuling, r.claim);
+        return (r.claimOnly, r.minChallenge, r.minRuling, r.claim, r.deductible);
     }
 
     /// Reserve `amount` of the deposit for one fill at clearing: the leg's
@@ -251,6 +253,7 @@ contract LoopEscrow {
         // on a reservation they are a party to (THREATS T16)
         require(resolver != wanter && resolver != deposits[offer].giver, "the resolver is no party");
         require(t.windowStart <= t.windowEnd, "a window");
+        require(t.deductible < amount, "a deductible below the reservation");
         require(ladderLead.length == ladderAmount.length, "a ladder");
         for (uint256 i = 0; i < ladderLead.length; i++) {
             require(ladderAmount[i] <= amount, "ladder above the reservation");
@@ -259,6 +262,7 @@ contract LoopEscrow {
         r.offer = offer; r.wanter = wanter; r.resolver = resolver; r.amount = amount;
         r.windowStart = t.windowStart; r.windowEnd = t.windowEnd; r.claimUntil = t.windowEnd + t.claimSeconds;
         r.claimOnly = t.claimOnly; r.minChallenge = t.minChallenge; r.minRuling = t.minRuling;
+        r.deductible = t.deductible;
         r.ladderLead = ladderLead; r.ladderAmount = ladderAmount;
         reservedTotal[offer] += amount;
         emit Reserved(offer, loop, wanter, resolver, amount);
@@ -414,12 +418,15 @@ contract LoopEscrow {
         require(c.asserter == r.wanter, "the claim is the wanter's");
         require(c.about == deposits[r.offer].giver, "a claim names the giver it concerns");
         require(c.outcome > 0 && c.outcome <= r.amount, "a payout within the reservation");
+        require(c.outcome > r.deductible, "a claim within the deductible pays nothing");
         require(c.challengeUntil >= block.timestamp + r.minChallenge, "challenge window too short");
         require(c.rulingWindow >= r.minRuling, "ruling window too short");
     }
 
-    /// The claim resolved: `toWanter` of the reservation to the wanter, the
-    /// rest to the giver. The resolver's one power, bounded to this fill.
+    /// The claim resolved: `toWanter` of the reservation, less the deductible
+    /// (C5), to the wanter, the rest to the giver. The resolver's one power,
+    /// bounded to this fill. The deductible applies to a ruling only: the
+    /// parties' own split and the giver's cancellation are their terms.
     function resolve(bytes32 offer, bytes32 loop, uint256 toWanter) external {
         _resolve(key(offer, loop), reservations[key(offer, loop)], toWanter);
     }
@@ -443,7 +450,7 @@ contract LoopEscrow {
             return;
         }
         require(toWanter <= r.amount, "beyond the reservation");
-        _settle(k, r, toWanter, "resolved");
+        _settle(k, r, toWanter > r.deductible ? toWanter - r.deductible : 0, "resolved");
     }
 
     function _settle(bytes32 k, Reservation storage r, uint256 toWanter, string memory how) private {
