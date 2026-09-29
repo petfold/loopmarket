@@ -236,3 +236,23 @@ def test_a_revoked_statement_is_convicted_on_chain(chain):
     unpinned = dataclasses.replace(sub, registers=[r for r in sub.registers if r[0] != ATTESTER.encode()])
     bid, _ = client.submit(unpinned)
     assert _client(chain, 1).challenge(bid, dentist_leg, unpinned) == "the statement's register is not pinned"
+
+
+def test_a_leg_too_large_to_verify_is_never_posted_nor_counted_a_conviction(chain, monkeypatch):
+    """The dry run's third answer (2026-09-29): every attempt reverting
+    without a reason is the verification running out of gas — refused before
+    the bond, and never a conviction a challenger would send."""
+    from loopmarket.beat import OUT_OF_GAS, BeatClient, LegVerdict
+    assert not LegVerdict(0, None, OUT_OF_GAS).convicts and LegVerdict(0, None, "left").convicts
+    t = _now(chain)
+    cat = _catalogue()
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    book.publish_many(_car_sale(t, cat.pins, 300, "b3"))
+    book.commit()
+    client = _client(chain)
+    monkeypatch.setattr(BeatClient, "verdict_of", lambda self, sub, i, **kw: OUT_OF_GAS)
+    before = client.contract().functions.beatCount().call()
+    clearing = ChainClearing(book, cat, beat_client=client, clock=lambda: t)
+    (r,) = SolverAgent(book, cat, clearing=clearing, solver_id="t").step(now=t)
+    assert not r.accepted and "too large to verify" in r.reason, r.reason
+    assert client.contract().functions.beatCount().call() == before

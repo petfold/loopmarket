@@ -42,6 +42,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Fixed
 
+- **A leg too large to verify in one call is never posted** (2026-09-29).
+  The dry run now tells a revert without a reason — the verification
+  running out of gas — from a node refusing the call: `OUT_OF_GAS`, which
+  `ChainClearing` refuses before the bond and a challenger never counts as
+  a conviction. Earlier the same day an empty revert had become "no
+  verdict", which let such a leg through.
 - **The escrow is the authority on aggregated and composed legs too**
   (2026-09-29). The held rule of 2026-09-19 (a deposit naming an escrow
   counts only up to what the contract holds) reached `check_match` and

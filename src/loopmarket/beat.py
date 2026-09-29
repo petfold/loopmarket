@@ -402,6 +402,13 @@ def find_evidence(state: dict, books, *, ontology=None, register_at=None, span=N
     return None
 
 
+#: The dry run's answer when every attempt reverted without a reason: the
+#: leg's verification did not fit the gas the call could spend. Not a
+#: conviction (a challenge would only revert, "bring more gas") — and not a
+#: pass: `ChainClearing` never posts a leg it could not see verify.
+OUT_OF_GAS = "the leg's verification ran out of gas in the dry run"
+
+
 @dataclass(frozen=True)
 class LegVerdict:
     index: int
@@ -410,7 +417,7 @@ class LegVerdict:
 
     @property
     def convicts(self) -> bool:
-        return self.chain is not None and self.chain != "leg verifies"
+        return self.chain not in (None, "leg verifies", OUT_OF_GAS)
 
 
 @dataclass(frozen=True)
@@ -705,8 +712,9 @@ class BeatClient:
         committed ones) at time `at` (0: the chain's now; a challenger: the
         beat's own clock). "leg verifies", or
         the revert reason — the same string a challenge would put in its
-        event; None when the node would not run the call (never a
-        conviction)."""
+        event; `OUT_OF_GAS` when every attempt ran out of gas (not a
+        conviction, and not a pass); None when the node would not run the
+        call (never a conviction)."""
         c = self.contract()
         pins = sub.pins if pins is None else pins
         fn = c.functions.verifyLegExternal(pins, list(sub.registers), sub.legs[index], sub.statements[index],
@@ -727,18 +735,22 @@ class BeatClient:
                     lambda: fn.call({**params, "gasPrice": 0})]
         if affordable >= 4_000_000:
             attempts.append(lambda: fn.call({**params, "gas": affordable, "gasPrice": price}))
+        out_of_gas = False
         for attempt in attempts:
             try:
                 attempt()
             except Exception as exc:            # noqa: BLE001
-                # a revert with a reason is the verifier's; one without (the
-                # gas the call could afford ran out, 2026-09-29: an option
-                # leg verifies in ~11 M) is no verdict, like a refused call
-                if _is_revert(exc) and _revert_reason(exc):
-                    return _revert_reason(exc)
-                continue                        # the node refused the call itself
+                # a revert with a reason is the verifier's; one without is the
+                # gas the call could spend running out (2026-09-29: an option
+                # leg cost ~11 M before the scanning went word-at-a-time) —
+                # its own answer, below; anything else the node refusing
+                if _is_revert(exc):
+                    if _revert_reason(exc):
+                        return _revert_reason(exc)
+                    out_of_gas = True
+                continue
             return "leg verifies"
-        return None
+        return OUT_OF_GAS if out_of_gas else None
 
 
 def _is_revert(exc: Exception) -> bool:

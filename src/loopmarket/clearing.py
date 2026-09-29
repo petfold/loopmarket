@@ -448,8 +448,13 @@ class ChainClearing(MockClearing):
         # Live 2026-09-18: a Swarm-addressed clearing book proves under BMT
         # roots the sha256 verifier cannot check ("node hash mismatch"), so
         # its honest beat was convictable; the BMT verifier is not built.
+        from .beat import OUT_OF_GAS
         for i in range(len(sub.legs)):
             reason = self.beat_client.verdict_of(sub, i)
+            if reason == OUT_OF_GAS:
+                # a leg nobody could see verify would be as hard to challenge:
+                # never posted (a composed leg costs ~1.5 M gas a part)
+                return Receipt(False, lid, f"leg {i} is too large to verify in one call: {reason}")
             if reason not in (None, "leg verifies"):
                 hint = " (a Swarm-addressed book: the contract verifies sha256 roots)" \
                     if reason == "node hash mismatch" else ""
