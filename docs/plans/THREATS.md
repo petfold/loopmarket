@@ -586,6 +586,31 @@ encounter links (`P4-privacy.md`, open problems). Residual: any in-person
 handover shows a face to the counterparty; unlinkability, not anonymity,
 is the goal the protocol can serve.
 
+## T20 — A resolver's stake leaves after clearing (added 2026-09-29)
+
+**Attack.** A maker accepts resolvers by property (`counterparty-gate.md`
+§7a): at least `min_deposit` at stake on a reversed ruling. Clearing reads
+the resolver contract's rung deposit and admits it; the adjudicator then
+withdraws the deposit — factbond's `withdrawDeposit` needs only that none
+of its rulings is open to appeal — and rules on the claim with nothing at
+stake, or the owner swaps in an adjudicator with none (`setAdjudicator`
+emits no event). The floor the wanter set was true at clearing and false
+at the ruling.
+
+**Economics.** Free to mount: the withdrawal is the adjudicator's own act,
+and the ruling it wants to bend is worth up to the reservation.
+
+**Defense.** Partial. (1) A rung cannot rule on an appealable claim without
+`depositWei` posted (factbond's `rule` requires it), so with an arbiter a
+bent first ruling still risks a deposit — but the deposit it posts then is
+not the one the floor measured. (2) The clean record is the contract's,
+not the key's, so swapping the adjudicator does not wipe reversals.
+(3) **Not built, factbond's to add:** a withdrawal notice longer than a
+reservation's claim period, or a lock on the rung deposit while an escrow
+reservation naming the contract is open — the escrow's own rule (the
+giver leaves only after notice) applied to the resolver. Until then a
+deposit floor is a screen at clearing, not a guarantee at the ruling.
+
 ## The ten fee/bond rules (by construction)
 
 *(Standing note, 2026-08-21: with agenda item 4 ratified there is no live

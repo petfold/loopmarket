@@ -35,7 +35,7 @@ from .registry import OfferRegistry
 from .register import named_registers
 from .gate import CounterpartyGate
 from . import items
-from .schema import Offer
+from .schema import GIVE, Offer
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,13 +134,16 @@ class MockClearing:
     #: shape — unknown fails closed rather than silently clearing with a
     #: guarantee nobody can check. The mock declares the P0 countersign
     #: semantics and, since R7 (2026-09-29), the door's two witness types,
-    #: whose settlement check is `witness.countersign_ready`.
+    #: whose settlement check is `witness.countersign_ready`; a title
+    #: register's `registry-transfer(ID)` (I4) is verifiable on a give that
+    #: names an item, its check `witness.transfer_faults`.
     VERIFIABLE_ORACLES = frozenset({"countersign", "possession", "photo-match"})
 
     def __init__(self, registry: OfferRegistry, ontology: Ontology, *,
                  min_surplus: float = 0.0, require_per_node: bool = True,
                  clock=_time.time, verifiable_oracles=VERIFIABLE_ORACLES,
-                 chain_fills=None, escrow_held=None, register_at=None, span=None, register_latest=None):
+                 chain_fills=None, escrow_held=None, register_at=None, span=None, register_latest=None,
+                 resolver_profile=None):
         self.registry = registry
         self.ontology = ontology
         self.min_surplus = min_surplus
@@ -173,6 +176,11 @@ class MockClearing:
         #: read from its feed (R5): a pinned root a newer one precedes is
         #: refused; None: no feed reader, the heartbeat age bound alone
         self.register_latest = register_latest
+        #: a resolver address -> its chain record (`arbitrators.Profile`), or
+        #: None: an acceptance of resolvers by a deposit floor or a clean
+        #: record reads it (§7a); without it only named keys and
+        #: accreditation admit
+        self.resolver_profile = resolver_profile
 
     def gate(self, register_roots=(), *, now: int) -> CounterpartyGate:
         """The counterparty gate over this clearing's own book, the
@@ -190,7 +198,8 @@ class MockClearing:
             except KeyError:
                 return None
         return CounterpartyGate.over(self.registry, registers, now=now, span=self.span, held=held,
-                                     capacity=capacity, latest=self.register_latest)
+                                     capacity=capacity, latest=self.register_latest,
+                                     profile=self.resolver_profile)
 
     def deposits(self, offer_ids) -> dict | None:
         """What the escrow holds behind each offer, or None when no escrow
@@ -272,7 +281,12 @@ class MockClearing:
             if self.registry.is_withdrawn(oid):
                 return reject(f"withdrawn: {oid[:12]}")
             if offer.oracle not in self.verifiable_oracles:
-                return reject(f"unverifiable oracle type: {offer.oracle}")
+                # a title register's transfer (I4): verifiable when it names
+                # a register and the give names an item to transfer
+                from .items import ids
+                from .witness import transfer_register
+                if not (transfer_register(offer.oracle) and offer.kind == GIVE and ids(offer.thing.concepts)):
+                    return reject(f"unverifiable oracle type: {offer.oracle}")
 
         # 2. re-derive every leg — never trust the solver's matches; a
         #    composed leg is re-composed (`check_composition`) from the
@@ -284,6 +298,13 @@ class MockClearing:
             reason = self.verify_leg(leg, now=now, available=available, gate=gate)
             if reason:
                 return reject(reason)
+
+        #    and across legs: an inspector is no party to the item it
+        #    inspects anywhere in the loop (E2)
+        from .matching import independence_faults
+        faults = independence_faults(loop.legs, self.ontology)
+        if faults:
+            return reject(faults[0])
 
         # 3. the arithmetic: potentials exist (a simple cycle: product > 1)
         #    with the required uniform gain, and the indivisible gate
@@ -401,7 +422,7 @@ class MockClearing:
                            require_per_node=self.require_per_node, clock=self.clock,
                            verifiable_oracles=self.verifiable_oracles, chain_fills=self.chain_fills,
                            escrow_held=self.escrow_held, register_at=self.register_at, span=self.span,
-                           register_latest=self.register_latest)
+                           register_latest=self.register_latest, resolver_profile=self.resolver_profile)
         return dry.submit(proposal)
 
 
@@ -435,7 +456,8 @@ class ChainClearing(MockClearing):
             records = self.hold_records(proposal.circulation, lid, now)
             gate = self.gate(proposal.register_roots, now=now)
             gate = CounterpartyGate.over(snapshot, gate.registers, now=now, span=self.span,
-                                         held=gate.held, capacity=gate.capacity)
+                                         held=gate.held, capacity=gate.capacity, latest=gate.latest,
+                                         profile=gate.profile)
             sub = submission(proposal, snapshot, records=records, gate=gate, ontology=self.ontology)
         except Exception as exc:  # noqa: BLE001 — the proposal's evidence cannot be built
             return Receipt(False, lid, f"beat: {exc}")

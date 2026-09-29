@@ -1078,6 +1078,35 @@ def test_v6_settings_make_a_v6_offer_and_the_gate_matches_the_claim_period(loop,
     assert "v4" in out
 
 
+def test_require_resolvers_accepts_by_key_and_by_property_on_both_sides(loop, monkeypatch):
+    """§7a (2026-09-29): `require_resolvers` takes keys and `root:`, `min:`,
+    `clean:` tokens; the render prints them back; a deposit floor on my
+    scale needs my price for the deposit's asset; my gives state the same
+    acceptance (both sides accept); an unknown token is refused."""
+    run = loop
+    judge, assoc = "0x" + "77" * 20, "0x" + "a5" * 20
+    run.ok("set", "require_resolvers", f"{judge} root:{assoc} clean:365d")
+    out = run.ok("want", "apple", "home", "6")
+    assert f"resolvers {judge} root:{assoc} clean:365d" in out
+    w = next(o for o in run.session.book.offers(include_filled=True) if o.kind == "want")
+    acc = w.requires.resolvers
+    assert w.v == 6 and acc.keys == (judge,) and acc.roots == (assoc,) and acc.clean_for == 365 * 86_400
+    out = run.ok("give", "apple", "home", "5")
+    g = next(o for o in run.session.book.offers(include_filled=True) if o.kind == "give")
+    assert g.v == 6 and g.requires.resolvers == acc                  # my gives accept the same resolvers
+    run.ok("set", "require_resolvers", "min:10")
+    code, out, err = run("want", "apple", "home", "7")
+    assert code != 0 and "default_asset" in err                     # a floor on my scale needs my price
+    run.ok("set", "default_asset", "xdai xDAI 2")
+    out = run.ok("want", "apple", "home", "7")
+    assert "resolvers min:10" in out and "accepts xdai xDAI 2" in out
+    run.ok("set", "require_resolvers", "judge:0x1")
+    code, out, err = run("want", "apple", "home", "8")
+    assert code != 0 and "root:ID, min:AMOUNT or clean:DURATION" in err
+    for key in ("require_resolvers", "default_asset"):
+        monkeypatch.setenv("LOOP_" + key.upper(), ""); run.ok("set", key, "")
+
+
 def test_the_default_asset_has_no_default_price_and_must_be_in_the_catalogue(loop, monkeypatch):
     """A bare-number `bond` deposits `default_asset` and a `require_point`
     with nothing named accepts it — at MY price, which has no default
@@ -1152,6 +1181,92 @@ def test_deposit_funds_the_declared_bond_on_the_escrow_contract(loop, monkeypatc
     code, out, err = run("deposit", "ffff")
     assert code != 0 and "not an unfilled give of mine" in err
     for k in ("escrow", "bond"):
+        monkeypatch.setenv("LOOP_" + k.upper(), ""); run.ok("set", k, "")
+
+
+def test_the_escrow_acts_are_verbs(loop, monkeypatch):
+    """C6 (2026-09-29 night): `reservations` lists what the escrow holds
+    behind my legs; `extend-claim` (the giver), `assign` (the wanter),
+    `settle SPLIT` (each party signs, the second settles), `countersign`,
+    `cancel` and `collect` are the escrow's acts under my key, a
+    reservation named by its offer's prefix and, where the book knows one
+    loop, no loop at all. Skips without the evm extra."""
+    import importlib.util
+    if not all(importlib.util.find_spec(m) for m in ("solcx", "eth_tester", "web3")):
+        pytest.skip("needs the evm extra")
+    import os
+    import solcx
+    from web3 import EthereumTesterProvider, Web3
+    from loopmarket import MockClearing, SolverAgent, give as make_give, want as make_want
+    from loopmarket.escrow import EscrowClient
+    solcx.install_solc("0.8.24")
+    contracts = os.path.join(os.path.dirname(__file__), "..", "contracts")
+    compiled = solcx.compile_files([os.path.join(contracts, "LoopEscrow.sol")], output_values=["abi", "bin"],
+                                   solc_version="0.8.24", optimize=True, optimize_runs=200, via_ir=True,
+                                   allow_paths=contracts)
+    art = next(v for k, v in compiled.items() if k.endswith(":LoopEscrow"))
+    w3 = Web3(EthereumTesterProvider())
+    w3.eth.default_account = w3.eth.accounts[0]
+    keys = {name: "0x" + c * 32 for name, c in (("giver", "7a"), ("wanter", "7b"), ("heir", "7c"), ("clearing", "7d"))}
+    addr = {name: w3.eth.account.from_key(k).address for name, k in keys.items()}
+    for a in addr.values():
+        w3.eth.wait_for_transaction_receipt(w3.eth.send_transaction({"to": a, "value": 10 ** 20}))
+    receipt = w3.eth.wait_for_transaction_receipt(
+        w3.eth.contract(abi=art["abi"], bytecode=art["bin"]).constructor(addr["clearing"], 2).transact())
+    address = receipt["contractAddress"]
+    as_ = {name: EscrowClient("", address, key=k, client=w3) for name, k in keys.items()}
+    me = {"who": "giver"}
+    monkeypatch.setattr(cli, "_escrow_client", lambda session: as_[me["who"]])
+    run = loop
+    run.ok("set", "escrow", f"chain:http://x@{address}")
+    run.ok("set", "default_asset", "xdai xDAI 1")
+    run.ok("set", "bond", "5")
+    run.ok("give", "apple", "home", "5")
+    bonded = next(o for o in run.session.book.offers(include_filled=True))
+    run.ok("deposit")
+    # the rest of a two-leg loop, cleared into my book
+    V = dict(valid=bonded.valid, ontology_root=bonded.ontology_root, registry_version=bonded.registry_version,
+             contract_version=bonded.contract_version)
+    others = [make_want("bruno", bonded.thing, 9, nonce=2, **V),
+              make_give("bruno", Thing(("lesson",), 1, "unit"), 3, nonce=3, **V),
+              make_want(run.session.maker, Thing(("lesson",), 1, "unit"), 8, nonce=4, **V)]
+    run.session.book.publish_many(others)
+    run.session.book.commit()
+    ont = run.session.catalogue
+    (r,) = SolverAgent(run.session.book, ont, clearing=MockClearing(run.session.book, ont, clock=lambda: NOW),
+                       solver_id="t", min_surplus=0.0).step(now=NOW)
+    assert r.accepted
+    loop_id, oid = r.loop_id, bonded.offer_id
+    now = w3.eth.get_block("latest")["timestamp"]
+    for lid in (loop_id, "c1" * 32, "c2" * 32):
+        as_["clearing"].reserve(oid, lid, addr["wanter"], addr["clearing"], 10 ** 18,
+                                window=(now + 86_400, now + 90_000), claim_seconds=3_600)
+    out = run.ok("reservations")
+    assert f"{oid[:16]}… loop {loop_id[:16]}… (I am the giver): 1 for {addr['wanter']}" in out and ": open" in out
+    before = as_["giver"].reservation(oid, loop_id)["claim_until"]
+    run.ok("extend-claim", oid[:10], "1d")                     # one loop in the book: no --loop needed
+    assert as_["giver"].reservation(oid, loop_id)["claim_until"] == before + 86_400
+    me["who"] = "wanter"
+    run.ok("assign", oid[:10], addr["heir"])
+    assert as_["giver"].reservation(oid, loop_id)["wanter"] == addr["heir"]
+    me["who"] = "giver"
+    code, out, err = run("settle", oid[:10], "2xDAI")
+    assert code != 0 and "beyond the reservation" in err
+    assert "waiting for the other party's" in run.ok("settle", oid[:10], "25%")
+    me["who"] = "heir"
+    got = w3.eth.get_balance(addr["heir"])
+    assert "both signed, settled" in run.ok("settle", oid[:10], "0.25xDAI")
+    assert w3.eth.get_balance(addr["heir"]) > got + 24 * 10 ** 16      # 0.25, less gas
+    # a loop the book does not know, by its whole id: countersigned by the wanter, cancelled by the giver
+    me["who"] = "wanter"
+    assert "countersigned" in run.ok("countersign", oid[:10], "--loop", "c1" * 32)
+    me["who"] = "giver"
+    assert "cancelled" in run.ok("cancel", oid[:10], "--loop", "c2" * 32)
+    assert all(as_["giver"].reservation(oid, lid)["settled"] for lid in (loop_id, "c1" * 32, "c2" * 32))
+    assert "no open reservation" in run.ok("reservations")
+    assert "settled" in run.ok("reservations", "--all")
+    assert "nothing owed" in run.ok("collect", "--check")
+    for k in ("escrow", "bond", "default_asset"):
         monkeypatch.setenv("LOOP_" + k.upper(), ""); run.ok("set", k, "")
 
 

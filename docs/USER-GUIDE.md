@@ -543,17 +543,39 @@ the reservation, nothing more.
 The claim period is matched per leg (v6): a give declares the longest it
 carries (`set claim_max 60d`), a want asks for one (`set require_claim
 30d`) and meets only gives that carry at least that; with no ask the
-reservation takes `escrow_claim`, never beyond the give's `claim_max`. A
-want may also name the resolvers it accepts (`set require_resolvers
-0x…`): it then meets only gives whose `arbitrator` is one of them, and a
-resolver is never a party to the leg. With factbond as the resolver the
+reservation takes `escrow_claim`, never beyond the give's `claim_max`. You
+may also name the resolvers you accept (`set require_resolvers …`), on
+your wants and your gives alike: by key (`0x…`), or by property —
+`root:0x…` (every rung that can rule on it is accredited as an
+`arbitrator` by a register you trust, its statement presented in its own
+book), `min:10` (at least 10 on your scale at stake on a reversed ruling —
+factbond's rung deposit, priced by your acceptance of the chain's coin, so
+`default_asset` or `require_accepts` must say your price), `clean:365d`
+(no ruling reversed within the year, on a record at least that long).
+`loop set require_resolvers 'root:0xa5… min:10 clean:365d'` admits every
+arbitrator that meets the bar, new ones included, without naming any. A
+leg's resolver is the give's `arbitrator` if both sides accept it, else the
+first key either side names that both accept, else the clearing's
+`resolver` when the give leaves the choice to it; a resolver is never a
+party to the leg, nor rules through one. `min:` and `clean:` read the
+resolver contract on the chain of your `escrow` (or `beat`) setting;
+`root:` reads the registers you read (`set registers`, below), pinned
+in the loops you clear. With factbond as the resolver the
 escrow opens only the wanter's own claim, naming the giver, for at most
 the reservation, with windows no shorter than `claim_min_challenge` and
 `claim_min_ruling`; a retracted claim reopens the reservation. The
 parties can also end any reservation by agreement: each signs the same
 split and the second signature pays it out; the wanter may assign the
 claim to anyone, and the giver may lengthen the claim period (tail
-cover). A reservation behind a give under the catalogue's `insure` is
+cover). Each act is a verb: `loop reservations` lists what the escrow
+holds behind your legs; `loop countersign OFFER` (you received it), `loop
+cancel OFFER` (you cannot deliver: the ladder's amount at this lead goes
+to the wanter), `loop assign OFFER KEY`, `loop settle OFFER 40%` (or
+`0.004xDAI`, or an amount on your scale at your `default_asset` price —
+the other party signs the same and it pays out), `loop settle OFFER` alone
+after a quiet claim period, `loop extend-claim OFFER 30d`, and `loop
+collect` for a payout your address refused. OFFER is the offer id's
+prefix; add `--loop LOOP` when several loops took from it. A reservation behind a give under the catalogue's `insure` is
 cover: it is never ended by a countersignature. The Gnosis escrow has
 these acts since its 2026-09-29 redeploy, the deductible since that
 evening's, and cover covering a reservation since that night's
@@ -575,14 +597,64 @@ insurance deductible: the part of any loss the insured bears herself.
 composed with a thing whose give carries its own deposit — a driver's
 small deposit, an insurer's cover above it — the cover *covers* that
 deposit's reservation: before the cover pays, the insured assigns her
-claim on the driver's reservation to the insurer (the escrow's `assign`,
-`EscrowClient.assign` — no `loop` verb yet; the cover's claim is refused
-until she has), and
+claim on the driver's reservation to the insurer (`loop assign
+DRIVERS-OFFER INSURER-KEY`; the cover's claim is refused until she has),
+and
 the insurer recovers the driver's deposit itself; or, if she has already
 collected from the driver, the cover pays only the rest. She is paid once,
 the insurer's cost is the loss less the driver's deposit, and the
 driver's own fault costs him his deposit — nobody has to judge why the
 ride did not happen.
+
+**Before a claim, a notice.** Every claim on a reservation starts with
+a notice to the giver: which fact is wrong and until when it may cure
+(deliver, refund at the ladder, correct the statement). The book is the
+channel, sealed: `loop notice OFFER --cure 3d` writes the notice into your
+book, readable only by the giver (sealed to the key its offer's signature
+reveals) beside a salted commitment, and keeps the opening a later claim
+would cite in `~/.loopmarket/notices/`; `--fact STATEMENT` names a
+statement the giver presented, the give itself otherwise. The cure period
+is yours to state. The giver's `loop watch` opens it (`notice   from …:
+cure by …`), and `loop cure OFFER [--evidence REF]` answers, sealed back;
+your `watch` reports the cure. A cured matter leaves nothing readable in
+any book.
+
+**Credentials from the command line.** A want can require the giver to
+present a statement — a licence, an accreditation — before the leg is
+matched: `loop set require_credentials 'dentist-licensed attested
+root:0xCHAMBER age:1d'` (a statement of a category under
+`dentist-licensed`, attested, reaching the chamber's register through
+registers no older than a day; `min:20` adds that its deposit's free share
+covers 20 on your scale). The giver presents what an issuer gave it:
+`loop cred present statement.json`, and `loop cred` lists what is
+presented about you (or `loop cred 0xKEY` about anyone), with each
+statement's state under the registers you read. An issuer runs its
+register as a book of its own — `loop -f rs:~/chamber register issue
+0xDENTIST dentist-licensed --until 1y --evidence HASH --paid-by subject`
+prints the statement to hand over; `register revoke|suspend|reinstate
+ID`, `register accredit 0xATTESTER licence --until 1y`, `register
+heartbeat` (at the cadence it declares) and `register status` maintain it,
+and `loop announce --role register` makes it discoverable.
+
+**Registered goods: the register is the witness.** For land and
+vehicles the title register's transfer is the delivery. A seller declares
+it on the give (`loop set oracle 'registry-transfer(0xREGISTER)'`, on a
+give naming the item, `car item(…)`), a buyer names the registers whose
+transfer she accepts (`loop set require_transfer 0xREGISTER`), and the leg
+is performed when that register shows the item held by her: her `watch`
+reports `transfer … the register … shows it held by me`, and `loop
+countersign` refuses until it does. A register operator records titles
+with `loop -f SPEC register transfer ITEM KEY`.
+
+Your `watch` also re-checks what your legs relied on: when a want of
+yours required a credential (a licence, `requires.counterparty`) and the
+issuer's register has since revoked or suspended the giver's statement,
+`watch` says so once — `lapsed   dentist-licensed of 0x… , relied on in
+loop …: revoked` — with the notice to send. The registers are those you
+read: `loop set registers 'ID=rs:PATH ID2=swarm:TOPIC@OWNER'`, and with a
+`registry` every book announced under the `register` role. The same
+registers let your solver and clearing check credentials and resolvers
+accepted by `root:`, each pinned in the loops you clear.
 
 How a contested claim runs once factbond resolves it (notice to the
 giver first, then the claim, the giver's dispute or the claim certifying,

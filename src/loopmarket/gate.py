@@ -73,10 +73,13 @@ class CounterpartyGate:
     # R5 (2026-09-29): register id -> the register at the newest root it has
     # published (its feed's tip), or None; no reader: the pinned root's age alone
     latest: Callable[[str], object | None] | None = None
+    # arbitrators by property (§7a): a resolver address -> its chain record
+    # (`arbitrators.Profile`: who rules, what a reversal forfeits, reversals)
+    profile: Callable[[str], object | None] | None = None
 
     @classmethod
     def over(cls, book, registers: Mapping[str, object], *, now: int, span=None, held=None,
-             capacity=None, latest=None) -> "CounterpartyGate":
+             capacity=None, latest=None, profile=None) -> "CounterpartyGate":
         """The gate over an offer book's presented statements, offers and
         holds; `capacity` (offer id -> what is left) defaults to the book's."""
         def statements(subject: str):
@@ -95,7 +98,7 @@ class CounterpartyGate:
                 return None
         return cls(statements, dict(registers), int(now), span, offer, held,
                    lambda oid, holder: book.held_by(oid, holder, now), capacity or left, book.is_withdrawn,
-                   lambda h, maker, oid: book.item_claimed(h, maker, now, offer_id=oid), latest)
+                   lambda h, maker, oid: book.item_claimed(h, maker, now, offer_id=oid), latest, profile)
 
     # -- items ---------------------------------------------------------------------
 
@@ -210,7 +213,7 @@ class CounterpartyGate:
         # 2–4, 7. the path, its registers, their freshness; revocation and suspension
         self_bonded = s.kind == "self-bonded"
         if not (self_bonded and not entry.roots):
-            f.extend(self._path_faults(entry, s, ontology, window, self_bonded))
+            f.extend(self._path_faults(entry.roots, s, ontology, window, self_bonded, entry.max_root_age))
         # 5. valid through the handover window
         if not (s.as_of <= window[0] and window[1] <= s.until):
             f.append(f"5 valid {s.as_of}..{s.until}, not through the window {window[0]}..{window[1]}")
@@ -219,12 +222,44 @@ class CounterpartyGate:
             f.extend(self._deposit_faults(entry, s, requirer, counterparty, ontology, taken=taken, whole=whole))
         return f
 
-    def _path_faults(self, entry: Credential, s: Statement, ontology: Ontology, window: Window,
-                     self_bonded: bool) -> list[str]:
+    def accredited(self, subject: str, category: str, roots, ontology: Ontology, window: Window) -> list[str]:
+        """Why `subject` is not accredited for `category` under one of
+        `roots` ([] when it is): a statement about it, presented in its
+        book, of a category under `category`, signed or attested (an
+        arbitrator does not accredit itself), passing steps 1–5 and 7 —
+        what an `Accept`'s roots read (§7a). An acceptance names no maximum
+        root age, so freshness is R5's alone: each register on the path is
+        read at its newest root by this clock, and with no reader of it the
+        statement fails (U7). The faults of the closest statement, or that
+        none was presented."""
+        best = None
+        for s in self.statements(subject):
+            if s.subject != subject:
+                continue
+            f = []
+            if not ontology.satisfies((s.category,), (category,)):
+                f.append(f"1 category {s.category} is not under {category}")
+            if s.kind not in ("signed", "attested"):
+                f.append(f"1 kind {s.kind} does not accredit")
+            if self.latest is None:
+                f.append("4 no reader of the registers' newest roots (an acceptance names no maximum age)")
+            f.extend(self._path_faults(tuple(roots), s, ontology, window, False, None))
+            if not (s.as_of <= window[0] and window[1] <= s.until):
+                f.append(f"5 valid {s.as_of}..{s.until}, not through the window {window[0]}..{window[1]}")
+            if not f:
+                return []
+            if best is None or len(f) < len(best):
+                best = f
+        if best is None:
+            return [f"{subject}: no {category} statement presented"]
+        return [f"{subject}: " + "; ".join(best)]
+
+    def _path_faults(self, roots, s: Statement, ontology: Ontology, window: Window,
+                     self_bonded: bool, max_root_age: int | None) -> list[str]:
         f: list[str] = []
         path = s.path
-        if path[-1] not in entry.roots:
-            f.append(f"2 path ends at {path[-1]}, not a trust root named ({', '.join(entry.roots) or 'none'})")
+        if path[-1] not in roots:
+            f.append(f"2 path ends at {path[-1]}, not a trust root named ({', '.join(roots) or 'none'})")
         on_path = list(path[1:]) if self_bonded else list(path)    # the issuer's register holds the status
         unpinned = [r for r in on_path if r not in self.registers]
         for r in unpinned:
@@ -244,8 +279,8 @@ class CounterpartyGate:
             at = reg.as_of
             if at is None:
                 f.append(f"4 register {r} is silent (no heartbeat at its pinned root)")
-            elif self.now - at > entry.max_root_age:
-                f.append(f"4 register {r}'s root is {self.now - at}s old, more than {entry.max_root_age}s")
+            elif max_root_age is not None and self.now - at > max_root_age:
+                f.append(f"4 register {r}'s root is {self.now - at}s old, more than {max_root_age}s")
             # R5: the root keeps every revocation its predecessor held (a
             # root that cannot show it fails, U7) ...
             extended = reg.extends_predecessor()

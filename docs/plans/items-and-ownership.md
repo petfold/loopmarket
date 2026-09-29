@@ -114,7 +114,14 @@ inspected(dekra)`) need the composition shape of plan D4.
 
 *(applied practice review, 2026-09-25)* Two rules on inspection legs:
 
-- **Certificate-final** (plan E1): an `inspect` term may carry
+- **Certificate-final** (plan E1; *not built — open for Peter,
+  2026-09-29 night:* the flag cannot sit inside the `inspect(...)`
+  argument, which is what the inspector accepts, so it needs its own
+  spelling — a catalogue category under `inspect`, or a role head beside
+  it, `certifies(mileage condition)`; the report is written after clearing,
+  so it is a sidecar like a handoff rather than a hash in the fill; and the
+  claim's routing to the inspector's reservation or the giver's is a rule
+  for the resolver to apply): an `inspect` term may carry
   `certificate-final`, and its report enumerates the categories it
   certifies. A claim on a certified attribute is admissible only against
   the inspector's statement (its deposit or cover, capped in its offer); a
@@ -122,7 +129,9 @@ inspected(dekra)`) need the composition shape of plan D4.
   loading-port rule: after a certificate-final inspection the buyer's
   remedy on those attributes runs against the inspector, and the
   inspector's exposure is bounded.
-- **Independence** (E2): an `inspect` give is admissible only if its
+- **Independence** (E2; *built 2026-09-29 night*: `matching.independence_faults`,
+  refused at clearing and filtered from the baseline's candidates, the own
+  leg included): an `inspect` give is admissible only if its
   giver's key is not a maker or wanter on any other leg of the loop naming
   h, a free formality; the real mechanism, since keys are free, is that the
   wanter's `requires.legs` entry accepts inspectors by accrediting root,
@@ -211,7 +220,7 @@ would need P4 reopened; this draft keeps derived ids.
 | I1 *(met 2026-09-29 on the prefix-kind stopgap: `items.py`, `Ontology.declare_item_heads`, `tests/test_items.py`)* | `item(h)` term: the ontodag hash kind (upstream), derived-id helpers for VIN / land register / serial | the same VIN yields the same h everywhere; a mismatched h never matches |
 | I2 *(met 2026-09-29 in memory; the key is `item/<h>/<maker>/<loop>`, see §2)* | item claim keyspace + per-item rule in registry and clearing (per maker, plan D5) | two offers by one maker on one h: the second leg refused while the first is open; admissible after performance; two makers on one h both clear, and the loser is a non-performance |
 | I3 *(met 2026-09-29 on a local EVM, `tests/test_beat_v6.py`; deployed on Gnosis the same day at `0x8beD11c07aC7aCAa542dF5B0F8db94FC6C1F72BC`: a beat commits each give's claim — an option's on its underlying's items, until the window ends — naming its leg; a challenge convicts a beat that omits or misstates one, and `finalize` cancels a beat whose claim meets the same maker's active claim through another offer, a race like an overfill; a fill's claim end is the clearing's `item/` record, bounded on chain only by the beat's time)* | item claims on chain (with `options-and-cover.md` C4) | a second claim on h in a concurrent beat is caught at finalize or by challenge |
-| I4 | `registry-transfer` witness type | a leg naming it performs only on the witness's statement |
+| I4 *(met 2026-09-29 night off chain: `witness.transfer_register`/`transfer_faults`, `Register.transfer`/`holder` over `title/<h>`, clearing admitting the type on a give that names an item, the CLI's `oracle registry-transfer(ID)`, `require_transfer`, `register transfer`, `watch` reporting the transfer and `countersign` refusing before it; `tests/test_registry_transfer.py`. The register is named in the type — `registry-transfer(ID)` — so the record needs no field; that spelling is the assistant's, for Peter's review)* | `registry-transfer` witness type | a leg naming it performs only on the witness's statement |
 | I5 | inspection history query + "all inspections disclosed" requirement | a hidden inspection of h makes the requirement unmet |
 | I6 | `lot(h)` and recall through a register | a recalled lot's uncleared legs meet nothing; notices written for cleared ones |
 

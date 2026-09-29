@@ -417,6 +417,63 @@ competitive market of them, and each maker chooses which it accepts.
   stakes; a mutual's committee for the mutual's own claims. Today the
   deployed `Assertions` names a stand-in key.
 
+*(built 2026-09-29 night, off chain: `arbitrators.py`, `tests/test_arbitrators.py`;
+on Peter's "build acceptance of arbitrators by property". The record is
+unchanged — no field was added — so where the v6 `Accept` is silent the
+build chose the conservative reading, each listed for a ruling.)*
+
+- **Who rules.** The escrow's resolver is an address; what is accepted is
+  the set of keys that can rule on it: a key ruling directly is its own; a
+  factbond `Assertions` contract rules through its adjudicator and, above
+  it, its arbiter (`Profile.rulers`, read by `chain_profile`). *Every*
+  ruler must meet the acceptance, and none may be a party to the leg: the
+  final rung decides as much as the first.
+- **Accreditation (`roots`).** A statement about each ruler, presented in
+  its own book (R2), signed or attested (a self-bonded statement does not
+  accredit), of a category under the catalogue's `arbitrator` —
+  `triangle.od` seeds it — for a resolver, and under the entry's category
+  (`inspect`, `insure`) for a required leg's giver; steps 1–5 and 7 as for
+  a credential (`CounterpartyGate.accredited`), the named roots pinned by
+  the proposal (`named_registers` now includes them). *Choice 1:* the
+  category is fixed by the role because `Accept` has no category field;
+  "transport arbitrators only" is today a root that accredits only those,
+  and a `category` on `Accept` would be a v8 field (and a verifier
+  redeploy). *Choice 2:* `Accept` has no `max_root_age`, so its freshness
+  is R5's alone — every register on the path read at its newest root by
+  clearing's clock — and a gate with no newest-root reader refuses (U7).
+- **The deposit floor (`min_deposit`).** What one reversed ruling
+  forfeits, on the chain: `min(deposits(adjudicator), depositWei)`, and
+  nothing when there is no arbiter (one rung: its rulings are final, the
+  deposit never at stake). Converted once at the requirer's acceptance
+  price for the chain's coin (U14), as `point` is.
+- **The clean record (`clean_for`).** No `Reversed` event of the resolver
+  contract within the look-back — the contract's record, not its current
+  adjudicator's, so an owner swapping the key does not wipe it. *Choice 3
+  (the tenure reading):* the record must also *cover* the look-back (its
+  first event of any kind at least `clean_for` ago): a resolver that has
+  not existed for a year has not been unreversed for one, and a reversed
+  arbitrator returning under a new contract would otherwise pass at once.
+  §7a's "admits every new arbitrator that meets the bar" holds for
+  accreditation and deposit; a look-back admits it when its record is long
+  enough. A key ruling directly has no appeal ledger and meets no
+  `clean_for`.
+- **Both sides accept.** `require_resolvers` states one acceptance for a
+  maker's wants and gives alike. A leg's resolver is the first candidate
+  both admit — the give's `arbitrator`; then every key either acceptance
+  names, sorted; then the clearing's own `resolver` when the give leaves
+  the choice to it (no arbitrator, no acceptance) — so the order is the
+  records' and every replica chooses alike; the clearing's default comes
+  last so the solver, which cannot see it, chooses what the reservation
+  gets while the reads stand. Two acceptances by property with no name
+  anywhere have no candidate and meet nothing: a directory of arbitrators
+  (announcements under an `arbitrator` role, say) is the missing source.
+- **Not built:** `issuance` (D8); the chain's check of any of it (resolvers are the
+  semantic half). **A gap found on the way, factbond's:** an adjudicator's
+  deposit is withdrawable whenever none of its rulings is open to appeal,
+  so a floor read at clearing may leave before the claim it was meant to
+  back — the asks are a withdrawal notice, or a lock while a reservation
+  naming the contract is open (factbond ROADMAP).
+
 ## 8. Boundaries
 
 - B1: the gate is pure: statement shape, catalogue, absence proofs. Verifying
@@ -436,7 +493,7 @@ competitive market of them, and each maker chooses which it accepts.
 | R3 | registers as keyspaces + `register` role (announcement reading) + `register_roots` in `LoopProposal`, the `loop/` record, `Beat` and `beat.submission`; `verifyAbsence` on the leg path | a proposal missing a named register's root is refused; a revoked statement's absence proof fails on chain — *R3a met 2026-09-29 (`register.py`, `tests/test_register.py`; the loop record v2 carries the pins, v1 is unchanged without them); R3b, the chain half, met 2026-09-29 on a local EVM (`tests/test_beat_v6.py`): a beat commits its register pins (`BeatClearing.submit(registers, ...)`, their hash in the beat), each leg's commitment covers its statements, and `StatementVerifier` — split from `LegVerifier` at EIP-170 — checks one statement per required entry per give: presented under the book root as `cred/<subject>/<id>`, about the other side, and unless self-bonded its issuer's register pinned with `revoked/<id>` and `suspended/<id>` absent under that root; a beat pinning the attester's root after a revocation is convicted by challenge. Which statement meets which entry (category, kind, path, validity, the deposit's share) stays the semantic half's; deployed on Gnosis the same day at `0x8beD11c07aC7aCAa542dF5B0F8db94FC6C1F72BC`, the live gate's forged post-revocation beat convicted there* |
 | R4 *(met 2026-09-29 in the solo form: `gate.py`, `tests/test_gate.py` — licensed passes and clears; revoked, suspended, expired before the window, unaccredited, a silent or stale register, a floor not free after this fill's reservation, an unpinned register on the path and an unaccepted resolver each refused, clearing's refusal listing every failing step. The practice form — a statement about a practitioner the practice designates, bound at the door — waits for R7's witness; the root's age reads a heartbeat, R5 proves the sequence)* | the gate in `meets` (§4) incl. handover-window validity | the dentist case, in its primary form (plan D1): a **practice** is the maker, its deposit backs an *attested* statement about each dentist's key, and the dentist's key is checked at the door; licensed passes; revoked, expired-before-window, unaccredited issuer, silent register, and a floor not free after this fill's reservation each refused; the solo dentist's *self-bonded* statement is the degenerate case with subject = maker |
 | R5 *(met 2026-09-29 off chain, option A: every root names its predecessor and must extend it on `revoked/` — recordstore's extension proofs; the feed tip read by clearing's clock refuses what a newer root says, not the pin's age (§5 for the deviation); signed feed updates and equivocation proofs in recordstore; the on-chain fraud proof is R3b's)* | "latest root as of t" + heartbeat + consistency proofs between roots (§3.3, §5) | a proposal pinning a stale root is refused when a newer one precedes clearing; a root that does not extend its predecessor is refused; two inconsistent roots signed by one register are a refutable fact |
-| R6 *(the sidecars built 2026-09-29: `notice.py`, `tests/test_notice.py` — sealed notice and cure with commitments, fold admission, the re-check; the clocks and the refusals are factbond's procedure, already built; `loop watch` does not run the re-check yet)* | `notice/` sidecar with cure deadline + `watch` re-check (§6) | revocation between clearing and window yields a notice and a non-performance path; a claim without a prior notice, or asserted after M days from it, is refused; a cure within the deadline ends the matter with no public record |
+| R6 *(the sidecars built 2026-09-29: `notice.py`, `tests/test_notice.py` — sealed notice and cure with commitments, fold admission, the re-check; the clocks and the refusals are factbond's procedure, already built; the command line the same night: `loop watch` runs the re-check over the registers it reads — `set registers ID=SPEC`, and those announced under the `register` role — against the statements a want's credential relied on, and opens notices and cures sealed to me; `loop notice OFFER --cure D [--fact S]` and `loop cure OFFER [--evidence R]` write them, `tests/test_notice.py`)* | `notice/` sidecar with cure deadline + `watch` re-check (§6) | revocation between clearing and window yields a notice and a non-performance path; a claim without a prior notice, or asserted after M days from it, is refused; a cure within the deadline ends the matter with no public record |
 | R7 *(built 2026-09-29: `witness.py`, `tests/test_witness.py`; the roster rows in factbond's evidence policy; `registry-transfer` is items' I-track)* | `possession` / `photo-match` witness types (§7): roster entry (factbond evidence policy), clearing's verifiable set, settlement adapter | countersign requires the witness; a replayed response fails; an offer naming an unrostered type is refused at submit |
 
 ## 10. Open

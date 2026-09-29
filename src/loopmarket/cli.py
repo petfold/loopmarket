@@ -139,6 +139,13 @@ _SETTINGS = {
         "the escrow contract holding my deposit: chain:RPC_URL@CONTRACT "
         "(LoopEscrow; the record names the address); `deposit [ID]` funds "
         "a give's declared bond there (empty: a declaration only)"),
+    "registers": _Setting(
+        "LOOP_REGISTERS", "", "--registers ID=SPEC...",
+        "registers I read (R3a) beyond those announced under the register "
+        "role: ID=SPEC pairs, a register's book by spec (`rs:PATH`, "
+        "`swarm:TOPIC@OWNER`); each is read at its head, pinned in my "
+        "proposals, and consulted for credentials, accredited resolvers and "
+        "watch's lapsed statements"),
     "resolver": _Setting(
         "LOOP_RESOLVER", "", "--resolver ADDRESS",
         "who resolves a contested claim on a deposit my clearing reserves: "
@@ -200,10 +207,23 @@ _SETTINGS = {
         "the claim period I ask of a giver's deposit (v6): only gives whose "
         "claim_max reaches it are matched"),
     "require_resolvers": _Setting(
-        "LOOP_REQUIRE_RESOLVERS", "", "--require-resolvers KEYS",
-        "the resolvers I accept for a claim on a giver's deposit, by key "
-        "(v6, E2): only gives naming one of them as arbitrator are matched, "
-        "and never a party to the leg"),
+        "LOOP_REQUIRE_RESOLVERS", "", "--require-resolvers ACCEPT",
+        "the resolvers I accept for a claim on a deposit — the giver's, and on "
+        "my gives my own (v6, E2; §7a): keys, and/or by property — `root:ID` "
+        "(its rungs accredited as arbitrators under a register I trust), "
+        "`min:AMOUNT` (at least that at stake on a reversed ruling, on my "
+        "scale, priced by my acceptances), `clean:DURATION` (no ruling "
+        "reversed within it, on a record at least that long); a leg's "
+        "resolver is the first both sides accept, never a party to it"),
+    "require_credentials": _Setting(
+        "LOOP_REQUIRE_CREDENTIALS", "", "--require-credentials ENTRIES",
+        "what my wants require the giver to present (v6, R4): entries "
+        "separated by `;`, each `CATEGORY KIND[,KIND...] [root:ID]... "
+        "[age:DURATION] [min:AMOUNT]` — a statement of a category under "
+        "CATEGORY, of one of the kinds (attested, signed, self-bonded), "
+        "reaching a named root through registers no older than age, its "
+        "deposit's free share at least min on my scale; unmet is never "
+        "matched"),
     "require_point": _Setting(
         "LOOP_REQUIRE_POINT", "", "--require-point AMOUNT",
         "my neutral point on a no-show, on my scale: what makes me whole — "
@@ -238,12 +258,20 @@ _SETTINGS = {
         "(possession plus the attested photo, which hands the counterparty a "
         "provable link from their face to their key: ask it only where the "
         "stakes need it, THREATS T19); empty: none"),
+    "require_transfer": _Setting(
+        "LOOP_REQUIRE_TRANSFER", "", "--require-transfer REGISTERS",
+        "for registered goods (land, vehicles; I4): the title registers whose "
+        "transfer of the item to me my wants accept as the handover witness "
+        "— a give declaring `registry-transfer(ID)` for one of them; the leg "
+        "is performed when that register shows the item held by me"),
     "oracle": _Setting(
         "LOOP_ORACLE", "countersign", "--oracle TYPE",
         "the witness my gives settle against: countersign (default), "
         "possession (I sign a fresh challenge at the door) or photo-match "
         "(possession plus my attested photo — the counterparty's device "
-        "receives it and can link my face to my key, THREATS T19)"),
+        "receives it and can link my face to my key, THREATS T19), or, for a "
+        "registered item, registry-transfer(REGISTER) (the title register's "
+        "transfer to the wanter is the performance, I4)"),
     "interval": _Setting(
         "LOOP_INTERVAL", "30s", "--interval DURATION",
         "how often `watch` polls the fold"),
@@ -1291,8 +1319,8 @@ def render_offer(offer: Offer) -> str:
                      + (f"  oracle {' '.join(req.oracles)}" if req.oracles else "")
                      + (f"  escrow {' '.join(req.escrows)}" if req.escrows else "")
                      + (f"  claim {_duration_text(req.claim_period)}" if req.claim_period else "")
-                     + (f"  resolvers {' '.join(req.resolvers.keys)}" if req.resolvers is not None else "")
-                     + (f"  credentials {' '.join(c.category for c in req.counterparty)}" if req.counterparty else "")
+                     + (f"  resolvers {_resolvers_text(req.resolvers)}" if req.resolvers is not None else "")
+                     + (f"  credentials {_credentials_text(req.counterparty)}" if req.counterparty else "")
                      + (f"  legs {' '.join(l.category for l in req.legs)}" if req.legs else "")
                      + "  (of every counterparty, per fill; unmet is never matched)")
     if offer.v >= 6 and (offer.claim_max or offer.underlying):
@@ -1532,7 +1560,8 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
         if _configured("claim_max"):
             out["claim_max"] = duration_s(_configured("claim_max"))
     claim_period = duration_s(_configured("require_claim")) if side == WANT and _configured("require_claim") else 0
-    resolver_keys = tuple((_configured("require_resolvers") or "").split()) if side == WANT else ()
+    resolvers = _resolver_acceptance(_configured("require_resolvers") or "")
+    credentials = _credential_requirements(_configured("require_credentials") or "") if side == WANT else ()
     def default_asset():
         """My price for the asset a bare amount means — stated, never assumed."""
         spec = _configured("default_asset")
@@ -1581,7 +1610,13 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
     door = (_configured("require_door") or "").strip() if side == WANT else ""
     oracles = ({"possession": ("door-at-least-possession",), "photo": ("door-at-least-photo",)}[door]
                if door else ())
-    if point is not None or accepts or escrows or claim_period or resolver_keys or oracles:
+    if side == WANT:
+        oracles += tuple(f"registry-transfer({r})" for r in (_configured("require_transfer") or "").split())
+    if ((resolvers is not None and resolvers.min_deposit) or any(c.min_bond for c in credentials)) \
+            and not accepts:
+        accepts.append(Acceptance(*default_asset()))   # a deposit floor on my scale is priced by an acceptance
+    if point is not None or accepts or escrows or claim_period or resolvers is not None or oracles \
+            or credentials:
         ladder = ()
         if point is not None and _configured("require_cancel"):
             far = q(_configured("require_cancel"))
@@ -1590,14 +1625,76 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
                 ladder = _ladder(_configured("ladder") or "linear", lead, far, point)
         out["requires"] = Requires(point=point or 0, ladder=ladder, accepts=tuple(accepts), escrows=escrows,
                                    oracles=oracles, claim_period=claim_period,
-                                   resolvers=Accept(keys=resolver_keys) if resolver_keys else None)
+                                   resolvers=resolvers, counterparty=credentials)
     if "bond" in out and out["bond"].deductible:
         out["v"] = 7                               # a deposit's deductible (C5); v7 carries v6's fields
-    elif out.get("claim_max") or claim_period or resolver_keys:
+    elif out.get("claim_max") or claim_period or resolvers is not None or credentials:
         out["v"] = 6
     elif "requires" in out or "bond" in out:
         out["v"] = 5
     return out
+
+
+def _resolver_acceptance(text: str):
+    """`require_resolvers` as an `Accept` (§7a), or None: bare tokens are
+    keys; `root:ID` a trust root the resolver's rungs are accredited under;
+    `min:AMOUNT` the least at stake on a reversed ruling, on my scale;
+    `clean:DURATION` the look-back with no reversal."""
+    from .schema import Accept
+    keys, roots, floor, clean = [], [], 0, 0
+    for tok in text.split():
+        head, sep, value = tok.partition(":")
+        if not sep:
+            keys.append(tok)
+        elif head == "root" and value:
+            roots.append(value)
+        elif head == "min" and value:
+            floor = q(value)
+        elif head == "clean" and value:
+            clean = duration_s(value)
+        else:
+            raise ValueError(f"require_resolvers token {tok!r}: a key, root:ID, min:AMOUNT or clean:DURATION")
+    if not (keys or roots or floor or clean):
+        return None
+    return Accept(keys=tuple(keys), roots=tuple(roots), min_deposit=floor, clean_for=clean)
+
+
+def _credential_requirements(text: str) -> tuple:
+    """`require_credentials` as `Credential` entries (R4): `;`-separated,
+    each `CATEGORY KIND[,KIND...] [root:ID]... [age:DURATION] [min:AMOUNT]`."""
+    from .schema import Credential
+    out = []
+    for entry in (e.strip() for e in text.split(";") if e.strip()):
+        toks = entry.split()
+        if len(toks) < 2:
+            raise ValueError(f"require_credentials entry {entry!r} is `CATEGORY KIND[,KIND...] "
+                             f"[root:ID]... [age:DURATION] [min:AMOUNT]`")
+        roots, age, floor = [], 0, 0
+        for tok in toks[2:]:
+            head, sep, value = tok.partition(":")
+            if head == "root" and value:
+                roots.append(value)
+            elif head == "age" and value:
+                age = duration_s(value)
+            elif head == "min" and value:
+                floor = q(value)
+            else:
+                raise ValueError(f"require_credentials token {tok!r}: root:ID, age:DURATION or min:AMOUNT")
+        out.append(Credential(toks[0], tuple(toks[1].split(",")), min_bond=floor, roots=tuple(roots),
+                              max_root_age=age))
+    return tuple(out)
+
+
+def _credentials_text(creds) -> str:
+    return "; ".join(" ".join([c.category, ",".join(c.kinds), *(f"root:{r}" for r in c.roots),
+                               *([f"age:{_duration_text(c.max_root_age)}"] if c.max_root_age else []),
+                               *([f"min:{_num(c.min_bond)}"] if c.min_bond else [])]) for c in creds)
+
+
+def _resolvers_text(acc) -> str:
+    return " ".join([*acc.keys, *(f"root:{r}" for r in acc.roots),
+                     *([f"min:{_num(acc.min_deposit)}"] if acc.min_deposit else []),
+                     *([f"clean:{_duration_text(acc.clean_for)}"] if acc.clean_for else [])])
 
 
 def _escrow_address() -> str:
@@ -2597,8 +2694,205 @@ def _watch_pass(session: Session, out) -> bool:
             news = True
     news = _seal_pending(session, fold, out) or news
     news = _open_incoming(session, fold, out, seen["handoffs"]) or news
+    news = _check_lapsed(session, fold, out, seen.setdefault("lapsed", [])) or news
+    news = _notices_in(session, fold, out, seen.setdefault("notices", [])) or news
+    news = _transfers_shown(session, fold, out, seen.setdefault("transfers", [])) or news
     _write_json(_seen_path(), seen)
     return news
+
+
+def _transfers_shown(session, fold, out, seen: list) -> bool:
+    """A leg I receive on whose give declared `registry-transfer(ID)` (I4):
+    reported once when the register shows the item held by me — the moment
+    to countersign."""
+    from .witness import transfer_register
+    news = False
+    for loop, leg, want_ in _my_legs(session, fold, "want"):
+        for g in leg.get("gives", [leg["give"]]):
+            rid = transfer_register(fold.get(g).oracle)
+            key = f"{loop}/{g}"
+            if not rid or key in seen or _transfer_faults(session, g, loop, want_.maker):
+                continue
+            seen.append(key)
+            news = True
+            print(f"transfer {g[:12]} in loop {loop[:16]}…: the register {rid} shows it held by me — "
+                  f"`loop countersign {g[:12]}` returns the giver's reservation", file=out)
+    return news
+
+
+# ---------------------------------------------------------------- R6: notices before claims
+
+def _my_legs(session, fold, side: str):
+    """(loop id, leg record, my offer) for every leg of a loop in the fold
+    where my offer is the want (`side` "want") or one of the gives."""
+    me = session.maker
+    for o in fold.offers(include_filled=True):
+        if o.maker != me or (o.kind == WANT) != (side == "want"):
+            continue
+        for loop in fold.loops_of(o.offer_id):
+            key = f"loop/{loop}"
+            rec = fold.store.get(key) if fold.store.contains(key) else None
+            for leg in (rec or {}).get("legs", []):
+                if (side == "want" and leg["want"] == o.offer_id) or \
+                        (side != "want" and o.offer_id in leg.get("gives", [leg["give"]])):
+                    yield loop, leg, o
+
+
+def _check_lapsed(session, fold, out, seen: list) -> bool:
+    """The watch's re-check (R6, §6): a statement a leg I receive on relied
+    on — the giver's, of a category my want's credential requirement names
+    — that its issuer's register now marks revoked or suspended, read at
+    the heads of the registers I read. Reported once, with the notice to
+    send: the moment a notice is due is before the window."""
+    from .notice import lapsed
+    regs = _registers(session)
+    if not regs:
+        return False
+    ontology, news = session.catalogue, False
+    for loop, leg, want_ in _my_legs(session, fold, "want"):
+        req = want_.requires if want_.v >= 6 else None
+        cats = [c.category for c in req.counterparty] if req is not None else []
+        if not cats:
+            continue
+        gives = [(g, fold.get(g).maker) for g in leg.get("gives", [leg["give"]])]
+        statements = lambda m: [st for st, _ in fold.statements(m)]
+        for oid, st, change in lapsed(gives, statements, regs):
+            if not any(ontology.satisfies((st.category,), (c,)) for c in cats):
+                continue
+            key = f"{loop}/{oid}/{st.statement_id}/{change}"
+            if key in seen:
+                continue
+            seen.append(key)
+            news = True
+            print(f"lapsed   {st.category} of {st.subject} ({st.statement_id[:12]}), relied on in loop "
+                  f"{loop[:16]}…: {change} — `loop notice {oid[:12]} --loop {loop[:12]} --fact "
+                  f"{st.statement_id[:12]} --cure DURATION` tells the giver", file=out)
+    return news
+
+
+def _notices_in(session, fold, out, seen: list) -> bool:
+    """Notices sealed to me on my gives, and cures sealed to me on my
+    notices, opened with bee_signer and reported once."""
+    from .notice import read
+    signer, me, news = _configured("bee_signer"), session.maker, False
+    rows = []
+    for loop, leg, give_ in _my_legs(session, fold, "give"):
+        side = fold.notice(loop, give_.offer_id)
+        if side is not None and side.get("to") == me:
+            rows.append(("notice", loop, give_.offer_id, side))
+    for loop, leg, _want in _my_legs(session, fold, "want"):
+        for g in leg.get("gives", [leg["give"]]):
+            side = fold.cure(loop, g)
+            if side is not None and side.get("to") == me:
+                rows.append(("cure", loop, g, side))
+    for kind, loop, oid, side in rows:
+        key = f"{kind}/{loop}/{oid}/{side['commitment']}"
+        if key in seen:
+            continue
+        seen.append(key)
+        news = True
+        try:
+            rec = read(side, signer) if signer else None
+        except Exception as exc:  # noqa: BLE001
+            rec, why = None, exc.__class__.__name__
+        else:
+            why = "sealed; set bee_signer to open"
+        if kind == "notice":
+            text = (f"cure by {_iso(rec['cure_deadline'])}, fact {rec['referred_fact'][:16]}" if rec
+                    else f"({why})")
+            print(f"notice   from {side['from']} on {oid[:12]} in loop {loop[:16]}…: {text} — "
+                  f"`loop cure {oid[:12]} --loop {loop[:12]}` answers it", file=out)
+        else:
+            text = f"at {_iso(rec['time'])}" + (f", evidence {rec['evidence_ref'][:16]}" if rec and rec['evidence_ref'] else "") \
+                if rec else f"({why})"
+            print(f"cured    by {side['from']} on {oid[:12]} in loop {loop[:16]}…: {text}", file=out)
+    return news
+
+
+def _notices_path(loop: str, oid: str, kind: str) -> str:
+    folder = os.path.join(_home_dir(), "notices")
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    return os.path.join(folder, f"{kind}-{loop[:16]}-{oid[:16]}.json")
+
+
+def _public_key_of(fold, offer_id: str) -> bytes:
+    from .sigs import recover_public_key
+    sig = fold.signature(offer_id)
+    if sig is None:
+        raise ValueError(f"{fold.get(offer_id).maker} has no public key here: "
+                         f"their offer {offer_id[:12]} carries no signature")
+    return recover_public_key(offer_id, sig)
+
+
+def _leg_with(fold, loop: str, give_id: str) -> dict:
+    key = f"loop/{loop}"
+    rec = fold.store.get(key) if fold.store.contains(key) else None
+    for leg in (rec or {}).get("legs", []):
+        if give_id in leg.get("gives", [leg["give"]]):
+            return leg
+    raise ValueError(f"loop {loop[:16]}… is not in the fold, or took nothing from {give_id[:12]}")
+
+
+def cmd_notice(args, session, out):
+    """R6 (§6, rung zero of every claim): as the wanter of a cleared leg,
+    tell the giver which fact is wrong and until when it may cure —
+    factbond's `Notice`, sealed to the giver's key (recovered from its
+    offer's signature) beside a salted commitment, written into my book.
+    The fact is the lapsed statement's id (`--fact`, a prefix of one the
+    giver presented), else the give itself; the policy the reservation's
+    escrow key. The cure period is mine to state (`--cure`, no default: the
+    class's minimum is factbond's to enforce). The opening stays with me,
+    for the claim's case file."""
+    from .escrow import reservation_key
+    from .notice import notice_record, sealed
+    fold, me, now = session.fold(), session.maker, session.now
+    oid, loop = _reservation_ref(session, args.offer, args.loop)
+    leg = _leg_with(fold, loop, oid)
+    if fold.get(leg["want"]).maker != me:
+        raise ValueError(f"{oid[:12]} in loop {loop[:16]}… is not a leg I receive on")
+    giver = fold.get(oid).maker
+    fact = oid
+    if args.fact:
+        found = sorted({st.statement_id for st, _ in fold.statements(giver) if st.statement_id.startswith(args.fact)})
+        if len(found) != 1:
+            raise ValueError(f"--fact {args.fact}: {'no' if not found else 'several'} statements of {giver} match")
+        fact = found[0]
+    notice = notice_record(me, giver, fact, policy_ref=reservation_key(oid, loop), sent_at=now,
+                           cure_period=duration_s(args.cure))
+    side, opening = sealed(notice, sender=me, recipient=giver, recipient_public_key=_public_key_of(fold, oid))
+    session.book.send_notice(loop, oid, side)
+    session.book.commit()
+    path = _notices_path(loop, oid, "notice")
+    _write_json(path, opening)
+    print(f"notice   sent to {giver} on {oid[:12]} in loop {loop[:16]}…: cure by "
+          f"{_iso(notice['cure_deadline'])}; the opening a claim cites is at {path}", file=out)
+    return 0
+
+
+def cmd_cure(args, session, out):
+    """R6: as the giver, answer a notice on my give — factbond's `Cure`,
+    naming the notice by its reference and what I did (`--evidence`, a
+    reference: the refund's transaction, the corrected statement), sealed
+    back to the claimant beside a commitment, written into my book."""
+    from .notice import cure_record, read, ref, sealed
+    fold, me = session.fold(), session.maker
+    oid, loop = _reservation_ref(session, args.offer, args.loop)
+    side = fold.notice(loop, oid)
+    if side is None or side.get("to") != me:
+        raise ValueError(f"no notice to me on {oid[:12]} in loop {loop[:16]}…")
+    signer = _configured("bee_signer")
+    if not signer:
+        raise ValueError("opening the notice needs my key: set bee_signer")
+    notice = read(side, signer)
+    leg = _leg_with(fold, loop, oid)
+    cure = cure_record(ref(notice), me, session.now, args.evidence or "")
+    back, opening = sealed(cure, sender=me, recipient=notice["notifier"],
+                           recipient_public_key=_public_key_of(fold, leg["want"]))
+    session.book.send_cure(loop, oid, back)
+    session.book.commit()
+    _write_json(_notices_path(loop, oid, "cure"), opening)
+    print(f"cure     sent to {notice['notifier']} on {oid[:12]} in loop {loop[:16]}…", file=out)
+    return 0
 
 
 def cmd_watch(args, session, out):
@@ -2612,6 +2906,7 @@ def cmd_watch(args, session, out):
             return 0 if news else 1
         out.flush()
         session._book = None          # re-open: another writer may have committed
+        session._registers = None     # and a register may have published a newer root
         _time.sleep(interval)
 
 
@@ -2782,7 +3077,7 @@ def cmd_loops(args, session, out):
     fold = session.fold()
     agent = SolverAgent(fold, session.catalogue, clearing=None,
                         solver_id="loop-cli", min_surplus=0.0, chain_fills=_chain_fills(session),
-                        escrow_held=_escrow_held(session))
+                        escrow_held=_escrow_held(session), span=_calendar_span, **_gate_reads(session))
     root, loops = agent.find_loops(now=session.now)
     for loop in loops:
         _print_loop(loop, fold, out)
@@ -2823,9 +3118,9 @@ def cmd_propose(args, session, out):
     held = _escrow_held(session)
     agent = SolverAgent(book, ontology,
                         ChainClearing(book, ontology, beat_client=client, clock=lambda: now,
-                                      escrow_held=held),
+                                      escrow_held=held, **_clearing_reads(session)),
                         solver_id="loop-cli", min_surplus=0.0, chain_fills=client.filled,
-                        escrow_held=held)
+                        escrow_held=held, span=_calendar_span, **_gate_reads(session))
     receipts = agent.step(now=now)
     posted = 0
     for r in receipts:
@@ -2846,6 +3141,87 @@ def _escrow_client(session):
         raise ValueError("no escrow contract: `loop set escrow chain:RPC_URL@CONTRACT`")
     rpc, _, address = spec[6:].rpartition("@")
     return EscrowClient(rpc, address, key=_configured("bee_signer") or None)
+
+
+def _registers(session) -> dict:
+    """Register id -> the `Register` at its head (R3a, 2026-09-29 night):
+    every `registers` pair, and with a `registry` every book announced under
+    the `register` role, its owner the id (the feed's signer, as for maker
+    books). The head is what the gate calls the newest root (R5)."""
+    from .register import Register
+    cached = getattr(session, "_registers", None)
+    if cached is not None:
+        return cached
+    out: dict = {}
+    for pair in (_configured("registers") or "").split():
+        rid, sep, spec = pair.partition("=")
+        if not sep or not rid or not spec:
+            raise ValueError(f"registers entry {pair!r} is ID=SPEC")
+        out[rid] = Register(_open_book(spec).store)
+    if _configured("registry"):
+        from .announce import REGISTER
+        for ann in session.announcements.announced():
+            if ann.role != REGISTER or ann.owner in out:
+                continue
+            try:
+                out[ann.owner] = Register(_open_book(ann.spec()).store)
+            except Exception as exc:        # noqa: BLE001 — an unreadable register pins nothing
+                print(f"loop: register {ann.owner}: {exc}", file=_err())
+    session._registers = out
+    return out
+
+
+def _register_at(session):
+    """(register id, root) -> the register read at that root, over the blobs
+    of the register this session opened — what a clearing re-reads at the
+    proposal's pins (U3); None for a register it does not read."""
+    from recordstore import RecordStore
+    from .register import Register
+    regs = _registers(session)
+
+    def at(rid: str, root: str):
+        reg = regs.get(rid)
+        return Register(RecordStore.at(root, reg.store.blobs)) if reg is not None and root else None
+    return at
+
+
+def _gate_reads(session) -> dict:
+    """The counterparty gate's reads as keyword arguments, for a solver and
+    a clearing alike: the registers, their heads, the resolvers' records."""
+    regs = _registers(session)
+    return {"registers": regs, "register_latest": regs.get, "resolver_profile": _resolver_profiles(session)}
+
+
+def _clearing_reads(session) -> dict:
+    regs = _registers(session)
+    return {"register_at": _register_at(session), "register_latest": regs.get,
+            "resolver_profile": _resolver_profiles(session), "span": _calendar_span}
+
+
+def _resolver_profiles(session):
+    """A resolver's chain record (`arbitrators.chain_profile`, §7a), read
+    through the escrow's (else the clearing contract's) RPC and cached for
+    the session, when either is set — what `require_resolvers`' `min:` and
+    `clean:` weigh; None otherwise, and those floors admit nothing. The
+    deposit is in the chain's native coin, named as `default_asset` names
+    it (Gnosis's `xdai xDAI` otherwise: a fact about the chain, not a price)."""
+    spec = next((v for v in (_configured("escrow"), _configured("beat")) if (v or "").startswith("chain:")), "")
+    if not spec:
+        return None
+    rpc = spec[6:].rpartition("@")[0]
+    toks = shlex.split(_configured("default_asset") or "")
+    asset = (tuple(toks[:-2]), toks[-2]) if len(toks) >= 3 else (("xdai",), "xDAI")
+    cache: dict = {}
+
+    def profile(address: str):
+        from .arbitrators import chain_profile
+        if address.lower() not in cache:
+            try:
+                cache[address.lower()] = chain_profile(address, rpc=rpc, asset=asset)
+            except Exception:              # noqa: BLE001 — an unreadable record admits nothing (U7)
+                cache[address.lower()] = None
+        return cache[address.lower()]
+    return profile
 
 
 def _escrow_held(session):
@@ -2896,6 +3272,292 @@ def cmd_deposit(args, session, out):
     return 0
 
 
+# ---------------------------------------------------------------- C6: the escrow's acts
+
+def _reservation_ref(session, offer: str, loop: str | None) -> tuple[str, str]:
+    """(offer id, loop id) of a reservation: `offer` a prefix of a give in
+    the fold (or a whole id), `loop` a prefix of one of the loops that took
+    from it — optional when there is one."""
+    full = lambda x: len(x) == 64 and all(c in "0123456789abcdef" for c in x.lower())
+    fold = session.fold()
+    oid = offer.lower() if full(offer) else _resolve_id(session, offer, mine_only=False)
+    loops = sorted(set(fold.loops_of(oid)) | set(session.book.loops_of(oid)))
+    if loop and full(loop):
+        return oid, loop.lower()
+    if loop:
+        loops = [x for x in loops if x.startswith(loop.lower())]
+    if len(loops) == 1:
+        return oid, loops[0]
+    if not loops:
+        raise ValueError(f"{oid[:16]}…: no loop" + (f" {loop}" if loop else "") + " took from it here; "
+                         "name the loop by its whole id (--loop)")
+    raise ValueError(f"{oid[:16]}…: several loops — name one (--loop): " + ", ".join(x[:16] for x in loops))
+
+
+def _asset_amount(text: str, whole: int) -> int:
+    """A split typed at the command line, in the reservation's smallest
+    units: `all`, `N%` of the reservation, `NUNIT` in the deposit's asset
+    (`0.004xDAI`), or a bare amount on my scale — converted once at my
+    price for the asset (`default_asset`), as every amount I type is."""
+    from .escrow import to_wei
+    t = text.strip()
+    if t == "all":
+        return whole
+    if t.endswith("%"):
+        return int(whole * q(t[:-1]) / 100)          # rounded down: never beyond the share named
+    toks = shlex.split(_configured("default_asset") or "")
+    unit = toks[-2] if len(toks) >= 3 else "xDAI"
+    if t.endswith(unit):
+        return to_wei(q(t[:-len(unit)]))
+    if len(toks) < 3:
+        raise ValueError(f"a bare amount is on my scale and needs my price for the asset: "
+                         f"`set default_asset 'xdai xDAI PRICE'`, or type `{t}{unit}` or a percentage")
+    return to_wei(q(t) / q(toks[-1]))
+
+
+def _reservation_line(r: dict) -> str:
+    state = "settled" if r["settled"] else "held by a claim" if r["held"] else "open"
+    return (f"{_num(Fraction(r['amount'], 10 ** 18))} for {r['wanter']}, resolver {r['resolver']}, "
+            f"claims until {_iso(r['claim_until'])}" + (", cover" if r["claim_only"] else "")
+            + (f", deductible {_num(Fraction(r['deductible'], 10 ** 18))}" if r.get("deductible") else "")
+            + f": {state}")
+
+
+def cmd_reservations(args, session, out):
+    """The reservations on the escrow behind my legs: my bonded gives' (I
+    am the giver) and my filled wants' gives' (I am the wanter), each with
+    its amount, wanter, resolver, claim period and state — read from the
+    contract, the loops from the fold. A claim assigned to me is not found
+    here (the book does not record it); name it to the verbs directly."""
+    client = _escrow_client(session)
+    escrow = client.address.lower()
+    fold = session.fold()
+    rows = []
+    for o in fold.offers(include_filled=True):
+        if o.maker != session.maker:
+            continue
+        if o.kind == GIVE and o.v >= 5 and o.bond is not None and o.bond.escrow.lower() == escrow:
+            rows += [("giver", o.offer_id, loop) for loop in fold.loops_of(o.offer_id)]
+        elif o.kind == WANT:
+            for loop in fold.loops_of(o.offer_id):
+                rec = fold.store.get(f"loop/{loop}") if fold.store.contains(f"loop/{loop}") else None
+                for leg in (rec or {}).get("legs", []):
+                    if leg["want"] != o.offer_id:
+                        continue
+                    for g in leg["gives"]:
+                        try:
+                            give_ = fold.get(g)
+                        except KeyError:
+                            continue
+                        if give_.v >= 5 and give_.bond is not None and give_.bond.escrow.lower() == escrow:
+                            rows.append(("wanter", g, loop))
+    shown = 0
+    for role, oid, loop in sorted(set(rows)):
+        r = client.reservation(oid, loop)
+        if not r["amount"] or (r["settled"] and not args.all):
+            continue
+        shown += 1
+        print(f"{oid[:16]}… loop {loop[:16]}… (I am the {role}): {_reservation_line(r)}", file=out)
+    if not shown:
+        print("no open reservation behind my legs" + ("" if args.all else " (--all: settled too)"), file=out)
+    return 0
+
+
+def _escrow_act(args, session, out, act: str) -> int:
+    client = _escrow_client(session)
+    oid, loop = _reservation_ref(session, args.offer, args.loop)
+    r = client.reservation(oid, loop)
+    if not r["amount"]:
+        raise ValueError(f"{oid[:16]}… loop {loop[:16]}…: no reservation on this escrow")
+    if act == "countersign":
+        why = _transfer_faults(session, oid, loop, r["wanter"])
+        if why:
+            raise ValueError("not countersigned: " + "; ".join(why) + " (a title register's transfer is the "
+                             "performance this give declared)")
+        receipt, said = client.countersign(oid, loop), "countersigned: the reservation returns to the giver"
+    elif act == "cancel":
+        receipt, said = client.cancel(oid, loop), "cancelled: the ladder's amount at this lead to the wanter"
+    elif act == "assign":
+        receipt, said = client.assign(oid, loop, args.to), f"assigned the claim to {args.to}"
+    elif act == "extend-claim":
+        secs = duration_s(args.duration)
+        receipt, said = client.extend_claim(oid, loop, secs), f"claim period lengthened by {args.duration}"
+    elif act == "settle" and args.split is None:
+        receipt, said = client.settle(oid, loop), "settled quiet: the reservation returned to the giver"
+    else:
+        amount = _asset_amount(args.split, r["amount"])
+        if amount > r["amount"]:
+            raise ValueError(f"a split of {_num(Fraction(amount, 10 ** 18))} is beyond the reservation "
+                             f"({_num(Fraction(r['amount'], 10 ** 18))})")
+        receipt = client.settle(oid, loop, amount)
+        after = client.reservation(oid, loop)
+        said = (f"signed the split {_num(Fraction(amount, 10 ** 18))} to the wanter"
+                + (": both signed, settled" if after["settled"] else ": waiting for the other party's"))
+    print(f"{oid[:16]}… loop {loop[:16]}…: {said}, gas {receipt['gasUsed']}", file=out)
+    return 0
+
+
+# ---------------------------------------------------------------- C7: statements and registers
+
+def _statement_state(st, regs) -> str:
+    reg = regs.get(st.issuer)
+    if st.kind == "self-bonded":
+        return "self-bonded"
+    if reg is None:
+        return "issuer's register not read"
+    if reg.revoked(st.statement_id):
+        return "revoked"
+    if reg.suspended(st.statement_id):
+        return "suspended"
+    return "issued" if reg.status(st.statement_id) is not None else "no status in the issuer's register"
+
+
+def cmd_cred(args, session, out):
+    """C7 (2026-09-29 night): `cred [SUBJECT]` lists the statements
+    presented about SUBJECT — me by default — in the fold, each with its
+    validity and its state under the registers I read; `cred present FILE`
+    presents a statement about me in my book (R2): an issuer's record as
+    `register issue` prints it or hansa's adapters produce it (`-` reads
+    stdin), with `--presentation FILE`, the adapter's opaque record."""
+    from .schema import Statement
+    if args.action == "present":
+        if len(args.rest) != 1:
+            raise ValueError("cred present FILE — a statement record (JSON), `-` for stdin")
+        text = sys.stdin.read() if args.rest[0] == "-" else open(args.rest[0], encoding="utf-8").read()
+        st = Statement.from_record(json.loads(text))
+        if st.subject.lower() != session.maker.lower():
+            raise ValueError(f"the statement is about {st.subject}, not me ({session.maker}): "
+                             f"a statement is presented in its subject's own book")
+        presentation = json.loads(open(args.presentation, encoding="utf-8").read()) if args.presentation else None
+        sid = session.book.present(st, presentation)
+        session.book.commit()
+        print(f"presented {sid[:16]}… {st.category} ({st.kind}, by {st.issuer}, until {_iso(st.until)})", file=out)
+        return 0
+    subject = args.action or session.maker
+    regs = _registers(session)
+    rows = [st for st, _ in session.fold().statements(subject)]
+    for st in sorted(rows, key=lambda x: (x.category, x.statement_id)):
+        print(f"{st.statement_id[:16]}… {st.category} {st.kind} by {st.issuer}, {_iso(st.as_of)}.."
+              f"{_iso(st.until)}, path {' > '.join(st.path)}: {_statement_state(st, regs)}", file=out)
+    if not rows:
+        print(f"no statement presented about {subject}", file=out)
+    return 0 if rows else 1
+
+
+def _my_statement(reg, prefix: str) -> str:
+    from .register import STATUS
+    found = sorted(k[len(STATUS):] for k, _ in reg.store.items(STATUS) if k[len(STATUS):].startswith(prefix))
+    if len(found) != 1:
+        raise ValueError(f"{prefix}: {'no statement' if not found else 'several statements'} in my register")
+    return found[0]
+
+
+def cmd_register(args, session, out):
+    """C7 (2026-09-29 night): run a register (R3a) in this session's book —
+    `loop -f SPEC register ...`, the register's own book, announced with
+    `announce --role register`; its id is my key. `issue SUBJECT CATEGORY
+    --until T --evidence HASH --paid-by subject|relier [--kind attested]
+    [--path ROOT]... [--deposit OFFER@ESCROW] [--scheme HASH]` issues a
+    statement and prints its record for the subject to present;
+    `revoke|suspend|reinstate STATEMENT`; `accredit ISSUER CATEGORY --until
+    T [--since T] [--scheme HASH]`; `heartbeat`; `status`. Every write
+    heartbeats and commits: a root is a link naming its predecessor (R5)."""
+    from .register import ACCREDIT, STATUS, Register
+    from .schema import Statement
+    reg, me, now = Register(session.book.store), session.maker, session.now
+    act, rest = args.action, args.rest
+    if act == "issue":
+        if len(rest) != 2 or not args.until or not args.evidence or not args.paid_by:
+            raise ValueError("register issue SUBJECT CATEGORY --until T --evidence HASH --paid-by subject|relier")
+        deposit = tuple(args.deposit.split("@", 1)) if args.deposit else None
+        st = Statement(subject=rest[0], category=rest[1], issuer=me, kind=args.kind or "attested",
+                       as_of=_until(args.as_of, now) if args.as_of else now, until=_until(args.until, now),
+                       evidence=args.evidence, path=(me, *(args.path or ())), paid_by=args.paid_by,
+                       deposit=deposit, scheme=args.scheme or "")
+        reg.issue(st.statement_id, now)
+        said, printed = f"issued {st.statement_id[:16]}… about {st.subject}", json.dumps(st.to_record(), sort_keys=True)
+    elif act in ("revoke", "suspend", "reinstate"):
+        if len(rest) != 1:
+            raise ValueError(f"register {act} STATEMENT")
+        sid = _my_statement(reg, rest[0])
+        getattr(reg, act)(sid, now)
+        past = {"revoke": "revoked", "suspend": "suspended", "reinstate": "reinstated"}[act]
+        said, printed = f"{past} {sid[:16]}…", None
+    elif act == "accredit":
+        if len(rest) != 2 or not args.until:
+            raise ValueError("register accredit ISSUER CATEGORY --until T [--since T] [--scheme HASH]")
+        reg.accredit(rest[0], rest[1], by=me, since=_until(args.since, now) if args.since else now,
+                     until=_until(args.until, now), scheme=args.scheme or "")
+        said, printed = f"accredited {rest[0]} for {rest[1]}", None
+    elif act == "transfer":
+        if len(rest) != 2:
+            raise ValueError("register transfer ITEM TO — the item's 64-hex id (or item(h)), the new holder's key")
+        h = rest[0][5:-1] if rest[0].startswith("item(") and rest[0].endswith(")") else rest[0]
+        from .items import well_formed
+        if not well_formed((f"item({h})",)):
+            raise ValueError(f"{rest[0]}: an item is its whole 64-hex id")
+        reg.transfer(h.lower(), rest[1], now)
+        said, printed = f"item {h[:12]} held by {rest[1]}", None
+    elif act == "heartbeat":
+        said, printed = "heartbeat", None
+    elif act == "status":
+        for key, rec in sorted(reg.store.items(STATUS)):
+            print(f"{key[len(STATUS):][:16]}… {rec['state']} at {_iso(rec['at'])}", file=out)
+        for key, rec in sorted(reg.store.items(ACCREDIT)):
+            issuer, _, cat = key[len(ACCREDIT):].partition("/")
+            print(f"accredit {issuer} for {cat}: {_iso(rec['since'])}..{_iso(rec['until'])}", file=out)
+        from .register import TITLE
+        for key, rec in sorted(reg.store.items(TITLE)):
+            print(f"title    {key[len(TITLE):][:16]}… held by {rec['holder']} since {_iso(rec['at'])}", file=out)
+        at = reg.as_of
+        print(f"root {reg.root or '(empty)'}, seq {reg.seq}, heartbeat {_iso(at) if at else 'none'}", file=out)
+        return 0
+    else:
+        raise ValueError("register issue|revoke|suspend|reinstate|accredit|transfer|heartbeat|status")
+    reg.heartbeat(now)
+    root = reg.commit()
+    if printed:
+        print(printed, file=out)
+    print(f"{said}; root {root[:16]}…, seq {reg.seq}", file=_err())
+    return 0
+
+
+def _transfer_faults(session, oid: str, loop: str, wanter: str) -> list[str]:
+    """For a give declaring `registry-transfer(ID)` (I4): why the register
+    ID, as I read it, does not show the give performed to `wanter` since the
+    loop cleared; [] for any other witness type (the door's is the device's
+    to check)."""
+    from .witness import transfer_faults, transfer_register
+    fold = session.fold()
+    try:
+        give_ = fold.get(oid)
+    except KeyError:                     # not in my fold: no declared witness I could read
+        return []
+    rid = transfer_register(give_.oracle)
+    if not rid:
+        return []
+    key = f"loop/{loop}"
+    since = int(fold.store.get(key).get("found_at", 0)) if fold.store.contains(key) else 0
+    return transfer_faults(give_, wanter, _registers(session).get(rid), since=since)
+
+
+def cmd_collect(args, session, out):
+    """Collect the payouts my address refused when the escrow pushed them
+    (E1's `owed`); `--check` reports what waits."""
+    client = _escrow_client(session)
+    me = client.account().address
+    owed = client.owed(me)
+    if not owed:
+        print(f"nothing owed to {me}", file=out)
+        return 1 if not args.check else 0
+    if args.check:
+        print(f"{_num(Fraction(owed, 10 ** 18))} owed to {me}", file=out)
+        return 0
+    receipt = client.collect()
+    print(f"collected {_num(Fraction(owed, 10 ** 18))}, gas {receipt['gasUsed']}", file=out)
+    return 0
+
+
 def cmd_finalize(args, session, out):
     """Record a beat's fills on chain once its challenge window has closed
     — and, with an escrow set, reserve on it the share of every deposit the
@@ -2927,13 +3589,20 @@ def cmd_finalize(args, session, out):
         return 2
     escrow = _escrow_client(session)
     proposal = proposal_from_record(ev.record, ev.snapshot)
+    from .gate import CounterpartyGate
+    at = _register_at(session)
+    pinned = {rid: at(rid, root) for rid, root in (ev.record.get("register_roots") or {}).items()}
+    gate = CounterpartyGate.over(ev.snapshot, {r: g for r, g in pinned.items() if g is not None},
+                                 now=session.now, span=_calendar_span, latest=_registers(session).get,
+                                 profile=_resolver_profiles(session))
     try:
         reservations = reservations_for(
             proposal, escrow=escrow.address, resolver=_configured("resolver") or escrow.account().address,
             claim_seconds=duration_s(_configured("escrow_claim") or "7d"), now=session.now,
             span=_calendar_span, claim_only=cover_predicate(session.catalogue),
             min_challenge=_seconds_or_zero(_configured("claim_min_challenge")),
-            min_ruling=_seconds_or_zero(_configured("claim_min_ruling")))
+            min_ruling=_seconds_or_zero(_configured("claim_min_ruling")),
+            gate=gate, ontology=session.catalogue)
     except ValueError as exc:                  # a party as resolver, an unaccepted one: nothing reserved
         print(f"loop: beat {args.beat}: nothing reserved on the escrow: {exc}", file=_err())
         return 2
@@ -3021,7 +3690,8 @@ def cmd_challenge(args, session, out):
     index = int(args.leg) if args.leg is not None else None
     can_send = bool(_configured("bee_signer"))
     result = challenge_beat(client, int(args.beat), books, session.catalogue, now=now,
-                            index=index, send=not args.check and can_send)
+                            index=index, send=not args.check and can_send,
+                            register_at=_register_at(session), span=_calendar_span)
     if result.evidence is None:
         print(f"no evidence: no loop record under root {state['book_root'][:16]}… hashes to "
               f"the beat's commitments in {len(books)} book(s) — the contract cannot "
@@ -3227,8 +3897,8 @@ def cmd_clearing(args, session, out):
     book = session.book
     ontology = session.catalogue
     agent = SolverAgent(book, ontology,
-                        MockClearing(book, ontology, clock=lambda: now),
-                        solver_id="loop-cli", min_surplus=0.0)
+                        MockClearing(book, ontology, clock=lambda: now, **_clearing_reads(session)),
+                        solver_id="loop-cli", min_surplus=0.0, span=_calendar_span, **_gate_reads(session))
     receipts = agent.step(now=now)
     cleared = 0
     for r in receipts:
@@ -3324,7 +3994,9 @@ def cmd_set(args, session, out):
     if args.key == "require_door" and value and value not in ("possession", "photo"):
         raise ValueError("require_door is possession or photo")
     if args.key == "oracle" and value and value not in ("countersign", "possession", "photo-match"):
-        raise ValueError("oracle is countersign, possession or photo-match")
+        from .witness import transfer_register
+        if not transfer_register(value):
+            raise ValueError("oracle is countersign, possession, photo-match or registry-transfer(REGISTER)")
     if args.key == "options" and value and value not in ("on", "off"):
         raise ValueError("options is on or off")
     if args.key == "option_window" and value:
@@ -3396,6 +4068,21 @@ loop — the loopmarket command line (docs/plans/cli.md)
                              contract's own verifier; convict a leg it would fail
   loop finalize BEAT         record a beat's fills on chain after its window
   loop deposit [ID] [--check]  fund my gives' declared bonds on the escrow contract
+  loop reservations [--all]  the escrow's reservations behind my legs, and their state
+  loop countersign OFFER [--loop L]   as the wanter: delivered, return the reservation
+  loop cancel OFFER [--loop L]        as the giver: cancel the leg, the ladder's amount to the wanter
+  loop assign OFFER KEY [--loop L]    as the wanter: assign my claim on it to KEY
+  loop settle OFFER [SPLIT] [--loop L]  quiet after the claim period; with SPLIT (all, N%,
+                             NxDAI, or on my scale) my signature of a split, the second settling
+  loop extend-claim OFFER DURATION [--loop L]  as the giver: lengthen the claim period
+  loop collect [--check]     payouts my address refused, waiting for me
+  loop cred [SUBJECT]        statements presented about SUBJECT (me), with their state
+  loop cred present FILE     present a statement about me in my book
+  loop register issue|revoke|suspend|reinstate|accredit|transfer|heartbeat|status ...
+                             run a register in this session's book (`-f SPEC`)
+  loop notice OFFER --cure DURATION [--fact STATEMENT] [--loop L]
+                             as the wanter: tell the giver which fact is wrong, sealed
+  loop cure OFFER [--evidence REF] [--loop L]  as the giver: answer a notice, sealed back
   loop commit                seal this session's loops for the current sealed beat
   loop reveal [BEAT]         open the sealed bundle in the beat's reveal phase
   loop outcome [BEAT] [--check]  derive a closed beat's winners (reserve bid, fairness
@@ -3532,6 +4219,46 @@ def build_parser():
     p.add_argument("id", nargs="?", default=None)
     p.add_argument("--check", action="store_true")
     p.set_defaults(func=cmd_deposit)
+    p = sub.add_parser("reservations", add_help=False)
+    p.add_argument("--all", action="store_true")
+    p.set_defaults(func=cmd_reservations)
+    for verb, extra in (("countersign", ()), ("cancel", ()), ("assign", ("to",)),
+                        ("extend-claim", ("duration",)), ("settle", ("split?",))):
+        p = sub.add_parser(verb, add_help=False)
+        p.add_argument("offer")
+        for name in extra:
+            if name.endswith("?"):
+                p.add_argument(name[:-1], nargs="?", default=None)
+            else:
+                p.add_argument(name)
+        p.add_argument("--loop", default=None)
+        p.set_defaults(func=lambda a, s, o, _v=verb: _escrow_act(a, s, o, _v))
+    p = sub.add_parser("collect", add_help=False)
+    p.add_argument("--check", action="store_true")
+    p.set_defaults(func=cmd_collect)
+    p = sub.add_parser("cred", add_help=False)
+    p.add_argument("action", nargs="?", default=None)
+    p.add_argument("rest", nargs="*")
+    p.add_argument("--presentation", default=None)
+    p.set_defaults(func=cmd_cred)
+    p = sub.add_parser("register", add_help=False)
+    p.add_argument("action")
+    p.add_argument("rest", nargs="*")
+    for flag in ("--until", "--since", "--as-of", "--evidence", "--kind", "--paid-by", "--deposit", "--scheme"):
+        p.add_argument(flag, default=None)
+    p.add_argument("--path", action="append", default=None)
+    p.set_defaults(func=cmd_register)
+    p = sub.add_parser("notice", add_help=False)
+    p.add_argument("offer")
+    p.add_argument("--loop", default=None)
+    p.add_argument("--fact", default=None)
+    p.add_argument("--cure", required=True)
+    p.set_defaults(func=cmd_notice)
+    p = sub.add_parser("cure", add_help=False)
+    p.add_argument("offer")
+    p.add_argument("--loop", default=None)
+    p.add_argument("--evidence", default=None)
+    p.set_defaults(func=cmd_cure)
     p = sub.add_parser("commit", add_help=False)
     p.set_defaults(func=cmd_commit)
     p = sub.add_parser("reveal", add_help=False)
@@ -3617,6 +4344,7 @@ def _dispatch(argv, session) -> int:
     out = _out()
     handle = None
     outpath = getattr(args, "output", None)
+    session._registers = None           # each command reads the registers' heads afresh
     try:
         if outpath:
             handle = open(outpath, "w", encoding="utf-8")

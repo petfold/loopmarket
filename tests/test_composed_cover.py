@@ -87,3 +87,34 @@ def test_the_solver_composes_the_legs_and_the_circulation_clears():
     assert [r.accepted for r in receipts] == [True]
     for key in ("want", "car", "inspect", "insure"):
         assert book.is_filled(o[key].offer_id)
+
+
+def test_an_inspector_is_no_party_to_the_item_anywhere_in_the_loop():
+    """E2 (2026-09-29 night): an inspection give is admissible only if its
+    giver is neither maker nor wanter on any leg of the loop naming the
+    item it inspects — its own leg's included. A dealer chain: A sells car
+    h to B, B sells it on to C with an inspection; A inspecting is refused
+    (a previous owner of the very car), a stranger passes, and a leg on
+    another item does not taint the inspector."""
+    from loopmarket.items import vin_id
+    from loopmarket.matching import Leg, independence_faults
+    cat = _cat()
+    cat.declare_item_heads()
+    h = vin_id("WVWZZZ1JZXW000001")
+    other = vin_id("WVWZZZ1JZXW000002")
+    car = lambda maker, n, item=h: give(maker, Thing(("car", f"item({item})"), 1, "car"), 50, **V, nonce=n)
+    wants = lambda maker, n, item=h: want(maker, Thing(("car", f"item({item})"), 1, "car"), 90, **V, nonce=n)
+    inspection = lambda maker, n: give(maker, Thing(("inspect(vehicle)",), 1, "report"), 10, **V, nonce=n)
+    first = Leg(wants("B", 1), (car("A", 2),))                                # A sells h to B
+    by_a = Leg(wants("C", 3), (car("B", 4), inspection("A", 5)))              # B sells it on, A inspects
+    assert independence_faults((first, by_a), cat) == [f"the inspector A is a party to a leg on item {h[:12]}"]
+    by_stranger = Leg(wants("C", 3), (car("B", 4), inspection("X", 6)))
+    assert independence_faults((first, by_stranger), cat) == []
+    elsewhere = Leg(wants("B", 7, other), (car("A", 8, other),))            # A's trade in another car
+    assert independence_faults((elsewhere, by_a), cat) == []
+    # the own leg: the seller, or the buyer, inspecting
+    assert "its own leg" in independence_faults((Leg(wants("C", 3), (car("B", 4), inspection("B", 9))),), cat)[0]
+    assert "its own leg" in independence_faults((Leg(wants("C", 3), (car("B", 4), inspection("C", 9))),), cat)[0]
+    # a catalogue with no `inspect` has no inspections to check
+    plain = Ontology(OntoDAG()).load({"car": [], "vehicle": []})
+    assert independence_faults((first, by_a), plain) == []

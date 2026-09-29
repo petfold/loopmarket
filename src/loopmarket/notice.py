@@ -53,6 +53,14 @@ def _body(record: dict) -> bytes:
     return json.dumps(record, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
+def ref(record: dict) -> str:
+    """A notice's or cure's reference, as factbond computes it (`_ref`: the
+    SHA-256 of recordstore's canonical encoding) — what a cure names as the
+    notice it answers, and a claim as the notice it follows."""
+    return hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+                                     allow_nan=False).encode("utf-8")).hexdigest()
+
+
 def notice_record(notifier: str, accused: str, referred_fact: str, *, policy_ref: str, sent_at: int,
                   cure_period: int) -> dict:
     """A notice in factbond's `Notice` shape: the cure deadline is the
@@ -136,9 +144,13 @@ def lapsed(gives: Iterable[tuple[str, str]], statements_of, registers) -> list[t
     return out
 
 
-def gives_of(loop_record: dict, book) -> Iterable[tuple[str, str]]:
-    """(give offer id, its maker) for every give a cleared loop took."""
+def gives_of(loop_record: dict, book, *, wanter: str | None = None) -> Iterable[tuple[str, str]]:
+    """(give offer id, its maker) for every give a cleared loop took — or,
+    with `wanter`, only the gives on legs whose want is that maker's: the
+    ones whose statements it relied on, and whose notices are its to send."""
     for leg in loop_record.get("legs", []):
+        if wanter is not None and book.get(leg["want"]).maker != wanter:
+            continue
         for oid in leg.get("gives", [leg.get("give")]):
             if oid:
                 yield oid, book.get(oid).maker

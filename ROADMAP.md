@@ -328,14 +328,29 @@ name factbond's redeployed `Assertions`. Hence:
    maker's own scale with no default price (`default_asset`), possession as
    the door's default (THREATS T19), and — as direction — arbitrators as
    credentialed roles (`counterparty-gate.md` §7a).
-10. **Next, in order (2026-09-29 night):** arbitrator acceptance by property
+10. **Next, in order (2026-09-29 night):** ~~arbitrator acceptance by property
    (accreditation under a trust root, the resolver's deposit floor, a
    clean record; a give's own acceptance, the clearing choosing a resolver
-   both admit); C6's CLI verbs for the escrow's acts (`assign`, `settle`,
-   `extend-claim`, `collect`); R6's `watch` re-check with a `notice` verb;
-   the inspection rules (certificate-final, independence). Waiting on
-   Peter: D-1's mechanism, the named final rung, `examples/apartment.loop`'s
-   naming, K1.
+   both admit)~~ **built the same night** (`arbitrators.py`, off chain, no
+   record change; three readings for Peter in `counterparty-gate.md` §7a —
+   the accreditation's category fixed by the role, freshness by the newest
+   root, a clean record that must cover its look-back — and THREATS T20,
+   the rung deposit withdrawable after clearing, asked of factbond); ~~C6's CLI verbs for the escrow's acts (`assign`, `settle`,
+   `extend-claim`, `collect`)~~ **built the same night**, with
+   `reservations`, `countersign` and `cancel`; ~~R6's `watch` re-check with a `notice` verb~~ **built the same
+   night** (with `cure`, and the CLI reading registers — `set registers`
+   and the `register` role — for every gate it builds);
+   the inspection rules — ~~independence (E2)~~ **built the same night**
+   (`matching.independence_faults`, at clearing and in the solver);
+   certificate-final (E1) **waits for Peter**: how the flag and the
+   certified categories are spelled in the `inspect` term, the report's
+   record (written after clearing, so not in the fill), and how a claim is
+   routed to the inspector's deposit or the giver's. Also built that night:
+   C7's `cred` and `register` verbs and `require_credentials` (the dentist
+   case from the command line), and I4, the title register's transfer as
+   the witness (`registry-transfer(ID)`, the register named in the type —
+   a spelling for Peter's review). Waiting on Peter: D-1's mechanism, the
+   named final rung, `examples/apartment.loop`'s naming, E1's spelling, K1.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust

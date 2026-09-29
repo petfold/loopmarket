@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 
 from ..graph import Circulation, ExchangeGraph, Loop, find_circulations, enumerate_cycles
 from ..gate import CounterpartyGate
-from ..matching import Leg, aggregate_legs, candidate_matches, composed_legs, parts_legs
+from ..matching import Leg, aggregate_legs, candidate_matches, composed_legs, independence_faults, parts_legs
 from ..schema import q
 from ..selection import item_of, pack, weight
 from ..ontology import Ontology
@@ -83,6 +83,10 @@ class SolverAgent:
     #: proposals' `register_roots`, the clearing re-reading them there (U3).
     registers: dict = field(default_factory=dict)
     span: object = None
+    #: R5's reader of each register's newest root, and a resolver's chain
+    #: record (§7a) — the same reads the clearing's gate is given
+    register_latest: object = None
+    resolver_profile: object = None
 
     def find_loops(self, *, now: int | None = None
                    ) -> tuple[str, list[Loop | Circulation]]:
@@ -141,7 +145,8 @@ class SolverAgent:
             legs = composed + [Leg.from_match(m) for m in matches]
             for circ in find_circulations(legs, min_surplus=self.min_surplus,
                                           limit=self.max_loops_per_step):
-                candidates.setdefault(circ.loop_id, circ)
+                if not independence_faults(circ.legs, self.ontology):     # E2: clearing refuses it
+                    candidates.setdefault(circ.loop_id, circ)
         # a held offer's capacity includes what its holders may exercise now:
         # only a holder's leg reaches that part (the gate adds its own hold),
         # and clearing re-verifies every loop against the book it commits to
@@ -164,7 +169,8 @@ class SolverAgent:
     def gate(self, book, *, now: int, held=None) -> CounterpartyGate:
         """The counterparty gate over the snapshot: its presented statements,
         this solver's registers, the clock."""
-        return CounterpartyGate.over(book, self.registers, now=now, span=self.span, held=held)
+        return CounterpartyGate.over(book, self.registers, now=now, span=self.span, held=held,
+                                     latest=self.register_latest, profile=self.resolver_profile)
 
     @property
     def register_roots(self) -> tuple:

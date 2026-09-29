@@ -51,6 +51,10 @@ option graph-dimension
 operator-argument
 insure graph-dimension operator operator-argument
 inspect graph-dimension operator operator-argument
+# the resolver's competence (counterparty-gate.md §7a, 2026-09-29): an
+# accreditation statement's category falls under it when a maker accepts
+# resolvers by `root:`; finer kinds hang below (`transport-arbitrator arbitrator`)
+arbitrator
 # one unique item (items-and-ownership.md §1, 2026-09-29): `item(h)`, h the
 # 64-hex id derived from a VIN, a land register, a serial or a tagger; on the
 # prefix kind until ontodag's identifier kind ships (a whole id is required)

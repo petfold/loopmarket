@@ -88,7 +88,7 @@ def is_address(text: str) -> bool:
 
 def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int, now: int,
                      span=None, decimals: int = 18, claim_only=None, min_challenge: int = 0,
-                     min_ruling: int = 0) -> list[dict]:
+                     min_ruling: int = 0, gate=None, ontology=None) -> list[dict]:
     """What the clearing reserves on the escrow for a cleared loop: one
     reservation per give whose `bond` names `escrow` — the share bond ×
     taken / quantity (§3a rule 8) in smallest units, the leg's wanter (its
@@ -143,14 +143,20 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
             amount = to_wei(share, decimals)
             deductible = to_wei(bond.deductible_share(leg.taken(i), give.thing.qty), decimals) \
                 if give.v >= 7 else 0
+            from .arbitrators import constrained, resolver_of
             chosen = give.arbitrator if is_address(give.arbitrator) else resolver
             parties = (want.maker, give.maker)
             if chosen.lower() in {p.lower() for p in parties}:
                 raise ValueError(f"the resolver {chosen} is a party to the leg on {give.offer_id[:12]} (C4)")
-            if want.v >= 6 and want.requires is not None and want.requires.resolvers is not None:
-                from .matching import admits
-                if not admits(want.requires.resolvers, chosen, parties=parties):
-                    raise ValueError(f"the resolver {chosen} is not one {want.maker} accepts")
+            if constrained(want, give):
+                # §7a: the first candidate both sides admit, read now — the
+                # same order the gate chose in, the clearing's own last
+                picked = resolver_of(want, give, default=resolver, gate=gate, ontology=ontology,
+                                     window=window)
+                if picked is None:
+                    raise ValueError(f"no resolver {want.maker} and {give.maker} both accept "
+                                     f"(the give's {chosen} is not one)")
+                chosen = picked
             cover = bool(claim_only(give)) if claim_only else False
             covered = None
             if cover:

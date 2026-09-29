@@ -87,20 +87,17 @@ def _major_skew(a: str, b: str) -> bool:
     return bool(a) and bool(b) and a.split(".")[0] != b.split(".")[0]
 
 
-def admits(accept, key: str, *, parties=()) -> bool:
+def admits(accept, key: str, **reads) -> bool:
     """Does `accept` admit `key` as a third party on a leg — the resolver
     of its reservation (C4), the giver of a required leg? Never a party to
     the leg: the cheap formality that no puppet cost defeats (THREATS T16).
-    A key named in `keys` is admitted. Accreditation under `roots` needs the
-    registers (R3) and the floors — a deposit, a look-back without
-    reversal, an issuance source — need the chain and the ledger (R4); an
-    acceptance that needs any of them to admit `key` admits nothing until
-    those reads exist (U7)."""
-    if not key or key.lower() in {p.lower() for p in parties if p}:
-        return False
-    if accept.min_deposit or accept.clean_for or accept.issuance:
-        return False
-    return key.lower() in {k.lower() for k in accept.keys}
+    A key named in `keys` is admitted; since 2026-09-29 (§7a) a key is
+    admitted by property too — accredited under `roots`, a deposit at stake
+    on its rulings, a clean record — through the reads a gate carries
+    (`arbitrators.accept_faults`); a read that is missing admits nothing
+    (U7)."""
+    from .arbitrators import admits as by_property
+    return by_property(accept, key, **reads)
 
 
 def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=None,
@@ -123,8 +120,9 @@ def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=No
     v6 (2026-09-29): a `claim_period` is met by a give whose `claim_max`
     reaches it (plan A1's matched term; an undeclared maximum reaches
     nothing until the catalogue's default exists). A `resolvers`
-    acceptance is met by a give whose declared `arbitrator` it admits
-    (`admits`, E2: by key today). A credential or a required leg meets
+    acceptance, on either side, is met when a resolver both sides admit
+    exists (`arbitrators.resolver_of`: the give's `arbitrator`, then the
+    keys either side names; by key or by property, §7a). A credential or a required leg meets
     nothing yet: the record carries them since R1 and the gate that checks
     them is R4, so until then a requirement this build cannot check refuses
     the leg (U7) rather than passing it unread.
@@ -145,9 +143,16 @@ def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=No
         want = mine if mine.kind == WANT else other
         if gate.faults(mine, other, ontology, window=gate.window(want), taken=taken, whole=whole):
             return False
-    if req.resolvers is not None and not (
-            other.kind == GIVE and admits(req.resolvers, other.arbitrator, parties=(mine.maker, other.maker))):
-        return False
+    if req.resolvers is not None:
+        # the resolver both sides admit (§7a): the give's arbitrator, then
+        # the keys either acceptance names — the same choice on every side
+        from .arbitrators import resolver_of
+        want_, give_ = (mine, other) if mine.kind == WANT else (other, mine)
+        if give_.kind != GIVE or want_.kind != WANT:
+            return False
+        window = gate.window(want_) if gate is not None else None
+        if resolver_of(want_, give_, gate=gate, ontology=ontology, window=window) is None:
+            return False
     if req.claim_period and (other.kind != GIVE or other.v < 6 or other.claim_max < req.claim_period):
         return False
     if req.oracles and other.oracle not in accepted_types(req.oracles):
@@ -383,31 +388,76 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology,
             derived.append(ontology.bare(out_term))
     if not ontology.satisfies(derived, want.thing.concepts):
         return None
-    if want.requires is not None and want.requires.legs and legs_faults(want, gives, ontology):
+    if want.requires is not None and want.requires.legs and legs_faults(want, gives, ontology, gate=gate):
         return None
     return Leg(want, gives)
 
 
-def legs_faults(want: Offer, gives, ontology: Ontology) -> list[str]:
+def legs_faults(want: Offer, gives, ontology: Ontology, *, gate=None) -> list[str]:
     """Every `requires.legs` entry of `want` the leg's gives do not answer
     (D4): an operator give under the entry's category, whose argument
     accepts the thing (the composition already checked it), from a giver
     the entry's `accept` admits — never a party to the leg (E2's formality:
-    an inspector is not the seller or the buyer). Fail closed."""
+    an inspector is not the seller or the buyer) — by key, or by property
+    through `gate` (§7a: accredited for the entry's category under a named
+    root). Fail closed."""
     gives = tuple(gives)
     thing, ops = gives[0], gives[1:]
     parties = (want.maker, thing.maker)
+    window = gate.window(want) if gate is not None else None
+    reads = dict(parties=parties, requirer=want, ontology=ontology, gate=gate, window=window)
     out = []
     for entry in want.requires.legs:
         found = False
         for op in ops:
             heads = [h for h in (ontology.operator_of(c) for c in op.thing.concepts) if h]
             if any(h == entry.category or ontology.covers(entry.category, h) for h in heads) \
-                    and admits(entry.accept, op.maker, parties=parties):
+                    and admits(entry.accept, op.maker, category=entry.category, **reads):
                 found = True
                 break
         if not found:
             out.append(f"no {entry.category} leg from a giver {want.maker} accepts")
+    return out
+
+
+INSPECT = "inspect"                     # the catalogue's inspection category (D4, E2)
+
+
+def independence_faults(legs, ontology: Ontology, *, head: str = INSPECT) -> list[str]:
+    """Inspector independence (E2, `commercial-practice-review.md`; plan D4):
+    an inspection give — a composed give under the catalogue's `inspect` —
+    is admissible only if its giver is neither the maker nor the wanter on
+    any leg of the loop naming an item (`item(h)`) the inspected thing
+    names, its own leg's want and thing included. The free formality: a
+    seller inspecting its own car, or the buyer of it, is refused at
+    clearing; since keys are free, the real mechanism is the wanter's
+    `requires.legs` acceptance of inspectors by accreditation, deposit or
+    a clean record (§7a), and what a false certificate forfeits. A thing
+    that names no item has only its own leg to be independent of. A
+    catalogue without `inspect` has no inspections."""
+    if not ontology.known(head):
+        return []
+    from .items import ids
+    legs = tuple(legs)
+    names = [set(ids([c for g in leg.gives[:1] for c in g.thing.concepts]
+                     + [c for p in leg.want.parts for c in p.concepts])) for leg in legs]
+    out = []
+    for i, leg in enumerate(legs):
+        for op in leg.gives[1:]:
+            heads = [h for h in (ontology.operator_of(c) for c in op.thing.concepts) if h]
+            if not any(h == head or ontology.covers(head, h) for h in heads):
+                continue
+            key = op.maker.lower()
+            for j, other in enumerate(legs):
+                if j != i and not (names[i] & names[j]):
+                    continue
+                parties = {other.want.maker.lower(), other.gives[0].maker.lower()}
+                if j != i:
+                    parties |= {g.maker.lower() for g in other.gives}
+                if key in parties:
+                    what = "its own leg" if j == i else f"a leg on item {sorted(names[i] & names[j])[0][:12]}"
+                    out.append(f"the inspector {op.maker} is a party to {what}")
+                    break
     return out
 
 

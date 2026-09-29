@@ -123,8 +123,12 @@ the other side must present, checked by the counterparty gate), `legs`
 (`RequiredLeg(category, accept)`: an operator give under `category` from a
 giver `accept` admits, composed with the thing — cover, an inspection),
 `resolvers` (an `Accept(keys=(), roots=(), min_deposit=0, clean_for=0,
-issuance=())`: the resolvers this want accepts; only `keys` is checked
-today) and `claim_period` (seconds: the claim period a want asks of a
+issuance=())`: the resolvers this offer accepts — by key, or since
+2026-09-29 by property (`arbitrators.py`: every rung that can rule
+accredited under a named root as an `arbitrator`, at least `min_deposit` on
+the requirer's scale at stake on a reversed ruling, no reversal within
+`clean_for` on a record at least that long; `issuance` not read yet), on
+either side, the leg's resolver the first candidate both admit) and `claim_period` (seconds: the claim period a want asks of a
 give's deposit); the offer gains `claim_max` (a give's longest claim
 period), `underlying` and `exercise` (an option: the id of the plain offer
 it holds and its `TimeWindow`, given together). Any of them makes the
@@ -952,7 +956,22 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `finalize BEAT` | after the window: fills recorded on chain; with `escrow` set, each bonded give's share reserved per fill |
 | | `commit` / `reveal [BEAT]` / `outcome [BEAT] [--check]` / `sealed [BEAT]` | the sealed beat on `auction`: seal my loops, open them, derive a closed beat's winners and post them, read a beat |
 | | `deposit [ID] [--check]` | fund my gives' declared bonds on the `escrow` contract in the gas token |
+| | `reservations [--all]` | the escrow's reservations behind my legs (bonded gives, my filled wants' gives): amount, wanter, resolver, claim period, state |
+| | `countersign OFFER` / `cancel OFFER` | the wanter's receipt (the reservation returns; never on cover) / the giver's cancellation (the ladder's amount at this lead to the wanter) |
+| | `assign OFFER KEY` | the wanter assigns the claim on the reservation to KEY (not while a claim is open) |
+| | `settle OFFER [SPLIT]` | quiet after the claim period; with SPLIT — `all`, `N%`, `NxDAI` or an amount on my scale at my `default_asset` price — my signature of a split, the second settling it |
+| | `extend-claim OFFER DURATION` | the giver lengthens the claim period (tail cover) |
+| | `collect [--check]` | payouts my address refused, waiting in the escrow's `owed` |
+| | `cred [SUBJECT]` / `cred present FILE [--presentation FILE]` | the statements presented about SUBJECT (me) with their state under the registers I read / present a statement about me in my book (R2) |
+| | `register issue SUBJECT CATEGORY --until T --evidence HASH --paid-by subject\|relier [--kind K] [--path ROOT]... [--deposit OFFER@ESCROW] [--scheme HASH]` | run a register in this session's book (`-f SPEC`, announced with `announce --role register`): issue a statement, its record printed for the subject; `revoke`/`suspend`/`reinstate STATEMENT`, `accredit ISSUER CATEGORY --until T`, `transfer ITEM KEY` (a title register's holder, I4), `heartbeat`, `status` — each write heartbeats and commits a root naming its predecessor |
+| | `notice OFFER --cure DURATION [--fact STATEMENT]` | as the wanter of a cleared leg: factbond's `Notice` to the giver, sealed to its key beside a commitment, in my book; the opening kept locally for a claim |
+| | `cure OFFER [--evidence REF]` | as the giver: answer a notice on my give, sealed back to the claimant |
 | discovery | `announce [--role]` / `announced` / `fold` | say "my book is here" on `registry`; the standing set; fold the announced books myself |
+
+The escrow verbs name a reservation by its offer's id prefix and, when the
+book knows more than one loop that took from it, `--loop LOOP` (a prefix,
+or the whole id of a loop the book does not know); they act under the
+`bee_signer` key, and the contract decides who may.
 
 Composed wants publish since the v4 record (`want A + B PRICE`, drafts).
 
@@ -1009,7 +1028,10 @@ loop config (owner-readable, 0600); secrets print masked.
 | `options` | `LOOP_OPTIONS` | `off` | `on`: every plain give I publish also writes its option, both in one approval block |
 | `option_window` | `LOOP_OPTION_WINDOW` | `1/4` | an option's window: a fraction in (0, 1) of the lead to the offer's handover time (its validity's end without one), or a duration; it closes before the handover |
 | `option_premium` | `LOOP_OPTION_PREMIUM` | `suggest` | an option's premium on my scale: `suggest` (price × ½ × the chance a buyer comes during the hold and none after it, the rate read from the book's wants for the thing over 30 days; with none, price × window/lead × ½, flagged as a guess), `N%` of the price, or an amount; never below 1% of the price |
-| `require_claim`, `require_resolvers` | `LOOP_REQUIRE_*` | none | the claim period I ask of a giver's deposit; the resolvers I accept, by key (v6) |
+| `require_claim`, `require_resolvers` | `LOOP_REQUIRE_*` | none | the claim period I ask of a giver's deposit; the resolvers I accept on my wants and gives — keys, `root:ID`, `min:AMOUNT` (on my scale), `clean:DURATION` (v6, §7a) |
+| `require_transfer` | `LOOP_REQUIRE_TRANSFER` | none | title registers whose transfer of the item my wants accept as the witness: gives declaring `oracle registry-transfer(ID)` for one of them (I4) |
+| `require_credentials` | `LOOP_REQUIRE_CREDENTIALS` | none | what my wants require the giver to present: `;`-separated `CATEGORY KIND[,KIND...] [root:ID]... [age:DURATION] [min:AMOUNT]` (v6, R4) |
+| `registers` | `LOOP_REGISTERS` | none | registers I read beyond those announced under the `register` role: `ID=SPEC` pairs; read at their heads, pinned in my proposals, consulted for credentials, `root:` resolvers and `watch`'s lapsed statements |
 | `bond` | `LOOP_BOND` | none | my deposit on every give: an amount on my scale (deposited as `default_asset` at my price) or `QTY[UNIT] CATEGORY... VALUE` (v5) |
 | `default_asset` | `LOOP_DEFAULT_ASSET` | none | the asset a bare `bond` deposits and a bare `require_point` accepts, with MY price per unit on my scale (`xdai xDAI 1.2`); no default price — unset, a bare amount is refused |
 | `require_point`, `require_cancel`, `ladder` | `LOOP_REQUIRE_*`, `LOOP_LADDER` | none, none, `linear` | my neutral point on a no-show and on a far cancellation, on my scale; the ladder's shape over the lead at posting (`linear`, `late`, `early`, `flat`) |

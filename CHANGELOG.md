@@ -82,6 +82,68 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **The title register as the handover witness** (2026-09-29 night, I4):
+  `registry-transfer(ID)` — a give naming an item is performed when the
+  register ID shows it held by the wanter (`witness.transfer_faults`,
+  `Register.transfer`/`holder` over `title/<h>`); clearing admits the type
+  only on a give that names an item; `oracle registry-transfer(ID)`,
+  `require_transfer`, `register transfer ITEM KEY`, `watch` reporting the
+  transfer and `countersign` refusing before it.
+- **Statements and registers at the command line** (2026-09-29 night,
+  C7): `loop cred [SUBJECT]` and `cred present FILE`; `loop register
+  issue|revoke|suspend|reinstate|accredit|heartbeat|status` running a
+  register in the session's book; `set require_credentials` putting
+  `requires.counterparty` entries on my wants. The dentist case runs from
+  the command line end to end (`tests/test_notice.py`).
+- **Inspector independence** (2026-09-29 night, E2): an inspection give
+  (under the catalogue's `inspect`) is admissible only if its giver is no
+  party to any leg of the loop naming an item the inspected thing names,
+  its own leg included — `matching.independence_faults`, refused at
+  clearing and never proposed by the baseline solver.
+- **Notices at the command line and registers read by the CLI**
+  (2026-09-29 night, R6): `loop notice OFFER --cure DURATION [--fact
+  STATEMENT]` (the wanter's notice, sealed to the giver, the opening kept
+  for a claim), `loop cure OFFER [--evidence REF]` (the giver's answer,
+  sealed back); `watch` opens both and re-checks the statements a want's
+  credential relied on against the registers' heads (`notice.lapsed`),
+  reporting a revocation or suspension once. The `registers` setting
+  (`ID=SPEC` pairs) and every book announced under the `register` role
+  are read per command and handed to the solver (pinned), the clearing
+  (re-read at the pins), `finalize` and `challenge`, with the resolvers'
+  chain records; the CLI's gates read the handover window through the
+  calendar. `notice.ref` is factbond's record reference. Live on Bee the
+  same night (`tests/test_swarm_register.py`): a register on a Swarm feed
+  read at its tip by spec, a proposal pinning the root before a
+  revocation refused for what the newer root says.
+- **The escrow's acts as verbs** (2026-09-29 night, C6): `loop
+  reservations [--all]` (what the escrow holds behind my legs, read from
+  the contract, the loops from the fold), `countersign`, `cancel`,
+  `assign OFFER KEY`, `settle OFFER [SPLIT]` (quiet, or my signature of a
+  split — `all`, `N%`, `NxDAI`, or an amount on my scale at my
+  `default_asset` price), `extend-claim OFFER DURATION`, `collect
+  [--check]`; a reservation named by its offer's prefix, `--loop` when
+  the book knows several. Live the same night on the Gnosis escrow
+  `0xddDB…b5A9` (`scripts/gate_verbs.py`): each verb as a command line,
+  a 25% split signed by the giver and, in xDAI, by the heir the claim was
+  assigned to, paying the heir.
+- **Arbitrators accepted by property** (2026-09-29 night; Peter: "build
+  acceptance of arbitrators by property"; `counterparty-gate.md` §7a;
+  THREATS T20). `arbitrators.py`: an `Accept` admits a resolver whose every
+  ruling key is accredited as an `arbitrator` under a named root (a
+  statement in its own book, the gate's steps over pinned registers read
+  at their newest roots), with at least `min_deposit` on the requirer's
+  scale at stake on a reversed ruling, and no reversal within `clean_for`
+  on a record at least that long — `chain_profile` reads factbond's
+  `Assertions` (adjudicator, arbiter, rung deposit up to `depositWei`,
+  `Reversed` events). Both sides accept: a give states an acceptance too,
+  and the leg's resolver is the first candidate both admit, in the
+  records' order (`resolver_of`, used by the gate and by
+  `reservations_for` alike); a required leg's giver is admitted by
+  accreditation for the leg's category. `named_registers` includes the
+  acceptances' roots; `MockClearing`/`SolverAgent(resolver_profile=)`;
+  `require_resolvers` takes `root:ID`, `min:AMOUNT`, `clean:DURATION` and
+  applies to gives as well as wants; `arbitrator` seeded in `triangle.od`.
+  No record change.
 - **Possession is the door's default; the photo says what it costs**
   (2026-09-29, Peter; THREATS T19, biometric linkage at the door). `set
   require_door possession|photo` on my wants, `set oracle

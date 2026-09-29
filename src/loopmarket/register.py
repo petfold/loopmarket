@@ -9,6 +9,7 @@ folded into the offer book:
     revoked/<statement id>    -> {"at": t}      the absence-proof set
     suspended/<statement id>  -> {"at": t}      in the view while suspended (D2)
     accredit/<issuer>/<category> -> {"by", "since", "until", "scheme"}
+    title/<item h>            -> {"holder", "at", "from"}   a title register's record (I4)
 
 Why separately rooted: a statement's status changes without its subject
 re-signing anything, and a requirer checks it against the register's own
@@ -31,6 +32,7 @@ STATUS = "status/"
 REVOKED_KEYS = "revoked/"
 SUSPENDED_KEYS = "suspended/"
 ACCREDIT = "accredit/"
+TITLE = "title/"             # a land or vehicle register's holder of item h (I4, 2026-09-29 night)
 #: What a register may never drop from one root to the next: its revocations
 #: (a suspension is lifted by `reinstate`, a status moves on; a revocation
 #: stands forever). Each root must extend its predecessor on these (R5).
@@ -150,6 +152,21 @@ class Register:
         self.store.put(f"{ACCREDIT}{issuer}/{category}",
                        {"by": by, "since": int(since), "until": int(until), "scheme": scheme})
 
+    def transfer(self, item: str, to: str, at: int) -> None:
+        """A title register records that item `item` (its 64-hex h) is held
+        by `to` from `at` (I4): for land and vehicles the register is the
+        title, and its transfer is the handover witness a
+        `registry-transfer(ID)` leg performs on. Not monotone: a title moves
+        on with every sale; the history is the register's sequence of
+        roots."""
+        prev = self.holder(item)
+        self.store.put(TITLE + item, {"holder": to, "at": int(at), "from": prev["holder"] if prev else None})
+
+    def holder(self, item: str) -> dict | None:
+        """{"holder", "at", "from"} for item `item`, or None."""
+        key = TITLE + item
+        return self.store.get(key) if self.store.contains(key) else None
+
     def _state(self, statement_id: str, state: str, at: int) -> None:
         current = self.status(statement_id)
         if current is not None and current["state"] == REVOKED and state != REVOKED:
@@ -188,7 +205,9 @@ def named_registers(offers) -> set[str]:
     """The registers a set of offers' requirements name as trust roots —
     what a proposal through them must pin (R3a). A register on the path
     below a root is found by the solver when it resolves a statement's path
-    (R4); the roots are what the requirers named themselves."""
+    (R4); the roots are what the requirers named themselves — for a
+    counterparty credential, and since 2026-09-29 for an acceptance of
+    resolvers or of a required leg's giver by accreditation (§7a)."""
     out: set[str] = set()
     for o in offers:
         req = o.requires
@@ -196,6 +215,10 @@ def named_registers(offers) -> set[str]:
             continue
         for cred in req.counterparty:
             out.update(cred.roots)
+        if getattr(req, "resolvers", None) is not None:
+            out.update(req.resolvers.roots)
+        for entry in getattr(req, "legs", ()):
+            out.update(entry.accept.roots)
     return out
 
 
