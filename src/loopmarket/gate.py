@@ -70,10 +70,13 @@ class CounterpartyGate:
     withdrawn: Callable[[str], bool] = field(default=lambda oid: False)
     # items (I2): does a maker hold an active claim on an item through another offer?
     item_claimed: Callable[[str, str, str], bool] = field(default=lambda h, maker, oid: False)
+    # R5 (2026-09-29): register id -> the register at the newest root it has
+    # published (its feed's tip), or None; no reader: the pinned root's age alone
+    latest: Callable[[str], object | None] | None = None
 
     @classmethod
     def over(cls, book, registers: Mapping[str, object], *, now: int, span=None, held=None,
-             capacity=None) -> "CounterpartyGate":
+             capacity=None, latest=None) -> "CounterpartyGate":
         """The gate over an offer book's presented statements, offers and
         holds; `capacity` (offer id -> what is left) defaults to the book's."""
         def statements(subject: str):
@@ -92,7 +95,7 @@ class CounterpartyGate:
                 return None
         return cls(statements, dict(registers), int(now), span, offer, held,
                    lambda oid, holder: book.held_by(oid, holder, now), capacity or left, book.is_withdrawn,
-                   lambda h, maker, oid: book.item_claimed(h, maker, now, offer_id=oid))
+                   lambda h, maker, oid: book.item_claimed(h, maker, now, offer_id=oid), latest)
 
     # -- items ---------------------------------------------------------------------
 
@@ -232,6 +235,17 @@ class CounterpartyGate:
                 f.append(f"4 register {r} is silent (no heartbeat at its pinned root)")
             elif self.now - at > entry.max_root_age:
                 f.append(f"4 register {r}'s root is {self.now - at}s old, more than {entry.max_root_age}s")
+            # R5: the root keeps every revocation its predecessor held (a
+            # root that cannot show it fails, U7) ...
+            extended = reg.extends_predecessor()
+            if extended is None:
+                f.append(f"4 register {r}'s root cannot be checked against its predecessor")
+            elif not extended:
+                f.append(f"4 register {r}'s root drops a revocation its predecessor held")
+            # ... and a newer root published by this clearing's clock extends it
+            newest = self._newest(r, reg)
+            if newest is not None and newest.extends(reg.root) is False:
+                f.append(f"4 register {r}'s newest root drops a revocation the pinned root holds")
         issuer = None if self_bonded else self.registers.get(s.issuer)
         if issuer is not None:
             if issuer.revoked(s.statement_id):
@@ -240,7 +254,25 @@ class CounterpartyGate:
                 f.append(f"7 suspended under {s.issuer}'s pinned root")
             if issuer.status(s.statement_id) is None:
                 f.append(f"3 {s.issuer}'s register has no status for the statement")
+            # a stale pin must not hide what the register has said since
+            newest = self._newest(s.issuer, issuer)
+            if newest is not None:
+                since = f"{s.issuer}'s newest root (published {newest.as_of}; the pinned root is stale)"
+                if newest.revoked(s.statement_id) and not issuer.revoked(s.statement_id):
+                    f.append(f"3 revoked under {since}")
+                if newest.suspended(s.statement_id) and not issuer.suspended(s.statement_id):
+                    f.append(f"7 suspended under {since}")
         return f
+
+    def _newest(self, rid: str, pinned):
+        """The register's newest root, when it differs from the pinned one and
+        was published by this clearing's clock (a root with no heartbeat
+        counts: an unstamped successor is not a later one); else None."""
+        newest = self.latest(rid) if self.latest is not None else None
+        if newest is None or newest.root == pinned.root:
+            return None
+        at = newest.as_of
+        return newest if at is None or at <= self.now else None
 
     def _deposit_faults(self, entry: Credential, s: Statement, requirer: Offer, counterparty: Offer,
                         ontology: Ontology, *, taken=None, whole=None) -> list[str]:

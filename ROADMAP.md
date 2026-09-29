@@ -283,7 +283,12 @@ name factbond's redeployed `Assertions`. Hence:
    sidecars DONE 2026-09-29 (`notice.py`; the watch integration remains);
    R7 DONE the same night (`witness.py`: possession, photo-match, door levels,
    the settlement check). R5 (the root sequence and its consistency proofs)
-   is the one left before R3b's chain half.
+   DONE 2026-09-29 off chain as option A (Peter): recordstore gained
+   extension proofs over monotone prefixes and a verifiable feed history
+   (signed updates, equivocation proofs), every register root names its
+   predecessor and must extend it on `revoked/`, and clearing reading a
+   register's feed tip refuses what a newer root says; the on-chain fraud
+   proof goes with R3b's chain half.
 7. **Track O in memory** — C1–C3 (options: the `option` head, holds in
    registry and clearing, solver awareness) DONE 2026-09-29; D4
    (argument-only operators and `requires.legs`) DONE the same night; I1–I2

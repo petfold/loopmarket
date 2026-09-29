@@ -261,6 +261,42 @@ its book pin; clearing checks no newer root precedes its own clock. U4 stays
 miss a revocation. If the contract must decide "latest" itself, registers
 anchor their roots on chain.
 
+*(built 2026-09-29, R5, option A — Peter: the consistency proofs are
+recordstore's, since a monotone-prefix proof is useful to any store)*
+
+- **Every register root names its predecessor.** `Register.commit` writes
+  `chain` → {prev, seq} whenever something is staged, so each root is a link
+  and the heartbeat stays the publication time alone. The gate (step 4)
+  refuses a root that does not *extend* its predecessor on `revoked/` —
+  recordstore's `extends(base, prefixes)`: every record the base held under
+  the prefix is still there, unchanged — and a root it cannot check (a store
+  without extension proofs, the predecessor's nodes out of reach) fails the
+  same way (U7). `Register.extension_proof()` is the self-contained proof
+  (`prove_extension`, checked by `verify_extension` with no store), its size
+  the change's, not the register's.
+- **Latest as of the clock, read from the feed.** With a reader of each
+  register's feed tip (`MockClearing(register_latest=)`,
+  `register.newest_reader(pointer_for, blobs)`), the gate opens the newest
+  root published by clearing's clock (its heartbeat at or before; an
+  unstamped successor counts) and refuses a leg whose statement is revoked or
+  suspended there though not at the pin, or whose newest root drops a
+  revocation the pinned one holds. *Deviation from the R5 row, deliberate:* a
+  pin is refused for what a newer root **says**, not for being older — a
+  register heartbeating every minute would otherwise refuse every proposal
+  older than a minute, and Δ is already the requirer's tolerance for age.
+- **The refutable fact is recordstore's too.** A register's signed sequence
+  of roots is its feed: `SwarmFeedPointer.update(i)`/`updates()` return the
+  raw owner-signed chunks as envelopes, `verify_feed_update` checks one with
+  no node, and `verify_equivocation` turns two different roots at one index
+  into a proof. "Two inconsistent roots signed by R" is then consecutive
+  signed updates plus a key present under the first and absent under the
+  second — inclusion and absence proofs the chain already verifies.
+- **Not built:** that fraud proof on chain (the SOC signature is one
+  `ecrecover`; the two trie proofs are `TrieProofVerifier`'s) — R3b's, beside
+  the register pins in `BeatClearing`; anchoring roots on chain for trusted
+  time, per register where the stakes ask for it. The feed's timestamps, and
+  the heartbeat's, are the register's own claims.
+
 Δ is the exposure window, chosen by stakes: hours for a surgeon's licence,
 months for a course certificate.
 
@@ -333,7 +369,7 @@ required by the protocol.**
 | R2 | `cred/` sidecar + its own fold rule (`subject == owner`) | a foreign statement in a fold is rejected with attributed provenance (U8) — *met 2026-09-29* (`tests/test_cred.py`; `OfferRegistry.present`/`statements`) |
 | R3 | registers as keyspaces + `register` role (announcement reading) + `register_roots` in `LoopProposal`, the `loop/` record, `Beat` and `beat.submission`; `verifyAbsence` on the leg path | a proposal missing a named register's root is refused; a revoked statement's absence proof fails on chain — *R3a met 2026-09-29 (`register.py`, `tests/test_register.py`; the loop record v2 carries the pins, v1 is unchanged without them); R3b, the chain half (`Beat`, `beat.submission`, `verifyAbsence`), waits for the clearing-contract redeploy* |
 | R4 *(met 2026-09-29 in the solo form: `gate.py`, `tests/test_gate.py` — licensed passes and clears; revoked, suspended, expired before the window, unaccredited, a silent or stale register, a floor not free after this fill's reservation, an unpinned register on the path and an unaccepted resolver each refused, clearing's refusal listing every failing step. The practice form — a statement about a practitioner the practice designates, bound at the door — waits for R7's witness; the root's age reads a heartbeat, R5 proves the sequence)* | the gate in `meets` (§4) incl. handover-window validity | the dentist case, in its primary form (plan D1): a **practice** is the maker, its deposit backs an *attested* statement about each dentist's key, and the dentist's key is checked at the door; licensed passes; revoked, expired-before-window, unaccredited issuer, silent register, and a floor not free after this fill's reservation each refused; the solo dentist's *self-bonded* statement is the degenerate case with subject = maker |
-| R5 | "latest root as of t" + heartbeat + consistency proofs between roots (§3.3, §5) | a proposal pinning a stale root is refused when a newer one precedes clearing; a root that does not extend its predecessor is refused; two inconsistent roots signed by one register are a refutable fact |
+| R5 *(met 2026-09-29 off chain, option A: every root names its predecessor and must extend it on `revoked/` — recordstore's extension proofs; the feed tip read by clearing's clock refuses what a newer root says, not the pin's age (§5 for the deviation); signed feed updates and equivocation proofs in recordstore; the on-chain fraud proof is R3b's)* | "latest root as of t" + heartbeat + consistency proofs between roots (§3.3, §5) | a proposal pinning a stale root is refused when a newer one precedes clearing; a root that does not extend its predecessor is refused; two inconsistent roots signed by one register are a refutable fact |
 | R6 *(the sidecars built 2026-09-29: `notice.py`, `tests/test_notice.py` — sealed notice and cure with commitments, fold admission, the re-check; the clocks and the refusals are factbond's procedure, already built; `loop watch` does not run the re-check yet)* | `notice/` sidecar with cure deadline + `watch` re-check (§6) | revocation between clearing and window yields a notice and a non-performance path; a claim without a prior notice, or asserted after M days from it, is refused; a cure within the deadline ends the matter with no public record |
 | R7 *(built 2026-09-29: `witness.py`, `tests/test_witness.py`; the roster rows in factbond's evidence policy; `registry-transfer` is items' I-track)* | `possession` / `photo-match` witness types (§7): roster entry (factbond evidence policy), clearing's verifiable set, settlement adapter | countersign requires the witness; a replayed response fails; an offer naming an unrostered type is refused at submit |
 

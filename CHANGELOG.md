@@ -31,6 +31,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Register roots form a checked sequence (R5, option A)** (2026-09-29).
+  Every register root names its predecessor and number (`chain`, written by
+  `Register.commit`), and the counterparty gate refuses a root that drops a
+  revocation its predecessor held — recordstore's new extension proofs, a
+  root that cannot be checked failing closed. With the registers' feed tips
+  read (`MockClearing(register_latest=)`, `register.newest_reader`), a
+  newer root published by clearing's clock refuses a leg whose statement it
+  revokes or suspends: a stale pin cannot hide what the register has said.
+  Needs recordstore's extension proofs (unreleased after 0.20.3).
 - **CLI: `option`, `exercise`, `options` (C7)** (2026-09-29). `loop option
   ID --until T --premium X` writes an option on my own open offer (v6);
   `loop exercise OPTION PRICE` wants its offer as the holder while the

@@ -114,3 +114,55 @@ def test_a_proposal_missing_a_named_registers_root_is_refused():
     assert plain["v"] == 1 and "register_roots" not in plain
     with pytest.raises(ValueError, match="carries register_roots"):
         proposal_from_record(dict(plain, v=2), book)
+
+
+needs_extends = pytest.mark.skipif(not hasattr(RecordStore, "extends"),
+                                   reason="recordstore without extension proofs (> 0.20.3)")
+
+
+def test_every_root_names_its_predecessor_and_its_number():
+    """R5: `commit` links each root to the one it supersedes; nothing staged,
+    no new link."""
+    reg = Register(RecordStore(MemoryBytesStore()))
+    assert reg.seq == -1 and reg.predecessor is None
+    reg.issue(SID, 100)
+    first = reg.commit()
+    assert (reg.seq, reg.predecessor) == (0, None)
+    assert reg.commit() == first and reg.seq == 0
+    reg.revoke(SID, 200)
+    second = reg.commit()
+    assert (reg.seq, reg.predecessor) == (1, first)
+    reg.heartbeat(300)
+    reg.commit()
+    assert (reg.seq, reg.predecessor, reg.as_of) == (2, second, 300)
+
+
+@needs_extends
+def test_a_root_that_drops_a_revocation_does_not_extend_its_predecessor():
+    from recordstore import verify_extension
+    reg = Register(RecordStore(MemoryBytesStore()))
+    reg.issue(SID, 100)
+    reg.revoke(SID, 200)
+    revoked = reg.commit()
+    reg.issue(OTHER, 300)
+    reg.commit()
+    assert reg.extends_predecessor() is True
+    # the proof travels: anyone checks it with no store
+    assert verify_extension(reg.extension_proof(), revoked, reg.root) == ("revoked/",)
+    # an un-revocation, written past Register's own refusal
+    reg.store.delete("revoked/" + SID)
+    reg.store.put("status/" + SID, {"state": "issued", "at": 400})
+    reg.commit()
+    assert reg.extends_predecessor() is False and reg.extends(revoked) is False
+    with pytest.raises(ValueError, match="absent"):
+        reg.extension_proof()
+    # a store that cannot say is not a pass
+    class Opaque:
+        def __init__(self, store):
+            self.inner = store
+
+        def __getattr__(self, name):
+            if name == "extends":
+                raise AttributeError(name)
+            return getattr(self.inner, name)
+    assert Register(Opaque(reg.store)).extends_predecessor() is None

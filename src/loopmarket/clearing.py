@@ -140,7 +140,7 @@ class MockClearing:
     def __init__(self, registry: OfferRegistry, ontology: Ontology, *,
                  min_surplus: float = 0.0, require_per_node: bool = True,
                  clock=_time.time, verifiable_oracles=VERIFIABLE_ORACLES,
-                 chain_fills=None, escrow_held=None, register_at=None, span=None):
+                 chain_fills=None, escrow_held=None, register_at=None, span=None, register_latest=None):
         self.registry = registry
         self.ontology = ontology
         self.min_surplus = min_surplus
@@ -169,6 +169,10 @@ class MockClearing:
         #: a `time(...)` term's text -> (start, end), for the leg's handover
         #: window the gate checks validity through; None: the clock's instant
         self.span = span
+        #: register id -> (root, published at) of its newest published root,
+        #: read from its feed (R5): a pinned root a newer one precedes is
+        #: refused; None: no feed reader, the heartbeat age bound alone
+        self.register_latest = register_latest
 
     def gate(self, register_roots=(), *, now: int) -> CounterpartyGate:
         """The counterparty gate over this clearing's own book, the
@@ -186,7 +190,7 @@ class MockClearing:
             except KeyError:
                 return None
         return CounterpartyGate.over(self.registry, registers, now=now, span=self.span, held=held,
-                                     capacity=capacity)
+                                     capacity=capacity, latest=self.register_latest)
 
     def deposits(self, offer_ids) -> dict | None:
         """What the escrow holds behind each offer, or None when no escrow
@@ -396,7 +400,8 @@ class MockClearing:
         dry = MockClearing(_Dry(self.registry), self.ontology, min_surplus=self.min_surplus,
                            require_per_node=self.require_per_node, clock=self.clock,
                            verifiable_oracles=self.verifiable_oracles, chain_fills=self.chain_fills,
-                           escrow_held=self.escrow_held, register_at=self.register_at, span=self.span)
+                           escrow_held=self.escrow_held, register_at=self.register_at, span=self.span,
+                           register_latest=self.register_latest)
         return dry.submit(proposal)
 
 

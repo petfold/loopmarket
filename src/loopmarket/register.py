@@ -25,11 +25,16 @@ Pure over a duck-typed RecordStore, like the offer book (B1).
 from __future__ import annotations
 
 ISSUED, SUSPENDED, REVOKED = "issued", "suspended", "revoked"
-HEARTBEAT = "heartbeat"      # {"at": t}: when this root was published (R4's freshness; R5 proves the sequence)
+HEARTBEAT = "heartbeat"      # {"at": t}: when this root was published (R4's freshness)
+CHAIN = "chain"              # {"prev", "seq"}: the root this one supersedes, and its number (R5)
 STATUS = "status/"
 REVOKED_KEYS = "revoked/"
 SUSPENDED_KEYS = "suspended/"
 ACCREDIT = "accredit/"
+#: What a register may never drop from one root to the next: its revocations
+#: (a suspension is lifted by `reinstate`, a status moves on; a revocation
+#: stands forever). Each root must extend its predecessor on these (R5).
+MONOTONE = (REVOKED_KEYS,)
 
 
 class Register:
@@ -43,6 +48,14 @@ class Register:
         return self.store.root or ""
 
     def commit(self) -> str:
+        """Commit what is staged, the new root naming the root it supersedes
+        and its number in the register's sequence (R5, 2026-09-29) — so
+        every root, heartbeat or not, is a link a reader can check against
+        the one before (`extends_predecessor`). Nothing staged: the same
+        root, no new link."""
+        status = getattr(self.store, "status", None)
+        if status is None or status()["staged"]:
+            self.store.put(CHAIN, {"prev": self.store.root or None, "seq": self.seq + 1})
         return self.store.commit()
 
     # -- writes (the register's owner) -------------------------------------------
@@ -51,14 +64,61 @@ class Register:
         """Stamp the root about to be committed with its publication time:
         the root's age against a clearing's clock is what `max_root_age`
         bounds (counterparty-gate.md §5). A register heartbeats at least at
-        its declared cadence; a silent one outruns strict requirers. That a
-        root extends its predecessor, and is the latest as of t, is R5's."""
+        its declared cadence; a silent one outruns strict requirers. That the
+        pinned root is the *latest* as of t is the register's feed — its
+        signed sequence of roots, which the gate's `latest` reads — and,
+        where trusted time is needed, an anchor: not something a root can
+        say about itself."""
         self.store.put(HEARTBEAT, {"at": int(at)})
+
+    def _record(self, key: str) -> dict | None:
+        return self.store.get(key) if self.store.contains(key) else None
 
     @property
     def as_of(self) -> int | None:
         """The heartbeat of the root this register is read at, or None."""
-        return self.store.get(HEARTBEAT)["at"] if self.store.contains(HEARTBEAT) else None
+        beat = self._record(HEARTBEAT)
+        return beat["at"] if beat is not None else None
+
+    @property
+    def predecessor(self) -> str | None:
+        """The root this one superseded (None: the first root)."""
+        link = self._record(CHAIN)
+        return link["prev"] if link is not None else None
+
+    @property
+    def seq(self) -> int:
+        """This root's number in the register's sequence (-1 before the first)."""
+        link = self._record(CHAIN)
+        return int(link["seq"]) if link is not None else -1
+
+    def extends(self, base: str | None) -> bool | None:
+        """Does this root keep every revocation `base` held (recordstore's
+        extension check on `MONOTONE`)? None when it cannot be checked here —
+        a recordstore without extension proofs, or `base`'s nodes out of
+        reach — which a gate reads as failing (U7)."""
+        if base is None:
+            return True
+        check = getattr(self.store, "extends", None)
+        if check is None:
+            return None
+        try:
+            return bool(check(base, list(MONOTONE)))
+        except Exception:  # noqa: BLE001 — unreachable nodes: not provable here
+            return None
+
+    def extends_predecessor(self) -> bool | None:
+        """Does this root keep every revocation its predecessor held? True
+        for a first root."""
+        return self.extends(self.predecessor)
+
+    def extension_proof(self) -> dict | None:
+        """The self-contained proof that this root extends its predecessor on
+        `MONOTONE` (recordstore's `verify_extension` checks it with no store),
+        or None for a first root — what a register publishes beside its root
+        for readers without its blobs."""
+        prev = self.predecessor
+        return None if prev is None else self.store.prove_extension(prev, list(MONOTONE))
 
     def issue(self, statement_id: str, at: int) -> None:
         self._state(statement_id, ISSUED, at)
@@ -137,3 +197,20 @@ def named_registers(offers) -> set[str]:
         for cred in req.counterparty:
             out.update(cred.roots)
     return out
+
+
+def newest_reader(pointer_for, blobs):
+    """The gate's `latest` (R5) over registers' feeds: `pointer_for(rid)` is
+    the register's feed pointer (or None), and the reader opens the register
+    at the root the feed's tip names, over `blobs`. The root read is the
+    newest the reader can see — a node withholding the tip makes a stale pin
+    pass here, which is why the signed sequence (recordstore's
+    `verify_feed_update`) and an anchor are the evidence a claim uses, and
+    this only the clearing's own look."""
+    from recordstore import RecordStore
+
+    def latest(rid: str):
+        pointer = pointer_for(rid)
+        root = pointer.get() if pointer is not None else None
+        return Register(RecordStore.at(root, blobs)) if root else None
+    return latest

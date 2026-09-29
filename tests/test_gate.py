@@ -14,6 +14,7 @@ Here the dentist is his own maker (the solo form; a practice attesting for
 its dentists is the same statement with the practice as subject, the
 person at the door bound by R7's witness)."""
 
+import pytest
 from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
@@ -173,3 +174,52 @@ def test_a_self_bonded_statement_is_backed_by_its_deposit_alone():
     assert check_match(dentist, patient, cat, now=NOW, gate=gate) is not None
     assert check_match(dentist, patient, cat, now=NOW,
                        gate=CounterpartyGate.over(book, {}, now=NOW, held={dentist.offer_id: 60})) is None
+
+
+needs_extends = pytest.mark.skipif(not hasattr(RecordStore, "extends"),
+                                   reason="recordstore without extension proofs (> 0.20.3)")
+
+
+@needs_extends
+def test_a_stale_pin_cannot_hide_a_revocation_and_a_root_cannot_drop_one():
+    """R5 (option A, 2026-09-29). The proposal pins the attester's root from
+    before the revocation: with the register's feed read (`latest`), the
+    newer root published by the clearing's clock refuses the leg; one
+    published after it does not count; without a reader, the age bound is
+    all there is. A register root that un-revokes anything is refused
+    whoever pins it."""
+    w = World()
+    pinned = {r: Register(RecordStore.at(reg.root, w.blobs)) for r, reg in w.registers.items()}
+    w.attester.revoke(w.statement.statement_id, NOW - 60)
+    w.attester.heartbeat(NOW - 50)
+    w.attester.commit()
+
+    def faults(latest):
+        gate = CounterpartyGate.over(w.book, pinned, now=NOW, span=SPANS.get, latest=latest)
+        return gate.faults(w.patient, w.dentist, _cat(), window=WINDOW, taken=1, whole=10)
+
+    newest = {ATTESTER: w.attester, CHAMBER: pinned[CHAMBER]}.get
+    assert faults(None) == []
+    assert any("3 revoked under " + ATTESTER + "'s newest root" in f for f in faults(newest))
+    later = World()
+    later_pinned = {r: Register(RecordStore.at(reg.root, later.blobs)) for r, reg in later.registers.items()}
+    later.attester.revoke(later.statement.statement_id, NOW + 5)
+    later.attester.heartbeat(NOW + 10)                  # after the clearing's clock: not yet said
+    later.attester.commit()
+    gate = CounterpartyGate.over(later.book, later_pinned, now=NOW, span=SPANS.get,
+                                 latest={ATTESTER: later.attester}.get)
+    assert gate.faults(later.patient, later.dentist, _cat(), window=WINDOW, taken=1, whole=10) == []
+    # clearing reads the feed too: the stale proposal is refused (U3)
+    clearing = MockClearing(w.book, _cat(), clock=lambda: NOW, span=SPANS.get,
+                            register_at=lambda rid, root: Register(RecordStore.at(root, w.blobs)),
+                            register_latest=newest)
+    receipt = clearing.rehearse(w.proposal(roots=tuple(sorted((r, reg.root) for r, reg in pinned.items()))))
+    assert not receipt.accepted and "newest root" in receipt.reason
+    # a root that drops another statement's revocation is refused at its own pin
+    w = World()
+    w.attester.revoke("5e" * 32, NOW - 70)
+    w.attester.commit()
+    w.attester.store.delete("revoked/" + "5e" * 32)
+    w.attester.heartbeat(NOW - 40)
+    w.attester.commit()
+    assert any("drops a revocation its predecessor held" in f for f in w.faults())
