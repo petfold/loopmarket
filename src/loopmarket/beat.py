@@ -285,6 +285,28 @@ def loop_records(book: OfferRegistry, loop_id: str) -> dict:
     return {k: v for k, v in book.store.items("item/") if k.endswith("/" + loop_id)}
 
 
+def commitment_of_registers(registers) -> bytes:
+    """keccak over the ABI encoding of register pins, as `submit` stores it."""
+    from eth_abi import encode
+    from eth_hash.auto import keccak
+    return keccak(encode([REGISTERS_TYPE], [list(registers)]))
+
+
+#: `beats(uint256)` as the clearing contracts before 2026-09-29 answer it
+#: (nine fields: no beat time, no registers' hash).
+_LEGACY_BEATS = {
+    "name": "beats", "type": "function", "stateMutability": "view",
+    "inputs": [{"name": "", "type": "uint256"}],
+    "outputs": [{"name": "pins", "type": "tuple", "components": [
+        {"name": "bookRoot", "type": "bytes32"}, {"name": "ontologyRoot", "type": "bytes32"},
+        {"name": "registryVersion", "type": "bytes"}, {"name": "contractVersion", "type": "bytes"},
+        {"name": "addressing", "type": "uint8"}]},
+        {"name": "submitter", "type": "address"}, {"name": "bond", "type": "uint256"},
+        {"name": "submittedAt", "type": "uint256"}, {"name": "legsHash", "type": "bytes32"},
+        {"name": "potentialsHash", "type": "bytes32"}, {"name": "fillCount", "type": "uint256"},
+        {"name": "finalized", "type": "bool"}, {"name": "cancelled", "type": "bool"}]}
+
+
 def commitment(sub: Submission) -> tuple[bytes, bytes, bytes]:
     """(legsHash, potentialsHash, registersHash) exactly as
     `BeatClearing.submit` stores them: keccak over the ABI encoding of the
@@ -294,7 +316,7 @@ def commitment(sub: Submission) -> tuple[bytes, bytes, bytes]:
     from eth_hash.auto import keccak
     return (keccak(encode(["bytes32[]"], [sub.leg_hashes])),
             keccak(encode(["bytes[]", "(uint256,uint256)[]"], [sub.makers, sub.potentials])),
-            keccak(encode([REGISTERS_TYPE], [list(sub.registers)])))
+            commitment_of_registers(sub.registers))
 
 
 def legs_from_record(rec: dict, book: OfferRegistry) -> tuple[Leg, ...]:
@@ -437,13 +459,16 @@ def challenge_beat(client: "BeatClient", beat: int, books, ontology, *, now: int
         available[oid] = left
     mock = MockClearing(ev.snapshot, ontology, clock=lambda: now, register_at=register_at, span=span)
     overall = mock.rehearse(proposal)
+    # each leg re-derived under the gate over the registers the beat pins,
+    # as clearing derived it (a credential leg meets nothing without it, U7)
+    gate = mock.gate(proposal.register_roots, now=now)
     legs = []
     for i, leg in enumerate(sorted(proposal.circulation.legs, key=lambda l: l.key)):
         if proposal.ontology_root != ontology.root:
             local = "ontology pin mismatch"
         else:
             try:
-                local = mock.verify_leg(leg, now=now, available=available)
+                local = mock.verify_leg(leg, now=now, available=available, gate=gate)
             except KeyError as exc:
                 local = f"unknown offer: {exc}"
         legs.append(LegVerdict(i, local, client.verdict(state, i, ev.submission)))
@@ -538,10 +563,19 @@ class BeatClient:
         return self._send(self.contract().functions.retire(self._web3().to_checksum_address(to)))
 
     def beat(self, beat: int) -> dict:
-        """The beat's record on chain: the pins, the submitter, the two
-        commitments (as bytes), the fill count, its state and window."""
+        """The beat's record on chain: the pins, the submitter, the
+        commitments (as bytes), the fill count, its state and window. A
+        contract from before 2026-09-29 has no beat time or register pins:
+        its record is read with the getter it has, `time` None and the
+        registers' hash that of no pins (its history stays readable)."""
         c = self.contract()
-        b = c.functions.beats(beat).call()
+        try:
+            b = c.functions.beats(beat).call()
+        except Exception as exc:                # noqa: BLE001 — an older contract's shorter getter
+            if "decode" not in str(exc).lower():
+                raise
+            legacy = self._web3().eth.contract(address=self.address, abi=[_LEGACY_BEATS])
+            b = list(legacy.functions.beats(beat).call()) + [None, commitment_of_registers(())]
         if b[3] == 0:
             raise ValueError(f"no beat {beat}")
         pins = b[0]
@@ -558,7 +592,7 @@ class BeatClient:
                 and self._web3().eth.block_number <= window_end}
 
     def beats(self) -> list[dict]:
-        """Every beat posted, first to last."""
+        """Every beat posted, first to last (on an older contract too)."""
         n = self.contract().functions.beatCount().call()
         return [self.beat(i) for i in range(1, n + 1)]
 

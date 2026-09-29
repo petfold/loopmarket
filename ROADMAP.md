@@ -300,9 +300,12 @@ name factbond's redeployed `Assertions`. Hence:
    (`tests/test_beat_v6.py`: holds on chain with the holder, the non-holder
    convicted and the holder's exercise verifying and consuming the hold;
    item claims committed and raced at finalize; register pins and
-   statements, a revoked statement convicted — M2's chain half). The
-   deployment of `BeatClearing` + `LegVerifier` + the new
-   `StatementVerifier`, retiring `0xaF1BBE…691e`, is the next live step.
+   statements, a revoked statement convicted — M2's chain half) and
+   **deployed on Gnosis the same day** (`BeatClearing` `0x8beD…72BC`,
+   `LegVerifier` `0x1f6D…5B13`, `StatementVerifier` `0x2BC0…82CF`, SealedBeat
+   `0x107e…2d38`; `0xaF1BBE…691e` retired to it), the live gate's post and
+   check phases passing: both beats verify from a fresh session and the
+   forged post-revocation beat is convicted.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust
