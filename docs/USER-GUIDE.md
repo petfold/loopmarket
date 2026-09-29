@@ -575,8 +575,9 @@ insurance deductible: the part of any loss the insured bears herself.
 composed with a thing whose give carries its own deposit — a driver's
 small deposit, an insurer's cover above it — the cover *covers* that
 deposit's reservation: before the cover pays, the insured assigns her
-claim on the driver's reservation to the insurer (`loop` does this through
-the escrow's `assign`; the cover's claim is refused until she has), and
+claim on the driver's reservation to the insurer (the escrow's `assign`,
+`EscrowClient.assign` — no `loop` verb yet; the cover's claim is refused
+until she has), and
 the insurer recovers the driver's deposit itself; or, if she has already
 collected from the driver, the cover pays only the rest. She is paid once,
 the insurer's cost is the loss less the driver's deposit, and the
