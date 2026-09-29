@@ -1205,3 +1205,46 @@ def test_an_option_is_written_held_and_exercised_from_the_command_line(env, tmp_
     run.ok("set", "maker", "noa")
     code, out, err = run("exercise", o[:12], "1500")
     assert code != 0 and "you hold no such option" in err
+
+
+def test_several_options_are_exercised_as_one_composed_want(env, tmp_path, monkeypatch):
+    """`exercise O1 O2 PRICE` (2026-09-29): the holder of two options — a
+    flat from one maker, a car from another — wants both underlyings as one
+    composed want, all or nothing, open until the first window closes; it
+    clears as one loop and both offers are filled. Two options on one offer,
+    or one I do not hold, are refused."""
+    _od_with_prelude(tmp_path / "trip.od",
+                     [("graph-dimension", ["dimension"]), ("option", ["graph-dimension"]),
+                      ("apartment", []), ("flat", ["apartment"]), ("car", []), ("cleaning", []),
+                      ("lesson", []), ("painting", [])])
+    monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "trip.od"))
+    monkeypatch.delenv("LOOP_MAKER")
+    run = Runner()
+    run.ok("set", "maker", "lena")
+    flat = run.ok("give", "flat", "1000").strip().splitlines()[-1]
+    o_flat = run.ok("option", flat[:12], "--until", "3d", "--premium", "20").strip().splitlines()[-1]
+    run.ok("want", "cleaning", "30")
+    run.ok("set", "maker", "noa")
+    car = run.ok("give", "car", "100").strip().splitlines()[-1]
+    o_car = run.ok("option", car[:12], "--until", "2d", "--premium", "5").strip().splitlines()[-1]
+    run.ok("want", "lesson", "30")
+    run.ok("set", "maker", "mia")
+    run.ok("want", "option(apartment)", "30")
+    run.ok("give", "cleaning", "5")
+    run.ok("want", "option(car)", "30")
+    run.ok("give", "lesson", "5")
+    run.ok("clearing")
+    code, out, err = run("exercise", o_flat[:12], o_flat[:12], "1500")
+    assert code != 0 and "holds the same offer" in err
+    out = run.ok("exercise", o_flat[:12], o_car[:12], "1500")
+    assert "one composed want of 2 parts" in out and f"exercising {o_car[:12]}" in out
+    run.ok("give", "painting", "10")
+    run.ok("give", "cleaning", "5")
+    run.ok("set", "maker", "lena")
+    run.ok("want", "painting", "1100")
+    run.ok("set", "maker", "noa")
+    run.ok("want", "cleaning", "200")
+    code, out, err = run("exercise", o_flat[:12], o_car[:12], "1500")
+    assert code != 0 and "you hold no such option" in err                  # noa holds neither
+    run.ok("clearing")
+    assert run.session.book.is_filled(flat) and run.session.book.is_filled(car)

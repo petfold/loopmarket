@@ -2016,31 +2016,54 @@ def cmd_option(args, session, out):
 
 
 def cmd_exercise(args, session, out):
-    """`exercise OPTION PRICE` (C7): as the option's holder, want its
-    underlying — the same thing, the quantity held — at PRICE on my scale,
-    while the exercise window is open. An exercise is a clearing (§3.5): the
-    want needs a closing loop like any other, and the hold lets only me take
-    the offer meanwhile."""
+    """`exercise OPTION [OPTION...] PRICE` (C7): as the options' holder, want
+    their underlyings — the same things, the quantities held — at PRICE on my
+    scale, while every exercise window is open. An exercise is a clearing
+    (§3.5): the want needs a closing loop like any other, and the holds let
+    only me take the offers meanwhile.
+
+    Several options (2026-09-29, Peter: a trip's components held one by one,
+    then committed together) are exercised as **one composed want**, a part
+    per underlying under the one price, open until the first window closes:
+    all or nothing, like any composed want — the holds are what made the
+    parts sure to be there, so the commitment can wait until the last one is
+    found. Two options on one offer are refused: exercising either takes
+    everything I hold of it."""
+    if len(args.args) < 2:
+        raise ValueError("exercise OPTION [OPTION...] PRICE")
+    *refs, price = args.args
     fold = session.fold()
-    oid = _resolve_id(session, args.option, mine_only=False)
-    o = fold.get(oid)
-    if not (o.v >= 6 and o.underlying):
-        raise ValueError(f"{oid[:12]} is not an option")
     now = session.now
-    mine = [(lid, rec) for lid, rec in fold.holds(o.underlying)
-            if rec["option"] == oid and rec["holder"] == session.maker]
-    if not mine:
-        raise ValueError(f"{oid[:12]}: you hold no such option")
-    left = fold.held_by(o.underlying, session.maker, now)
-    if left <= 0:
-        raise ValueError(f"{oid[:12]}: not exercisable now (window {_span(o.exercise)})")
-    p = fold.get(o.underlying)
-    thing = Thing(p.thing.concepts, left, p.thing.unit)
-    kw = _guarantees(now, p.thing.concepts, side=WANT)
+    things, concepts, ends, notes, underlyings = [], [], [], [], set()
+    for ref in refs:
+        oid = _resolve_id(session, ref, mine_only=False)
+        o = fold.get(oid)
+        if not (o.v >= 6 and o.underlying):
+            raise ValueError(f"{oid[:12]} is not an option")
+        if o.underlying in underlyings:
+            raise ValueError(f"{oid[:12]}: another option named holds the same offer — exercise one")
+        underlyings.add(o.underlying)
+        mine = [(lid, rec) for lid, rec in fold.holds(o.underlying)
+                if rec["option"] == oid and rec["holder"] == session.maker]
+        if not mine:
+            raise ValueError(f"{oid[:12]}: you hold no such option")
+        left = fold.held_by(o.underlying, session.maker, now)
+        if left <= 0:
+            raise ValueError(f"{oid[:12]}: not exercisable now (window {_span(o.exercise)})")
+        p = fold.get(o.underlying)
+        things.append(Thing(p.thing.concepts, left, p.thing.unit))
+        concepts.extend(p.thing.concepts)
+        ends.append(int(o.exercise.end))
+        notes.append(f"exercising {oid[:12]} on {o.underlying[:12]}")
+    kw = _guarantees(now, tuple(concepts), side=WANT)
     nonce = now * 1000 + sum(1 for x in session.book.offers(include_filled=True) if x.maker == session.maker)
-    offer = want(session.maker, thing, _number(args.price), valid=TimeWindow(now, o.exercise.end),
+    lot = things[0] if len(things) == 1 else Parts(tuple(things))
+    if len(things) > 1:
+        notes.append(f"one composed want of {len(things)} parts: all or nothing, "
+                     f"until the first window closes ({_iso(min(ends))})")
+    offer = want(session.maker, lot, _number(price), valid=TimeWindow(now, min(ends)),
                  nonce=nonce, **session.catalogue.pins, **kw)
-    return _publish_offer(session, offer, [f"exercising {oid[:12]} on {o.underlying[:12]}"], False, out)
+    return _publish_offer(session, offer, notes, False, out)
 
 
 def cmd_holds(args, session, out):
@@ -3023,7 +3046,8 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop offer NAME [PRICE]          a draft becomes an offer: block, question, publish
   loop withdraw ID           tombstone one of my offers (id or unique prefix)
   loop option ID --until T --premium X   an option on my offer: held for its holder until T (v6)
-  loop exercise OPTION PRICE want an option's offer as its holder, while the window is open
+  loop exercise OPTION... PRICE  want the options' offers as their holder, while the windows are open;
+                             several: one composed want, all or nothing
   loop holds                 every hold in the fold, its holder and what is left of it
   loop mine                  my offers, all states
   loop place NAME LAT,LON,R [ADDRESS...]  a place node under its cell; the address
@@ -3143,8 +3167,7 @@ def build_parser():
     p.add_argument("--premium", default=None)
     p.set_defaults(func=cmd_option)
     p = sub.add_parser("exercise", add_help=False)
-    p.add_argument("option")
-    p.add_argument("price")
+    p.add_argument("args", nargs="*")               # OPTION [OPTION...] PRICE
     p.set_defaults(func=cmd_exercise)
     p = sub.add_parser("holds", add_help=False)
     p.set_defaults(func=cmd_holds)

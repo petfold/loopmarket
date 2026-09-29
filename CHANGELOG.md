@@ -61,6 +61,13 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Several options exercised together** (2026-09-29, Peter): `loop exercise
+  O1 O2 … PRICE` wants every held offer as one composed want — a part per
+  offer, one price, open until the first window closes — so a bundle's
+  components can be held one by one as they are found and committed all
+  or nothing at the end. In memory, from the command line, and on a local
+  EVM (the composed leg verifies with each part counting only others'
+  holds; finalize uses up every hold).
 - **Holds, item claims and statements on chain (C4, I3, R3b)** (2026-09-29;
   local EVM, not yet deployed). `LoopVerifier` reads v6 records; an option
   leg carries its underlying's record and a beat commits the holds its

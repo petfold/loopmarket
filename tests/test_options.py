@@ -152,3 +152,60 @@ def test_an_option_on_someone_elses_or_an_unfit_offer_clears_nowhere():
     assert CounterpartyGate.over(book, {}, now=NOW).option_fault(outlasting) == "the underlying is withdrawn"
     with pytest.raises(ValueError, match="graph-kind"):
         _cat().declare_graph_heads(["time"])
+
+
+def test_several_options_are_exercised_together_as_one_composed_want():
+    """A trip's components held one by one, then committed together
+    (2026-09-29, Peter): the holder buys an option on the landlord's flat and
+    one on the driver's ride, each in its own loop; inside both windows one
+    composed want of the two underlyings clears as one circulation — all or
+    nothing — and uses up both holds. The same bundle wanted by anyone else
+    finds nothing: each part is held."""
+    cat = _cat()
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    D = "driver"
+    flat = give(W, Thing(("flat",), 1, "lease"), 100, **LONG, nonce=1)
+    ride = give(D, Thing(("car",), 1, "ride"), 30, **LONG, nonce=2)
+    o_flat = give(W, Thing(("option(flat)",), 1, "lease"), 5, **LONG, nonce=3, underlying=flat.offer_id,
+                  exercise=TimeWindow(OPEN, END))
+    o_ride = give(D, Thing(("option(car)",), 1, "ride"), 3, **LONG, nonce=4, underlying=ride.offer_id,
+                  exercise=TimeWindow(OPEN, END))
+    book.publish_many([flat, ride, o_flat, o_ride,
+                       want(H, Thing(("option(apartment)",), 1, "lease"), 12, **LONG, nonce=5),
+                       give(H, Thing(("lesson",), 1, "hour"), 10, **LONG, nonce=6),
+                       want(W, Thing(("lesson",), 1, "hour"), 12, **LONG, nonce=7),
+                       want(H, Thing(("option(car)",), 1, "ride"), 10, **LONG, nonce=8),
+                       give(H, Thing(("painting",), 1, "piece"), 5, **LONG, nonce=9),
+                       want(D, Thing(("painting",), 1, "piece"), 8, **LONG, nonce=10)])
+    book.commit()
+
+    def step(now):
+        return SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: now),
+                           solver_id="t").step(now=now)
+
+    options = step(NOW)
+    assert len(options) == 2 and all(r.accepted for r in options)
+    assert book.held_by(flat.offer_id, H, OPEN + 1) == 1 and book.held_by(ride.offer_id, H, OPEN + 1) == 1
+    from loopmarket import Parts
+    trip = Parts((Thing(("flat",), 1, "lease"), Thing(("car",), 1, "ride")))
+    book.publish_many([want(X, trip, 400, **LONG, nonce=20),                 # someone else's same bundle
+                       give(X, Thing(("grain",), 1, "sack"), 1, **LONG, nonce=21),
+                       want(W, Thing(("grain",), 1, "sack"), 200, **LONG, nonce=22),
+                       want(H, trip, 200, **LONG, nonce=30),                 # the holder's exercise of both
+                       give(H, Thing(("lesson",), 1, "hour"), 10, **LONG, nonce=31),
+                       want(W, Thing(("lesson",), 1, "hour"), 150, **LONG, nonce=32),
+                       give(H, Thing(("painting",), 1, "piece"), 5, **LONG, nonce=33),
+                       want(D, Thing(("painting",), 1, "piece"), 50, **LONG, nonce=34)])
+    book.commit()
+    (r,) = step(OPEN + 1)
+    assert r.accepted, r.reason
+    rec = book.store.get(f"loop/{r.loop_id}")
+    composed = [leg for leg in rec["legs"] if len(leg.get("gives", [])) == 2]
+    assert len(composed) == 1 and book.get(composed[0]["want"]).maker == H
+    assert set(composed[0]["gives"]) == {flat.offer_id, ride.offer_id}
+    assert book.is_filled(flat.offer_id) and book.is_filled(ride.offer_id)
+    for p in (flat, ride):
+        [(loop, _)] = book.holds(p.offer_id)
+        assert book.hold_left(p.offer_id, loop) == 0              # each hold used up by the one exercise
+    assert step(OPEN + 2) == []                                  # the other bundle never clears
+    book.verify_loop_atomicity()

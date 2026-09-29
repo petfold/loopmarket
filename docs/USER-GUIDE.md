@@ -595,6 +595,22 @@ the hold only makes sure the holder is the one who can take the offer
 meanwhile. Your way out while it is held is a priced cancellation of the
 option leg — its deposit's ladder — never a free withdrawal.
 
+**Several options at once** — a trip's flat, car and ferry held one by one
+as you find them, then committed together:
+
+```console
+$ loop exercise 9c1e 4b07 77aa 2400   # one composed want of the three offers, all or nothing, at 2400
+```
+
+Several options become **one composed want** (§9, *Bundles*): a part per
+held offer, one price, open until the first window closes. It clears as
+one loop or not at all, like any composed want — the holds are what made
+every part sure to be there when you commit, so the commitment can wait
+until the last component is found. What the holds do not change is the
+rest of a bundle's limits: the loop must still close (every component's
+seller paid by something they want), and one composed leg must stay
+small enough to verify on chain in one block (about 1.5 M gas a part).
+
 **On chain** (since 2026-09-29, `BeatClearing` at `0x8beD…72BC`): a beat
 commits the holds its option legs write, the contract records them at
 finalize, and the remainder a leg is checked against counts every active

@@ -915,7 +915,7 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `want [QTY] CAT\|TERM... [PRICE]` | the other side |
 | | `withdraw ID` | tombstone one of my open offers (id or unique prefix); filled refuses |
 | | `option ID --until T --premium X` | write an option on my open offer: a give of `option(<its concepts>)` naming it as `underlying`, exercisable from now until T (a duration or an instant), priced at the premium; v6, its hold recorded on chain since the 2026-09-29 clearing contracts |
-| | `exercise OPTION PRICE` | as the option's holder, want its offer (the quantity held) at PRICE while the window is open; anyone else is refused |
+| | `exercise OPTION... PRICE` | as the options' holder, want their offers (the quantities held) at PRICE while the windows are open; anyone else is refused; several options: one composed want of their offers, all or nothing, open until the first window closes (2026-09-29) |
 | | `holds` | every hold in the fold: offer, option, holder, until, what is left, active (named `options` until 2026-09-29) |
 | | `mine` | my offers, all states |
 | | `place NAME LAT,LON,RADIUS [ADDRESS...]` | a place node under the cell containing that radius, written to odag's active store (temporary bridge; adopts the prelude there if absent); the address is settlement text on the node, shown in the block of an offer naming the place and sealed to the cleared counterparty |

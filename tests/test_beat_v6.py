@@ -256,3 +256,62 @@ def test_a_leg_too_large_to_verify_is_never_posted_nor_counted_a_conviction(chai
     (r,) = SolverAgent(book, cat, clearing=clearing, solver_id="t").step(now=t)
     assert not r.accepted and "too large to verify" in r.reason, r.reason
     assert client.contract().functions.beatCount().call() == before
+
+
+def test_two_holds_are_exercised_together_on_chain(chain):
+    """The trip on chain (2026-09-29): two options — a flat, a ride, two
+    writers — cleared and finalized as beats, their holds the chain's; one
+    composed want of both underlyings by the holder posts as one beat whose
+    composed leg verifies (each part's remainder counting only others'
+    holds) and, finalized, uses up both holds."""
+    from loopmarket import Parts
+    from loopmarket.beat import challenge_beat
+    t = _now(chain)
+    cat = _catalogue()
+    V = dict(valid=TimeWindow(t - 10_000, t + 10 ** 7), **cat.pins)
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    flat = give("landlord", Thing(("flat",), 1, "flat"), 100, **V, nonce=1)
+    ride = give("driver", Thing(("car",), 1, "ride"), 30, **V, nonce=2)
+    window = TimeWindow(t - 100, t + 10 ** 6)
+    book.publish_many([flat, ride,
+                       give("landlord", Thing(("option(flat)",), 1, "flat"), 5, **V, nonce=3,
+                            underlying=flat.offer_id, exercise=window),
+                       give("driver", Thing(("option(car)",), 1, "ride"), 3, **V, nonce=4,
+                            underlying=ride.offer_id, exercise=window),
+                       want("traveller", Thing(("option(flat)",), 1, "flat"), 12, **V, nonce=5),
+                       give("traveller", Thing(("lesson",), 1, "hour"), 10, **V, nonce=6),
+                       want("landlord", Thing(("lesson",), 1, "hour"), 12, **V, nonce=7),
+                       want("traveller", Thing(("option(car)",), 1, "ride"), 10, **V, nonce=8),
+                       give("traveller", Thing(("flat",), 1, "flat"), 5, **V, nonce=9),   # a sublet, for the driver
+                       want("driver", Thing(("flat",), 1, "flat"), 8, **V, nonce=10)])
+    book.commit()
+    client = _client(chain)
+    receipts = SolverAgent(book, cat, clearing=ChainClearing(book, cat, beat_client=client, clock=lambda: t),
+                           solver_id="t").step(now=t)
+    assert len(receipts) == 2 and all(r.accepted for r in receipts), [(r.accepted, r.reason) for r in receipts]
+    _mine(chain)
+    for r in receipts:
+        client.finalize(int(r.reason.split()[1]))
+    now = _now(chain)
+    assert client.held_against(flat.offer_id, at=now) == 1 and client.held_against(ride.offer_id, at=now) == 1
+    trip = Parts((Thing(("flat",), 1, "flat"), Thing(("car",), 1, "ride")))
+    book.publish_many([want("traveller", trip, 200, **V, nonce=30),
+                       give("traveller", Thing(("lesson",), 1, "hour"), 10, **V, nonce=31),
+                       want("landlord", Thing(("lesson",), 1, "hour"), 150, **V, nonce=32),
+                       give("traveller", Thing(("car",), 1, "ride"), 5, **V, nonce=33),     # a ride back, for the driver
+                       want("driver", Thing(("car",), 1, "ride"), 50, **V, nonce=34)])
+    book.commit()
+    t2 = _now(chain)
+    receipts = SolverAgent(book, cat, clearing=ChainClearing(book, cat, beat_client=client, clock=lambda: t2),
+                           solver_id="t").step(now=t2)
+    trip_r = [r for r in receipts if r.accepted]
+    assert len(trip_r) == 1, [(r.accepted, r.reason) for r in receipts]
+    beat = int(trip_r[0].reason.split()[1])
+    result = challenge_beat(client, beat, [book], cat, now=t2, send=False)
+    assert result.verifies and all(v.local is None for v in result.legs), [(v.local, v.chain) for v in result.legs]
+    assert any(len(leg[1]) == 2 for leg in result.evidence.submission.legs)        # the composed leg
+    _mine(chain)
+    client.finalize(beat)
+    now = _now(chain)
+    assert client.filled(flat.offer_id) == 1 and client.filled(ride.offer_id) == 1
+    assert client.held_against(flat.offer_id, at=now) == 0 and client.held_against(ride.offer_id, at=now) == 0

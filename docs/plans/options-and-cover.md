@@ -351,6 +351,21 @@ contract with holds is retired only after their windows close. Gas: the
 record scanning went word-at-a-time the same day (the byte loops had made
 an option leg's verification cost ~11 M; after, 4.2 M, and a plain leg 2.4 M).
 
+*(built 2026-09-29, Peter: a trip's components held one by one, then
+committed together)* **Several holds, one exercise.** A composed want whose
+parts are the underlyings of options its maker holds is the two-phase
+commit of a market: the holds are the prepare phase, priced by their
+premiums (a free hold is a free option — anyone could grab every seat and
+release at the last minute), and the exercise is the commit, all or
+nothing. The parts check already adds the holder's own hold back per part,
+and on chain each part's remainder counts only others' holds, so nothing
+new was needed below the CLI: `loop exercise O1 O2 … PRICE` publishes the
+composed want (open until the first window closes), `tests/test_options.py`,
+`tests/test_cli.py` and `tests/test_beat_v6.py` clear it in memory, from the
+command line and on a local EVM. What holds do not solve is performance:
+a composed want's one `requires.point` applies to every part's deposit, so
+each component still bonds the loss of the whole bundle (§9, open).
+
 ### 6.3 `LoopEscrow.assign`
 
 The reservation's `wanter` is fixed at `reserve` (confirmed: no setter,
@@ -418,6 +433,14 @@ C1–C3 are the in-memory core; C4–C7 follow.
 
 ## 9. Open
 
+- **The whole-bundle point** (Peter, 2026-09-29: a long trip's taxi cannot
+  bond the whole trip). A composed want carries one neutral point, and
+  every part's deposit must cover it. The loss a part's failure causes is
+  mostly its repair (a substitute found in time), not the bundle; the
+  candidates are a point per part, a standby (an option on a substitute)
+  accepted in place of cash, cover by an insurer who carries the bundle,
+  and the package operator who bonds the whole once and subcontracts with
+  small deposits — the last two exist today. Not decided.
 - Transferable rights (§3.8) — when needed.
 - Whether a hold may turn P public to others *before* expiry when the holder
   declines early (a release call by the holder) — cheap to add.
