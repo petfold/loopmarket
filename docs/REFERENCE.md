@@ -1005,7 +1005,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `claim_min_challenge`, `claim_min_ruling` | `LOOP_CLAIM_MIN_*` | none | the least dispute and ruling windows a claim on the reservations `finalize` makes must name (the escrow refuses shorter at `hold`) |
 | `arbitrator` | `LOOP_ARBITRATOR` | none | the resolver my gives name for claims on their deposit (never my own key); a want requiring resolvers matches only a give naming one it accepts |
 | `claim_max` | `LOOP_CLAIM_MAX` | none | the longest claim period my gives' deposits carry (v6) |
-| `deductible` | `LOOP_DEDUCTIBLE` | none | what a ruled claim on my deposit leaves with me: an amount of the deposit's asset, for the give's whole quantity (v7) |
+| `deductible` | `LOOP_DEDUCTIBLE` | none | what a ruled claim on my deposit leaves with me, on my scale like `bond`, held in the deposit's asset at the price the deposit states; for the give's whole quantity (v7) |
 | `options` | `LOOP_OPTIONS` | `off` | `on`: every plain give I publish also writes its option, both in one approval block |
 | `option_window` | `LOOP_OPTION_WINDOW` | `1/4` | an option's window: a fraction in (0, 1) of the lead to the offer's handover time (its validity's end without one), or a duration; it closes before the handover |
 | `option_premium` | `LOOP_OPTION_PREMIUM` | `suggest` | an option's premium on my scale: `suggest` (price × ½ × the chance a buyer comes during the hold and none after it, the rate read from the book's wants for the thing over 30 days; with none, price × window/lead × ½, flagged as a guess), `N%` of the price, or an amount; never below 1% of the price |

@@ -87,7 +87,8 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   and a ruling pays the claim less it; a deposit counts against a wanter's
   neutral point only up to what it can pay, in `meets`, the gate and on
   chain (`LoopVerifier` reads v7). `set deductible AMOUNT` at the command
-  line.
+  line, on my scale like `bond`, held in the asset at the price my deposit
+  states.
 - **Options made easy to write** (2026-09-29, Peter: useful only if makers
   write them). `loop option ID` needs no numbers: the window is
   `option_window` of the lead (a quarter by default) and the premium

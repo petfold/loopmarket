@@ -1311,18 +1311,22 @@ def test_options_are_easy_to_write_suggested_and_asked_for(env, tmp_path, monkey
 
 
 def test_a_deductible_rides_on_the_deposit(env):
-    """C5 (2026-09-29): `set deductible` puts an amount of the deposit's own
-    asset on every bonded give — a v7 record, shown with the bond; without
-    a deposit it has nothing to ride on and the give stays as it was."""
+    """C5 (2026-09-29): `set deductible` is typed on my scale, like `bond`,
+    and held in the deposit's asset at the price the deposit states — at 2
+    per xDAI, a bond of 5 is 2.5 xDAI and a deductible of 1 is 0.5 xDAI; a
+    v7 record, shown with the bond in both; without a deposit it has
+    nothing to ride on and the give stays as it was."""
     from fractions import Fraction
     run = Runner()
-    run.ok("set", "deductible", "1/2")
+    run.ok("set", "default_asset", "xdai xDAI 2")
+    run.ok("set", "deductible", "1")
     out = run.ok("give", "apple", "10")
     assert run.session.book.get(out.strip().splitlines()[-1]).v == 4             # no deposit: nothing to deduct
     run.ok("set", "bond", "5")
     out = run.ok("give", "apple", "10")
     offer = run.session.book.get(out.strip().splitlines()[-1])
-    assert offer.v == 7 and offer.bond.deductible == Fraction(1, 2) and "deductible 0.5xDAI" in out
+    assert offer.v == 7 and offer.bond.asset.qty == Fraction(5, 2) and offer.bond.deductible == Fraction(1, 2)
+    assert "deductible 0.5xDAI worth 1" in out
     assert run("set", "deductible", "-1")[0] != 0
     run.ok("set", "deductible", "5")
     code, out, err = run("give", "apple", "10")

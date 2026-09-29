@@ -559,8 +559,9 @@ evening's (`0x3936E3B8A736814Ae8850Da3e75C02B476CdF3f2`,
 factbond's `Assertions` at `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270` as its
 resolver).
 
-A deposit may carry a **deductible** (v7): `loop set deductible 0.002` —
-an amount of the deposit's own asset, for the give's whole quantity like
+A deposit may carry a **deductible** (v7): `loop set deductible 2` — on
+your scale, like `bond`, held in the deposit's asset at the price your
+deposit states (its worth per unit), for the give's whole quantity like
 the deposit (a fill takes its share). A ruled claim pays what it is, at
 most the reservation, less the deductible; a claim at or below it is
 refused, since it could pay nothing; and a deposit counts against a

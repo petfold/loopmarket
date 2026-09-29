@@ -165,8 +165,9 @@ _SETTINGS = {
         "`resolver`"),
     "deductible": _Setting(
         "LOOP_DEDUCTIBLE", "", "--deductible AMOUNT",
-        "what a ruled claim on my deposit leaves with me: an amount of the "
-        "deposit's own asset, for the give's whole quantity like the deposit "
+        "what a ruled claim on my deposit leaves with me, on my scale like "
+        "`bond`: held as the deposit's asset at the price my deposit states "
+        "(its worth per unit), for the give's whole quantity like the deposit "
         "(a fill takes its share); a claim pays what it is, at most the "
         "reservation, less it (C5, a v7 record). A deposit counts against a "
         "wanter's neutral point only up to what it can pay"),
@@ -1236,7 +1237,9 @@ def _bond_text(offer: Offer) -> str:
         return "bond -"
     return (f"bond {_num(b.asset.qty)}{b.asset.unit} {' '.join(b.asset.concepts)} "
             f"worth {_num(b.value)}" + (f" in {b.escrow}" if b.escrow else " (not deposited)")
-            + (f" deductible {_num(b.deductible)}{b.asset.unit}" if b.deductible else ""))
+            + (f" deductible {_num(b.deductible)}{b.asset.unit}"
+               + (f" worth {_num(b.deductible * b.value / q(b.asset.qty))}" if b.value else "")
+               if b.deductible else ""))
 
 
 def render_offer(offer: Offer) -> str:
@@ -1530,8 +1533,14 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
             out["bond"] = Bond(Thing(tuple(parsed.concepts), parsed.qty, parsed.unit or "unit"),
                                parsed.price, _escrow_address())
         if _configured("deductible"):
-            # C5 (v7): an amount of the deposit's own asset, as the deposit is stated
-            out["bond"] = dataclasses.replace(out["bond"], deductible=q(_configured("deductible")))
+            # C5 (v7): typed on my scale, as every amount I type is, and held in
+            # the deposit's asset at the price my deposit states (its worth per
+            # unit) — one conversion, at posting, on my own scale (U14)
+            bond = out["bond"]
+            if not bond.value:
+                raise ValueError("a deductible on my scale needs the deposit's worth to me, to convert it")
+            out["bond"] = dataclasses.replace(
+                bond, deductible=q(_configured("deductible")) * q(bond.asset.qty) / bond.value)
     point = q(_configured("require_point")) if _configured("require_point") else None
     accepts = []
     for entry in (e.strip() for e in (_configured("require_accepts") or "").split(";") if e.strip()):
