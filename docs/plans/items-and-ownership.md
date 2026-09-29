@@ -75,7 +75,13 @@ whose cancellation ladder must not be cheaper than the price difference
 between two buyers (P3's sizing concern).
 
 - The clearing writes an item claim: `item/<h>` → { maker, offer, loop } of
-  the claiming option record or fill, in the same commit (U3). This is a
+  the claiming option record or fill, in the same commit (U3). *(corrected
+  and built 2026-09-29: the key is `item/<h>/<maker>/<loop>` → {offer,
+  until} — one `item/<h>` key would collide when two makers both clear on
+  h, which the per-maker rule allows; the claim is active until the leg's
+  handover window ends, the option's exercise window ends, or, with
+  neither, the give's validity ends; a performance record ending it sooner
+  does not exist in the book yet.)* This is a
   **clearing claim keyspace** written by the clearing role, like `fill/`,
   not a book index ("there is no index in the book … never book keys",
   `registry.py`, ruling of 2026-09-12).
@@ -202,8 +208,8 @@ would need P4 reopened; this draft keeps derived ids.
 
 | # | Package | Gate |
 |---|---|---|
-| I1 | `item(h)` term: the ontodag hash kind (upstream), derived-id helpers for VIN / land register / serial | the same VIN yields the same h everywhere; a mismatched h never matches |
-| I2 | item claim keyspace + per-item rule in registry and clearing (per maker, plan D5) | two offers by one maker on one h: the second leg refused while the first is open; admissible after performance; two makers on one h both clear, and the loser is a non-performance |
+| I1 *(met 2026-09-29 on the prefix-kind stopgap: `items.py`, `Ontology.declare_item_heads`, `tests/test_items.py`)* | `item(h)` term: the ontodag hash kind (upstream), derived-id helpers for VIN / land register / serial | the same VIN yields the same h everywhere; a mismatched h never matches |
+| I2 *(met 2026-09-29 in memory; the key is `item/<h>/<maker>/<loop>`, see §2)* | item claim keyspace + per-item rule in registry and clearing (per maker, plan D5) | two offers by one maker on one h: the second leg refused while the first is open; admissible after performance; two makers on one h both clear, and the loser is a non-performance |
 | I3 | item claims on chain (with `options-and-cover.md` C4) | a second claim on h in a concurrent beat is caught at finalize or by challenge |
 | I4 | `registry-transfer` witness type | a leg naming it performs only on the witness's statement |
 | I5 | inspection history query + "all inspections disclosed" requirement | a hidden inspection of h makes the requirement unmet |

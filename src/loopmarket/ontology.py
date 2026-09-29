@@ -242,6 +242,27 @@ class Ontology:
                 self.dag.put(_dims.KIND_GRAPH, [_dims.DIMENSION_ROOT])
             self.dag.put(head, [_dims.KIND_GRAPH])
 
+    def declare_item_heads(self, heads: Iterable[str] = ("item",)) -> None:
+        """Declare the heads that name one unique item, `item(h)` (I1,
+        2026-09-29; `items-and-ownership.md` §1.3). ontodag's identifier
+        kind (equality only) is the proper home, an upstream ask; until it
+        ships the head sits on the prefix kind, and `items.well_formed`
+        (read by the matching gates) refuses any value that is not a whole
+        64-hex id, which makes prefix containment an equality. One-way like
+        a category: a give naming the item fits a want naming it or naming
+        none; a give naming none never fits a want that names one."""
+        for head in heads:
+            kind = self.head_kind(head)
+            if kind not in (None, _dims.KIND_PREFIX) or head in _dims.KINDS:
+                raise ValueError(f"{head!r} is a {kind} head, not an item head")
+            if kind is None:
+                if _dims.DIMENSION_ROOT not in self.dag.nodes:
+                    from ontodag.prelude import apply as apply_prelude
+                    apply_prelude(self.dag)
+                if _dims.KIND_PREFIX not in self.dag.nodes:
+                    self.dag.put(_dims.KIND_PREFIX, [_dims.DIMENSION_ROOT])
+                self.dag.put(head, [_dims.KIND_PREFIX])
+
     def declare_argument_operator(self, categories: Iterable[str]) -> None:
         """Declare operators by their argument alone — `insure`, `inspect`
         (D4, 2026-09-29): a graph-kind category under `operator` and the

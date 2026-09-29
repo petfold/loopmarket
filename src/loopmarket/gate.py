@@ -68,6 +68,8 @@ class CounterpartyGate:
     held_by: Callable[[str, str], Fraction] = field(default=lambda oid, holder: Fraction(0))
     capacity: Callable[[str], Fraction | None] = field(default=lambda oid: None)
     withdrawn: Callable[[str], bool] = field(default=lambda oid: False)
+    # items (I2): does a maker hold an active claim on an item through another offer?
+    item_claimed: Callable[[str, str, str], bool] = field(default=lambda h, maker, oid: False)
 
     @classmethod
     def over(cls, book, registers: Mapping[str, object], *, now: int, span=None, held=None,
@@ -89,7 +91,23 @@ class CounterpartyGate:
             except KeyError:
                 return None
         return cls(statements, dict(registers), int(now), span, offer, held,
-                   lambda oid, holder: book.held_by(oid, holder, now), capacity or left, book.is_withdrawn)
+                   lambda oid, holder: book.held_by(oid, holder, now), capacity or left, book.is_withdrawn,
+                   lambda h, maker, oid: book.item_claimed(h, maker, now, offer_id=oid))
+
+    # -- items ---------------------------------------------------------------------
+
+    def item_fault(self, give: Offer) -> str:
+        """Why a leg on `give` would break the per-item rule, or "" (I2): its
+        maker already holds an active claim on an item it names through
+        another offer. An option's items are its underlying's."""
+        from .items import ids
+        subject = give
+        if give.v >= 6 and give.underlying:
+            subject = self.offer(give.underlying) or give
+        for h in ids(subject.thing.concepts):
+            if self.item_claimed(h, give.maker, subject.offer_id):
+                return f"{give.maker} already holds an open claim on item {h[:12]}"
+        return ""
 
     # -- options ------------------------------------------------------------------
 

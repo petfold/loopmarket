@@ -51,6 +51,10 @@ option graph-dimension
 operator-argument
 insure graph-dimension operator operator-argument
 inspect graph-dimension operator operator-argument
+# one unique item (items-and-ownership.md §1, 2026-09-29): `item(h)`, h the
+# 64-hex id derived from a VIN, a land register, a serial or a tagger; on the
+# prefix kind until ontodag's identifier kind ships (a whole id is required)
+item prefix-dimension
 # the triangle's trades
 service
 lesson service

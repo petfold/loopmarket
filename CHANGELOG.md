@@ -21,6 +21,16 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Items: `item(h)` and the per-item rule, per maker (I1–I2)**
+  (2026-09-29; `items-and-ownership.md` §1–§2). `items.py` derives h from
+  a VIN, a land-register number or a maker and serial (the same identifier
+  however spelled, the same h) or a tagger's record;
+  `Ontology.declare_item_heads` puts `item` on the prefix kind until
+  ontodag's identifier kind ships, and the matching gates refuse any item
+  term that is not a whole id. Clearing writes `item/<h>/<maker>/<loop>`
+  with the fill or the option's hold; a maker's second offer of an item it
+  holds an open claim on is refused until the claim ends; two makers on one
+  item both clear. `examples/triangle.od` seeds `item`.
 - **Argument-only operators and `requires.legs` (D4)** (2026-09-29).
   `Ontology.declare_argument_operator` declares `insure` and `inspect` as
   operators by their argument alone (the `operator-argument` marker, no

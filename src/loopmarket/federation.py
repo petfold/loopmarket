@@ -42,7 +42,7 @@ from dataclasses import dataclass
 from recordstore import RecordStore
 
 from .registry import (
-    CRED, CURE, EXERCISE, HANDOFF, NOTICE, OPTION,
+    CRED, CURE, EXERCISE, HANDOFF, ITEM, NOTICE, OPTION,
     FILL, LOOP, OFFER, SIG, WITHDRAW, OfferRegistry,
     or_set_resolver,
 )
@@ -206,7 +206,7 @@ class Aggregator:
         records = dict(source.items())
         for key in sorted(records):
             rec = records[key]
-            if role == CLEARING and not (key.startswith(FILL) or key.startswith(LOOP)
+            if role == CLEARING and not (key.startswith(FILL) or key.startswith(LOOP) or key.startswith(ITEM)
                                          or key.startswith(OPTION) or key.startswith(EXERCISE)):
                 # a clearing book legitimately *contains* the fold it
                 # cleared on (it re-based via absorb); only its fills and
@@ -258,7 +258,7 @@ class Aggregator:
                 # (bad, or no crypto library) is dropped, not folded — feed
                 # ownership already authenticates the offer itself.
             elif key.startswith(FILL) or key.startswith(LOOP) or key.startswith(OPTION) \
-                    or key.startswith(EXERCISE):
+                    or key.startswith(EXERCISE) or key.startswith(ITEM):
                 if role != CLEARING:
                     reject(key, "clearing keys in a maker book")
                     continue

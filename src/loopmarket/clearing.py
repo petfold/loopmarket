@@ -34,6 +34,7 @@ from .ontology import Ontology
 from .registry import OfferRegistry
 from .register import named_registers
 from .gate import CounterpartyGate
+from . import items
 from .schema import Offer
 
 
@@ -346,12 +347,31 @@ class MockClearing:
             for i, g in enumerate(leg.gives):
                 taken = leg.taken(i)
                 if g.v >= 6 and g.underlying:
+                    until = int(g.exercise.end)
                     out[f"option/{g.underlying}/{lid}"] = {
-                        "option": g.offer_id, "holder": leg.want.maker,
-                        "until": int(g.exercise.end), "qty": rat(taken)}
-                elif self.registry.held_by(g.offer_id, leg.want.maker, now) > 0:
-                    out.update(self.registry.exercise_records(g.offer_id, leg.want.maker, taken, now, lid))
+                        "option": g.offer_id, "holder": leg.want.maker, "until": until, "qty": rat(taken)}
+                    subject = self.registry.get(g.underlying)
+                else:
+                    if self.registry.held_by(g.offer_id, leg.want.maker, now) > 0:
+                        out.update(self.registry.exercise_records(g.offer_id, leg.want.maker, taken, now, lid))
+                    subject = g
+                    until = self._claim_until(leg.want, g, now)
+                # the per-item rule (I2): the maker's claim on each item the
+                # fill or the hold is about, until the handover or the window
+                for h in items.ids(subject.thing.concepts):
+                    out[f"item/{h}/{g.maker}/{lid}"] = {"offer": subject.offer_id, "until": until}
         return out
+
+    def _claim_until(self, want: Offer, give: Offer, now: int) -> int:
+        """When a fill's item claim ends: the leg's handover window (the
+        want's `time(...)` term), else the give's own validity — an item
+        sold is spoken for until it changes hands. Performance recorded
+        earlier (a countersign) would end it sooner; the book has no such
+        record yet."""
+        _start, end = CounterpartyGate.over(self.registry, {}, now=now, span=self.span).window(want)
+        if end > now:
+            return end
+        return int(give.valid.end) if give.valid.end is not None else 2 ** 62
 
     def gate_faults(self, want: Offer, gives, gate: CounterpartyGate) -> list[str]:
         """Every failing step of either side's credential requirement on a

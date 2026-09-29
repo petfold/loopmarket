@@ -47,6 +47,7 @@ from typing import Iterable, Iterator
 from .ontology import Ontology
 from .schema import GIVE, WANT, Offer, Thing, q
 from .witness import accepted_types
+from .items import well_formed
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,6 +190,12 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
         # through the gate, which sees the book; no gate, no option (U7)
         if gate is None or gate.option_fault(give):
             return False
+    # items (I1, I2): a whole id or nothing (the prefix stopgap's guard), and
+    # one open claim per maker and item
+    if not (well_formed(give.thing.concepts) and all(well_formed(p.concepts) for p in want.parts)):
+        return False
+    if gate is not None and gate.item_fault(give):
+        return False
     # admissibility by declaration (v5, 2026-09-18): each side's requirement
     # of a counterparty — a bond floor, accepted witness types — must be met
     # by the other side's declaration; unmet is refused, fail closed (U7)

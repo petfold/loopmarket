@@ -22,6 +22,9 @@ Layout (one book = one RecordStore, one root reference per version):
                                         2026-09-29): {"option", "holder", "until", "qty"}; active while
                                         now < until, the offer admissible only to the holder meanwhile
     exercise/<offer_id>/<option loop>/<loop_id> -> {"qty"}: what an exercise took of that hold
+    item/<h>/<maker>/<loop_id>       -> {"offer", "until"}: a maker's claim on one unique item, written
+                                        with the fill or hold that makes it (I2, 2026-09-29; per maker,
+                                        plan D5); active while now < until
 
 There is no index in the book. The `idx/{c,t,g}` prefixes (per concept,
 per touched day bucket, per geohash prefix) were written by maker books
@@ -69,6 +72,7 @@ CRED = "cred/"         # cred/<subject>/<statement_id> -> a presented statement 
 NOTICE = "notice/"     # notice/<loop_id>/<offer_id> -> a sealed notice (R6)
 OPTION = "option/"     # option/<offer_id>/<loop_id> -> a hold (C2)
 EXERCISE = "exercise/"  # exercise/<offer_id>/<option loop>/<loop_id> -> what an exercise took (C2)
+ITEM = "item/"         # item/<h>/<maker>/<loop_id> -> a maker's claim on an item (I2)
 CURE = "cure/"         # cure/<loop_id>/<offer_id> -> a sealed cure (R6)
 
 
@@ -270,6 +274,19 @@ class OfferRegistry:
             return False
         return option.exercise is not None and option.exercise.start <= now
 
+    def item_claims(self, h: str, maker: str) -> list[tuple[str, dict]]:
+        """Every (loop, claim) `maker` has made on item h."""
+        prefix = f"{ITEM}{h}/{maker}/"
+        return [(k[len(prefix):], rec) for k, rec in self.store.items(prefix)]
+
+    def item_claimed(self, h: str, maker: str, now: int, *, offer_id: str = "") -> bool:
+        """Does `maker` hold an active claim on item h through an offer
+        other than `offer_id`? The per-item rule (plan D5): one active hold
+        or open fill per (maker, item) — it stops a seller double-selling by
+        accident, and says nothing across makers."""
+        return any(now < int(rec["until"]) and rec["offer"] != offer_id
+                   for _, rec in self.item_claims(h, maker))
+
     def exercise_records(self, offer_id: str, holder: str, taken, now: int, loop_id: str) -> dict:
         """The `exercise/` records an exercise leg taking `taken` of the
         offer writes: the holder's open holds consumed in key order, the
@@ -443,6 +460,10 @@ class OfferRegistry:
             opt, _, lid = rest.partition("/")
             if not (self.store.contains(LOOP + opt) and self.store.contains(LOOP + lid)):
                 raise PartialLoopError(f"exercise {key[len(EXERCISE):][:12]} points at absent loop")
+        for key, _rec in self.store.items(ITEM):
+            lid = key.rsplit("/", 1)[-1]
+            if not self.store.contains(LOOP + lid):
+                raise PartialLoopError(f"item claim {key[len(ITEM):][:12]} points at absent loop")
 
     # -- reading ---------------------------------------------------------------
 
