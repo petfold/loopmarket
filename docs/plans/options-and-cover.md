@@ -441,6 +441,23 @@ C1–C3 are the in-memory core; C4–C7 follow.
   accepted in place of cash, cover by an insurer who carries the bundle,
   and the package operator who bonds the whole once and subcontracts with
   small deposits — the last two exist today. Not decided.
+  *(Peter, the same day, narrowing it)* A standby only moves the problem:
+  the substitute driver must bond too and is as thinly capitalised — the
+  tail belongs with whoever pools many such risks. And a part's loss is a
+  property of the **plan**, not the part: a traveller facing one ferry a day
+  goes the day before, and with that slack a taxi's failure costs a
+  replacement taxi, not the trip. Only the planner sees the slack — the
+  traveller, or the **solver**, who already repairs a failed leg first
+  (`P3-guarantee-coupling.md` §3a rule 10). So the solver may be the one to
+  insure the whole trip: a maker like any other, offering `insure(...)`
+  composed into the loop (`requires.legs`, D4) with its own deposit,
+  pricing slack against premium (an extra night against a smaller tail —
+  `selection.weight`'s failure hook), recovering from a failed component's
+  deposit by assignment (E1's `assign`), each component bonding only its
+  own repair. Needs: C5 (cover paid by the escrow end to end, not built),
+  a point per part or a low uniform point with the tail on the cover, and
+  the solver's capital — its bond (P2's solver bonds, factbond) or an
+  underwriter behind it. Direction, not decided.
 - Transferable rights (§3.8) — when needed.
 - Whether a hold may turn P public to others *before* expiry when the holder
   declines early (a release call by the holder) — cheap to add.
