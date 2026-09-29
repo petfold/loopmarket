@@ -304,9 +304,11 @@ name factbond's redeployed `Assertions`. Hence:
    statements, a revoked statement convicted — M2's chain half) and
    **deployed on Gnosis the same day** (`BeatClearing` `0x8beD…72BC`,
    `LegVerifier` `0x1f6D…5B13`, `StatementVerifier` `0x2BC0…82CF`, SealedBeat
-   `0x107e…2d38`; `0xaF1BBE…691e` retired to it), the live gate's post and
-   check phases passing: both beats verify from a fresh session and the
-   forged post-revocation beat is convicted.
+   `0x107e…2d38`; `0xaF1BBE…691e` retired to it), the live gate passing in
+   all four phases: both beats verify from a fresh session, the forged
+   post-revocation beat is convicted, the hold and item claim are recorded
+   at finalize, a non-holder's exercise is convicted, and the holder's
+   clears, filling the flat once and using the hold up.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust

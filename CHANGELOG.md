@@ -19,7 +19,10 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   predecessor, retired to it. The live gate (`scripts/gate_beat_v6.py`): an
   option beat and a credential beat verify from a fresh session, a forged
   beat pinning the register root after a revocation is convicted, and the
-  older contracts' fills are the new one's floor.
+  older contracts' fills are the new one's floor; after the windows the
+  hold and the item claim are the chain's, a non-holder's exercise is
+  convicted, and the holder's clears, filling the flat once and using the
+  hold up.
 - **`LoopEscrow` redeployed on Gnosis at `0xA49Cc9F9dab95aAB7093F138A084027ef66dD936`** (2026-09-29, E3)
   with E1 and E2, its resolver factbond's `Assertions` redeployed the same
   day at `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270`. The live gate, `scripts/gate_escrow.py`, passed:
