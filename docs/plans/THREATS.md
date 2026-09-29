@@ -1,4 +1,4 @@
-# loopmarket — threat register (T1–T14)
+# loopmarket — threat register (T1–T19)
 
 Status: design, 2026-08-07; dated edit 2026-08-21 (T10–T13 imported from
 the factbond mirror per the content-sync rule; T14 added at owner
@@ -8,7 +8,9 @@ rules; the ten by-construction fee/bond rules; the wash-loop inequality as
 U13's design-time check; initial tripwire thresholds, pre-registered,
 changeable only by dated edit. Open here: threshold calibration, the
 announcement-layer spam floor, k-cohort sybil costing, off-chain solver
-side payments, off-protocol subsidies, semantic drift.
+side payments, off-protocol subsidies, semantic drift. T15–T19 added by
+dated entry since 2026-09-25 (the latest, T19, biometric linkage at the
+door, 2026-09-29).
 
 This is the cross-system register both repos gate on. Each entry records
 the attack, its economics with researched numbers, the by-construction
@@ -550,6 +552,39 @@ that reverts in `resolve` strands the case and both stakes, and one that
 reverts only on 0 makes its claims unrefutable; the defense here makes
 this escrow's `resolve` never revert on a claim it opened, and the
 general fix is on factbond's side.
+
+## T19 — Biometric linkage at the door (added 2026-09-29)
+
+**Attack.** A photo is no longer a private record: face recognition at a
+building's entrance, a phone's gallery, a public profile — a face resolves
+to a legal identity almost anywhere in the physical world (Peter, the same
+day). The `photo-match` door witness (`witness.py`, R7) discloses the
+attester's photo of the giver and its salt to the counterparty's device, so
+the counterparty takes away a **portable, attested** proof that this face
+controls this key — and through the key, every offer, fill, statement and
+loop it ever made in public books. One ride de-anonymises a key's history;
+a counterparty collecting such proofs builds a face-to-key directory. The
+encounter itself links a face to a key for the counterparty alone; what the
+witness adds is that the link becomes verifiable and transferable.
+
+**Economics.** Nothing is paid to mount it: an ordinary counterparty keeps
+what its device received. The value grows with the key's history and with
+how many keys one collector meets.
+
+**Defense.** (1) **Possession is the default door witness** (`require_door
+possession`, 2026-09-29): a fresh challenge signed with the key proves
+control and nothing more, and the counterparty learns only what meeting
+the person already told it. (2) **Photo is opt-in on both sides**, asked
+for by a requirer only where the stakes need it, and each side's approval
+block says what it reveals (`cli._door_notes`). (3) **A display-only
+photo form** — the photo shown on the giver's own device, the counterparty
+confirming "matches", only the confirmation recorded — trades
+verifiability for privacy; not built (the display could be forged, and a
+verifiable match that reveals no face is not practical yet). (4) **A key
+per trade**, credentials presented unlinkably across them, bounds what one
+encounter links (`P4-privacy.md`, open problems). Residual: any in-person
+handover shows a face to the counterparty; unlinkability, not anonymity,
+is the goal the protocol can serve.
 
 ## The ten fee/bond rules (by construction)
 

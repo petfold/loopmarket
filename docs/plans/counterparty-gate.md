@@ -352,6 +352,71 @@ door; the public statement carries only a commitment to it (§3.2). A
 government credential is one source a requirer may accept; **it is never
 required by the protocol.**
 
+*(2026-09-29, Peter: a face resolves to a legal identity almost anywhere
+now — THREATS T19)* **Possession is the default.** A photo disclosed at the
+door hands the counterparty a provable, transferable link from a face to a
+key and its whole history, so `possession` — control of the key, nothing
+more — is what a door requirement means unless `photo` is asked for
+(`require_door possession|photo` at the command line); a giver declaring
+`photo-match`, and a requirer asking for it, each see in the approval
+block what it reveals. Still open: the display-only photo form (shown on the
+giver's device, only the counterparty's confirmation recorded) and a key
+per trade with credentials presented unlinkably (`P4-privacy.md`).
+
+**Identity beyond the deposit.** Everything the deposit covers works
+pseudonymously: a ruling is about facts concerning keys, the evidence is
+bound to keys (the door witnesses), and the remedy is the escrow's. Where
+a loss can exceed any deposit — fraud, injury, a criminal matter — legal
+recourse needs a legal person, and the bridge is an attester who checked a
+government document, issues a statement about the key, and holds the
+key-to-person link in escrow, disclosing it only on a ruling or a court
+order. A maker who wants that recourse requires such a statement
+(`identity-verified`, from attesters it accepts); the protocol never does.
+The disclosure on ruling is hansa's (its attester side); not built.
+
+## 7a. Arbitrators as credentialed roles (discussed 2026-09-29)
+
+*(Peter and the assistant, 2026-09-29; direction, not built.)* The resolver
+of a reservation — the *arbitrator* (the legal term for whoever hears a
+dispute and makes an award; factbond names its ladder's rungs
+*adjudicator* and *arbiter*, the final one) — is not one party but a
+competitive market of them, and each maker chooses which it accepts.
+
+- **Kinds in the catalogue, individuals as keys.** The catalogue orders
+  competences (`ride-dispute-board ⊑ transport-arbitrator ⊑ arbitrator`);
+  an arbitrator is a key with a statement in a register ("K is an
+  accredited transport arbitrator", issued by an association), the same
+  shape §2–§4 read for any credential.
+- **Acceptance by property, not by name.** `Accept` already carries the
+  fields — accreditation under a trust root, a deposit floor on the
+  requirer's scale, a look-back without reversal, never a count of rulings
+  (THREATS T16) — and today admits only named keys, the rest failing
+  closed. Built, "any transport arbitrator accredited by a register I trust,
+  bonded at least this much, unreversed for a year" admits every new
+  arbitrator that meets the bar: competition on fee and quality without
+  fragmentation. The reads are the gate's (registers, as for credentials)
+  and factbond's (the rung's deposit on chain).
+- **Both sides accept.** A give names one `arbitrator` today; it should
+  state a set too, the clearing choosing one in both sides' intersection
+  deterministically.
+- **The partition is per leg.** A leg needs its two makers to share an
+  acceptable arbitrator, nothing more; a loop crosses communities leg by
+  leg. The cost is liquidity in thin markets, not computation (one more
+  filter). A deposit floor sorts arbitrators by stake — factbond's rule
+  that a rung's integrity cost be at least what rides on its rulings — so
+  what partition remains follows the stakes, not taste; acceptance by
+  property keeps the network effect of widely accepted arbitrators
+  contestable.
+- **The final rung is factbond's rule:** named, bonded, independent,
+  never a vote of a token (UMA's DVM the counterexample: a vote can be
+  bought when more rides on it than the votes cost; factbond's
+  `DESIGN.md` records the 2025 Polymarket/UMA cases). Candidates that fit:
+  a professional arbitration provider signing on chain with a deposit; a
+  domain authority for its own fact class (a chamber for licences, a land
+  register for title, a ride-dispute board); a drawn-juror court for small
+  stakes; a mutual's committee for the mutual's own claims. Today the
+  deployed `Assertions` names a stand-in key.
+
 ## 8. Boundaries
 
 - B1: the gate is pure: statement shape, catalogue, absence proofs. Verifying

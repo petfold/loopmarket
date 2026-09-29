@@ -394,6 +394,13 @@ document's tiers.
 
 ## Open problems
 
+- **A key per trade** (2026-09-29, THREATS T19). An in-person handover
+  links a face to the key at the door; a key used once bounds that link to
+  one trade. What it needs: keys derived per offer or per leg, the
+  credentials a leg's gate reads presented unlinkably across them (BBS+
+  style, hansa's), and deposits and reputation that survive the rotation
+  (association-set proofs, §4). Until then possession is the door's
+  default and photo an opt-in with its cost stated.
 - **k-cohort sybil poisoning.** The cohort count driving adaptive
   coarsening is an attacker-writable statistic: padding a victim's
   cohort triggers finer disclosure around a real crowd of one, and

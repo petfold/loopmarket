@@ -230,6 +230,20 @@ _SETTINGS = {
         "LOOP_REQUIRE_ESCROWS", "", "--require-escrows KINDS",
         "escrow kinds I accept for a counterparty's deposit (e.g. contract); "
         "empty: any"),
+    "require_door": _Setting(
+        "LOOP_REQUIRE_DOOR", "", "--require-door possession|photo",
+        "the door witness my wants require of the person at the handover: "
+        "`possession` (the default meaning: a fresh challenge signed with "
+        "their key — they control it, nothing else is learned) or `photo` "
+        "(possession plus the attested photo, which hands the counterparty a "
+        "provable link from their face to their key: ask it only where the "
+        "stakes need it, THREATS T19); empty: none"),
+    "oracle": _Setting(
+        "LOOP_ORACLE", "countersign", "--oracle TYPE",
+        "the witness my gives settle against: countersign (default), "
+        "possession (I sign a fresh challenge at the door) or photo-match "
+        "(possession plus my attested photo — the counterparty's device "
+        "receives it and can link my face to my key, THREATS T19)"),
     "interval": _Setting(
         "LOOP_INTERVAL", "30s", "--interval DURATION",
         "how often `watch` polls the fold"),
@@ -1512,6 +1526,9 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
     if side == GIVE:
         if _configured("arbitrator"):
             out["arbitrator"] = _configured("arbitrator")
+        oracle = (_configured("oracle") or "countersign").strip()
+        if oracle != "countersign":
+            out["oracle"] = oracle
         if _configured("claim_max"):
             out["claim_max"] = duration_s(_configured("claim_max"))
     claim_period = duration_s(_configured("require_claim")) if side == WANT and _configured("require_claim") else 0
@@ -1561,7 +1578,10 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
     if point and not accepts:                      # a point with nothing named accepts the default asset
         accepts.append(Acceptance(*default_asset()))
     escrows = tuple(t for t in (_configured("require_escrows") or "").split() if t)
-    if point is not None or accepts or escrows or claim_period or resolver_keys:
+    door = (_configured("require_door") or "").strip() if side == WANT else ""
+    oracles = ({"possession": ("door-at-least-possession",), "photo": ("door-at-least-photo",)}[door]
+               if door else ())
+    if point is not None or accepts or escrows or claim_period or resolver_keys or oracles:
         ladder = ()
         if point is not None and _configured("require_cancel"):
             far = q(_configured("require_cancel"))
@@ -1569,7 +1589,7 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
             if lead and lead > 0:
                 ladder = _ladder(_configured("ladder") or "linear", lead, far, point)
         out["requires"] = Requires(point=point or 0, ladder=ladder, accepts=tuple(accepts), escrows=escrows,
-                                   claim_period=claim_period,
+                                   oracles=oracles, claim_period=claim_period,
                                    resolvers=Accept(keys=resolver_keys) if resolver_keys else None)
     if "bond" in out and out["bond"].deductible:
         out["v"] = 7                               # a deposit's deductible (C5); v7 carries v6's fields
@@ -1885,6 +1905,22 @@ def _publish_offer(session: Session, offer: Offer, notes: list[str],
     return _publish_offers(session, [(offer, notes)], reused, out, addresses)
 
 
+def _door_notes(offer: Offer) -> list[str]:
+    """What a photo at the door gives away, said in the block that approves
+    it (THREATS T19, 2026-09-29): possession is the default because it
+    proves control of the key and nothing more."""
+    notes = []
+    if offer.oracle == "photo-match":
+        notes.append("photo-match: at the door the counterparty's device receives my attested photo — "
+                     "a provable link from my face to my key and every trade it made (T19); "
+                     "`set oracle possession` proves control without it")
+    req = offer.requires if offer.v >= 5 else None
+    if req is not None and "door-at-least-photo" in req.oracles:
+        notes.append("requires the counterparty's photo at the door: their face linked to their key (T19); "
+                     "`set require_door possession` asks for control of the key only")
+    return notes
+
+
 def _publish_offers(session: Session, items, reused: bool, out, addresses=()) -> int:
     """`_publish_offer` for offers approved together — a give and the
     option `options on` writes with it: every block shown, one question,
@@ -1893,7 +1929,7 @@ def _publish_offers(session: Session, items, reused: bool, out, addresses=()) ->
         if i:
             print("and", file=out)
         print(render_offer(offer), file=out)
-        for note in notes:
+        for note in notes + _door_notes(offer):
             print(f"  note     {note}", file=out)
     for address in addresses:
         print(f"  note     handoff {address} — sealed to the counterparty "
@@ -3285,6 +3321,10 @@ def cmd_set(args, session, out):
             raise ValueError(f"deductible is an amount: {exc}") from None
         if amount < 0:
             raise ValueError("deductible is a non-negative amount")
+    if args.key == "require_door" and value and value not in ("possession", "photo"):
+        raise ValueError("require_door is possession or photo")
+    if args.key == "oracle" and value and value not in ("countersign", "possession", "photo-match"):
+        raise ValueError("oracle is countersign, possession or photo-match")
     if args.key == "options" and value and value not in ("on", "off"):
         raise ValueError("options is on or off")
     if args.key == "option_window" and value:

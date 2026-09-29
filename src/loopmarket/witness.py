@@ -13,7 +13,10 @@ evidence policy, clearing's verifiable set, the settlement check here):
 - `photo-match` — possession, plus the photo the attester bound to the key
   at issuance: its salted commitment rides in the presentation, the photo
   and salt are disclosed to the counterparty's device at the door, and the
-  counterparty confirms the face.
+  counterparty confirms the face. That hands the counterparty a provable
+  link from the face to the key and its history (THREATS T19, 2026-09-29):
+  possession is the default, photo the opt-in a requirer asks for only
+  where the stakes need it.
 
 A requirement names a *door level*, a cumulative category, never a bare
 type (`DOOR_LEVELS`): `door-at-least-possession` is met by possession or

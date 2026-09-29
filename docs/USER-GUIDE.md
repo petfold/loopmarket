@@ -739,6 +739,16 @@ since the pinned root — so a stale pin cannot hide a revocation. The proof
 that a root keeps every earlier revocation is recordstore's extension
 proof (0.21.0), checkable by anyone with no store.
 
+**At the door.** A want can require that the person handing over proves
+they hold the key: `loop set require_door possession` — a fresh challenge
+signed with their key, which proves control and reveals nothing else. A
+giver declares what it settles against with `loop set oracle possession`.
+`photo` (the attester's photo of the key's holder, checked at the door)
+must be asked for explicitly: a photo resolves to a legal identity almost
+anywhere now, so it hands the counterparty a provable link from a face to
+a key and its whole history (THREATS T19), and the approval block of
+either side says so. Ask for it only where the stakes need it.
+
 **On chain**: a beat pins the register roots, each leg's commitment
 carries its statements, and `StatementVerifier` checks that each is
 presented under the book root and neither revoked nor suspended under its

@@ -1335,3 +1335,38 @@ def test_a_deductible_rides_on_the_deposit(env):
     run.ok("set", "deductible", "5")
     code, out, err = run("give", "apple", "10")
     assert code != 0 and "below the deposit" in err
+
+
+def test_the_door_witness_defaults_to_possession_and_the_photo_says_what_it_costs(env):
+    """THREATS T19 (2026-09-29, Peter): a photo at the door hands the
+    counterparty a provable link from a face to a key. `require_door
+    possession` — the default meaning of a door requirement — asks for
+    control of the key and nothing else; `photo` must be asked for, and the
+    approval block of either side says what it reveals. A want requiring a
+    door level matches only a give that declares a witness meeting it."""
+    from loopmarket.matching import check_match
+    run = Runner()
+    run.ok("set", "require_door", "possession")
+    out = run.ok("want", "apple", "9")
+    w = run.session.book.get(out.strip().splitlines()[-1])
+    assert w.requires.oracles == ("door-at-least-possession",) and "T19" not in out
+    ont = run.session.catalogue
+    counter = lambda oracle: give("0x" + "99" * 20, w.thing, 5, valid=w.valid, nonce=1, oracle=oracle,
+                                  ontology_root=w.ontology_root, registry_version=w.registry_version,
+                                  contract_version=w.contract_version)
+    assert check_match(counter("possession"), w, ont, now=NOW) is not None
+    assert check_match(counter("photo-match"), w, ont, now=NOW) is not None      # a higher level meets a lower
+    assert check_match(counter("countersign"), w, ont, now=NOW) is None           # no door witness declared
+    run.ok("set", "require_door", "photo")
+    out = run.ok("want", "apple", "8")
+    assert "requires the counterparty's photo at the door" in out
+    photo_want = run.session.book.get(out.strip().splitlines()[-1])
+    assert check_match(counter("possession"), photo_want, ont, now=NOW) is None
+    run.ok("set", "require_door", "")
+    run.ok("set", "oracle", "photo-match")
+    out = run.ok("give", "apple", "7")
+    assert "photo-match: at the door the counterparty's device receives my attested photo" in out
+    run.ok("set", "oracle", "possession")
+    out = run.ok("give", "apple", "6")
+    assert "T19" not in out and run.session.book.get(out.strip().splitlines()[-1]).oracle == "possession"
+    assert run("set", "require_door", "face")[0] != 0 and run("set", "oracle", "retina")[0] != 0

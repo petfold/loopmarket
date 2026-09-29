@@ -82,6 +82,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Possession is the door's default; the photo says what it costs**
+  (2026-09-29, Peter; THREATS T19, biometric linkage at the door). `set
+  require_door possession|photo` on my wants, `set oracle
+  countersign|possession|photo-match` on my gives; a photo requirement or
+  declaration notes in the approval block that it links a face to a key
+  and its history. Recorded the same day: arbitrators as credentialed roles
+  accepted by property (`counterparty-gate.md` §7a), identity beyond the
+  deposit by an attester's escrowed disclosure, and a key per trade
+  (`P4-privacy.md`).
 - **Cover paid by the escrow, stage 1 (C5)** (2026-09-29). A cover
   reservation's window is the covered period — the `time(…)` inside the
   insured's `insure(…)` want, else the insurer's, else the leg's handover —

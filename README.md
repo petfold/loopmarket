@@ -60,7 +60,7 @@ agent.step()                          # snapshot → match → hunt loops → cl
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 279 tests (two need a live Bee node, fifty-six the evm extra, one swarmfs — skipped per test without them)
+python3 -m pytest tests/ -v           # 280 tests (two need a live Bee node, fifty-six the evm extra, one swarmfs — skipped per test without them)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
@@ -209,7 +209,7 @@ And two more: **clearing** is the atomic commit that fixes obligations; **settle
 | [`cli.md`](docs/plans/cli.md) | The command line (designed 2026-09-11, **built 2026-09-12** as `loop`): ontodag's grammar plus quantity-first/price-last, every name a catalogue node, last-price memory, "declare in the direction you know" instead of a tolerance parameter, the approval block, batch scripts; what is still open (`fold`/`audit`/`propose`, U8 for peers, the upstream asks). |
 | [`catalogue-bootstrap.md`](docs/plans/catalogue-bootstrap.md) | Seeding and governing the shared catalogue: seed taxonomies, the import pipeline, norms as protocol rules. |
 | [`adoption-and-thickness.md`](docs/plans/adoption-and-thickness.md) | Where the first loops come from: launch verticals, the broker surface, bridge liquidity, thickness engineering. |
-| [`THREATS.md`](docs/plans/THREATS.md) | The threat register, T1–T9, ordered by expected damage to a young system; mirrored in factbond. |
+| [`THREATS.md`](docs/plans/THREATS.md) | The threat register, T1–T19 (the fixed T1–T9 by expected damage to a young system, then dated additions — T19, biometric linkage at the door); mirrored in factbond. |
 | [swarm-da](https://github.com/petfold/swarm-da) (separate repo) | Memo, 2026-09-09: what building this book on Swarm taught about Swarm as a data-availability layer — the archival-DA opportunity, Bee's push-sync receipts as the half-built publication primitive, and what loopmarket sheds the day they are exposed and anchored. |
 
 **Phase ↔ document map.** P1 (federation): `P1-federated-book.md`,

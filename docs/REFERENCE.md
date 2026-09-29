@@ -1014,6 +1014,8 @@ loop config (owner-readable, 0600); secrets print masked.
 | `default_asset` | `LOOP_DEFAULT_ASSET` | none | the asset a bare `bond` deposits and a bare `require_point` accepts, with MY price per unit on my scale (`xdai xDAI 1.2`); no default price — unset, a bare amount is refused |
 | `require_point`, `require_cancel`, `ladder` | `LOOP_REQUIRE_*`, `LOOP_LADDER` | none, none, `linear` | my neutral point on a no-show and on a far cancellation, on my scale; the ladder's shape over the lead at posting (`linear`, `late`, `early`, `flat`) |
 | `require_accepts`, `require_escrows` | `LOOP_REQUIRE_*` | none | `CATEGORY... UNIT PRICE; ...` — the assets I accept as compensation at my prices; the escrow kinds I accept |
+| `require_door` | `LOOP_REQUIRE_DOOR` | none | the door witness my wants require: `possession` (control of the key, the default meaning) or `photo` (possession plus the attested photo, which links the counterparty's face to their key — THREATS T19) |
+| `oracle` | `LOOP_ORACLE` | `countersign` | the witness my gives settle against: `countersign`, `possession`, or `photo-match` (the approval block says what the photo reveals) |
 
 Names resolve through the **view** — the catalogue merged with odag's
 active store and odag's overlays — while matching runs against the
