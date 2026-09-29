@@ -42,6 +42,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Changed
 
+- **`default_asset` has no default price** (2026-09-29, Peter). A bare
+  amount on my scale — `bond 5`, a `require_point` with no
+  `require_accepts` — is converted at my own price for an asset, so it is
+  refused until `set default_asset 'xdai xDAI PRICE'` states it; before, the
+  CLI assumed xDAI at 1 per scale unit. Every amount stays on the maker's
+  scale, converted once at posting at the maker's own price.
 - **`recordstore>=0.21.0`** (2026-09-29): the release with extension proofs
   and a feed's verifiable sequence of roots, which a register's checked
   root sequence (R5) needs; the tests that skipped without it now run.

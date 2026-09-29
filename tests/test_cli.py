@@ -1078,18 +1078,21 @@ def test_v6_settings_make_a_v6_offer_and_the_gate_matches_the_claim_period(loop,
     assert "v4" in out
 
 
-def test_the_default_asset_is_the_chains_gas_token_and_must_be_in_the_catalogue(loop, monkeypatch):
-    """A bare-number `bond` deposits xDAI and a `require_point` with nothing
-    named accepts xDAI at 1 — the configured chain's gas token, a CLI default
-    the record spells out; an asset category the catalogue lacks is refused at
-    publish rather than matching nothing."""
+def test_the_default_asset_has_no_default_price_and_must_be_in_the_catalogue(loop, monkeypatch):
+    """A bare-number `bond` deposits `default_asset` and a `require_point`
+    with nothing named accepts it — at MY price, which has no default
+    (2026-09-29, Peter: the price is my judgement): unset, a bare amount is
+    refused, saying what to set; an asset category the catalogue lacks is
+    refused at publish rather than matching nothing."""
     run = loop
     run.ok("set", "bond", "5")
     run.ok("set", "require_point", "20")
+    code, out, err = run("give", "apple", "home", "5")
+    assert code != 0 and "set default_asset 'xdai xDAI PRICE'" in err
     run.ok("set", "default_asset", "doge DOGE 1")
     code, out, err = run("give", "apple", "home", "5")
     assert code != 0 and "asset category 'doge' is not in the catalogue" in err
-    monkeypatch.setenv("LOOP_DEFAULT_ASSET", ""); run.ok("set", "default_asset", "")
+    run.ok("set", "default_asset", "xdai xDAI 1")
     out = run.ok("give", "apple", "home", "5")
     assert "bond 5xDAI xdai worth 5" in out and "requires point 20" in out and "accepts xdai xDAI 1" in out
     offer = next(o for o in run.session.book.offers(include_filled=True) if o.tokens.amount == 5)
@@ -1135,6 +1138,7 @@ def test_deposit_funds_the_declared_bond_on_the_escrow_contract(loop, monkeypatc
     monkeypatch.setattr(cli, "_escrow_client", lambda session: client)
     run = loop
     run.ok("set", "escrow", f"chain:http://x@{address}")
+    run.ok("set", "default_asset", "xdai xDAI 1")
     run.ok("set", "bond", "5")
     run.ok("give", "apple", "home", "5")
     offer = next(o for o in run.session.book.offers(include_filled=True))

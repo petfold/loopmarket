@@ -1011,7 +1011,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `option_premium` | `LOOP_OPTION_PREMIUM` | `suggest` | an option's premium on my scale: `suggest` (price × ½ × the chance a buyer comes during the hold and none after it, the rate read from the book's wants for the thing over 30 days; with none, price × window/lead × ½, flagged as a guess), `N%` of the price, or an amount; never below 1% of the price |
 | `require_claim`, `require_resolvers` | `LOOP_REQUIRE_*` | none | the claim period I ask of a giver's deposit; the resolvers I accept, by key (v6) |
 | `bond` | `LOOP_BOND` | none | my deposit on every give: an amount on my scale (deposited as `default_asset` at my price) or `QTY[UNIT] CATEGORY... VALUE` (v5) |
-| `default_asset` | `LOOP_DEFAULT_ASSET` | `xdai xDAI 1` | the asset a bare `bond` deposits and a bare `require_point` accepts, with its price per unit on my scale |
+| `default_asset` | `LOOP_DEFAULT_ASSET` | none | the asset a bare `bond` deposits and a bare `require_point` accepts, with MY price per unit on my scale (`xdai xDAI 1.2`); no default price — unset, a bare amount is refused |
 | `require_point`, `require_cancel`, `ladder` | `LOOP_REQUIRE_*`, `LOOP_LADDER` | none, none, `linear` | my neutral point on a no-show and on a far cancellation, on my scale; the ladder's shape over the lead at posting (`linear`, `late`, `early`, `flat`) |
 | `require_accepts`, `require_escrows` | `LOOP_REQUIRE_*` | none | `CATEGORY... UNIT PRICE; ...` — the assets I accept as compensation at my prices; the escrow kinds I accept |
 

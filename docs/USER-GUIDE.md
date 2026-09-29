@@ -510,9 +510,10 @@ declaration, `docs/plans/P3-release-and-reclearing.md` §5d). Both are on
 your own scale; the protocol names no money:
 
 ```console
+$ loop set default_asset 'xdai xDAI 1'   # MY price for the asset a bare amount means: 1 on my scale per xDAI (no default)
 $ loop set require_point 20          # a no-show costs me 20 on my scale: any give I take must be backed by that much
 $ loop set require_cancel 5          # a cancellation well ahead costs me 5 — the ladder in between is derived
-$ loop set bond 5                    # every give I publish is backed by 5 on my scale, deposited as default_asset (xDAI at 1)
+$ loop set bond 5                    # every give I publish is backed by 5 on my scale, deposited as default_asset at my price
 $ loop give vegetable-box farm 50    # → "bond 5xDAI xdai worth 5 …  requires point 20 …  v5"
 ```
 

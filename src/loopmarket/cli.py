@@ -127,12 +127,13 @@ _SETTINGS = {
         "(quantity first), its worth to me on my scale last (v5; a "
         "declaration until the escrow of `escrow` holds it)"),
     "default_asset": _Setting(
-        "LOOP_DEFAULT_ASSET", "xdai xDAI 1", "--default-asset 'CATEGORY UNIT PRICE'",
+        "LOOP_DEFAULT_ASSET", "", "--default-asset 'CATEGORY UNIT PRICE'",
         "the asset a bare-number `bond` deposits and a `require_point` with "
-        "no `require_accepts` accepts, with its price per unit on my scale: "
-        "the configured chain's gas token — xDAI at 1 while Swarm settles on "
-        "Gnosis (a CLI default; the record names it explicitly, the protocol "
-        "names no asset)"),
+        "no `require_accepts` accepts, with MY price per unit on my scale — "
+        "e.g. `xdai xDAI 1.2` for the chain's gas token. No default "
+        "(2026-09-29, Peter): the price is my own judgement, so a bare amount "
+        "that needs it is refused until I state it; the record names the asset "
+        "explicitly, and the protocol names none"),
     "escrow": _Setting(
         "LOOP_ESCROW", "", "--escrow SPEC",
         "the escrow contract holding my deposit: chain:RPC_URL@CONTRACT "
@@ -1515,15 +1516,24 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
             out["claim_max"] = duration_s(_configured("claim_max"))
     claim_period = duration_s(_configured("require_claim")) if side == WANT and _configured("require_claim") else 0
     resolver_keys = tuple((_configured("require_resolvers") or "").split()) if side == WANT else ()
-    default = shlex.split(_configured("default_asset") or "xdai xDAI 1")
-    if len(default) < 3:
-        raise ValueError("default_asset is `CATEGORY... UNIT PRICE`")
-    d_cat, d_unit, d_price = tuple(default[:-2]), default[-2], q(default[-1])
+    def default_asset():
+        """My price for the asset a bare amount means — stated, never assumed."""
+        spec = _configured("default_asset")
+        if not spec:
+            raise ValueError("a bare amount on my scale needs my price for an asset: "
+                             "`set default_asset 'xdai xDAI PRICE'` (my price per xDAI on my scale), "
+                             "or state the deposit by the grammar (`QTY[UNIT] CATEGORY... VALUE`) "
+                             "and what I accept by `require_accepts`")
+        toks = shlex.split(spec)
+        if len(toks) < 3:
+            raise ValueError("default_asset is `CATEGORY... UNIT PRICE`")
+        return tuple(toks[:-2]), toks[-2], q(toks[-1])
     dep = _configured("bond")
     if dep:
         toks = shlex.split(dep)
         if len(toks) == 1:                         # a bare amount: on MY scale, deposited as the default
             value = q(toks[0])                     # asset at my price for it (value / price units)
+            d_cat, d_unit, d_price = default_asset()
             out["bond"] = Bond(Thing(d_cat, value / d_price, d_unit), value, _escrow_address())
         else:
             parsed = parse_offer_tokens(toks)
@@ -1549,7 +1559,7 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
             raise ValueError(f"require_accepts entry {entry!r} is `CATEGORY... UNIT PRICE`")
         accepts.append(Acceptance(tuple(toks[:-2]), toks[-2], q(toks[-1])))
     if point and not accepts:                      # a point with nothing named accepts the default asset
-        accepts.append(Acceptance(d_cat, d_unit, d_price))
+        accepts.append(Acceptance(*default_asset()))
     escrows = tuple(t for t in (_configured("require_escrows") or "").split() if t)
     if point is not None or accepts or escrows or claim_period or resolver_keys:
         ladder = ()
