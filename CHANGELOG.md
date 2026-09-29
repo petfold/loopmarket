@@ -9,6 +9,16 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Deployed
+
+- **`LoopEscrow` redeployed on Gnosis at `0xA49Cc9F9dab95aAB7093F138A084027ef66dD936`** (2026-09-29, E3)
+  with E1 and E2, its resolver factbond's `Assertions` redeployed the same
+  day at `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270`. The live gate, `scripts/gate_escrow.py`, passed:
+  a cover reservation refusing the countersign, the giver's own claim
+  refused at `hold`, the wanter's claim holding it and, retracted,
+  reopening it, a split settling on the second signature, the giver's
+  `extendClaim`. The config's `escrow` and `resolver` name the new pair.
+
 ### Fixed
 
 - **The escrow is the authority on aggregated and composed legs too**

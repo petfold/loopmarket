@@ -539,9 +539,12 @@ while a claim is open, so a claimant cannot sell a claim and then drop it.
 Gates: `tests/test_escrow.py` (`test_the_escrow_opens_only_the_wanters_claim_and_a_retraction_reopens`,
 `test_a_split_while_a_claim_is_open_lets_the_resolvers_case_end`,
 `test_a_refused_payout_is_credited_and_never_blocks_the_ruling`).
-**Live exposure:** the Gnosis pair (escrow `0x299CE4…69Bf`, Assertions
-`0xfa6f…BF99`) has the hole until E3's redeploy; its one factbond-resolved
-reservation settled at the 2026-09-19 gate. **Residual, factbond's:**
+**Live exposure:** the old Gnosis pair (escrow `0x299CE4…69Bf`, Assertions
+`0xfa6f…BF99`) has the hole; its one factbond-resolved reservation settled
+at the 2026-09-19 gate, and since 2026-09-29 the config names the
+redeployed pair (`0xA49Cc9F9dab95aAB7093F138A084027ef66dD936` with `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270`), where the E3 gate showed
+the giver's own claim refused and a retraction reopening the reservation
+live. **Residual, factbond's:**
 `Assertions` calls its consumer without isolating a revert, so a consumer
 that reverts in `resolve` strands the case and both stakes, and one that
 reverts only on 0 makes its claims unrefutable; the defense here makes

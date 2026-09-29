@@ -263,12 +263,13 @@ name factbond's redeployed `Assertions`. Hence:
 4. **factbond: isolate consumer reverts, then redeploy** (factbond's
    roadmap): a consumer that reverts in `resolve` must not strand a case
    and its stakes (T18's residual), fixed before the address loopmarket
-   pins is fixed.
+   pins is fixed. DONE 2026-09-29: `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270`.
 5. **E3** — the one `LoopEscrow` redeploy on Gnosis, naming factbond's new
    address; live gate: a `claimOnly` reservation, a split, an extension,
-   and a stranger's claim refused at `hold`. Until then the Gnosis pair
-   (`0x299CE4…69Bf` with `0xfa6f…BF99`) keeps T18's hole; its stakes are
-   test amounts.
+   and a stranger's claim refused at `hold`. DONE 2026-09-29: `0xA49Cc9F9dab95aAB7093F138A084027ef66dD936`,
+   the gate passed live (`scripts/gate_escrow.py`); the old pair
+   (`0x299CE4…69Bf` with `0xfa6f…BF99`) is out of the config and keeps its
+   history.
 6. **R2–R4 with hansa A0** — Milestone M1, the dentist case in memory.
    R2 (the `cred/` sidecar and its fold rule) DONE 2026-09-29; R3a (registers,
    the `register` role, `register_roots`, loop record v2) DONE the same day;
