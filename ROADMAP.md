@@ -309,6 +309,12 @@ name factbond's redeployed `Assertions`. Hence:
    post-revocation beat is convicted, the hold and item claim are recorded
    at finalize, a non-holder's exercise is convicted, and the holder's
    clears, filling the flat once and using the hold up.
+8. **C5 stage 1 — cover paid by the escrow** DONE 2026-09-29: the covered
+   period as the reservation's window, and the deductible on the deposit
+   (Peter), a v7 record; the escrow and the clearing trio redeployed the
+   same evening (`LoopEscrow` `0x3936…F3f2`, `BeatClearing` `0xC475…11d4`)
+   and gated live. Stage 2 is factbond's: assignment and netting before a
+   cover payout, fair presentation, contra proferentem — Milestone M4.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust

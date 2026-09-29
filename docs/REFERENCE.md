@@ -507,8 +507,8 @@ giver withdraws what no fill holds after a notice period. Since E1
 parties: `hold` opens only the wanter's own claim (naming the giver, within
 the reservation, windows at least `minChallenge`/`minRuling`), a retraction
 reopens it, and a payout the recipient refuses waits in `owed`. Deployed on
-Gnosis at `0xA49Cc9F9dab95aAB7093F138A084027ef66dD936` (2026-09-29; the
-earlier `0x7bee…c55F` and `0x299C…69Bf` keep their reservations), factbond's
+Gnosis at `0x3936E3B8A736814Ae8850Da3e75C02B476CdF3f2` (2026-09-29 evening, with the deductible; the
+earlier `0x7bee…c55F`, `0x299C…69Bf` and `0xA49C…D936` keep their reservations), factbond's
 `Assertions` at `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270` as resolver.
 
 ## 8f. `loopmarket.gate` — the counterparty gate (R4, 2026-09-29)

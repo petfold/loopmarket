@@ -554,7 +554,8 @@ split and the second signature pays it out; the wanter may assign the
 claim to anyone, and the giver may lengthen the claim period (tail
 cover). A reservation behind a give under the catalogue's `insure` is
 cover: it is never ended by a countersignature. The Gnosis escrow has
-these acts since its 2026-09-29 redeploy (`0xA49Cc9F9dab95aAB7093F138A084027ef66dD936`,
+these acts since its 2026-09-29 redeploy, and the deductible since that
+evening's (`0x3936E3B8A736814Ae8850Da3e75C02B476CdF3f2`,
 factbond's `Assertions` at `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270` as its
 resolver).
 
@@ -649,7 +650,7 @@ rest of a bundle's limits: the loop must still close (every component's
 seller paid by something they want), and one composed leg must stay
 small enough to verify on chain in one block (about 1.5 M gas a part).
 
-**On chain** (since 2026-09-29, `BeatClearing` at `0x8beD…72BC`): a beat
+**On chain** (since 2026-09-29; `BeatClearing` at `0xC475…11d4` today): a beat
 commits the holds its option legs write, the contract records them at
 finalize, and the remainder a leg is checked against counts every active
 hold but the taker's own — so a beat in which someone other than the
@@ -1140,9 +1141,9 @@ The contracts live on the EVM chain Swarm settles on (Gnosis today) and
 every session with the settings sees the same beats:
 
 ```console
-$ loop set beat chain:https://rpc.gnosischain.com@0x8beD11c07aC7aCAa542dF5B0F8db94FC6C1F72BC      # BeatClearing
-$ loop set auction chain:https://rpc.gnosischain.com@0x107eA9Bd27115ea7Bfce64c275ff823eE9042d38   # SealedBeat
-$ loop set escrow chain:https://rpc.gnosischain.com@0xA49Cc9F9dab95aAB7093F138A084027ef66dD936    # LoopEscrow
+$ loop set beat chain:https://rpc.gnosischain.com@0xC47575b57E08b389c344AaBf415606Cd0B3011d4      # BeatClearing
+$ loop set auction chain:https://rpc.gnosischain.com@0x513731eC7ca8012F296E54e1b148044c5e9B0Bd9   # SealedBeat
+$ loop set escrow chain:https://rpc.gnosischain.com@0x3936E3B8A736814Ae8850Da3e75C02B476CdF3f2    # LoopEscrow
 $ loop set resolver 0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270                                       # factbond's Assertions
 $ loop propose                       # clear locally, post each loop as one beat (a bond, a challenge window)
 $ loop beats --open                  # what stands

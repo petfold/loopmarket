@@ -11,6 +11,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Deployed
 
+- **The escrow and the clearing contracts redeployed with the deductible**
+  (2026-09-29 evening, C5): `LoopEscrow` at
+  `0x3936E3B8A736814Ae8850Da3e75C02B476CdF3f2`; `BeatClearing` at
+  `0xC47575b57E08b389c344AaBf415606Cd0B3011d4` (`LegVerifier`
+  `0xf3c3cbC774641aea48Fa7aced4441C75F835468B`, `StatementVerifier`
+  `0x9b961FF48d374066846b91AfbaeC6E57eBefD9c7`, `SealedBeat`
+  `0x513731eC7ca8012F296E54e1b148044c5e9B0Bd9`), `0x8beD…72BC` retired to it.
+  Live: a claim within the deductible refused, a certified claim paid less
+  it, a v7 give cleared and verified; the E3 escrow gate rerun.
 - **The clearing trio redeployed on Gnosis** (2026-09-29, C4 + I3 + R3b):
   `BeatClearing` at `0x8beD11c07aC7aCAa542dF5B0F8db94FC6C1F72BC`, `LegVerifier` at
   `0x1f6Da29dC92422Dfecec3D0cc0A7704C58aC5B13`, `StatementVerifier` at
