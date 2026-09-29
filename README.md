@@ -150,7 +150,20 @@ per fill — gated in matching, checked on chain, and since 2026-09-19
 contract as a maker) holds the deposit, the gate counts a bond only up
 to what the contract holds, `loop finalize` reserves the share per fill,
 and every undisputed case settles by timeout or the parties' own acts —
-a contested claim is factbond's. Alpha; interfaces will move.
+a contested claim is factbond's. Since 2026-09-28/29 (the v6 record, on
+`main` after 0.12.0) a want can require **credentials** of the other side
+— statements presented in its book, issued under accredited registers,
+checked by the counterparty gate in seven steps, the registers' roots a
+checked sequence (each keeps every earlier revocation: recordstore 0.21.0's
+extension proofs) — an offer can be held for someone by an **option**
+(`loop option`, `exercise`, `options`), one particular thing is named by
+**`item(h)`** with one open claim per maker, and cover and inspections
+compose with the thing as argument-only operators; the escrow releases a
+held reservation only by a ruling or both parties (redeployed on Gnosis
+the same day), and the clearing contracts verify holds, item claims and
+statements on chain (`StatementVerifier` beside the leg verifier,
+redeployed the same day — a beat pinning a register root after a
+revocation is convicted by challenge). Alpha; interfaces will move.
 
 **Designed (2026-08-07):** most of what loopmarket *is* now lives as a
 decided, research-grounded plan corpus under `docs/plans/` — one document
@@ -186,6 +199,11 @@ And two more: **clearing** is the atomic commit that fixes obligations; **settle
 | [`proof-fabric.md`](docs/plans/proof-fabric.md) | Cross-phase proofs and certificates: trie proofs vs POT, the pin table, certificate envelopes, absence proofs. |
 | [`P3-guarantee-coupling.md`](docs/plans/P3-guarantee-coupling.md) | loopmarket's half of the factbond coupling: witness edges, reliance-capped insurance, oracle consumption, risk-priced routing. |
 | [`P3-release-and-reclearing.md`](docs/plans/P3-release-and-reclearing.md) | Release prices and re-clearing (direction set 2026-09-18): a maker's required floor is its true neutral point, a self-assessed buyout price anyone may pay to cancel its side of a cleared leg; re-clearing as cancel-and-replace in one transaction; the Pareto re-match first and free; payments in the bond's asset by the entrant, never from surplus. |
+| [`credentials-cover-and-options.md`](docs/plans/credentials-cover-and-options.md) | loopmarket's index to the cross-repository plan decided 2026-09-25 (D1–D10 and their amendments; the full text lives in factbond): which decisions are carried out here, and where. |
+| [`counterparty-gate.md`](docs/plans/counterparty-gate.md) | Counterparty requirements as categories, one statement shape, registers separately rooted and pinned, revocation proven by absence under a root no older than the requirer allows; the build R1–R7, R3b's chain half and R5's checked root sequence (built 2026-09-29). |
+| [`options-and-cover.md`](docs/plans/options-and-cover.md) | An option is a hold on a plain offer, written by clearing and lapsing with time; options and cover share one model with two exercise routes; holds on chain (C4, built and deployed 2026-09-29). |
+| [`items-and-ownership.md`](docs/plans/items-and-ownership.md) | `item(h)` for unique things, one open claim per maker and item (D5), ownership kept out of clearing — "not his to sell" is non-performance; item claims on chain (I3, 2026-09-29). |
+| [`commercial-practice-review.md`](docs/plans/commercial-practice-review.md) | Reference: do the mechanisms encourage what merchants, private courts and mutuals learned over centuries? Its amendments are woven into the credentials plan. |
 | [`P4-privacy.md`](docs/plans/P4-privacy.md) | Staged privacy: Tier 1 with zero new cryptography, the P2 format-freeze list, explicit dead/deferred rulings. |
 | [`ontodag-coupling.md`](docs/plans/ontodag-coupling.md) | The catalogue contract: dimension terms, unit families, match degrees, the upstream-vs-local tripwire table. |
 | [`cli.md`](docs/plans/cli.md) | The command line (designed 2026-09-11, **built 2026-09-12** as `loop`): ontodag's grammar plus quantity-first/price-last, every name a catalogue node, last-price memory, "declare in the direction you know" instead of a tolerance parameter, the approval block, batch scripts; what is still open (`fold`/`audit`/`propose`, U8 for peers, the upstream asks). |
@@ -201,7 +219,10 @@ supported by `ontodag-coupling.md` and `catalogue-bootstrap.md`, with
 *constrained* by `P4-privacy.md`'s format-freeze list and gated by
 `THREATS.md` tripwires. P3 (guarantee fabric): `P3-guarantee-coupling.md`
 plus factbond's entire corpus — gated by factbond's Phase-0 simulation
-going green *and* the P2 format freeze. P4 (privacy): `P4-privacy.md`,
+going green *and* the P2 format freeze — and, since 2026-09-25, the
+credentials track: `credentials-cover-and-options.md` indexing
+`counterparty-gate.md`, `options-and-cover.md` and `items-and-ownership.md`,
+reviewed against practice in `commercial-practice-review.md`. P4 (privacy): `P4-privacy.md`,
 whose Tier 1 may ship alongside P2. Cross-phase: `proof-fabric.md`,
 `THREATS.md`, `adoption-and-thickness.md`, `catalogue-bootstrap.md`,
 `ontodag-coupling.md`.

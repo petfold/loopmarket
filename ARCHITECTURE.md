@@ -648,6 +648,42 @@ turns a winning loop's surplus into per-leg prices — equal log-surplus
 split under uniform directional clearing — is
 `docs/plans/P2-clearing-pricing.md`.
 
+**Update 2026-09-29 — who you deal with, what is held, which thing.** The
+credentials track (`docs/plans/credentials-cover-and-options.md`, decided
+2026-09-25) was built as the v6 record and four pieces around clearing,
+each keeping the checklist's shape rather than adding a second one:
+
+- **Statements and registers.** A want's `requires.counterparty` names
+  categories; the other side answers with one statement shape, presented
+  as a sidecar in its own book (`cred/`), issued under a **register** — a
+  separately rooted store of statuses, revocations, suspensions and
+  accreditations, announced under its own role and never folded. A
+  proposal pins every register it relies on (`register_roots`, U4 extended
+  to a second kind of root), and clearing re-reads them at those roots
+  (U3). The counterparty gate is a matching gate like v5's admissibility:
+  it fails closed (U7) and lists every failing step. Freshness is the
+  pinned root's age, and since the same day a register's roots are a
+  checked sequence: each names its predecessor and must keep every
+  revocation it held (recordstore 0.21.0's extension proof), and a newer
+  root published by clearing's clock refuses what it says. "Latest as of
+  t" is the register's feed; trusted time would be an anchor on chain.
+- **Holds.** An option does not reserve anything by a write that must
+  later be undone: clearing writes a **hold** with the option's fill, and
+  whether it is active is a function of time (now before its end), so
+  expiry needs no transaction. Availability subtracts active holds; the
+  holder's own exercise adds its hold back.
+- **Items.** One particular thing is a term, `item(h)`, with h derived from
+  its own identifier; ownership stays out of clearing (not being the
+  seller's to sell is non-performance, which deposits cover). The only
+  rule is one open claim per maker and item.
+- **On chain.** The beat commits holds, item claims and register pins
+  beside the fills; the chain records them at finalize and becomes their
+  authority as it is for fills. A leg's commitment covers its statements,
+  checked in a separate `StatementVerifier` (the leg verifier had reached
+  the contract size limit): presence under the book root, absence of a
+  revocation and a suspension under the issuer's pinned register root.
+  Which statement meets which entry stays the optimistic half's.
+
 ## 9. The solver agent (solver/agent.py)
 
 > **2026-09-07.** The baseline here is deliberately the whole of loopmarket's solving; smarter species live outside the protocol, propose, and are verified like anything else. The algorithms such a species would build on are listed in `docs/plans/P2-loop-selection.md` §11.

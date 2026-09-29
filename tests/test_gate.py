@@ -178,11 +178,7 @@ def test_a_self_bonded_statement_is_backed_by_its_deposit_alone():
                        gate=CounterpartyGate.over(book, {}, now=NOW, held={dentist.offer_id: 60})) is None
 
 
-needs_extends = pytest.mark.skipif(not hasattr(RecordStore, "extends"),
-                                   reason="recordstore without extension proofs (> 0.20.3)")
 
-
-@needs_extends
 def test_a_stale_pin_cannot_hide_a_revocation_and_a_root_cannot_drop_one():
     """R5 (option A, 2026-09-29). The proposal pins the attester's root from
     before the revocation: with the register's feed read (`latest`), the

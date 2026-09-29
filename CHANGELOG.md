@@ -28,6 +28,18 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   reopening it, a split settling on the second signature, the giver's
   `extendClaim`. The config's `escrow` and `resolver` name the new pair.
 
+### Changed
+
+- **`recordstore>=0.21.0`** (2026-09-29): the release with extension proofs
+  and a feed's verifiable sequence of roots, which a register's checked
+  root sequence (R5) needs; the tests that skipped without it now run.
+- **Docs** (2026-09-29): the user guide gains options (§7.3), items (§7.4)
+  and credentials (§7.5), the current Gnosis addresses (§11.1) and the
+  `chain`/`evm` extras; the reference gains the v6 record, `Statement`, the
+  gate, registers, items, the door's witnesses and notices, the new
+  keyspace and the escrow's E1 acts; the README's status and plan table and
+  an ARCHITECTURE update note follow.
+
 ### Fixed
 
 - **The escrow is the authority on aggregated and composed legs too**
@@ -63,7 +75,7 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   read (`MockClearing(register_latest=)`, `register.newest_reader`), a
   newer root published by clearing's clock refuses a leg whose statement it
   revokes or suspends: a stale pin cannot hide what the register has said.
-  Needs recordstore's extension proofs (unreleased after 0.20.3).
+  Needs recordstore's extension proofs: the pin is now `recordstore>=0.21.0`.
 - **CLI: `option`, `exercise`, `options` (C7)** (2026-09-29). `loop option
   ID --until T --premium X` writes an option on my own open offer (v6);
   `loop exercise OPTION PRICE` wants its offer as the holder while the

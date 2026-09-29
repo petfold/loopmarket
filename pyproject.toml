@@ -28,15 +28,16 @@ dependencies = [
     "ontodag>=0.26.1",        # catalogue: subsumption, dimensions, is_below, role heads
                               # taking nodes, overlaps/meet, get(overlapping=, items_only=)
                               # (issues #14/#15/#16, 0.25.0); the CLI
-    "recordstore>=0.20.3",   # the book: canonical versioned KV, merge, snapshots,
-                             # diff/merge_delta (O(divergence) folds), prove/verify_proof
+    "recordstore>=0.21.0",   # the book: canonical versioned KV, merge, snapshots,
+                             # diff/merge_delta (O(divergence) folds), prove/verify_proof,
+                             # extends/prove_extension (0.21.0: a register's revocations, R5)
 ]
 
 [project.optional-dependencies]
 # The Swarm deployment path: BeeBytesStore blobs + signed SwarmFeedPointer
 # head, both reached through recordstore so versions stay in step with it
 # (mirrors ontodag's own [swarm] extra).
-swarm = ["recordstore[bee,feeds]>=0.16.0"]
+swarm = ["recordstore[bee,feeds]>=0.21.0"]
 # Detached offer signatures (U8's off-feed layer): the same secp256k1
 # identity that owns the maker's feed, recoverable without a node.
 # ...and sealed handoffs (`handoff.py`): ECDH on the same curve + AES-GCM.

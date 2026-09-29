@@ -117,9 +117,35 @@ naming the asset categories accepted as compensation each at the maker's
 price per unit, the witness types and escrow kinds accepted. A requirement
 or a deposit makes the offer v5; v4 re-encodes byte for byte.
 
+v6 (2026-09-29, R1): `Requires` gains `counterparty` (a tuple of
+`Credential(category, kinds, min_bond=0, roots=(), max_root_age=0)` — what
+the other side must present, checked by the counterparty gate), `legs`
+(`RequiredLeg(category, accept)`: an operator give under `category` from a
+giver `accept` admits, composed with the thing — cover, an inspection),
+`resolvers` (an `Accept(keys=(), roots=(), min_deposit=0, clean_for=0,
+issuance=())`: the resolvers this want accepts; only `keys` is checked
+today) and `claim_period` (seconds: the claim period a want asks of a
+give's deposit); the offer gains `claim_max` (a give's longest claim
+period), `underlying` and `exercise` (an option: the id of the plain offer
+it holds and its `TimeWindow`, given together). Any of them makes the
+offer v6; every requirement the build cannot check fails closed (U7), and
+`tests/test_v6_record.py` pins a v4/v5 corpus's ids.
+
+### `Statement(subject, category, issuer, kind, as_of, until, evidence, path, paid_by, deposit=None, scheme="", issuance="", v=1)` — frozen
+
+The one shape the counterparty gate reads (R1/R2): a claim about the key
+`subject` in `category`, by `issuer`, of a `kind` in `STATEMENT_KINDS`
+(`"self-bonded"`, `"attested"`, …), valid `as_of`..`until`, with its
+`evidence` reference, the accreditation `path` from the issuer up to a
+trust root, who paid (`PAID_BY`), and optionally the `(offer id, escrow)`
+of a deposit that backs it. Content addressed: `.statement_id` is the
+SHA-256 of `canonical_bytes()`. Presented in the subject's own book as
+`cred/<subject>/<statement id>` (`OfferRegistry.present`).
+
 Validation (`ValueError`): exactly one of `gives`/`wants` is a `Thing`
 (or, on the want side of a v4 record, `Parts`) and one a `Tokens` whose
-`issuer == maker` (invariant U1); `bond >= 0` (v<5) or a `Bond` (v5); `v in {1, 2, 3, 4, 5}`; v1
+`issuer == maker` (invariant U1); `bond >= 0` (v<5) or a `Bond` (v5+); `v in {1, 2, 3, 4, 5, 6}`; an
+option names both its `underlying` (a 64-hex id) and its `exercise`; v1
 records carry no registry/contract pins; parts, a `step` other than 0 or
 the whole quantity, and a floor are v4 forms.
 
@@ -223,8 +249,15 @@ Reading:
 | `.loop_of(offer_id) -> str | None` | the loop that filled the offer |
 | `.attach_handoff(loop_id, offer_id, record, *, fold=None)` | store a sealed handoff (`handoff.seal` + `from`/`to`) beside my *filled* offer, `handoff/<loop_id>/<offer_id>`; the fill is checked against `fold` (the clearing book) when given; `ValueError` otherwise |
 | `.handoff(loop_id, offer_id) -> dict | None`, `.handoffs()` | read the sidecars |
+| `.present(statement, presentation=None) -> statement_id` | a statement about a key, `cred/<subject>/<id>` (R2); the fold admits it only in its subject's own book |
+| `.statements(subject=None)` | `(Statement, presentation)` pairs presented here |
+| `.send_notice(loop_id, offer_id, side)` / `.send_cure(...)` | a sealed notice to the giver, `notice/<loop>/<offer>`, and the giver's cure, `cure/<loop>/<offer>` (R6, `notice.sealed`) |
+| `.holds(offer_id)` | `(option loop, hold record)` pairs on an offer, key order (C2): `{option, holder, until, qty}` |
+| `.held(offer_id, now)` / `.held_by(offer_id, holder, now)` / `.exercisable(offer_id, now)` / `.hold_left(offer_id, option_loop)` | what active holds keep (a function of time: expiry needs no write); what a holder may take now (its window open); what all holders may; what exercises left of one hold |
+| `.available(offer_id, now=None)` | what a fill may still take: the quantity less fills and, given `now`, less active holds |
+| `.item_claims(h, maker)` / `.item_claimed(h, maker, now, *, offer_id="")` | the maker's `item/<h>/<maker>/<loop>` claims; whether one is active through another offer (I2) |
 | `.offers(*, now=None, include_filled=False)` | active offers: fills and tombstones filtered, expiry filtered when `now` given; `include_filled=True` disables all filtering (full-book scan) |
-| `.verify_loop_atomicity()` | raises `PartialLoopError` unless every `loop/` record holds all its fills and every fill points at a present loop (U11) |
+| `.verify_loop_atomicity()` | raises `PartialLoopError` unless every `loop/` record holds all its fills and every fill points at a present loop, and every `option/`, `exercise/` and `item/` record names a present loop (U11) |
 
 ### `or_set_resolver(key, base, ours, theirs)`
 Merge policy for concurrent writers: add-only presence everywhere; a
@@ -451,18 +484,95 @@ node `potentials`. A simple cycle's record is byte-identical to before.
 
 | name | one line |
 |---|---|
-| `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder)`, `.cancel`, `.countersign`, `.settle`, `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.ladder_at`, `.deposit_of`; web3 lazy (`chain` extra) |
+| `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder=(), claim_only=False, min_challenge=0, min_ruling=0)`, `.cancel`, `.countersign`, `.settle(offer_id, loop_id, to_wanter=None)` (no split: the quiet path after the claim period; a split: this party's signature, the second pays it out), `.assign(offer_id, loop_id, to)` (the wanter's), `.extend_claim(offer_id, loop_id, seconds)` (the giver's), `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.collect(token=None)` (a refused payout credited to `owed`), `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.owed(to, token=None)`, `.subject(offer_id, loop_id)` (the reservation's key, factbond's subject), `.ladder_at`, `.deposit_of`; web3 lazy (`chain` extra) |
 | `to_wei(qty, decimals=18)` / `floor_wei` | an exact quantity as the asset's smallest unit — refused when not representable (U9) / rounded down (the ladder) |
 | `held_units(client)` | offer id → what the escrow holds, in the asset's unit: the `escrow_held` the agent and the clearing take |
-| `reservations_for(proposal, *, escrow, resolver, claim_seconds, now, span=None)` | pure: one reservation per give whose bond names `escrow` — the share in smallest units, the wanter's key, the give's `arbitrator` or `resolver`, the want's `time(...)` term as the window (through `span`), the ladder converted at the wanter's acceptance price |
+| `reservations_for(proposal, *, escrow, resolver, claim_seconds, now, span=None, decimals=18, claim_only=None, min_challenge=0, min_ruling=0)` | pure: one reservation per give whose bond names `escrow` — the share in smallest units, the wanter's key, the give's `arbitrator` or `resolver` (never a party, and one the want's `resolvers` admit), the want's `time(...)` term as the window (through `span`), the claim period per leg (the want's `claim_period`, else `claim_seconds`, never past the give's `claim_max`), the ladder converted at the wanter's acceptance price; `claim_only` for cover (`cover_predicate`) |
+| `cover_predicate(ontology, head="insure")` | recognises a give of cover: an `insure(...)` term, whose reservation is never countersigned |
 | `abi()` | the compiled `LoopEscrow` from `loopmarket/contracts/LoopEscrow.json` |
 
 `LoopEscrow.sol`: deposit behind the offer id (native coin or ERC-20), the
 clearing's key reserves per fill, undisputed cases settle by themselves
 (`settle` after the claim period, `countersign`, `cancel` at `ladderAt`),
 the resolver fixed at clearing makes two calls (`hold`, `resolve`), the
-giver withdraws what no fill holds after a notice period. Deployed on
-Gnosis at `0x7bee68244f2Bc2d67F21E5ae2eE7696Afca9c55F`.
+giver withdraws what no fill holds after a notice period. Since E1
+(2026-09-28) a held reservation is released only by a ruling or by both
+parties: `hold` opens only the wanter's own claim (naming the giver, within
+the reservation, windows at least `minChallenge`/`minRuling`), a retraction
+reopens it, and a payout the recipient refuses waits in `owed`. Deployed on
+Gnosis at `0xA49Cc9F9dab95aAB7093F138A084027ef66dD936` (2026-09-29; the
+earlier `0x7bee…c55F` and `0x299C…69Bf` keep their reservations), factbond's
+`Assertions` at `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270` as resolver.
+
+## 8f. `loopmarket.gate` — the counterparty gate (R4, 2026-09-29)
+
+### `CounterpartyGate(statements, registers, now, span, offer, held, held_by, capacity, withdrawn, item_claimed, latest)`
+
+Built with `CounterpartyGate.over(book, registers, *, now, span=None, held=None, capacity=None, latest=None)`:
+the statements presented in `book`'s `cred/`, `registers` (register id →
+`Register` at its pinned root), the clock, a `time(...)` span reader, the
+escrow's holdings, and — R5 — `latest(register id)`, the register at its
+feed's newest root. `meets`, every `check_*` and candidate generator take
+`gate=`; no gate, no pass (U7).
+
+| member | meaning |
+|---|---|
+| `.faults(requirer, counterparty, ontology, *, window, taken=None, whole=None) -> [str]` | every failing step of `requirer`'s credential entries against `counterparty`'s statements, one line per entry, the closest statement's steps listed (plan E4); `[]` when every entry is met |
+| `.chosen(entry, requirer, counterparty, ontology, *, window, ...) -> Statement | None` | the statement that meets `entry` — what a beat's leg carries on chain (R3b) |
+| `.statement_faults(entry, statement, ...)` | the seven steps: 1 category and kind; 2 a path of accreditations to a named trust root, every register on it pinned; 3 not revoked (and a status); 4 every register fresh — its heartbeat within `max_root_age`, its root extending its predecessor on `revoked/`, and no newer root published by the clock that revokes, suspends or drops a revocation (R5); 5 valid through the window; 6 a deposit's free share covering `min_bond`; 7 not suspended |
+| `.option_fault(option) -> str` | why an option cannot clear now: its underlying present, a give by the same maker, not withdrawn, valid through the window, in its unit, with the option's quantity free (C2) |
+| `.item_fault(give) -> str` | why a give naming `item(h)` cannot clear: its maker holds an active claim on h through another offer (I2) |
+| `.window(want) -> (start, end)` | the handover window: the want's first `time(...)` term through `span`, else the clock's instant |
+
+## 8g. `loopmarket.register` — registers (R3a, R5, 2026-09-29)
+
+### `Register(store)`
+
+A register's own recordstore keyspace — `status/<id>`, `revoked/<id>`
+(monotone: a revocation stands forever), `suspended/<id>`,
+`accredit/<issuer>/<category>`, `heartbeat`, `chain` — announced under the
+`register` role and never folded into the offer book.
+
+| member | meaning |
+|---|---|
+| `.issue(id, at)` / `.suspend(id, at)` / `.reinstate(id, at)` / `.revoke(id, at)` | a statement's status; a revoked one stays revoked (`ValueError`) |
+| `.accredit(issuer, category, *, by, since, until, scheme="")` / `.accreditation(issuer, category)` / `.accreditations(issuer)` | who may issue what, until when, by which check scheme |
+| `.heartbeat(at)` / `.as_of` | the root's publication time: what `max_root_age` bounds |
+| `.commit() -> root` | commits what is staged, writing `chain` → {prev, seq}: every root names the one it supersedes (R5) |
+| `.predecessor` / `.seq` / `.root` | the superseded root, this root's number in the sequence, the committed root |
+| `.extends(base) -> bool | None` / `.extends_predecessor()` | recordstore's extension check on `MONOTONE` (`revoked/`): does this root keep every revocation `base` held; None when it cannot be checked, which the gate reads as failing |
+| `.extension_proof() -> dict | None` | the self-contained proof (recordstore's `verify_extension` checks it with no store) |
+| `.status(id)` / `.revoked(id)` / `.suspended(id)` / `.prove(key)` | reads; `prove` is recordstore's inclusion-or-absence proof — "not revoked" as a proof |
+
+| function | meaning |
+|---|---|
+| `named_registers(offers) -> set[str]` | the trust roots the offers' requirements name: what a proposal must pin |
+| `newest_reader(pointer_for, blobs)` | the gate's `latest` over registers' feed tips: `pointer_for(register id)` → its feed pointer |
+
+## 8h. `loopmarket.items` — item identity (I1–I2, 2026-09-29)
+
+| function | meaning |
+|---|---|
+| `vin_id(vin)`, `land_register_id(country, number)`, `serial_id(maker, serial)`, `natural_id(scheme, identifier)` | h from a natural identifier: the same identifier however spelled, the same h (`ValueError` on a malformed VIN) |
+| `tagged_id(fingerprint, tagger, binding_evidence="")` | h from a tagger's record: an attested identity |
+| `term(h, head="item") -> "item(<h>)"` | the concept naming the item |
+| `ids(concepts)` / `well_formed(concepts)` | the item ids a concepts tuple names; whether every item term is a whole 64-hex id (the matching gates refuse the rest) |
+
+`Ontology.declare_item_heads()` puts `item` on ontodag's prefix kind. The
+per-item rule: one open claim per maker and item (`item/<h>/<maker>/<loop>`,
+written with the fill or an option's hold); across makers nothing is
+refused.
+
+## 8i. `loopmarket.witness` and `loopmarket.notice` — the door and the notice (R6–R7, 2026-09-29)
+
+| name | meaning |
+|---|---|
+| `witness.respond(challenge, bound_id, private_key_hex)` / `witness.signer(challenge, bound_id, response)` / `DoorCheck()` | the `possession` witness: a fresh challenge signed with the bound id; `DoorCheck` spends a challenge on its first response |
+| `witness.photo_commitment(photo, salt)` / `photo_opens(commitment, photo, salt)` | the `photo-match` witness: the attester's salted commitment opened at the door |
+| `witness.accepted_types(names)` / `DOOR_LEVELS` | a requirement's door level as a cumulative category |
+| `witness.countersign_ready(give, *, possession=False, photo_confirmed=False) -> str` | why a countersign is not yet due, or `""` |
+| `notice.notice_record(...)` / `cure_record(...)` / `sealed(record, *, sender, recipient, recipient_public_key)` / `read(side, private_key_hex)` / `opens(side, opening)` | a notice before a claim and its cure, factbond's shape, sealed to the other party beside a salted commitment anyone checks once opened |
+| `notice.lapsed(gives, statements_of, registers)` / `gives_of(loop_record, book)` | the relied-on statements revoked or suspended since clearing — the watch's re-check |
 
 ## 9. `loopmarket.solver.agent` — the baseline species
 
@@ -565,19 +675,28 @@ clearing books (U11 covers them).
 One book = one recordstore keyspace = one root per version:
 
 ```
-offer/<offer_id>        the immutable offer record (v1, v2 or v3)
+offer/<offer_id>        the immutable offer record (v1–v6)
 sig/<offer_id>          detached maker signature, hex (never in identity)
 withdraw/<offer_id>     1 — monotone tombstone: the offer is closed
-fill/<offer_id>         {"loop": <loop_id>} — pure function of the decision
-loop/<loop_id>          the cleared proposal record
+fill/<offer_id>         {"loop": <loop_id>} — pure function of the decision (a give taken in part: fill/<offer_id>/<loop_id>)
+loop/<loop_id>          the cleared proposal record (v2 since 2026-09-29 with its register_roots)
 handoff/<loop_id>/<offer_id>  sealed settlement text, the place-owner's own filled offer (maker books; folded only for the owner)
+cred/<subject>/<statement_id>  {"statement", "presentation"} — a statement about a key, in its subject's own book (R2)
+notice/<loop_id>/<offer_id>    a sealed notice to the giver, the claimant's own speech (R6)
+cure/<loop_id>/<offer_id>      the giver's sealed cure (R6)
+option/<offer_id>/<loop_id>    {"option", "holder", "until", "qty"} — a hold written with an option's fill (C2; clearing books)
+exercise/<offer_id>/<option_loop>/<loop_id>  {"qty"} — what an exercise took of a hold (clearing books)
+item/<h>/<maker>/<loop_id>     {"offer", "until"} — a maker's claim on an item (I2; clearing books)
 origin/<offer_id>       {"owner", "root"}        (provenance store)
 reject/<owner>/<key>    {"owner", "reason"}      (provenance store)
 announce/<owner>        {"role", "root"}         (announcement store)
 ```
 
-Maker books write `offer/`, `sig/`, `withdraw/` only; clearing books
-add `fill/` and `loop/`; there is no index in any book (the `idx/{c,t,g}`
+Maker books write `offer/`, `sig/`, `withdraw/` (and the sidecars
+`handoff/`, `cred/`, `notice/`, `cure/`); clearing books add `fill/`,
+`loop/`, `option/`, `exercise/` and `item/`; a register is its own store
+(`status/`, `revoked/`, `suspended/`, `accredit/`, `heartbeat`, `chain`,
+§8g), never folded; there is no index in any book (the `idx/{c,t,g}`
 prefixes retired 2026-09-12, and the manifest's `index_root` with them);
 `origin/`, `reject/`, `announce/` only in an aggregator's provenance and
 announcement stores.
@@ -795,7 +914,7 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | maker | `give [QTY] CAT\|TERM... [PRICE]` | resolve, show the block, confirm, publish, commit, print the id |
 | | `want [QTY] CAT\|TERM... [PRICE]` | the other side |
 | | `withdraw ID` | tombstone one of my open offers (id or unique prefix); filled refuses |
-| | `option ID --until T --premium X` | write an option on my open offer: a give of `option(<its concepts>)` naming it as `underlying`, exercisable from now until T (a duration or an instant), priced at the premium; v6, off-chain clearing until the next clearing-contract redeploy |
+| | `option ID --until T --premium X` | write an option on my open offer: a give of `option(<its concepts>)` naming it as `underlying`, exercisable from now until T (a duration or an instant), priced at the premium; v6, its hold recorded on chain since the 2026-09-29 clearing contracts |
 | | `exercise OPTION PRICE` | as the option's holder, want its offer (the quantity held) at PRICE while the window is open; anyone else is refused |
 | | `options` | every hold in the fold: offer, option, holder, until, what is left, active |
 | | `mine` | my offers, all states |

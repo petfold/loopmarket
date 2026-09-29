@@ -116,9 +116,6 @@ def test_a_proposal_missing_a_named_registers_root_is_refused():
         proposal_from_record(dict(plain, v=2), book)
 
 
-needs_extends = pytest.mark.skipif(not hasattr(RecordStore, "extends"),
-                                   reason="recordstore without extension proofs (> 0.20.3)")
-
 
 def test_every_root_names_its_predecessor_and_its_number():
     """R5: `commit` links each root to the one it supersedes; nothing staged,
@@ -137,7 +134,6 @@ def test_every_root_names_its_predecessor_and_its_number():
     assert (reg.seq, reg.predecessor, reg.as_of) == (2, second, 300)
 
 
-@needs_extends
 def test_a_root_that_drops_a_revocation_does_not_extend_its_predecessor():
     from recordstore import verify_extension
     reg = Register(RecordStore(MemoryBytesStore()))

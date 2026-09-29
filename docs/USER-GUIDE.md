@@ -43,8 +43,10 @@ Extras, when you need them:
 
 | extra | gives you | needed for |
 |---|---|---|
-| `.[swarm]` | `recordstore[bee,feeds]` | running against a live Bee node (§11) |
+| `.[swarm]` | `recordstore[bee,feeds]` | running against a live Bee node (§11); reading a feed's signed sequence of roots (§7.5) |
 | `.[sig]` | `eth-keys` | detached offer signatures (§8.4), a key as your identity |
+| `.[chain]` | `web3` | the contracts on Gnosis: announcements, beats, the escrow (§7.2, §11.1) |
+| `.[evm]` | `web3`, `py-solc-x`, `eth-tester` | compiling the contracts and running them on a local EVM (the contract tests) |
 
 The core has two dependencies — `ontodag` (the catalogue) and
 `recordstore` (the book) — and works fully offline; Swarm is a persistence
@@ -551,14 +553,129 @@ parties can also end any reservation by agreement: each signs the same
 split and the second signature pays it out; the wanter may assign the
 claim to anyone, and the giver may lengthen the claim period (tail
 cover). A reservation behind a give under the catalogue's `insure` is
-cover: it is never ended by a countersignature. These acts are in the
-contract source; the Gnosis escrow gains them at its next redeploy.
+cover: it is never ended by a countersignature. The Gnosis escrow has
+these acts since its 2026-09-29 redeploy (`0xA49Cc9F9dab95aAB7093F138A084027ef66dD936`,
+factbond's `Assertions` at `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270` as its
+resolver).
 
 How a contested claim runs once factbond resolves it (notice to the
 giver first, then the claim, the giver's dispute or the claim certifying,
 concession, the ruling and its appeal) is factbond's to document: its
 [User Guide](https://github.com/petfold/factbond/blob/main/docs/USER-GUIDE.md)
 §2–§3, and §12 for this escrow as the consumer.
+
+### 7.3 Options: holding an offer for someone
+
+An **option** is a give of the right to take one of your offers later, at
+the price that offer already names (the v6 record, on `main` since
+2026-09-29, after 0.12.0; `docs/plans/options-and-cover.md`). You write it
+on your own open offer; the premium is what the option itself costs, on
+your scale (here in a catalogue with `flat` and a `ljubljana` place):
+
+```console
+$ loop give flat ljubljana 1 lease 900          # the offer: a flat, one lease, at 900
+$ loop option 4f2a --until 7d --premium 20      # an option on it: exercisable for a week, for 20
+$ loop options                                  # every hold in the fold: offer, option, holder, until, left
+```
+
+The option is an ordinary give of `option(flat ljubljana)`: a want of
+`option(flat)` matches it by containment, and it clears in a loop like
+anything else. When it clears the flat is **held** for the option's
+holder until the window ends: nobody else's leg can take it, and it
+needs no write to end — a hold is active while now is before its end, so
+an expired option frees the flat by itself. The holder exercises while the
+window is open by wanting the flat at a price of their own:
+
+```console
+$ loop exercise 9c1e 950        # as the holder: want the held flat at 950 on my scale
+```
+
+An exercise is a clearing like any other (it needs a loop that closes);
+the hold only makes sure the holder is the one who can take the offer
+meanwhile. Your way out while it is held is a priced cancellation of the
+option leg — its deposit's ladder — never a free withdrawal.
+
+**On chain** (since 2026-09-29, `BeatClearing` at `0x8beD…72BC`): a beat
+commits the holds its option legs write, the contract records them at
+finalize, and the remainder a leg is checked against counts every active
+hold but the taker's own — so a beat in which someone other than the
+holder takes a held offer is convicted by a challenge, and the holder's
+exercise uses the hold up.
+
+### 7.4 Naming one particular thing: items
+
+Most offers are about kinds of things — a vegetable box, an hour of
+lessons. Some are about **one particular thing**: this car, this plot of
+land, this watch. `item(h)` names it, `h` derived from the identifier the
+thing already has, so the same car gets the same `h` however its VIN is
+typed (`docs/plans/items-and-ownership.md`):
+
+```python
+from loopmarket.items import term, vin_id, land_register_id, serial_id
+h = vin_id("1HGCM82633A004352")          # also land_register_id("si", "1234 5678"), serial_id("Omega", "abc123")
+give("seller", Thing(("car", term(h)), 1, "car"), 50, valid=...)
+```
+
+A want naming `item(h)` takes only that car; a want of `car` takes it too.
+An item term that is not a whole 64-character id matches nothing. **One
+open claim per maker and item**: once a sale of the car clears, the same
+maker's second offer of that car is refused until the first sale's claim
+has run out (the handover window, or an option's exercise window). Two
+*different* makers may both offer it — the owner and a broker — and both
+may clear; whichever cannot deliver is a non-performance, which their
+deposit covers. On chain the claims are committed and recorded with the
+fills, and a beat whose claim races the same maker's claim through
+another offer is cancelled at finalize.
+
+### 7.5 Who you deal with: credentials
+
+A want can require something of the maker on the other side — a licence,
+a qualification, a membership — as a **credential entry**: a category, the
+kinds of statement it accepts, the trust roots it relies on, how fresh
+their registers must be, and a deposit floor (the v6 record's
+`requires.counterparty`; `docs/plans/counterparty-gate.md`). The other side
+answers with a **statement** about its key, presented in its own book
+(`cred/`), issued by someone a trust root accredits and standing in the
+issuer's **register** — a separately rooted book of statuses, revocations
+and suspensions:
+
+```python
+from loopmarket import Credential, Requires, Statement
+from loopmarket.register import Register
+
+patient = want(P, Thing(("dentistry", f"time({window})"), 1, "visit"), 40, valid=...,
+               requires=Requires(counterparty=(Credential("dentist-licensed", ("attested",),
+                                                          min_bond=20, roots=(CHAMBER,),
+                                                          max_root_age=86_400),)))
+book.present(Statement(subject=D, category="dentist-licensed", issuer=ATTESTER, kind="attested",
+                       as_of=..., until=..., evidence=..., path=(ATTESTER, CHAMBER), paid_by="subject"))
+attester = Register(store); attester.issue(statement.statement_id, t); attester.heartbeat(t); attester.commit()
+```
+
+The **counterparty gate** checks each entry in seven steps — category and
+kind; a path of accreditations to a named trust root, every register on
+it pinned by the proposal; not revoked; every register's root no older
+than the entry allows; valid through the handover window; the deposit's
+free share covering the floor; not suspended — and a refusal lists every
+step that failed, so one re-presentation cures them all. No gate, no pass:
+a credential requirement meets nothing where nobody reads the registers.
+
+A register's roots form a **checked sequence** (since 2026-09-29): each
+root names the one before it, a root that drops a revocation its
+predecessor held is refused, and a clearing that reads the register's feed
+refuses what a newer root says — a revocation or suspension published
+since the pinned root — so a stale pin cannot hide a revocation. The proof
+that a root keeps every earlier revocation is recordstore's extension
+proof (0.21.0), checkable by anyone with no store.
+
+**On chain**: a beat pins the register roots, each leg's commitment
+carries its statements, and `StatementVerifier` checks that each is
+presented under the book root and neither revoked nor suspended under its
+issuer's pinned register root — a beat pinning a root after the
+revocation is convicted by a challenge. Which statement meets which entry
+(category, path, validity) stays the optimistic half's. The command line
+has no verbs for statements and registers yet: they are written through
+the API above.
 
 ## 8. The solver agent — and then federation
 
@@ -969,9 +1086,10 @@ The contracts live on the EVM chain Swarm settles on (Gnosis today) and
 every session with the settings sees the same beats:
 
 ```console
-$ loop set beat chain:https://rpc.gnosischain.com@0x75025e88749963B85c95f2EFB0143D76eA7169B8      # BeatClearing
-$ loop set auction chain:https://rpc.gnosischain.com@0xFB533254050087E384DEB98CAF2be4874Ba7c592   # SealedBeat
-$ loop set escrow chain:https://rpc.gnosischain.com@0x7bee68244f2Bc2d67F21E5ae2eE7696Afca9c55F    # LoopEscrow
+$ loop set beat chain:https://rpc.gnosischain.com@0x8beD11c07aC7aCAa542dF5B0F8db94FC6C1F72BC      # BeatClearing
+$ loop set auction chain:https://rpc.gnosischain.com@0x107eA9Bd27115ea7Bfce64c275ff823eE9042d38   # SealedBeat
+$ loop set escrow chain:https://rpc.gnosischain.com@0xA49Cc9F9dab95aAB7093F138A084027ef66dD936    # LoopEscrow
+$ loop set resolver 0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270                                       # factbond's Assertions
 $ loop propose                       # clear locally, post each loop as one beat (a bond, a challenge window)
 $ loop beats --open                  # what stands
 $ loop challenge 1 --check           # rebuild the record from the submitter's book, ask the verifier, send only what convicts
@@ -981,7 +1099,13 @@ $ loop commit; loop reveal; loop outcome   # the sealed beat: seal my loops, ope
 
 The chain is the authority on what is filled and on what is held: a
 fold that never saw a clearing's fills still proposes nothing through a
-spent offer, and a bond counts only as far as the escrow holds it.
+spent offer, and a bond counts only as far as the escrow holds it. Since
+2026-09-29 it is the authority on holds and item claims too (§7.3, §7.4),
+and it checks a leg's statements against the register roots the beat pins
+(§7.5); the leg verification is two contracts deployed beside
+`BeatClearing` (`LegVerifier`, `StatementVerifier`). A contract names its
+predecessors, so offers filled under an earlier one stay filled, and a
+retired one takes no new beat.
 `docs/plans/proof-fabric.md`, `P2-batch-auction.md` and
 `P3-release-and-reclearing.md` §5a–§5e are the design records.
 
