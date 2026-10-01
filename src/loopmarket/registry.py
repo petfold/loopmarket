@@ -10,6 +10,8 @@ Layout (one book = one RecordStore, one root reference per version):
     cred/<subject>/<statement_id>    -> {"statement": ..., "presentation": ...} — a statement about
                                         the book owner's key, presented for the counterparty gate
                                         (v6, R2, 2026-09-29; counterparty-gate.md §3.2)
+    case/<loop_id>/<offer_id>/<kind>/<to> -> a sealed claim, answer or ruling before one named
+                                        adjudicator, to one recipient (case.py, 2026-10-01)
     key/<address>                    -> a key card: a signature over a fixed message naming the
                                         address, so anyone may seal to the key (sigs.py, 2026-10-01)
     withdraw/<offer_id>              -> 1  (monotone tombstone: offer closed)
@@ -77,6 +79,7 @@ EXERCISE = "exercise/"  # exercise/<offer_id>/<option loop>/<loop_id> -> what an
 ITEM = "item/"         # item/<h>/<maker>/<loop_id> -> a maker's claim on an item (I2)
 CURE = "cure/"         # cure/<loop_id>/<offer_id> -> a sealed cure (R6)
 KEY = "key/"           # key/<address> -> the key's card: its public key, recoverable (2026-10-01)
+CASE = "case/"         # case/<loop_id>/<offer_id>/<kind>/<to> -> a sealed case record (2026-10-01)
 
 
 class PartialLoopError(RuntimeError):
@@ -195,6 +198,29 @@ class OfferRegistry:
     def key_card(self, address: str) -> str | None:
         key = KEY + address.lower()
         return self.store.get(key) if self.store.contains(key) else None
+
+    def write_case(self, loop_id: str, offer_id: str, kind: str, side: dict) -> str:
+        """Write a sealed case record (`case.sealed`) to its recipient `to`
+        into this, the writer's, book; refused when it is not readable as
+        the writer's speech."""
+        from .case import fault, key
+        k = key(loop_id, offer_id, kind, side.get("to", ""))
+        why = fault(side.get("from", ""), k, side)
+        if why:
+            raise ValueError(why)
+        self.store.put(k, side)
+        return k
+
+    def case_record(self, loop_id: str, offer_id: str, kind: str, to: str) -> dict | None:
+        from .case import key
+        k = key(loop_id, offer_id, kind, to)
+        return self.store.get(k) if self.store.contains(k) else None
+
+    def cases(self) -> Iterator[tuple[str, str, str, dict]]:
+        """Every case record: (loop id, offer id, kind, record)."""
+        for k, rec in self.store.items(CASE):
+            loop_id, offer_id, kind, _to = k[len(CASE):].split("/")
+            yield loop_id, offer_id, kind, rec
 
     def loop_of(self, offer_id: str) -> str | None:
         """The loop that filled `offer_id` whole, if any; for a partially

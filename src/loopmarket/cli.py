@@ -2742,6 +2742,7 @@ def _watch_pass(session: Session, out) -> bool:
     news = _check_lapsed(session, fold, out, seen.setdefault("lapsed", [])) or news
     news = _notices_in(session, fold, out, seen.setdefault("notices", [])) or news
     news = _transfers_shown(session, fold, out, seen.setdefault("transfers", [])) or news
+    news = _cases_in(session, fold, out, seen.setdefault("cases", [])) or news
     _write_json(_seen_path(), seen)
     return news
 
@@ -2909,6 +2910,197 @@ def _leg_with(fold, loop: str, give_id: str) -> dict:
         if give_id in leg.get("gives", [leg["give"]]):
             return leg
     raise ValueError(f"loop {loop[:16]}… is not in the fold, or took nothing from {give_id[:12]}")
+
+
+# ---------------------------------------------------------------- a case before one adjudicator
+
+def _cases_path(loop: str, oid: str, kind: str, to: str) -> str:
+    folder = os.path.join(_home_dir(), "cases")
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    return os.path.join(folder, f"{kind}-{loop[:16]}-{oid[:16]}-{to[2:10].lower()}.json")
+
+
+def _case_to(session, fold, loop: str, oid: str, kind: str, record: dict, recipients) -> list[str]:
+    """Seal `record` to each recipient and write it into my book; keep the
+    openings. Returns the recipients written to."""
+    from .case import sealed
+    me = session.maker
+    sent = []
+    for to in recipients:
+        if not to or to.lower() == me.lower() or to.lower() in {x.lower() for x in sent}:
+            continue
+        side, opening = sealed(record, sender=me, recipient=to, recipient_public_key=_public_key_for(fold, to))
+        session.book.write_case(loop, oid, kind, side)
+        _write_json(_cases_path(loop, oid, kind, to), opening)
+        sent.append(to)
+    session.book.commit()
+    return sent
+
+
+def _resolver_is_key(client, resolver: str) -> bool:
+    try:
+        return not client._web3().eth.get_code(resolver)
+    except Exception:  # noqa: BLE001 — unknown: treat as a contract, the claim goes to its own channel
+        return False
+
+
+def cmd_claim(args, session, out):
+    """As the wanter of a reservation whose resolver is one named adjudicator
+    (a key, the default since 2026-10-01): claim AMOUNT of it — `all`, `N%`,
+    `NxDAI`, or an amount on my scale — sealed to the adjudicator and to
+    the giver (due process: the accused sees the claim), with `--evidence`
+    and `--text`; the notice it follows is named when my book holds one.
+    The adjudicator then holds the reservation and rules. A reservation
+    whose resolver is a contract (factbond's ladder) is claimed there."""
+    from .case import claim_record, ref
+    client = _escrow_client(session)
+    oid, loop = _reservation_ref(session, args.offer, args.loop)
+    r = client.reservation(oid, loop)
+    if not r["amount"]:
+        raise ValueError(f"{oid[:16]}… loop {loop[:16]}…: no reservation on this escrow")
+    me = client.account().address
+    if r["wanter"].lower() != me.lower():
+        raise ValueError(f"the claim on this reservation is {r['wanter']}'s, not mine")
+    if r["settled"]:
+        raise ValueError("the reservation is settled: nothing to claim")
+    if not _resolver_is_key(client, r["resolver"]):
+        raise ValueError(f"this reservation's resolver {r['resolver']} is a contract (a bonded ladder): "
+                         f"claim there (factbond's assert), not with `loop claim`")
+    amount = _asset_amount(args.amount, r["amount"])
+    if not 0 < amount <= r["amount"]:
+        raise ValueError(f"a claim is more than nothing and at most the reservation "
+                         f"({_num(Fraction(r['amount'], 10 ** 18))})")
+    fold = session.fold()
+    giver = client.deposit_of(oid)["giver"]
+    side = fold.notice(loop, oid)
+    notice_ref = side["commitment"] if side is not None and str(side.get("from", "")).lower() == me.lower() else ""
+    record = claim_record(me, giver, oid, loop, amount, sent_at=session.now, evidence_ref=args.evidence or "",
+                          notice_ref=notice_ref, text=args.text or "")
+    sent = _case_to(session, fold, loop, oid, "claim", record, [r["resolver"], giver])
+    print(f"claim    {_num(Fraction(amount, 10 ** 18))} on {oid[:12]} in loop {loop[:16]}… sent to "
+          f"{', '.join(sent)} (ref {ref(record)[:12]}); the adjudicator {r['resolver']} holds and rules"
+          + ("" if notice_ref else " — no notice sent first: the adjudicator may refuse a claim the "
+             "giver had no chance to cure (`loop notice`)"), file=out)
+    return 0
+
+
+def _claim_to_me(session, fold, loop: str, oid: str) -> dict:
+    """The claim on (offer, loop) sealed to me, opened with bee_signer."""
+    from .case import read
+    signer = _configured("bee_signer")
+    if not signer:
+        raise ValueError("opening a case record needs my key: set bee_signer")
+    me = session.maker
+    for loop_id, offer_id, kind, rec in fold.cases():
+        if (loop_id, offer_id, kind) == (loop, oid, "claim") and str(rec.get("to", "")).lower() == me.lower():
+            return read(rec, signer)
+    raise ValueError(f"no claim to me on {oid[:12]} in loop {loop[:16]}…")
+
+
+def cmd_answer(args, session, out):
+    """As the giver: answer the claim on my reservation — `--evidence`,
+    `--text` — sealed to the adjudicator and to the claimant."""
+    from .case import answer_record, ref
+    client = _escrow_client(session)
+    oid, loop = _reservation_ref(session, args.offer, args.loop)
+    r = client.reservation(oid, loop)
+    fold = session.fold()
+    claim = _claim_to_me(session, fold, loop, oid)
+    record = answer_record(session.maker, ref(claim), time=session.now, evidence_ref=args.evidence or "",
+                           text=args.text or "")
+    sent = _case_to(session, fold, loop, oid, "answer", record, [r["resolver"], claim["claimant"]])
+    print(f"answer   on {oid[:12]} in loop {loop[:16]}… sent to {', '.join(sent)}", file=out)
+    return 0
+
+
+def cmd_hold(args, session, out):
+    """As the adjudicator named on a reservation: a claim is open, the quiet
+    timeout stops (the escrow's `hold`, my key's own act)."""
+    client = _escrow_client(session)
+    oid, loop = _reservation_ref(session, args.offer, args.loop)
+    r = client.reservation(oid, loop)
+    if r["resolver"].lower() != client.account().address.lower():
+        raise ValueError(f"I am not this reservation's adjudicator ({r['resolver']})")
+    receipt = client.hold(oid, loop)
+    print(f"held     {oid[:12]} in loop {loop[:16]}…: the claim is open, gas {receipt['gasUsed']}", file=out)
+    return 0
+
+
+def cmd_rule(args, session, out):
+    """As the adjudicator: rule AMOUNT of the reservation to the wanter —
+    `all`, `N%`, `NxDAI`, `0`, or an amount on my scale — final; the escrow
+    pays it less any deductible and the rest to the giver, and my reasons
+    (`--reason`, required) go sealed to both parties. Holds first if no
+    claim is held yet."""
+    from .case import ref, ruling_record
+    if not args.reason:
+        raise ValueError("a ruling gives its reasons: --reason TEXT")
+    client = _escrow_client(session)
+    oid, loop = _reservation_ref(session, args.offer, args.loop)
+    r = client.reservation(oid, loop)
+    if r["resolver"].lower() != client.account().address.lower():
+        raise ValueError(f"I am not this reservation's adjudicator ({r['resolver']})")
+    if r["settled"]:
+        raise ValueError("the reservation is settled: nothing to rule on")
+    amount = 0 if args.amount.strip() == "0" else _asset_amount(args.amount, r["amount"])
+    if amount > r["amount"]:
+        raise ValueError(f"a ruling is at most the reservation ({_num(Fraction(r['amount'], 10 ** 18))})")
+    fold = session.fold()
+    try:
+        claim_ref = ref(_claim_to_me(session, fold, loop, oid))
+    except ValueError:
+        claim_ref = ""                       # a claim made outside the book: rule on it all the same
+    if not r["held"]:
+        client.hold(oid, loop)
+    receipt = client.resolve(oid, loop, amount)
+    giver = client.deposit_of(oid)["giver"]
+    record = ruling_record(session.maker, claim_ref, amount, time=session.now, reason=args.reason)
+    sent = _case_to(session, fold, loop, oid, "ruling", record, [r["wanter"], giver])
+    print(f"ruled    {_num(Fraction(amount, 10 ** 18))} to the wanter on {oid[:12]} in loop {loop[:16]}… "
+          f"(final), reasons sealed to {', '.join(sent)}, gas {receipt['gasUsed']}", file=out)
+    return 0
+
+
+def _cases_in(session, fold, out, seen: list) -> bool:
+    """Claims, answers and rulings sealed to me, opened and reported once."""
+    from .case import read
+    signer, me, news = _configured("bee_signer"), session.maker, False
+    for loop, oid, kind, rec in fold.cases():
+        if str(rec.get("to", "")).lower() != me.lower():
+            continue
+        k = f"{kind}/{loop}/{oid}/{rec['commitment']}"
+        if k in seen:
+            continue
+        seen.append(k)
+        news = True
+        try:
+            body = read(rec, signer) if signer else None
+        except Exception:  # noqa: BLE001
+            body = None
+        frm = rec.get("from")
+        if kind == "claim":
+            what = f"claims {_num(Fraction(body['amount'], 10 ** 18))}" if body else "claims (sealed; set bee_signer)"
+            hint = " — `loop answer` if I am the giver, `loop hold`/`loop rule` if I adjudicate"
+        elif kind == "answer":
+            what, hint = "answers the claim", ""
+        else:
+            what = (f"rules {_num(Fraction(body['to_wanter'], 10 ** 18))} to the wanter: {body['reason']}"
+                    if body else "rules (sealed; set bee_signer)")
+            hint = ""
+        print(f"case     {frm} {what} on {oid[:12]} in loop {loop[:16]}…{hint}", file=out)
+    return news
+
+
+def cmd_cases(args, session, out):
+    """The case records involving me in the fold — written by me or sealed to me."""
+    me = session.maker.lower()
+    rows = [(loop, oid, kind, rec) for loop, oid, kind, rec in session.fold().cases()
+            if str(rec.get("to", "")).lower() == me or str(rec.get("from", "")).lower() == me]
+    for loop, oid, kind, rec in sorted(rows, key=lambda r: (r[0], r[1], ("claim", "answer", "ruling").index(r[2]))):
+        print(f"{kind:7} {rec['from']} → {rec['to']} on {oid[:12]} in loop {loop[:16]}…", file=out)
+    if not rows:
+        print("no case involving me", file=out)
+    return 0 if rows else 1
 
 
 def cmd_notice(args, session, out):
@@ -4155,6 +4347,12 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop extend-claim OFFER DURATION [--loop L]  as the giver: lengthen the claim period
   loop collect [--check]     payouts my address refused, waiting for me
   loop keycard               write my key card into my book: anyone may seal to me
+  loop claim OFFER AMOUNT [--evidence R] [--text T] [--loop L]
+                             as the wanter: claim on a reservation before its named adjudicator
+  loop answer OFFER [--evidence R] [--text T] [--loop L]   as the giver: answer the claim
+  loop hold OFFER [--loop L]   as the adjudicator: the claim is open, the timeout stops
+  loop rule OFFER AMOUNT --reason TEXT [--loop L]   as the adjudicator: rule, final
+  loop cases                 the claims, answers and rulings involving me
   loop cred [SUBJECT]        statements presented about SUBJECT (me), with their state
   loop cred present FILE     present a statement about me in my book
   loop register issue|revoke|suspend|reinstate|accredit|transfer|heartbeat|status ...
@@ -4317,6 +4515,25 @@ def build_parser():
     p.set_defaults(func=cmd_collect)
     p = sub.add_parser("keycard", add_help=False)
     p.set_defaults(func=cmd_keycard)
+    p = sub.add_parser("claim", add_help=False)
+    p.add_argument("offer"); p.add_argument("amount")
+    for flag in ("--loop", "--evidence", "--text"):
+        p.add_argument(flag, default=None)
+    p.set_defaults(func=cmd_claim)
+    p = sub.add_parser("answer", add_help=False)
+    p.add_argument("offer")
+    for flag in ("--loop", "--evidence", "--text"):
+        p.add_argument(flag, default=None)
+    p.set_defaults(func=cmd_answer)
+    p = sub.add_parser("hold", add_help=False)
+    p.add_argument("offer"); p.add_argument("--loop", default=None)
+    p.set_defaults(func=cmd_hold)
+    p = sub.add_parser("rule", add_help=False)
+    p.add_argument("offer"); p.add_argument("amount")
+    p.add_argument("--loop", default=None); p.add_argument("--reason", default=None)
+    p.set_defaults(func=cmd_rule)
+    p = sub.add_parser("cases", add_help=False)
+    p.set_defaults(func=cmd_cases)
     p = sub.add_parser("cred", add_help=False)
     p.add_argument("action", nargs="?", default=None)
     p.add_argument("rest", nargs="*")

@@ -94,6 +94,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **A case before one named adjudicator** (2026-10-01, step 3 of the
+  default adjudicator; `case.py`): the escrow already gave a key resolver
+  its `hold` and final `resolve`; the book now carries the case between
+  them — the wanter's claim, the giver's answer, the adjudicator's reasons —
+  as sealed records in each writer's own book, each to one recipient, the
+  fold admitting only the writer's speech to the recipient the key names.
+  `loop claim`, `answer`, `hold`, `rule --reason`, `cases`; `watch` opens
+  each. Each party sees the other's submission. A local-EVM test runs a
+  claim through to a split ruling paid by the escrow (`tests/test_case.py`).
 - **Key cards** (2026-10-01, step 2 of the default adjudicator): `key/<address>`
   in a key's own book, a signature over a fixed message naming the
   address (`sigs.sign_key_card`), so anyone may seal to a key that never

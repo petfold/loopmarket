@@ -966,6 +966,10 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `cred [SUBJECT]` / `cred present FILE [--presentation FILE]` | the statements presented about SUBJECT (me) with their state under the registers I read / present a statement about me in my book (R2) |
 | | `register issue SUBJECT CATEGORY --until T --evidence HASH --paid-by subject\|relier [--kind K] [--path ROOT]... [--deposit OFFER@ESCROW] [--scheme HASH]` | run a register in this session's book (`-f SPEC`, announced with `announce --role register`): issue a statement, its record printed for the subject; `revoke`/`suspend`/`reinstate STATEMENT`, `accredit ISSUER CATEGORY --until T`, `transfer ITEM KEY` (a title register's holder, I4), `heartbeat`, `status` — each write heartbeats and commits a root naming its predecessor |
 | | `keycard` | write my key card into my book, so anyone may seal to me (a claim to me as adjudicator, a notice when I have no signed offer) |
+| | `claim OFFER AMOUNT [--evidence R] [--text T]` | as a reservation's wanter, when its resolver is one named adjudicator (a key): the claim — `all`, `N%`, `NxDAI` or on my scale — sealed to the adjudicator and the giver |
+| | `answer OFFER [--evidence R] [--text T]` | as the giver: answer the claim, sealed to the adjudicator and the claimant |
+| | `hold OFFER` / `rule OFFER AMOUNT --reason TEXT` | as the adjudicator: the escrow's `hold` (the timeout stops), and the final ruling — the escrow pays it less any deductible, the reasons sealed to both parties |
+| | `cases` | the claims, answers and rulings involving me |
 | | `notice OFFER --cure DURATION [--fact STATEMENT]` | as the wanter of a cleared leg: factbond's `Notice` to the giver, sealed to its key beside a commitment, in my book; the opening kept locally for a claim |
 | | `cure OFFER [--evidence REF]` | as the giver: answer a notice on my give, sealed back to the claimant |
 | discovery | `announce [--role]` / `announced` / `fold` | say "my book is here" on `registry`; the standing set; fold the announced books myself |

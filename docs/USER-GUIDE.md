@@ -550,6 +550,20 @@ is the option: a bonded ladder, an adjudicator and an arbiter above it,
 deposits forfeited on reversal — a stake standing in for the reputation a
 new pseudonymous key does not have.
 
+A case before a named adjudicator runs through the book, sealed like a
+notice. The adjudicator writes its key card once (`loop keycard`), so it can
+be reached without an offer of its own. The wanter claims (`loop claim
+OFFER 40% --evidence REF --text "never came"`): the claim goes sealed to the
+adjudicator and to the giver, who sees it in `watch` and answers (`loop
+answer OFFER --text …`), sealed to the adjudicator and the claimant. The
+adjudicator holds the reservation (`loop hold OFFER`, the quiet timeout
+stops) and rules (`loop rule OFFER 0.004xDAI --reason "came late: half"`):
+final, the escrow pays the ruling less any deductible and returns the rest,
+and the reasons go sealed to both. Send a notice first (`loop notice`): an
+adjudicator may refuse a claim the giver had no chance to cure. A
+reservation whose resolver is a contract — factbond's ladder — is claimed
+there, not with `loop claim`.
+
 The claim period is matched per leg (v6): a give declares the longest it
 carries (`set claim_max 60d`), a want asks for one (`set require_claim
 30d`) and meets only gives that carry at least that; with no ask the
