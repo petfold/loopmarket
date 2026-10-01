@@ -381,6 +381,12 @@ name factbond's redeployed `Assertions`. Hence:
       two-signature settlement; `assign` to any key, `settle(split)`,
       `extendClaim`; the insured asserts the trigger, presentation,
       assignment before payout, netting, the indemnity rule. C1–C7.
+      *When pooled cover is taken up* (2026-10-01; the mutual itself
+      deferred, factbond M5): one deposit backing many policies — today a
+      deposit sits behind one offer and a cover give is taken whole by one
+      leg, so each policy is its own offer with its own deposit. A mutual
+      plugs in as a maker on the existing interfaces, its rules its own
+      code; a reference mutual is hansa's (CHARTER §E′).
 - [ ] **Items** · [design](docs/plans/items-and-ownership.md) — `item(h)`
       on ontodag's identifier kind (an upstream ask); the per-maker rule;
       item claims as a clearing keyspace; certificate-final and independent
