@@ -94,6 +94,13 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **The default adjudicator, said where it is decided** (2026-10-01,
+  Peter: one named adjudicator both sides accept, final, is the default;
+  factbond's bonded ladder an option). The approval block notes a bonded
+  give that names no adjudicator (the clearing's own resolver would rule a
+  claim on its deposit) and a want relying on a deposit that accepts
+  whichever the give names; the `arbitrator` setting's help and the user
+  guide describe the default.
 - **The title register as the handover witness** (2026-09-29 night, I4):
   `registry-transfer(ID)` — a give naming an item is performed when the
   register ID shows it held by the wanter (`witness.transfer_faults`,

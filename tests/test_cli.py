@@ -1136,6 +1136,30 @@ def test_the_default_asset_has_no_default_price_and_must_be_in_the_catalogue(loo
         monkeypatch.setenv("LOOP_" + key.upper(), ""); run.ok("set", key, "")
 
 
+def test_the_approval_block_says_who_would_rule_a_claim_on_a_deposit(loop, monkeypatch):
+    """2026-10-01 (Peter): the default resolver is one named adjudicator both
+    sides accept, final. A bonded give naming none is told the clearing's
+    own resolver would rule; naming one silences it; a want relying on a
+    deposit with no acceptance is told it takes whichever the give names."""
+    run = loop
+    run.ok("set", "default_asset", "xdai xDAI 1")
+    run.ok("set", "bond", "5")
+    out = run.ok("give", "apple", "home", "5")
+    assert "no adjudicator named: a claim on my deposit would be ruled by the clearing's own resolver" in out
+    run.ok("set", "arbitrator", "0x" + "77" * 20)
+    out = run.ok("give", "apple", "home", "6")
+    assert "no adjudicator named" not in out
+    for key in ("bond", "arbitrator"):
+        monkeypatch.setenv("LOOP_" + key.upper(), ""); run.ok("set", key, "")
+    run.ok("set", "require_point", "20")
+    out = run.ok("want", "apple", "home", "7")
+    assert "I accept whichever adjudicator the giver names" in out
+    run.ok("set", "require_resolvers", "0x" + "77" * 20)
+    assert "I accept whichever adjudicator" not in run.ok("want", "apple", "home", "8")
+    for key in ("require_point", "require_resolvers", "default_asset"):
+        monkeypatch.setenv("LOOP_" + key.upper(), ""); run.ok("set", key, "")
+
+
 def test_deposit_funds_the_declared_bond_on_the_escrow_contract(loop, monkeypatch):
     """`set escrow chain:RPC@CONTRACT` names the escrow in the record (the
     address only, so the id is the same under any RPC) and `deposit` funds

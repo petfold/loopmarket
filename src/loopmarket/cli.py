@@ -170,10 +170,12 @@ _SETTINGS = {
         "evidence period plus its rung's ruling period; 0: the resolver's own"),
     "arbitrator": _Setting(
         "LOOP_ARBITRATOR", "", "--arbitrator ADDRESS",
-        "the resolver my gives name for claims on their deposit (factbond's "
-        "Assertions, or a key; never mine); a want requiring resolvers "
-        "matches only a give naming one it accepts; empty: the clearing's "
-        "`resolver`"),
+        "the adjudicator my gives name for claims on their deposit — by "
+        "default one key both sides accept, whose ruling is final (chosen by "
+        "reputation or accreditation); factbond's Assertions, a bonded "
+        "ladder, is the option for higher stakes among strangers; never "
+        "mine; a want requiring resolvers matches only a give naming one it "
+        "accepts; empty: the clearing's `resolver`"),
     "deductible": _Setting(
         "LOOP_DEDUCTIBLE", "", "--deductible AMOUNT",
         "what a ruled claim on my deposit leaves with me, on my scale like "
@@ -2040,6 +2042,27 @@ def _door_notes(offer: Offer) -> list[str]:
     return notes
 
 
+def _adjudicator_notes(offer: Offer) -> list[str]:
+    """Who would rule a claim on a deposit, said in the block that approves
+    it (2026-10-01, Peter: the default is one named adjudicator both sides
+    accept, final): a give whose deposit names no adjudicator leaves it to
+    the clearing's own resolver; a want relying on a deposit and naming no
+    acceptance takes whichever the give names."""
+    from .escrow import is_address
+    notes = []
+    req = offer.requires if offer.v >= 5 else None
+    accepts = req is not None and req.resolvers is not None
+    if offer.kind == GIVE and offer.v >= 5 and offer.bond is not None \
+            and not is_address(offer.arbitrator) and not accepts:
+        notes.append("no adjudicator named: a claim on my deposit would be ruled by the clearing's "
+                     "own resolver — `set arbitrator KEY` names one both sides can accept, "
+                     "whose ruling is final")
+    if offer.kind == WANT and req is not None and (req.point or req.ladder) and not accepts:
+        notes.append("I accept whichever adjudicator the giver names — `set require_resolvers` "
+                     "chooses (keys, or root: for those accredited by a register I trust)")
+    return notes
+
+
 def _publish_offers(session: Session, items, reused: bool, out, addresses=()) -> int:
     """`_publish_offer` for offers approved together — a give and the
     option `options on` writes with it: every block shown, one question,
@@ -2048,7 +2071,7 @@ def _publish_offers(session: Session, items, reused: bool, out, addresses=()) ->
         if i:
             print("and", file=out)
         print(render_offer(offer), file=out)
-        for note in notes + _door_notes(offer):
+        for note in notes + _door_notes(offer) + _adjudicator_notes(offer):
             print(f"  note     {note}", file=out)
     for address in addresses:
         print(f"  note     handoff {address} — sealed to the counterparty "

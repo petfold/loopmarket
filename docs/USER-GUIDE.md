@@ -535,10 +535,20 @@ the wanter's ladder in the asset. Every undisputed case then settles
 without anyone ruling: the reservation returns to the giver after a
 quiet claim period (anyone may settle), or now on the wanter's
 countersignature, and a giver who cancels pays the ladder's amount for
-that lead. Only a *contested* claim needs a ruling, and that is
-factbond's: the resolver fixed at clearing (`set resolver`: factbond's
-`Assertions` contract, or your own key when empty) holds and resolves
-the reservation, nothing more.
+that lead. Only a *contested* claim needs a ruling.
+
+**Who rules: by default, one adjudicator both sides accept.** Name an
+adjudicator on your gives (`loop set arbitrator 0x…`, a key whose ruling
+is final, chosen by reputation or accreditation, as parties choose an
+arbitrator), and on your wants say which you accept (`set
+require_resolvers`, by key or `root:` for those a register you trust has
+accredited). The leg's resolver is the first both sides accept; it holds
+and resolves the reservation, nothing more. A give naming none leaves
+claims on its deposit to the clearing's own `resolver` (the approval
+block says so). For higher stakes among strangers, factbond's `Assertions`
+is the option: a bonded ladder, an adjudicator and an arbiter above it,
+deposits forfeited on reversal — a stake standing in for the reputation a
+new pseudonymous key does not have.
 
 The claim period is matched per leg (v6): a give declares the longest it
 carries (`set claim_max 60d`), a want asks for one (`set require_claim
