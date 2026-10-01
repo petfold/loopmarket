@@ -8,8 +8,9 @@ A universal combinatorial marketplace over the
 [Ethereum Swarm](https://www.ethswarm.org/) stack.
 
 Every economic intention is one uniform, content-addressed **offer** — a
-thing described as a conjunction of OntoDAG categories, with a service time
-window and region, priced on the maker's **personal scale** (a personal
+thing described as a conjunction of OntoDAG categories (where and when it
+changes hands are terms among them), priced on the maker's **personal
+scale** (a personal
 numeraire; the record encoding calls it the maker's personal token). A
 distributed, versioned **offer book** holds them (recordstore keyspace;
 Swarm-backed via `BeeBytesStore` + a signed `SwarmFeedPointer`). Competing
@@ -27,7 +28,8 @@ they were more efficient, safer and produced fewer conflicts
 (`docs/plans/commercial-practice-review.md`).
 
 ```console
-$ odag put piano-lesson music-lesson        # the catalogue is ontodag's
+$ odag -f market.od put piano-lesson music-lesson   # the catalogue is ontodag's
+$ loop set catalogue market.od
 $ loop set maker amara; loop place home 46.05,14.50,5km; loop set terms home
 $ loop give piano-lesson 100                # I give this, priced on my scale
 $ loop want produce local weekly 104        # I want this, priced on my scale
@@ -37,8 +39,9 @@ $ loop loops && loop clearing               # hunt profitable loops; run the cle
 `loop` is the command line (`pip install loopmarket`): ontodag's grammar
 plus two conventions — a bare number first is the quantity, last is the
 price — and `+` between the parts of a want that must clear together;
-every name a catalogue node, an omitted price your last unit
-price, and nothing published before the fully resolved offer is shown.
+every term the catalogue's (your own places stay private and publish as
+their cell), an omitted price your last unit price, and nothing published
+before the fully resolved offer is shown.
 Type `loop` alone for a prompt, pipe it a script for a batch. The same in
 Python:
 
@@ -53,7 +56,7 @@ registry.publish_many([...])          # gives and wants, one uniform form
 registry.commit()
 
 agent = SolverAgent(registry, ontology, MockClearing(registry, ontology))
-agent.step()                          # snapshot → match → hunt loops → clear
+agent.step()                          # snapshot → match → candidates → select → propose; clearing re-verifies
 ```
 
 ## Try it
@@ -66,13 +69,19 @@ PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
 ```
 
+Extras, when you need them: `.[sig]` (offer signatures, sealed handoffs,
+notices and cases), `.[chain]` (the announcements, beats and escrow on
+Gnosis), `.[evm]` (compiling the contracts and running them on a local
+EVM), `.[swarm]` (a live Bee node).
+
 The script publishes the smallest nontrivial book — a piano teacher, a
 market gardener and a bicycle mechanic, no pair of whom can trade — and
 `loops && clearing` finds, verifies and clears the triangle at a 12% surplus:
 fifteen lines of `set maker`, `give piano-lesson amara_flat 100`,
+`want produce local weekly amara_flat 104`, ...
 `examples/delivery.loop` clears a *circulation*: the grocer's box at the
-shop plus the courier's run to the door as one composed leg (2026-09-13),
-`want produce local weekly ...`. It runs unchanged with the book on Swarm
+shop plus the courier's run to the door as one composed leg (2026-09-13).
+The triangle script runs unchanged with the book on Swarm
 (`loop -f swarm:TOPIC ...`; 0.3.0 live-checked 2026-09-12 on a Bee 2.8.2
 light node: published, solved and cleared in 1m51s with the same `loop_id`
 the in-memory run gives, a fresh session reading the six fills back in
@@ -106,7 +115,7 @@ same code runs with the book on Swarm.
 
 ## What is built, and what is designed
 
-**Built (P0, plus the live-Swarm milestone):** the full pipeline above runs
+**Built (as of 0.13.0):** the full pipeline above runs
 in memory — and, since 2026-09-12, from the command line (`loop`) — and since 2026-08-01 also end-to-end on a real Gnosis-mainnet
 Bee node — catalogue and book on Swarm, book head in a signed feed, fills
 atomic (the gated `tests/test_swarm_book.py`). Since 2026-08-21 the
@@ -163,7 +172,14 @@ held reservation only by a ruling or both parties (redeployed on Gnosis
 the same day), and the clearing contracts verify holds, item claims and
 statements on chain (`StatementVerifier` beside the leg verifier,
 redeployed the same day — a beat pinning a register root after a
-revocation is convicted by challenge). Alpha; interfaces will move.
+revocation is convicted by challenge). A maker may accept arbitrators by
+property (accredited under a named root, a deposit at stake, a clean
+record), and since 2026-10-01 the default form is the simplest one: **one
+arbitrator both sides accept, whose ruling is final** — the case (claim,
+answer, reasons) sealed through the books, the money moved by the escrow,
+and a personal view of arbitrators from the escrow's log (`loop claim`,
+`answer`, `hold`, `rule`, `arbitrators`; live on Gnosis the same day).
+Alpha; interfaces will move.
 
 **Designed (2026-08-07):** most of what loopmarket *is* now lives as a
 decided, research-grounded plan corpus under `docs/plans/` — one document
@@ -173,32 +189,33 @@ unbuilt code carries a dated marker ("decided 2026-08, lands with the v2
 bump / P1 / P2"). Planned invariants **U8–U14** are specified in the
 documents that motivate them and summarized across `ARCHITECTURE.md`'s
 update notes and §11; they enter `CLAUDE.md` as binding invariants only
-when their enforcing code and tests land. factbond's mirror corpus is
+when their enforcing code and tests land (U11 entered 2026-08-20, U9
+2026-09-14). factbond's mirror corpus is
 `factbond/docs/plans/`.
 
 ## Vocabulary
 
-Three words carry the design and are used precisely since 2026-09-07:
+Four words carry the design and are used precisely since 2026-09-07:
 
 - **loop** — any cleared circulation: the essay's word and the name in code (`Loop`, `LoopProposal`, `loop/`, `loop_id`).
 - **cycle** (simple loop) — the strict circle; all the P0 solver finds, and the only case where "the product of rates around it" means anything.
 - **circulation** — the technical name for the cleared object: a flow conserved at every maker on that maker's own scale, with composed legs where one want takes several gives (`docs/plans/P2-loop-selection.md` §10–11).
 - **hyper-leg** — a composed leg: several givers as tails, one wanting maker as head, one flow variable, so it fills every tail or none. The maker graph with hyper-legs is a hypergraph; its flow is an LP for divisible legs and an ILP where a hyper-leg is all-or-nothing.
 
-And two more: **clearing** is the atomic commit that fixes obligations; **settlement** is the makers delivering.
+And two pairs more: **clearing** is the atomic commit that fixes obligations; **settlement** is the makers delivering. An **arbitrator** decides a contested claim in the default form (the offer's `arbitrator` field); a **resolver** is the address the escrow lets hold and resolve a reservation — an arbitrator's key, or factbond's contract, whose rungs are its *adjudicator* and *arbiter*.
 
 ## The plan corpus
 
 | Document | One line |
 |---|---|
 | [`P1-federated-book.md`](docs/plans/P1-federated-book.md) | Per-maker books under own feeds/signers; announcement, aggregation, merge discipline, lifecycle, postage economics, spam floors. |
-| [`P1-spacetime-terms.md`](docs/plans/P1-spacetime-terms.md) | Place and time leave the offer's fields for its conjunction (decided 2026-09-12): one relation, containment, for every term — where/when a thing changes hands are terms like its categories (the overlap rule of the same morning, superseded that night); cells and region nodes as the exact geo truth, the disc retires; the path to the v3 record. Step 2 (`satisfies` over mixed terms) landed the same day. |
-| [`P2-batch-auction.md`](docs/plans/P2-batch-auction.md) | The beat: sealed proposals, numeraire-free scoring, the fairness floor, capped solver rewards, collusion resistance, fees. |
+| [`P1-spacetime-terms.md`](docs/plans/P1-spacetime-terms.md) | Place and time leave the offer's fields for its conjunction (decided and built through the v3 record 2026-09-12): where/when a thing changes hands are terms like its categories, cells and region nodes the exact geo truth, the disc retired; since 2026-09-13 handover coordinates match when one side contains the other, categories one way (the overlap rule of 2026-09-12 superseded). |
+| [`P2-batch-auction.md`](docs/plans/P2-batch-auction.md) | The beat: sealed proposals, numeraire-free scoring, the fairness floor, the baseline as reserve bid, collusion resistance; no protocol fees (the fee-funded solver rewards were struck 2026-08-21). §2–§6 built 2026-09-18 (`SealedBeat.sol`, `auction.py`). |
 | [`P2-clearing-pricing.md`](docs/plans/P2-clearing-pricing.md) | Turning a winning loop's surplus into per-leg prices: equal log-surplus split under uniform directional clearing; clearing prices as node potentials (§10). |
 | [`P2-loop-selection.md`](docs/plans/P2-loop-selection.md) | Clearing as optimization: flow LP vs packing ILP, chains, failure-aware objective, pre-commit compression; composition on the want side (§10); the cleared object is a circulation, clearing prices its node potentials (§11). |
 | [`proof-fabric.md`](docs/plans/proof-fabric.md) | Cross-phase proofs and certificates: trie proofs vs POT, the pin table, certificate envelopes, absence proofs. |
 | [`P3-guarantee-coupling.md`](docs/plans/P3-guarantee-coupling.md) | loopmarket's half of the factbond coupling: witness edges, reliance-capped insurance, oracle consumption, risk-priced routing. |
-| [`P3-release-and-reclearing.md`](docs/plans/P3-release-and-reclearing.md) | Release prices and re-clearing (direction set 2026-09-18): a maker's required floor is its true neutral point, a self-assessed buyout price anyone may pay to cancel its side of a cleared leg; re-clearing as cancel-and-replace in one transaction; the Pareto re-match first and free; payments in the bond's asset by the entrant, never from surplus. |
+| [`P3-release-and-reclearing.md`](docs/plans/P3-release-and-reclearing.md) | Release prices and re-clearing (direction set 2026-09-18): a maker's required floor is its true neutral point, a self-assessed buyout price anyone may pay to cancel its side of a cleared leg; re-clearing as cancel-and-replace in one transaction; the Pareto re-match first and free; payments in the bond's asset by the entrant, never from surplus. Built from it: the v5 record's admissibility by declaration (§5d) and the escrow (§5a), 2026-09-19; adjudication is factbond's (§5e). |
 | [`credentials-cover-and-options.md`](docs/plans/credentials-cover-and-options.md) | loopmarket's index to the cross-repository plan decided 2026-09-25 (D1–D10 and their amendments; the full text lives in factbond): which decisions are carried out here, and where. |
 | [`counterparty-gate.md`](docs/plans/counterparty-gate.md) | Counterparty requirements as categories, one statement shape, registers separately rooted and pinned, revocation proven by absence under a root no older than the requirer allows; the build R1–R7, R3b's chain half and R5's checked root sequence (built 2026-09-29). |
 | [`options-and-cover.md`](docs/plans/options-and-cover.md) | An option is a hold on a plain offer, written by clearing and lapsing with time; options and cover share one model with two exercise routes; holds on chain (C4, built and deployed 2026-09-29). |
@@ -206,10 +223,10 @@ And two more: **clearing** is the atomic commit that fixes obligations; **settle
 | [`commercial-practice-review.md`](docs/plans/commercial-practice-review.md) | Reference: do the mechanisms encourage what merchants, private courts and mutuals learned over centuries? Its amendments are woven into the credentials plan. |
 | [`P4-privacy.md`](docs/plans/P4-privacy.md) | Staged privacy: Tier 1 with zero new cryptography, the P2 format-freeze list, explicit dead/deferred rulings. |
 | [`ontodag-coupling.md`](docs/plans/ontodag-coupling.md) | The catalogue contract: dimension terms, unit families, match degrees, the upstream-vs-local tripwire table. |
-| [`cli.md`](docs/plans/cli.md) | The command line (designed 2026-09-11, **built 2026-09-12** as `loop`): ontodag's grammar plus quantity-first/price-last, every name a catalogue node, last-price memory, "declare in the direction you know" instead of a tolerance parameter, the approval block, batch scripts; what is still open (`fold`/`audit`/`propose`, U8 for peers, the upstream asks). |
+| [`cli.md`](docs/plans/cli.md) | The command line (designed 2026-09-11, **built 2026-09-12** as `loop`): ontodag's grammar plus quantity-first/price-last, every term the catalogue's, last-price memory, "declare in the direction you know" instead of a tolerance parameter, the approval block, batch scripts; what is still open (the upstream asks, §11). |
 | [`catalogue-bootstrap.md`](docs/plans/catalogue-bootstrap.md) | Seeding and governing the shared catalogue: seed taxonomies, the import pipeline, norms as protocol rules. |
 | [`adoption-and-thickness.md`](docs/plans/adoption-and-thickness.md) | Where the first loops come from: launch verticals, the broker surface, bridge liquidity, thickness engineering. |
-| [`THREATS.md`](docs/plans/THREATS.md) | The threat register, T1–T19 (the fixed T1–T9 by expected damage to a young system, then dated additions — T19, biometric linkage at the door); mirrored in factbond. |
+| [`THREATS.md`](docs/plans/THREATS.md) | The threat register, T1–T20 (the fixed T1–T9 by expected damage to a young system, then dated additions — T19, biometric linkage at the door; T20, a resolver's stake thinner than it reads); mirrored in factbond. |
 | [swarm-da](https://github.com/petfold/swarm-da) (separate repo) | Memo, 2026-09-09: what building this book on Swarm taught about Swarm as a data-availability layer — the archival-DA opportunity, Bee's push-sync receipts as the half-built publication primitive, and what loopmarket sheds the day they are exposed and anchored. |
 
 **Phase ↔ document map.** P1 (federation): `P1-federated-book.md`,
@@ -258,7 +275,7 @@ the corpus is built so that they can.
   clearing, batch auctions) → P3 (guarantee fabric via factbond) →
   P4 (privacy), each linking to its plan document.
 - **[CLAUDE.md](CLAUDE.md)** — working rules for development: dependency
-  boundaries, core invariants U1–U7, known simplifications.
+  boundaries, core invariants U1–U7, U9 and U11, known simplifications.
 - **[docs/loop-economy.md](docs/loop-economy.md)** — the vision essay: the
   loop economy, its gallery of loops, the solver ecology, judges without
   swords, and the path in.

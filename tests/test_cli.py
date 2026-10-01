@@ -958,6 +958,12 @@ def test_announced_books_are_the_read_path(env, tmp_path, monkeypatch):
     assert len(set(roots.values())) == 1 and roots["amara"].startswith("book root ")
     out = run.ok("loops")
     assert "surplus" in out
+    # a register's book is announced under its own role, and is never folded as offers
+    monkeypatch.setenv("LOOP_MAKER", "chamber"); monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'chamber'}")
+    run = Runner()
+    run.ok("register", "heartbeat")
+    assert run.ok("announce", "--role", "register").startswith("announced chamber rs:")
+    assert any(l.split()[0] == "chamber" and l.split()[-1] == "register" for l in run.ok("announced").splitlines())
     assert "registry = file:" in run.ok("status")
     # the registry is the channel: a book a stranger writes into the file
     # under another maker's name is folded as THAT owner's, so its offers

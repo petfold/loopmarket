@@ -5,9 +5,13 @@ Tutorial: [USER-GUIDE.md](USER-GUIDE.md). Rationale:
 [ARCHITECTURE.md](../ARCHITECTURE.md). Working rules and roadmap:
 [CLAUDE.md](../CLAUDE.md).*
 
-Floors: Python ≥ 3.11, `ontodag` ≥ 0.23.0, `recordstore` ≥ 0.16.0.
+Floors: Python ≥ 3.11, `ontodag` ≥ 0.26.1, `recordstore` ≥ 0.21.0.
 Extras: `[swarm]` = `recordstore[bee,feeds]` (Bee blobs + signed feeds),
-`[sig]` = `eth-keys` (detached signatures), `[test]` = pytest.
+`[sig]` = `eth-keys`, `eth-hash`, `coincurve`, `cryptography` (detached
+signatures; sealed handoffs, notices and case records), `[chain]` = `web3`
+(the contracts on Gnosis: announcements, beats, the escrow), `[evm]` =
+`web3`, `py-solc-x`, `eth-tester` (compiling the contracts, a local EVM),
+`[test]` = pytest.
 
 ## 0. Conventions
 
@@ -101,9 +105,10 @@ the stored number for v1–v3, a `rat` string for v4.
 ### `Offer(...)` — frozen; the one uniform intention
 
 ```
-Offer(maker, gives, wants, service, where, valid,
+Offer(maker, gives, wants, valid, service=None, where=None,
       ontology_root="", bond=0.0, oracle="countersign", arbitrator="",
-      requires=None, nonce=<auto: unix ms>, registry_version="", contract_version="", v=2)
+      requires=None, nonce=<auto: unix ms>, registry_version="", contract_version="",
+      claim_max=0, underlying="", exercise=None, v=4)
 ```
 
 v5 (2026-09-18/19, admissibility by declaration): `bond` is a `Bond(asset:
@@ -155,7 +160,7 @@ SHA-256 of `canonical_bytes()`. Presented in the subject's own book as
 
 Validation (`ValueError`): exactly one of `gives`/`wants` is a `Thing`
 (or, on the want side of a v4 record, `Parts`) and one a `Tokens` whose
-`issuer == maker` (invariant U1); `bond >= 0` (v<5) or a `Bond` (v5+); `v in {1, 2, 3, 4, 5, 6}`; an
+`issuer == maker` (invariant U1); `bond >= 0` (v<5) or a `Bond` (v5+); `v in {1, …, 7}`; an
 option names both its `underlying` (a 64-hex id) and its `exercise`; v1
 records carry no registry/contract pins; parts, a `step` other than 0 or
 the whole quantity, and a floor are v4 forms.
@@ -178,7 +183,9 @@ counts only up to what the contract holds (`meets(held=)`).
 
 ### `give(maker, thing, amount, *, valid, service=None, where=None, **kw) -> Offer`
 ### `want(maker, thing_or_parts, amount, *, valid, service=None, where=None, **kw) -> Offer`
-A v4 record by default (`v=3` for the previous one); passing
+The current record by default — v4, or the version its fields need: a
+`requires` or a `Bond` deposit v5, a v6 requirement field, `claim_max`
+or an option v6, a deductible v7 — unless `v=` says otherwise; passing
 `service`/`where` yields the v2 field form.
 Convenience constructors; `**kw` passes through (`nonce=`, pins, etc.).
 Splat `**Ontology.pins` to pin the catalogue.
@@ -199,7 +206,7 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 |---|---|
 | `geohash(lat, lon, precision=6)` | plain geohash, no dependencies |
 | `cell_bounds(cell)` | `(lat_lo, lat_hi, lon_lo, lon_hi)` — the bit interleaving run backwards |
-| `cell_for_coords(lat, lon, radius_m, max_precision=6)` | the finest cell that **contains** the whole radius — what `where(LAT,LON,R)` becomes |
+| `cell_for_coords(lat, lon, radius_m, max_precision=6)` | the finest cell that **contains** the whole radius — what a bare `LAT,LON,R` (or `loop place NAME LAT,LON,R`) becomes |
 
 ---
 
@@ -233,7 +240,9 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 ## 4. `loopmarket.registry` — the book
 
 Key prefixes (module constants): `OFFER="offer/"`, `SIG="sig/"`,
-`WITHDRAW="withdraw/"`, `FILL="fill/"`, `LOOP="loop/"`.
+`WITHDRAW="withdraw/"`, `FILL="fill/"`, `LOOP="loop/"`, and the sidecars
+`HANDOFF`, `CRED`, `NOTICE`, `CURE`, `OPTION`, `EXERCISE`, `ITEM`, `KEY`,
+`CASE` (§12).
 
 ### `OfferRegistry(store)`
 
@@ -246,7 +255,9 @@ Writing:
 | `.withdraw(offer_id)` | monotone tombstone; survives merges; `KeyError` if the offer isn't in this book; re-publishing identical content does not un-withdraw |
 | `.absorb(other)` | re-assert another book's entire content as this writer's base; canonical addressing makes the re-commit reproduce the source root (clone verification). O(book) |
 | `.attach_signature(offer_id, sig_hex)` | store a detached signature; `ValueError` unless it recovers to the offer's maker; needs `[sig]` |
-| `.mark_filled(offer_ids, loop_id, loop_record)` | clearing's stroke: fills + loop record; **no wall clock** — a pure function of the decision |
+| `.mark_filled(fills, loop_id, loop_record, extra=None)` | clearing's stroke: fills (whole, or per loop for a divisible give taken in part) + the loop record + `extra` records (holds, exercises, item claims) under one commit; **no wall clock** — a pure function of the decision |
+| `.publish_contact_card(address, sig_hex)` | `key/<address>`: a signature over sha256(`b"loopmarket contact card\n"` + address) from which anyone recovers the key's public key (`sigs.sign_contact_card`) — how a key with no signed offer, an arbitrator, is sealed to |
+| `.write_case(loop_id, offer_id, kind, side) -> key` | a sealed claim, answer or ruling (`case.sealed`) at `case/<loop>/<offer>/<kind>/<to>`; the fold admits it only as its writer's speech |
 | `.commit(*, reconcile=True) -> root` | land staged changes; reconciled commits three-way-merge with concurrent writers under `or_set_resolver`, then run `verify_loop_atomicity` |
 
 Reading:
@@ -257,7 +268,11 @@ Reading:
 | `.get(offer_id) -> Offer` | `KeyError` if absent |
 | `.is_filled(offer_id)` / `.is_withdrawn(offer_id)` | |
 | `.signature(offer_id) -> str | None` | |
-| `.loop_of(offer_id) -> str | None` | the loop that filled the offer |
+| `.loop_of(offer_id) -> str | None` / `.loops_of(offer_id)` | the loop that filled the offer whole; every loop with a fill on it (a divisible give taken in part) |
+| `.taken(offer_id)` / `.availability(offers, now=None)` | what the fills have taken; `{offer id: available}` for many — what the solver passes as `available=` |
+| `.contact_card(address)` / `.case_record(loop_id, offer_id, kind, to)` / `.cases()` | read the `key/` and `case/` sidecars; `cases()` yields `(loop, offer, kind, record)` |
+| `.notice(loop_id, offer_id)` / `.cure(loop_id, offer_id)` | read the notice and the cure |
+| `.exercise_records(offer_id, holder, taken, now, loop_id)` | the records an exercise writes with its fill: what it took of the holder's holds |
 | `.attach_handoff(loop_id, offer_id, record, *, fold=None)` | store a sealed handoff (`handoff.seal` + `from`/`to`) beside my *filled* offer, `handoff/<loop_id>/<offer_id>`; the fill is checked against `fold` (the clearing book) when given; `ValueError` otherwise |
 | `.handoff(loop_id, offer_id) -> dict | None`, `.handoffs()` | read the sidecars |
 | `.present(statement, presentation=None) -> statement_id` | a statement about a key, `cred/<subject>/<id>` (R2); the fold admits it only in its subject's own book |
@@ -297,25 +312,49 @@ follow. Needs `[swarm]`, a Bee node, and a purchased postage batch.
 | `.giver` / `.receiver` | give.maker / want.maker |
 | `.qty` | the want's quantity |
 
-### `check_match(give, want, ontology, *, now) -> Match | None`
-Exact, self-contained, re-runnable by clearing. Gates, in order:
+### `check_match(give, want, ontology, *, now, available=None, held=None, gate=None) -> Match | None`
+Exact, self-contained, re-runnable by clearing. `available` is `{offer id:
+what is left}` (`OfferRegistry.availability`; absent = the whole
+quantity), `held` `{offer id: what the escrow holds}` (a deposit naming an
+escrow counts only up to it), `gate` the `CounterpartyGate` (§8f) over the
+snapshot — no gate, and every requirement that needs one fails closed. A
+composed want returns `None` (its legs are `check_parts`'). Gates, in
+order:
 
 1. kinds: give is `GIVE`, want is `WANT`, distinct makers
-2. validity: both offers open at `now`
-3. time: service windows intersect (v1/v2 records; a bare `time(...)` term since v3, one containing the other)
-4. space: service discs intersect (v1/v2 records; a bare geo term since v3, one containing the other)
-5. quantity: `want.qty <= give.qty`; equal unless both divisible; equal units
-6. **pins**: if the verifying catalogue is pinned (`ontology.root`), both
+2. the record line: both v1/v2 or both v3+ (a disc is not a cell)
+3. an option give's underlying (`gate.option_fault`, §8f), an item term's
+   whole id and the maker's one open claim per item (`gate.item_fault`, §8h)
+4. **requirements**: each side's `requires` met by the other side's
+   declaration (`meets`, below)
+5. validity: both offers open at `now`
+6. (v1/v2 only) service windows and discs intersect
+7. quantity: `give.thing.takes(want.qty, left)` — within what is left
+   (plus the holder's own hold), not below the floor, on the step — and
+   equal units
+8. **pins**: if the verifying catalogue is pinned (`ontology.root`), both
    offers must carry all three pins; mixed pinning (one side declares,
    the other silent) always refuses; equal `ontology_root` when both
    pin; registry/contract versions refuse on **major** skew (minor is
    vocabulary-additive and interoperates)
-7. meaning: `ontology.satisfies(give concepts, want concepts)`
+9. meaning: `ontology.satisfies(give concepts, want concepts)`
 
-### `candidate_matches(offers, ontology, *, now) -> Iterator[Match]`
+### `meets(mine, other, ontology, *, taken=None, whole=None, held=None, gate=None, legs_checked=False) -> bool`
+Is `mine`'s `requires` met by `other`'s declarations (v5+, admissibility
+by declaration)? The witness type and escrow kind accepted; a neutral
+point covered by the share of `other`'s deposit reserved for this fill
+(`taken` of `whole`), its category under an accepted one through the
+catalogue, at the acceptance's price, counted up to `held` and to
+`Bond.payable`; each `counterparty` credential through `gate.faults`; an
+`Accept` of resolvers through `arbitrators.admits`; a want's `legs` left to
+the composed leg when `legs_checked` (`legs_faults(want, gives, ontology,
+*, gate=None)` lists what a composed leg's operator gives fail of them).
+No requirement: `True`; a requirement nothing can check: `False` (U7).
+
+### `candidate_matches(offers, ontology, *, now, available=None, held=None, gate=None) -> Iterator[Match]`
 The exact check over the full give × want product. The recall baseline.
 
-### `check_parts(want, gives, ontology, *, now) -> Leg | None`
+### `check_parts(want, gives, ontology, *, now, available=None, held=None, gate=None) -> Leg | None`
 The exact check of a composed want's leg (v4): give `i` serves part `i` —
 the gates against that part (quantity on the give's step and floor, units,
 pins) and `satisfies` — every give distinct, all or nothing. Re-run by
@@ -323,7 +362,7 @@ clearing (U3). `parts_legs(offers, ontology, *, now, limit=64)` is the
 baseline search: per part the gives that serve it, every combination of
 distinct gives checked exactly, deterministic order.
 
-### `check_aggregate(want, gives, quantities, ontology, *, now, available=None) -> Leg | None`
+### `check_aggregate(want, gives, quantities, ontology, *, now, available=None, held=None, gate=None) -> Leg | None`
 The exact check of an aggregated leg (the six lifters, 2026-09-14): one
 want of one thing met by several gives of it, each contributing a share it
 may give (`Thing.takes`, within what is left of it), the shares summing to
@@ -341,7 +380,7 @@ quantity taken from give `i`: its share, the part's, the want's, or an
 operator's whole run), `.value_given(i)` (its unit price times that
 quantity — what the giver is owed).
 
-### `check_composition(want, gives, ontology, *, now) -> Leg | None`
+### `check_composition(want, gives, ontology, *, now, available=None, held=None, gate=None) -> Leg | None`
 The exact check of a composed leg (2026-09-13): the first give is the
 thing, every further give an operator — a give naming a category under
 `operator` and the two ends of a dimension (`transport(small-item)
@@ -351,9 +390,12 @@ does not); each operator's input coordinate must be comparable with the
 thing's coordinate as it stands (one contains the other) and its output
 replaces it; the thing so moved must satisfy the want; every give passes
 `check_match`'s gates against the want (the operator without the quantity
-gate). Re-run by clearing (U3).
+gate). An argument-only operator (`insure(...)`, `inspect(...)`, declared
+by `Ontology.declare_argument_operator`) attaches to the thing when its
+argument accepts it and moves nothing; a want's `requires.legs` are
+checked here (`legs_faults`). Re-run by clearing (U3).
 
-### `composed_legs(offers, ontology, *, now, max_hops=2) -> Iterator[Leg]`
+### `composed_legs(offers, ontology, *, now, max_hops=2, available=None, held=None, gate=None) -> Iterator[Leg]`
 Baseline composition search: every want × thing give that does not already
 match it × every chain of up to `max_hops` operator gives, checked exactly;
 a chain only where a shorter one does not reach; deterministic order.
@@ -362,7 +404,6 @@ a chain only where a shorter one does not reach; deterministic order.
 
 ## 6. `loopmarket.dimensions` — indexed candidate generation
 
-Needs ontodag's `items_only` (issue #14, on ontodag main after 0.24.0).
 Recall-exact against the baseline (enforced by test); **one `get` per
 want**, the want's own conjunction as the query, no set arithmetic on the
 answer.
@@ -375,8 +416,8 @@ answer.
 | `candidate_matches_indexed(offers, ontology, *, now, index=None)` | drop-in for `candidate_matches` |
 
 The v1/v2 window and disc are fields the exact check gates, not terms;
-they are not filed. Needs ontodag with #15 (role parameters naming nodes)
-and #18 (the dimension cache).
+they are not filed. ontodag's `items_only` (#14), role parameters naming
+nodes (#15) and the dimension cache (#18) are all in the 0.26.1 floor.
 
 ---
 
@@ -405,6 +446,14 @@ Raises `ValueError` unless ≥ 2 legs chaining into a cycle
 | `.find_profitable_loop(*, min_surplus=0.0)` | Bellman–Ford over −log(rate); deterministic (sorted iteration, U6); one `Loop` or `None` |
 | `.find_profitable_loops(*, min_surplus=0.0, limit=10)` | greedy disjoint extraction (each offer used once) |
 
+### `enumerate_cycles(matches, *, max_legs=5, limit=2000, min_surplus=0) -> (list[Loop], complete)`
+Every simple cycle over the whole match multigraph (not the best-rate
+reduction) up to `max_legs` legs, each judged on its own surplus and
+per-node feasibility, in canonical order; `complete` is `False` when
+`limit` cut the enumeration (the agent then tops up with Bellman–Ford).
+The candidates `selection.pack` chooses among (§8d) — the 2026-09-18 fix
+of the recall gap above.
+
 ### `Circulation(legs: tuple[Leg, ...])` — frozen
 A set of legs, some possibly composed, in which every maker both gives and
 receives; each offer once, a maker may take part through several offers.
@@ -432,8 +481,10 @@ budget. Simple cycles are found first by `ExchangeGraph` in the agent.
 
 ## 8. `loopmarket.clearing` — trust nothing, commit atomically
 
-### `LoopProposal(loop, book_root, ontology_root, solver, found_at)` — frozen
+### `LoopProposal(loop, book_root, ontology_root, solver, found_at, register_roots=())` — frozen
 `loop` is a `Loop` or a `Circulation` (`.circulation` lifts either).
+`register_roots` pins every register a leg's requirement names as a trust
+root, `((register id, root), ...)` (R3a; `register.named_registers`).
 `.to_record()` → the `loop/` record: every leg names `want`, `gives` (all
 of them) and `give` (the first — the 2026-08 shape's key, kept for
 readers); a simple leg carries its `rate`; a composed set carries the
@@ -445,22 +496,48 @@ node `potentials`. A simple cycle's record is byte-identical to before.
 ### `Clearing` (Protocol)
 `submit(proposal) -> Receipt`.
 
-### `MockClearing(registry, ontology, *, min_surplus=0.0, require_per_node=True, clock=time.time, verifiable_oracles=VERIFIABLE_ORACLES)`
-`VERIFIABLE_ORACLES = frozenset({"countersign"})`. The checklist of
-`submit`, in order (U3 — any future backend keeps this shape):
+### `MockClearing(registry, ontology, *, min_surplus=0.0, require_per_node=True, clock=time.time, verifiable_oracles=VERIFIABLE_ORACLES, chain_fills=None, escrow_held=None, register_at=None, span=None, register_latest=None, resolver_profile=None)`
+`VERIFIABLE_ORACLES = frozenset({"countersign", "possession",
+"photo-match"})` — the countersign and the door's two witness types
+(`witness.py`). `chain_fills(offer_id)` is what the chain has recorded as
+taken (`BeatClearing.filled`: the chain is the fill authority), and
+`escrow_held(offer_ids)` what the escrow holds behind each deposit;
+`register_at(register_id, root)` opens a pinned register, `register_latest`
+its newest root (R5), `span` reads a `time(...)` term's window and
+`resolver_profile(key)` a resolver's chain record — together the
+`CounterpartyGate` clearing builds itself (`.gate(register_roots, *,
+now)`). The checklist of `submit`, in order (U3 — any future backend
+keeps this shape):
 
 0. **pins**: `proposal.ontology_root` must *equal* the clearing's own
    `ontology.root` (absence and mismatch both refuse; `'' == ''` keeps
-   the in-memory flow working)
-1. every offer exists in the *current* book, is unfilled, is not
-   tombstoned, is used once, and names an oracle type in
-   `verifiable_oracles`
-2. every leg re-derived against the current book — `check_match` for a
-   simple leg, `check_composition` for a composed one — and
-   the clearing's own catalogue
-3. arithmetic: `surplus >= min_surplus`; indivisible loops additionally
-   need `per_node_ok` (while `require_per_node`, the pre-P2 policy)
-4. one atomic commit: all fills + the loop record under one new root
+   the in-memory flow working), and every register a leg names as a
+   trust root is pinned in `register_roots`
+1. every offer exists in the *current* book, is unfilled (in the book and
+   on chain), is not tombstoned, is used once, and names an oracle type
+   in `verifiable_oracles`
+2. every leg re-derived against the current book, what fills have left of
+   each give and the clearing's own catalogue and gate (`.verify_leg(leg,
+   *, now, available, held=None, gate=None) -> reason | None`):
+   `check_match` for a simple leg, `check_composition`, `check_parts` or
+   `check_aggregate` for the others; across legs, an inspector is no
+   party to the item it inspects
+3. arithmetic: node potentials exist (a simple cycle: product > 1),
+   `surplus >= min_surplus`; indivisible legs additionally need
+   `per_node_ok` (while `require_per_node`)
+4. one atomic commit: all fills, the loop record, and the holds,
+   exercises and item claims its legs write (`.hold_records`) under one
+   new root
+
+`.rehearse(proposal)` runs the checklist without committing — what the
+challenger uses.
+
+### `ChainClearing(registry, ontology, *, beat_client, snapshot_of=None, **kw)`
+`MockClearing`'s checklist, then the beat: each accepted loop is asked of
+the contract's verifier (`beat.BeatClient.verdict`) and only then posted
+as one optimistic beat on `BeatClearing` with its bond; `chain_fills`
+defaults to the contract's `filled`. The receipt's reason names the beat
+(§8b).
 
 ---
 
@@ -487,15 +564,15 @@ node `potentials`. A simple cycle's record is byte-identical to before.
 
 | name | one line |
 |---|---|
-| `Item(key, score, takes)` | what a candidate loop takes from each offer (a want whole, a give by the leg's quantity) |
-| `pack(items, capacity, *, exact_up_to=EXACT_UP_TO, budget=BUDGET, prior=0) -> list[Item]` | the set worth most under per-offer capacities: exact branch and bound while few, greedy beyond, `order_key`'s total order (U6) |
-| `weight(gain, legs, *, prior=0, factor=None)` | the objective per loop: ln(1+gain), or (1−p)^legs·ln(1+gain) with a failure prior |
+| `Item(key, takes, legs, gain, payload=None)` | a candidate loop: what it takes from each offer (`{offer id: quantity}` — a want whole, a give by the leg's quantity), its leg count and uniform gain, the loop itself as `payload` |
+| `pack(items, capacity, *, prior=0, factor=None, exact_up_to=24, budget=200_000) -> Packing` | the set worth most under per-offer capacities (`{offer id: what is left}`): exact branch and bound up to `exact_up_to` items within a node `budget`, greedy beyond, `order_key`'s total order (U6); `Packing(chosen, exact, infeasible)` |
+| `weight(item, prior=0, factor=None)` | the objective per loop: Π(1+gain) exactly, or (1−p)^legs·ln(1+gain) in fixed-precision decimal with a failure prior; `factor` the risk-weight hook nobody sets |
 
 ## 8e. `loopmarket.escrow` — the crypto escrow (P3 §5a/§5e, 2026-09-19)
 
 | name | one line |
 |---|---|
-| `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder=(), claim_only=False, min_challenge=0, min_ruling=0, deductible=0)`, `.cancel`, `.countersign`, `.cover_of(offer_id, loop_id)` (what a cover covers, what a reservation paid its wanter), `.settle(offer_id, loop_id, to_wanter=None)` (no split: the quiet path after the claim period; a split: this party's signature, the second pays it out), `.assign(offer_id, loop_id, to)` (the wanter's), `.extend_claim(offer_id, loop_id, seconds)` (the giver's), `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.collect(token=None)` (a refused payout credited to `owed`), `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.owed(to, token=None)`, `.subject(offer_id, loop_id)` (the reservation's key, factbond's subject), `.ladder_at`, `.deposit_of`; web3 lazy (`chain` extra) |
+| `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder=(), claim_only=False, min_challenge=0, min_ruling=0, deductible=0)`, `.cancel`, `.countersign`, `.cover_of(offer_id, loop_id)` (what a cover covers, what a reservation paid its wanter), `.settle(offer_id, loop_id, to_wanter=None)` (no split: the quiet path after the claim period; a split: this party's signature, the second pays it out), `.assign(offer_id, loop_id, to)` (the wanter's), `.extend_claim(offer_id, loop_id, seconds)` (the giver's), `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.collect(token=None)` (a refused payout credited to `owed`), `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.owed(to, token=None)`, `.subject(offer_id, loop_id)` (the reservation's key, factbond's subject), `.ladder_at`, `.deposit_of`, `.events(name, from_block=0)` (the contract's `Reserved`, `Settled`, `Deposited`, … log, what `reputation.view` reads); web3 lazy (`chain` extra) |
 | `to_wei(qty, decimals=18)` / `floor_wei` | an exact quantity as the asset's smallest unit — refused when not representable (U9) / rounded down (the ladder) |
 | `held_units(client)` | offer id → what the escrow holds, in the asset's unit: the `escrow_held` the agent and the clearing take |
 | `reservations_for(proposal, *, escrow, resolver, claim_seconds, now, span=None, decimals=18, claim_only=None, min_challenge=0, min_ruling=0)` | pure: one reservation per give whose bond names `escrow` — the share in smallest units, the wanter's key, the give's `arbitrator` or `resolver` (never a party, and one the want's `resolvers` admit), the want's `time(...)` term as the window (through `span`), the claim period per leg (the want's `claim_period`, else `claim_seconds`, never past the give's `claim_max`), the ladder converted at the wanter's acceptance price; `claim_only` for cover (`cover_predicate`) |
@@ -517,14 +594,15 @@ earlier `0x7bee…c55F`, `0x299C…69Bf`, `0xA49C…D936` and `0x3936…F3f2` ke
 
 ## 8f. `loopmarket.gate` — the counterparty gate (R4, 2026-09-29)
 
-### `CounterpartyGate(statements, registers, now, span, offer, held, held_by, capacity, withdrawn, item_claimed, latest)`
+### `CounterpartyGate(statements, registers, now, span, offer, held, held_by, capacity, withdrawn, item_claimed, latest, profile)`
 
-Built with `CounterpartyGate.over(book, registers, *, now, span=None, held=None, capacity=None, latest=None)`:
+Built with `CounterpartyGate.over(book, registers, *, now, span=None, held=None, capacity=None, latest=None, profile=None)`:
 the statements presented in `book`'s `cred/`, `registers` (register id →
 `Register` at its pinned root), the clock, a `time(...)` span reader, the
-escrow's holdings, and — R5 — `latest(register id)`, the register at its
-feed's newest root. `meets`, every `check_*` and candidate generator take
-`gate=`; no gate, no pass (U7).
+escrow's holdings, — R5 — `latest(register id)`, the register at its
+feed's newest root, and `profile(key)`, a resolver's chain record
+(`arbitrators.chain_profile`). `meets`, every `check_*` and candidate
+generator take `gate=`; no gate, no pass (U7).
 
 | member | meaning |
 |---|---|
@@ -534,6 +612,34 @@ feed's newest root. `meets`, every `check_*` and candidate generator take
 | `.option_fault(option) -> str` | why an option cannot clear now: its underlying present, a give by the same maker, not withdrawn, valid through the window, in its unit, with the option's quantity free (C2) |
 | `.item_fault(give) -> str` | why a give naming `item(h)` cannot clear: its maker holds an active claim on h through another offer (I2) |
 | `.window(want) -> (start, end)` | the handover window: the want's first `time(...)` term through `span`, else the clock's instant |
+| `.accredited(subject, category, roots, ontology, window) -> [str]` | why `subject` is not accredited for `category` under one of `roots`: a signed or attested statement in its own book, steps 1–5 and 7, the registers read at their newest roots (what an `Accept` by `root:` reads) |
+
+## 8j. `loopmarket.arbitrators` — resolvers accepted by property (2026-09-29)
+
+| name | meaning |
+|---|---|
+| `accept_faults(accept, key, *, parties=(), requirer=None, ontology=None, gate=None, category="arbitrator", window=None) -> [str]` | why `key` fails an `Accept`: not one of its `keys` and not accredited as `category` under one of its `roots` (`gate.accredited`), less than `min_deposit` on the requirer's scale at stake on a reversed ruling, a reversal within `clean_for` or a record shorter than it, a party to the leg |
+| `admits(accept, key, **reads) -> bool` | `accept_faults(...) == []` |
+| `resolver_of(want, give, *, default="", gate=None, ontology=None, window=None) -> str | None` | a leg's resolver: the give's `arbitrator`, then the keys either side names in sorted order, the clearing's default last — the first both sides admit (the gate and `escrow.reservations_for` alike) |
+| `constrained(want, give) -> bool` | whether either side names resolvers at all |
+| `Profile(rulers, deposit=None, asset=None, reversals=None, since=None)` / `chain_profile(address, *, rpc=None, client=None, asset=(("xdai",), "xDAI"), decimals=18, from_block=0)` | a resolver's chain record: the keys that rule (factbond's adjudicator and arbiter, or a plain key itself), the deposit at stake (`min(deposits, depositWei)` with an arbiter, else none), the `Reversed` events; read through `CounterpartyGate(profile=)` |
+
+## 8k. `loopmarket.case` and `loopmarket.reputation` — the default arbitrator (2026-10-01)
+
+The default form: one arbitrator both sides accept, whose ruling is final
+(`counterparty-gate.md` §7a). The escrow gives it its two acts (`hold`,
+`resolve` on a reservation naming it as resolver); the book carries the
+case, sealed like a notice to each recipient beside a salted commitment.
+
+| name | meaning |
+|---|---|
+| `case.claim_record(claimant, accused, offer, loop, amount, *, sent_at, evidence_ref="", notice_ref="", text="")` | the wanter's claim: `amount` of the reservation in its smallest units, the notice it follows |
+| `case.answer_record(author, claim_ref, *, time, evidence_ref="", text="")` | the giver's answer, naming the claim by its reference |
+| `case.ruling_record(arbitrator, claim_ref, to_wanter, *, time, reason)` | the arbitrator's reasons; the money moves by the escrow's `resolve` |
+| `case.sealed(record, *, sender, recipient, recipient_public_key) -> (side, opening)` / `case.read(side, private_key_hex)` | seal to one recipient (the claim to the arbitrator and the giver, the answer to the arbitrator and the claimant, the ruling to both parties); open |
+| `case.key(loop_id, offer_id, kind, to)` / `case.fault(owner, key, rec)` / `KINDS` | `case/<loop>/<offer>/<kind>/<to>`; why a record is not `owner`'s speech (the fold's admission); `("claim", "answer", "ruling")` |
+| `reputation.view(reserved, settled, deposited, *, me, trusted=(), posted=None) -> [Arbitrator]` | from the escrow's `Reserved`, `Settled` and `Deposited` events (`EscrowClient.events(name, from_block=0)`): every arbitrator named on a reservation where I or a trusted maker was a party — its legs, its rulings, and who of us lost a ruling under it and chose it again on an offer *posted* after the loss (`posted(maker, offer, loop)`); sorted by key (U6). Never a score the protocol reads |
+| `reputation.Arbitrator(key, legs, rulings, chosen_again)` | one row of the view |
 
 ## 8g. `loopmarket.register` — registers (R3a, R5, 2026-09-29)
 
@@ -587,7 +693,7 @@ refused.
 
 ## 9. `loopmarket.solver.agent` — the baseline species
 
-### `SolverAgent(registry, ontology, clearing, solver_id="solver-0", min_surplus=0.005, max_loops_per_step=10, chain_fills=None, escrow_held=None, max_legs=5, cycle_limit=2000, exact_up_to=24, pack_budget=200_000, failure_prior=0)`
+### `SolverAgent(registry, ontology, clearing, solver_id="solver-0", min_surplus=0.005, max_loops_per_step=10, chain_fills=None, escrow_held=None, max_legs=5, cycle_limit=2000, exact_up_to=24, pack_budget=200_000, failure_prior=0, registers={}, span=None, register_latest=None, resolver_profile=None)`
 
 | member | meaning |
 |---|---|
@@ -595,8 +701,11 @@ refused.
 | `.step(*, now=None) -> [Receipt]` | find, then propose each loop (pinning the snapshot root and `ontology.root`); appends to `.receipts` |
 | `.run(*, interval_s=5.0, max_steps=None)` | poll loop for live operation |
 
+`registers` (register id → `Register`), `span`, `register_latest` and
+`resolver_profile` build the `CounterpartyGate` over each snapshot, and
+every register a requirement names is pinned in the proposal.
 Deterministic and exact by design — the species smarter solvers must
-beat, and (P2) the auction's reserve bid.
+beat, and the sealed beat's reserve bid.
 
 ---
 
@@ -612,6 +721,8 @@ verification failing closed).
 | `sign_offer(offer, private_key_hex) -> str` | recoverable 65-byte signature (hex) over the 32-byte offer id |
 | `recover_maker(offer_id, sig_hex) -> str` | the address that signed |
 | `verify_offer_sig(offer, sig_hex) -> bool` | recovers to `offer.maker`? malformed input → `False` |
+| `recover_public_key(offer_id, sig_hex) -> bytes` | the signer's public key — what handoffs, notices and cases are sealed to |
+| `sign_contact_card(private_key_hex) -> (address, sig)` / `contact_card_public_key(address, sig) -> bytes` | a contact card: a signature over sha256(`CONTACT_CARD_DOMAIN` + address), `CONTACT_CARD_DOMAIN = b"loopmarket contact card\n"` — the public key of a key with no signed offer |
 
 Signatures live *beside* offers (`sig/` keys), never inside
 `canonical_bytes()` — ids stay stable, roots stay pure.
@@ -636,7 +747,8 @@ keys: ephemeral key, ECDH, HKDF-SHA256, AES-256-GCM. Needs the `sig` extra
 
 ## 11. `loopmarket.federation` — the aggregator
 
-Constants: `MAKER = "maker"`, `CLEARING = "clearing"` (book roles).
+Constants: `MAKER = "maker"`, `CLEARING = "clearing"` (book roles; a
+`register` book is announced but never folded).
 
 ### `Manifest(aggregator, book_root, provenance_root, announcement_root)` — frozen
 What an aggregator publishes. `book_root` is the pure fold;
@@ -663,7 +775,11 @@ attributed `reject/` record):
 | `offer/` | content address re-derived; readable version; `maker == owner` **or** valid detached `sig/` in the same book | silently skipped (contains its base fold; not its speech) |
 | `withdraw/` | only for an offer this book holds with `maker == owner` | silently skipped |
 | `sig/` | staged when it verifies; foreign-offer sigs stage with their offer | silently skipped |
-| `fill/`, `loop/` | **rejected** ("clearing keys in a maker book") | staged |
+| `fill/`, `loop/`, `option/`, `exercise/`, `item/` | **rejected** ("clearing keys in a maker book") | staged |
+| `handoff/` | only beside an offer the owner made, `from` the owner | silently skipped |
+| `cred/` | only in its subject's own book, under its own content address (R2) | silently skipped |
+| `notice/`, `cure/`, `case/` | only as the writer's sealed speech (`from` the owner, a readable sealed record and commitment) | silently skipped |
+| `key/` | only the owner's own contact card, recovering to the owner | silently skipped |
 | anything else | rejected ("unknown keyspace") | silently skipped |
 
 ### `Omission(owner, key, announced_root, proof)` — frozen
@@ -673,12 +789,30 @@ absent from `book_root` and has no `reject/` in `provenance_root`.
 (`verify_proof(proof, book_root) is ABSENT`, no store access); `None`
 when `book_root` is empty.
 
-### `audit_manifest(manifest, blobs, *, store_type=RecordStore) -> list[Omission]`
+### `audit_manifest(manifest, blobs, *, store_type=RecordStore, expected=()) -> list[Omission]`
 The T14 cross-audit from the manifest alone: (announced set) − (speech
 under `book_root`) over `offer/` and `withdraw/` keys of every
-`MAKER`-role announcement, sorted by owner then key. Empty for an honest
-fold. Not audited: `sig/` (dropped-without-rejection by design) and
-clearing books (U11 covers them).
+`MAKER`-role announcement, sorted by owner then key. With
+`expected=channel.announced()` (§11b) a maker book announced on the
+channel and absent from the manifest's announcement set is an omitted
+book too (`announce/<owner>`, proven absent under `announcement_root`).
+Empty for an honest fold. Not audited: `sig/` (dropped-without-rejection
+by design) and clearing books (U11 covers them).
+
+## 11b. `loopmarket.announce` — the announcement channel (2026-09-14)
+
+How a book becomes discoverable: `Announcement(owner, book, role="maker",
+seq=0)` — the owner's book spec and role (`maker`, `clearing`,
+`register`), latest per owner, retractions applied. Every backend has
+`.announced() -> [Announcement]` (sorted by owner), `.announce(book,
+role="maker", *, owner=None)` and `.retract(*, owner=None)`.
+
+| name | meaning |
+|---|---|
+| `open_announcements(spec, *, key=None)` | `chain:RPC_URL@CONTRACT` (`ChainAnnouncements`: the `LoopBookRegistry` event log, `msg.sender` the owner — the announcement authenticates the book, U8; web3 lazy, `chain` extra), `file:PATH`, `memory:` (`MemoryAnnouncements`); several comma-separated are one channel (`UnionAnnouncements`, the later member winning) |
+
+`LoopBookRegistry` is deployed on Gnosis at
+`0xD4379E494a488411D964BebDb210C0bf628d97af`.
 
 ---
 
@@ -687,7 +821,7 @@ clearing books (U11 covers them).
 One book = one recordstore keyspace = one root per version:
 
 ```
-offer/<offer_id>        the immutable offer record (v1–v6)
+offer/<offer_id>        the immutable offer record (v1–v7)
 sig/<offer_id>          detached maker signature, hex (never in identity)
 withdraw/<offer_id>     1 — monotone tombstone: the offer is closed
 fill/<offer_id>         {"loop": <loop_id>} — pure function of the decision (a give taken in part: fill/<offer_id>/<loop_id>)
@@ -699,16 +833,20 @@ cure/<loop_id>/<offer_id>      the giver's sealed cure (R6)
 option/<offer_id>/<loop_id>    {"option", "holder", "until", "qty"} — a hold written with an option's fill (C2; clearing books)
 exercise/<offer_id>/<option_loop>/<loop_id>  {"qty"} — what an exercise took of a hold (clearing books)
 item/<h>/<maker>/<loop_id>     {"offer", "until"} — a maker's claim on an item (I2; clearing books)
+key/<address>                  a contact card: the signature its public key is recovered from (the owner's own book)
+case/<loop_id>/<offer_id>/<kind>/<to>  a sealed claim, answer or ruling to one recipient (kind: claim | answer | ruling; the writer's own book)
+auction/<beat>                 {"beat", "book_root", "revealed_set", "winners"} — a sealed beat's recorded outcome (the clearing's own book; not folded)
 origin/<offer_id>       {"owner", "root"}        (provenance store)
 reject/<owner>/<key>    {"owner", "reason"}      (provenance store)
 announce/<owner>        {"role", "root"}         (announcement store)
 ```
 
 Maker books write `offer/`, `sig/`, `withdraw/` (and the sidecars
-`handoff/`, `cred/`, `notice/`, `cure/`); clearing books add `fill/`,
-`loop/`, `option/`, `exercise/` and `item/`; a register is its own store
-(`status/`, `revoked/`, `suspended/`, `accredit/`, `heartbeat`, `chain`,
-§8g), never folded; there is no index in any book (the `idx/{c,t,g}`
+`handoff/`, `cred/`, `notice/`, `cure/`, `key/`, `case/`); clearing books
+add `fill/`, `loop/`, `option/`, `exercise/` and `item/`; a register is
+its own store (`status/`, `revoked/`, `suspended/`, `accredit/`,
+`title/<h>` — a land or vehicle register's holder of an item, I4 —
+`heartbeat`, `chain`, §8g), never folded; there is no index in any book (the `idx/{c,t,g}`
 prefixes retired 2026-09-12, and the manifest's `index_root` with them);
 `origin/`, `reject/`, `announce/` only in an aggregator's provenance and
 announcement stores.
@@ -769,7 +907,14 @@ in place of `divisible`; a want may be `{"type": "parts", "parts": [...]}`:
  "bond": 0.0, "oracle": "countersign", "arbitrator": "", "nonce": 1}
 ```
 
-**Loop, record version 1** (`LoopProposal.to_record()`, 2026-09-14):
+**Offers, v5–v7** add `requires`, a `Bond` deposit (v5), the counterparty,
+legs, resolver and claim-period requirements, `claim_max` and an option's
+`underlying`/`exercise` (v6), and a deposit's `deductible` (v7) — §1's
+`Offer` entry; each re-encodes in its own version, so earlier ids never
+move (`tests/test_v5_record.py`, `tests/test_v6_record.py`).
+
+**Loop, record version 1** (`LoopProposal.to_record()`, 2026-09-14; version
+2 since 2026-09-29 when it pins `register_roots`):
 legs in sorted `key` order, each naming its want, its gives and the
 quantity `taken` from each; a simple leg's exact `rate`; the node
 `potentials` (the clearing prices, public while offers are plaintext — P4
@@ -807,9 +952,10 @@ its quantity (U11 raises "oversold"). Nothing else, ever: no wall clock
 | **U5** | rates are positive; no signed prices anywhere |
 | **U6** | the baseline solver is deterministic: same book, same loop, every replica |
 | **U7** | vocabulary fails closed: unknown categories never match |
-| **U11** | no partially-filled loop survives a merge unnoticed: `verify_loop_atomicity` on every reconciled commit and every fold, raising rather than repairing |
+| **U9** | exact rationals in everything clearing re-verifies: quantities, amounts, rates, potentials and surplus are `Fraction`s, records spell them `n/d`, no epsilon in a gate (the solver's `-log` search may float) |
+| **U11** | no partially-filled loop survives a merge unnoticed: `verify_loop_atomicity` on every reconciled commit and every fold, raising rather than repairing — every loop holds a fill for each leg, every fill (and every `option/`, `exercise/` and `item/` record) names a present loop, and the partial fills of one give never sum past its quantity |
 
-Planned invariants **U8–U14** (offer authenticity, exact rationals,
+The other planned invariants of **U8–U14** (offer authenticity,
 load-bearing pins, cost-borne statistics, no protocol emissions,
 numeraire-free scoring) are specified in `docs/plans/` and enter the
 binding set as their enforcing code lands — U8's fold rules and U10's
@@ -821,16 +967,19 @@ matching half are already running (§11, §5).
 |---|---|---|
 | `BEE_API` | live tests, `demo_federation.py` | Bee node API, e.g. `http://localhost:1633` (a light node suffices) |
 | `BEE_BATCH` | " | a purchased postage batch id (never auto-buys; prefer mutable for feed-heavy work) |
-| `BEE_SIGNER` | gated tests | throwaway 32-byte hex key for the shared-catalogue/book feeds |
+| `BEE_SIGNER` | gated tests, `loop` | throwaway 32-byte hex key for the shared-catalogue/book feeds; at the CLI, the maker's key |
 | `LOOP_CORE` | `demo_federation.py` | `0` skips adopting ontodag's `core` pack (needs ontodag>=0.19) and uses the eleven-category toy catalogue |
 | `LOOP_HOME` | `loop` | the CLI's home (`~/.loopmarket`): `config`, the default book `book/` |
-| `LOOP_BOOK`, `LOOP_CATALOGUE`, `LOOP_PEERS`, `LOOP_MAKER`, `LOOP_WHERE`, `LOOP_WHEN`, `LOOP_VALID`, `LOOP_NOW`, `LOOP_CONFIRM`, `LOOP_RENDER`, `LOOP_LIMIT` | `loop` | the environment layer of the settings table (§17); `BEE_*` is shared with odag |
+| `LOOP_<SETTING>` — `LOOP_BOOK`, `LOOP_CATALOGUE`, `LOOP_PEERS`, `LOOP_MAKER`, `LOOP_TERMS`, `LOOP_VALID`, `LOOP_NOW`, `LOOP_CONFIRM`, `LOOP_RENDER`, `LOOP_LIMIT`, `LOOP_REGISTRY`, `LOOP_BEAT`, `LOOP_ESCROW`, … | `loop` | the environment layer of the settings table (§17): every setting `KEY` reads `LOOP_KEY`; `BEE_*` is shared with odag |
+| `LOOP_CHAIN_RPC`, `LOOP_CHAIN_KEY` | `scripts/gate_*.py`, `scripts/deploy_*.py` | the chain's RPC and the deploying or clearing key for the live gates (never printed) |
 | `ONTODAG_HOME`, `ONTODAG_STORE` | `loop`, via odag | where the inherited odag config and active store (the default catalogue and the personal names layer) live |
 
 Live test suites: `tests/test_swarm_book.py` (the P0 triangle on a live
 book), `tests/test_swarm_federation.py` (per-maker feeds, two
-aggregators, clearing feed, follower). Both skip without the
-variables; both use timestamped topics so reruns inherit nothing.
+aggregators, clearing feed, follower), `tests/test_swarm_register.py` (a
+register on a Swarm feed read at its tip, a stale pin refused after a
+revocation). All skip without the variables; all use timestamped topics
+so reruns inherit nothing.
 
 ## 16. Exceptions
 
@@ -858,7 +1007,7 @@ loop                                     a prompt on a terminal (quit/exit to le
 ```
 
 Global flags precede the command and are the flag layer of the settings
-table: `-f SPEC`, `--catalogue SPEC`, `--peer SPECS`, `--maker NAME`,
+table: `-f SPEC` (or `--book SPEC`), `--catalogue SPEC`, `--peer SPECS`, `--maker NAME`,
 `--terms 'TERM ...'`, `--valid DURATION`, `--now TIME`,
 `--confirm MODE`, `-n N`, `--raw`/`--render`, `--bee-api URL`,
 `--bee-batch ID`, `--bee-signer KEY`; `--version`, `--help`. Read commands
@@ -877,12 +1026,14 @@ A token after `give`/`want` is one of:
 |---|---|
 | bare word | a category (nothing bare is reserved; unknown fails closed, U7) |
 | `head(param)` | an ontodag term in ontodag's spelling; quote the parentheses in a shell, bare at the prompt and in scripts |
-| bare number **first** (`10kg`, `3`, `2.5l`) | the quantity: a unit suffix ⇒ `qty`, `unit`, divisible; a bare count ⇒ indivisible, unit `unit`; omitted ⇒ the schema default |
+| bare number **first**, `[MIN..]QTY[UNIT][:STEP]` (`10kg`, `3`, `1000:1`, `50kg..100kg:25`) | the quantity: a unit suffix ⇒ `qty`, `unit`, continuous (step 0); a bare count ⇒ indivisible, unit `unit`; `:STEP` the granularity a fill must be a multiple of; `MIN..` before it the give-side floor, the least one fill may take; omitted ⇒ the schema default. A step or floor on a want refuses (the give's step and floor decide the fill) |
 | bare number **last** (`100`, `12.5`) | the price, on the maker's scale; omitted ⇒ the maker's last unit price for the same side and bare categories, × quantity, marked in the block; no earlier offer ⇒ error |
 | `+` between parts (`want` only) | a **composed want**: each part reads as a want line without its price (a bare number first is that part's quantity, no `valid(...)`), the last bare number of the line prices the whole; refused in a `give` |
 
-Whole numbers encode as integers, decimals as floats (canonical JSON tells
-`1` from `1.0`; the API's own encoding is matched byte for byte).
+Numbers are exact (U9): a decimal as typed is the rational it spells
+(`99.99` is 9999/100), and the v4+ record stores every number as a
+reduced `n/d` string, so the CLI and the API encode the same offer byte
+for byte.
 
 **The one interpreted head** is `valid(DURATION | A..B | A..)` → the
 offer's `valid` window (`A..` stands until withdrawn). A startup check
@@ -908,8 +1059,9 @@ catalogue marks as a handover coordinate; a bare relative time
 (`today..+7d`) is elaborated to fixed UTC under the calendar one. A term of a *linear* or
 *count* head (`weight(...)`, `count(...)`) is accepted by the parser and
 **refused at publish** with the coupling plan named: quantities are
-fields today. Band spellings in quantity position (`9kg..11kg`,
-`10kg..`, `..11kg`) likewise parse and refuse, naming the point spelling.
+fields today. A floor alone or a ceiling alone in quantity position
+(`10kg..`, `..11kg`) parses and refuses, naming the spelling that says how
+much.
 
 **Time** (input vocabulary, stored absolute UTC): `now`, `today`,
 `tomorrow`, `+90d`/`-2h` (units `s m h d w`), any ontodag time literal
@@ -934,23 +1086,22 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `handoff ID TEXT...` | what my offer's cleared counterparty may read (replaces the place text for this offer); kept in `$LOOP_HOME/handoffs`, sealed by `watch` once filled |
 | | `watch [--once]` | poll the fold every `interval`: report my fills, seal pending handoffs to the counterparty's key (from the signature on their offer), open incoming ones with `bee_signer`; `--once` is one pass, exit 1 when nothing new |
 | | `handoffs` | every handoff sealed to me, opened (exit 1: none) |
-| | `want PART + PART... PRICE` | a composed want on one line: resolves every part, renders the composed block, **refuses** until the v4 record carries parts (exit 1, nothing published) |
+| | `want PART + PART... PRICE` | a composed want on one line: every part resolved, one price for the lot, published as one v4 offer — all the parts or nothing |
 | | `draft [NAME] want\|give ...` | stage one resolved offer (price optional) or part in `$LOOP_HOME/drafts` (a file, never the book; no id); re-drafting a name replaces it; numbers name the unnamed |
 | | `draft [NAME] A + B ...` | compose drafts (want side only, flattening, a priced part refused); a single name copies |
 | | `drafts` | every draft in canonical spelling — the line `offer` will speak — with the typed spelling and notes beneath (exit 1: none) |
-| | `offer NAME [PRICE]` | a draft becomes an offer: its own price, the given one, or the price memory; block, question, publish, draft removed; a composed draft renders and refuses until v4 |
+| | `offer NAME [PRICE]` | a draft becomes an offer: its own price, the given one, or the price memory; block, question, publish, draft removed; a composed draft publishes as one v4 offer |
 | | `discard [NAME\|N ...]` | drop drafts; alone, empty the list |
 | reader | `offers [CATEGORY...]` | open offers in the fold, filtered through `satisfies` |
 | | `show ID` | one offer as the approval block, plus `state` |
 | | `matches` | every feasible handoff in the fold (exit 1: none) |
 | | `status` | book and catalogue specs and roots, counts, settings in force |
 | solver | `loops` | profitable loops on a pinned snapshot; prints, never clears (exit 1: none) |
-| clearing | `clearing` | `MockClearing` over the fold; with `peers`, my book first absorbs the fold; fills committed to my book (exit 1: nothing cleared). `clear` is a one-release alias |
+| clearing | `clearing` | `MockClearing` over the fold; with `peers`, my book first absorbs the fold; fills committed to my book (exit 1: nothing cleared). `clear` is an alias |
 | plumbing | `set [KEY [VALUE]]` | list / show / durably change a setting; unknown keys are errors; values validated at set time |
 | | `export` | every offer of my book as JSON lines of canonical records |
 | | `import [FILE]` | publish records from FILE or stdin; ids survive |
 | | `help`, `--version` | |
-
 | chain | `propose` | clear locally as `clearing` does and post each loop as one beat on `beat` (the contract's verdict asked first; the bee_signer key pays the bond) |
 | | `beats [--open]` | every beat on the contract: submitter, root, fills, state |
 | | `challenge BEAT [LEG] [--check] [--book SPEC]` | find the record behind a beat, re-derive every leg off chain and by the verifier for free, send only what convicts (exit 2: no record anywhere) |
@@ -973,22 +1124,20 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `arbitrators [--trust KEYS]` | a personal view, never a gate: the arbitrators named on escrow reservations where I or a maker I trust was a party, their rulings, who among us lost under one and chose it again with an offer posted after the loss, and the accreditation each presents |
 | | `notice OFFER --cure DURATION [--fact STATEMENT]` | as the wanter of a cleared leg: factbond's `Notice` to the giver, sealed to its key beside a commitment, in my book; the opening kept locally for a claim |
 | | `cure OFFER [--evidence REF]` | as the giver: answer a notice on my give, sealed back to the claimant |
-| discovery | `announce [--role]` / `announced` / `fold` | say "my book is here" on `registry`; the standing set; fold the announced books myself |
+| discovery | `announce [--role maker\|clearing\|register]` / `announced` / `fold` | say "my book is here" on `registry` (role `maker` by default; a clearing book says `clearing`, a register `register`); the standing set; fold the announced books myself |
 
 The escrow verbs name a reservation by its offer's id prefix and, when the
 book knows more than one loop that took from it, `--loop LOOP` (a prefix,
 or the whole id of a loop the book does not know); they act under the
 `bee_signer` key, and the contract decides who may.
 
-Composed wants publish since the v4 record (`want A + B PRICE`, drafts).
-
 ### The approval block
 
 `give`/`want` print the fully resolved offer through the same renderer
 `show` uses — byte-identical for the same offer (gate G4): side and
 concepts, maker, quantity with its *reading* ("up to 10 kg, divisible";
-"3, indivisible"; a want's point with the note that a floor is not
-encodable yet), price and unit price on the maker's scale, the validity window in UTC
+"3, indivisible"; "up to 15 seat, in steps of 1 seat, at least 8 seat"),
+price and unit price on the maker's scale, the validity window in UTC
 and local time ("until withdrawn" when open), the pins, bond / oracle /
 arbitrator, nonce, `offer_id`. Below the block, `note` lines: every
 name→value and spelling→term substitution, the defaults added from
@@ -1045,7 +1194,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `require_point`, `require_cancel`, `ladder` | `LOOP_REQUIRE_*`, `LOOP_LADDER` | none, none, `linear` | my neutral point on a no-show and on a far cancellation, on my scale; the ladder's shape over the lead at posting (`linear`, `late`, `early`, `flat`) |
 | `require_accepts`, `require_escrows` | `LOOP_REQUIRE_*` | none | `CATEGORY... UNIT PRICE; ...` — the assets I accept as compensation at my prices; the escrow kinds I accept |
 | `require_door` | `LOOP_REQUIRE_DOOR` | none | the door witness my wants require: `possession` (control of the key, the default meaning) or `photo` (possession plus the attested photo, which links the counterparty's face to their key — THREATS T19) |
-| `oracle` | `LOOP_ORACLE` | `countersign` | the witness my gives settle against: `countersign`, `possession`, or `photo-match` (the approval block says what the photo reveals) |
+| `oracle` | `LOOP_ORACLE` | `countersign` | the witness my gives settle against: `countersign`, `possession`, `photo-match` (the approval block says what the photo reveals), or, for a registered item, `registry-transfer(ID)` — the title register's transfer (I4) |
 
 Names resolve through the **view** — the catalogue merged with odag's
 active store and odag's overlays — while matching runs against the
@@ -1061,7 +1210,7 @@ one command with captured streams; `Session()` opens stores lazily;
 `run_stream(session, stream, interactive)` runs a batch. **The line as
 Python's literal:** `offer_from_line(line, session=None) -> Offer` resolves
 an offer line under the session's settings without publishing (a composed
-line raises until v3); `line_for(offer) -> str` renders an `Offer` to its
+line is one v4 want); `line_for(offer) -> str` renders an `Offer` to its
 canonical line, `want 2kg apple geo(CELL) time(A..B) valid(A..B) 9`,
 and the two round-trip. `parse_offer_tokens`, `parse_want_line`, `window`,
 `duration_s`, `radius_m`, `render_offer` are the pure pieces.

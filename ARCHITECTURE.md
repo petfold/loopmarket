@@ -7,6 +7,22 @@ A distributed offer registry and loop-finding system over the
 OntoDAG / recordstore / Swarm stack. This document records the design and its
 rationale; `CLAUDE.md` records the working rules derived from it.
 
+> **State at 0.13.0 (2026-10-01).** The sections below were written as the
+> design and kept as its record; dated update notes say what changed. What
+> stands built today: the offer record through v7 (where and when are
+> terms since v3, exact rationals and parts since v4, requirements and a
+> deposit since v5, credentials, required legs, resolvers, claim periods
+> and options since v6, a deposit's deductible in v7); per-maker books
+> folded under the admission rules, discovered through one registry event
+> on Gnosis; the baseline solver enumerating cycles and composed legs and
+> selecting with one packer; clearing re-verifying everything locally and
+> posting beats to `BeatClearing` on Gnosis, with the sealed-proposal beat
+> in front; the escrow holding deposits, reserving per fill and settling
+> by timeout, by the parties' acts, or by a resolver's ruling — by default
+> one arbitrator both sides accept, whose ruling is final. `CLAUDE.md`'s
+> architecture map is the current inventory and `ROADMAP.md` the status
+> by phase.
+
 ## 1. The shape of the system
 
 ```
@@ -602,19 +618,28 @@ rather than by searching. Algorithms this suggests, records it touches
 (`loop_id` generalizes to the content address of a leg multiset) and
 what stays fixed: `P2-loop-selection.md` §11.
 
-## 8. Settlement (settlement.py)
+## 8. Settlement — clearing (clearing.py)
 
-`LoopProposal` = the loop + the pinned `book_root` and `ontology_root` + the
-solver's identity. `MockSettlement.submit`:
+`LoopProposal` = the loop + the pinned `book_root` and `ontology_root` (and,
+since 2026-09-29, the pinned `register_roots`) + the solver's identity.
+`MockClearing.submit` (the module was `settlement.py` and the class
+`MockSettlement` until the 2026-09-07 rename):
 
-1. every offer exists in the *current* book, is unfilled, is used once;
-2. every leg re-derived with `check_match` — the solver's matches are
-   never believed;
-3. product ≥ minimum surplus; per-node condition when any leg is indivisible;
-4. one atomic commit: all `fill/` records + the `loop/` record under a
-   single new root.
+0. the proposal's catalogue pin equals clearing's own, and every register
+   a leg names as a trust root is pinned;
+1. every offer exists in the *current* book, is unfilled (in the book and
+   on chain), not withdrawn, used once, with a verifiable oracle;
+2. every leg re-derived — `check_match`, or `check_composition`,
+   `check_parts`, `check_aggregate` for a composed leg — against what fills
+   have left of each give and clearing's own catalogue and counterparty
+   gate; the solver's matches are never believed;
+3. node potentials exist (a simple cycle: product > 1), surplus ≥ the
+   minimum, the per-node condition when any leg is indivisible;
+4. one atomic commit: all `fill/` records, the `loop/` record and the
+   holds, exercises and item claims its legs write, under a single new
+   root.
 
-The interface (`Settlement.submit(proposal) → Receipt`) is the stable
+The interface (`Clearing.submit(proposal) → Receipt`) is the stable
 boundary. The P2 on-chain backend keeps its shape: a contract on the EVM chain Swarm settles on (Gnosis today)
 receives the loop plus **inclusion proofs** that each offer is present under
 the pinned book root.
@@ -642,8 +667,11 @@ committed beat design (2026-08-07): sealed per-beat proposals (a loop
 proposal is trivially copyable), numeraire-free scoring, a per-offer
 fairness floor generalized from CoW's CIP-67 (subsuming `per_node_ok` as
 policy), marginal-contribution solver rewards capped by the fees the
-solver's own loops generated, and the deterministic baseline as permanent
-reserve bid — `docs/plans/P2-batch-auction.md`. The pricing rule that
+solver's own loops generated (struck 2026-08-21 with every protocol fee,
+§11's update), and the deterministic baseline as permanent reserve bid —
+`docs/plans/P2-batch-auction.md`; §2–§6 of it built 2026-09-18
+(`SealedBeat.sol`, `auction.py`), the optimistic beat behind it
+(`BeatClearing.sol`, `ChainClearing`) since 2026-09-15. The pricing rule that
 turns a winning loop's surplus into per-leg prices — equal log-surplus
 split under uniform directional clearing — is
 `docs/plans/P2-clearing-pricing.md`.
@@ -688,8 +716,12 @@ each keeping the checklist's shape rather than adding a second one:
 
 > **2026-09-07.** The baseline here is deliberately the whole of loopmarket's solving; smarter species live outside the protocol, propose, and are verified like anything else. The algorithms such a species would build on are listed in `docs/plans/P2-loop-selection.md` §11.
 
-`step()`: snapshot → load active offers → exact matches → best-rate graph →
-negative cycles → proposals. Deliberately trust-poor in both directions:
+`step()`: snapshot → load active offers (the chain's fills and the
+escrow's holdings subtracted) → exact matches → every simple cycle up to a
+length cap (`enumerate_cycles`, since 2026-09-18; Bellman–Ford over the
+best-rate graph tops up when the cap cut it) plus the composed, parts and
+aggregated legs and their circulations → one packing under the offers'
+capacities (`selection.pack`) → proposals. Deliberately trust-poor in both directions:
 solves only against pinned roots (reproducible), and produces nothing that
 is believed (settlement re-derives). `run()` polls a live book. Multiple
 agents against one book are safe by construction: first valid proposal
@@ -698,10 +730,15 @@ wins, the rest are rejected on the `fill/` check.
 ## 10. What is deliberately absent
 
 Bonds/oracles/arbitrators (carried, unenforced — P3; the mechanism design
-now lives in the **factbond** sister repo — see the §4 update), aggregated
+now lives in the **factbond** sister repo — see the §4 update; *since
+2026-09-18/19 a maker's requirement of them is enforced and a deposit is
+held by the escrow, since 2026-09-29 credentials are checked, and since
+2026-10-01 a leg's default arbitrator rules finally on the escrow — the
+§8 update and `CLAUDE.md`'s map*), aggregated
 risk markets and rate premia (P3, fed by factbond's per-edge loss
 experience), batch auctions and settlement pricing (P2 — now specified in
-`docs/plans/P2-batch-auction.md` and `docs/plans/P2-clearing-pricing.md`),
+`docs/plans/P2-batch-auction.md` and `docs/plans/P2-clearing-pricing.md`;
+the sealed beat built 2026-09-18, clearing pricing not yet),
 privacy — staged disclosure, committed offers, ZK fits-within proofs (P4 —
 now staged in `docs/plans/P4-privacy.md`, whose Tier 1 needs no new
 cryptography and whose format-freeze list *constrains P2*),

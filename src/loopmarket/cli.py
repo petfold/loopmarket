@@ -2141,8 +2141,8 @@ def cmd_offer(args, session, out):
 
 def offer_from_line(line: str, session: "Session | None" = None) -> Offer:
     """`"want 10kg apple home 100"` → the resolved `Offer`, under the
-    session's settings (maker, defaults, catalogue), not published. A
-    composed line raises with the v4 refusal."""
+    session's settings (maker, defaults, catalogue), not published; a
+    composed line (`+` between parts) is one v4 want."""
     session = session or Session()
     toks = shlex.split(line)
     if not toks or toks[0] not in _VERBS:
@@ -4382,7 +4382,7 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop offers [CATEGORY...]  open offers in the fold (filtered by satisfies)
   loop show ID               one offer, fully — the approval block
   loop matches               every feasible handoff in the fold
-  loop announce [--role maker|clearing]  say "my book is here" on the registry
+  loop announce [--role maker|clearing|register]  say "my book is here" on the registry
   loop announced             the standing announcements: owner, book, role
   loop fold                  fold the announced books and peers myself; print the root
   loop loops                 profitable loops on a snapshot (exit 1: none)
@@ -4443,8 +4443,8 @@ city serves a want at a door); omit them on a want and it does not care,
 omit them on a give and it says nothing. The one head the
 CLI interprets is valid(DURATION|A..B|A..) — how long the offer stands
 (A.. is until withdrawn). Relative time and LAT,LON,R are input spellings.
-A composed want (`+` between parts, one price last) renders and is refused
-until the v4 record carries parts (docs/plans/cli.md §13).
+A composed want (`+` between parts, one price last) is one v4 offer: all
+the parts or nothing, one price (docs/plans/cli.md §13).
 Time: now, today, tomorrow, +90d, -2h, ISO dates, A..B.
 
   loop give 10kg apple 100
@@ -4640,7 +4640,7 @@ def build_parser():
     p.add_argument("--book", default=None)
     p.set_defaults(func=cmd_challenge)
     p = sub.add_parser("announce", add_help=False)
-    p.add_argument("--role", choices=("maker", "clearing"), default=None)
+    p.add_argument("--role", choices=("maker", "clearing", "register"), default=None)
     p.set_defaults(func=cmd_announce)
     p = sub.add_parser("announced", add_help=False)
     p.set_defaults(func=cmd_announced)

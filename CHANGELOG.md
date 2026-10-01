@@ -64,52 +64,6 @@ ontodag>=0.26.1, recordstore>=0.21.0.
   reopening it, a split settling on the second signature, the giver's
   `extendClaim`. The config's `escrow` and `resolver` name the new pair.
 
-### Changed
-
-- **`default_asset` has no default price** (2026-09-29, Peter). A bare
-  amount on my scale — `bond 5`, a `require_point` with no
-  `require_accepts` — is converted at my own price for an asset, so it is
-  refused until `set default_asset 'xdai xDAI PRICE'` states it; before, the
-  CLI assumed xDAI at 1 per scale unit. Every amount stays on the maker's
-  scale, converted once at posting at the maker's own price.
-- **`recordstore>=0.21.0`** (2026-09-29): the release with extension proofs
-  and a feed's verifiable sequence of roots, which a register's checked
-  root sequence (R5) needs; the tests that skipped without it now run.
-- **Docs** (2026-09-29): the user guide gains options (§7.3), items (§7.4)
-  and credentials (§7.5), the current Gnosis addresses (§11.1) and the
-  `chain`/`evm` extras; the reference gains the v6 record, `Statement`, the
-  gate, registers, items, the door's witnesses and notices, the new
-  keyspace and the escrow's E1 acts; the README's status and plan table and
-  an ARCHITECTURE update note follow.
-
-### Fixed
-
-- **A door requirement clears on chain** (2026-10-01, Peter's decision 11).
-  `require_door possession` wrote the level's name,
-  `door-at-least-possession`, which the off-chain gate expands but the
-  on-chain verifier compares by exact name, so an honest leg against a
-  give declaring `possession` was refused and `ChainClearing` never posted
-  it. The record now lists the types the level stands for
-  (`photo-match`, `possession`; `photo` writes `photo-match`), the
-  approval block still says "door at least possession", and
-  `accepted_types` still reads a level's name. A want lists today's types
-  and lapses with its validity; a new door type joins `DOOR_LEVELS`, and
-  later wants list it. Pinned on a local EVM
-  (`tests/test_loop_verifier.py`, beside `registry-transfer(ID)`).
-- **A leg too large to verify in one call is never posted** (2026-09-29).
-  The dry run now tells a revert without a reason — the verification
-  running out of gas — from a node refusing the call: `OUT_OF_GAS`, which
-  `ChainClearing` refuses before the bond and a challenger never counts as
-  a conviction. Earlier the same day an empty revert had become "no
-  verdict", which let such a leg through.
-- **The escrow is the authority on aggregated and composed legs too**
-  (2026-09-29). The held rule of 2026-09-19 (a deposit naming an escrow
-  counts only up to what the contract holds) reached `check_match` and
-  `check_parts` but not `check_aggregate`, the pool of `aggregate_legs`, or
-  the operator gives of `check_composition`: there a declared, never-funded
-  deposit still met a counterparty's point. Every share and operator is
-  now gated with `held`.
-
 ### Added
 
 - **A personal view of arbitrators** (2026-10-01, step 4 of the default
@@ -219,8 +173,9 @@ ontodag>=0.26.1, recordstore>=0.21.0.
   with the claim period from its end; with the reservation cover-only, a
   claim asserted on factbond, disputed and ruled for the insured is paid out
   of the deposit (the limit) and the rest returns to the insurer
-  (`tests/test_cover.py`, local EVM). Stage 2's assignment, presentation
-  and construction rules are not built.
+  (`tests/test_cover.py`, local EVM). Stage 2's assignment and netting
+  follow (D-2, below); presentation (D-1, a ruling that states an amount)
+  is factbond's decision and not built.
 - **Cover stage 2: assignment and netting (D-2)** (2026-09-29, Peter's taxi
   case). A cover composed with a bonded thing records the reservation it
   covers; the insured's claim on the cover opens only once her claim on
@@ -407,7 +362,41 @@ ontodag>=0.26.1, recordstore>=0.21.0.
   most that" needs a place, and a later bump for it would break "one v6
   bump".
 
+
+- **Plans: credentials, cover and options** (2026-09-25). Five documents
+  entered the plan corpus from the assurance drafts:
+  `docs/plans/credentials-cover-and-options.md` (the cross-repository
+  plan: ten decisions, a shared vocabulary, stated divergences from
+  commercial practice, the fold-in map), `counterparty-gate.md`,
+  `options-and-cover.md`, `items-and-ownership.md` and
+  `commercial-practice-review.md`. Existing plans amended by dated edit:
+  P3-guarantee-coupling §3 rule 1, §4a (the per-item NFT note overruled)
+  and §4b items 2–3 (the v6 `credentials` field superseded by the `cred/`
+  sidecar), P2-loop-selection §4a (open decisions (a) and (d) answered),
+  P3-release-and-reclearing §8 (options and cover under the ladder and the
+  escrow), P4-privacy §8, THREATS T15–T16 and a closed-items note, ROADMAP
+  P3b, CLAUDE.md's planned extensions, and the README's disclaimer.
+  ROADMAP's "factbond as the resolver" item marked done (live since
+  2026-09-19).
+
 ### Changed
+
+- **`default_asset` has no default price** (2026-09-29, Peter). A bare
+  amount on my scale — `bond 5`, a `require_point` with no
+  `require_accepts` — is converted at my own price for an asset, so it is
+  refused until `set default_asset 'xdai xDAI PRICE'` states it; before, the
+  CLI assumed xDAI at 1 per scale unit. Every amount stays on the maker's
+  scale, converted once at posting at the maker's own price.
+- **`recordstore>=0.21.0`** (2026-09-29): the release with extension proofs
+  and a feed's verifiable sequence of roots, which a register's checked
+  root sequence (R5) needs; the tests that skipped without it now run.
+- **Docs** (2026-09-29): the user guide gains options (§7.3), items (§7.4)
+  and credentials (§7.5), the current Gnosis addresses (§11.1) and the
+  `chain`/`evm` extras; the reference gains the v6 record, `Statement`, the
+  gate, registers, items, the door's witnesses and notices, the new
+  keyspace and the escrow's E1 acts; the README's status and plan table and
+  an ARCHITECTURE update note follow.
+
 
 - **`LoopEscrow`: the parties' four acts and the claim read at `hold`**
   (2026-09-28, E1 of the development sequence of 2026-09-25; local EVM,
@@ -429,6 +418,44 @@ ontodag>=0.26.1, recordstore>=0.21.0.
   from v6). The shipped artifact is rebuilt; the other three are
   unchanged.
 
+### Fixed
+
+- **A door requirement clears on chain** (2026-10-01, Peter's decision 11).
+  `require_door possession` wrote the level's name,
+  `door-at-least-possession`, which the off-chain gate expands but the
+  on-chain verifier compares by exact name, so an honest leg against a
+  give declaring `possession` was refused and `ChainClearing` never posted
+  it. The record now lists the types the level stands for
+  (`photo-match`, `possession`; `photo` writes `photo-match`), the
+  approval block still says "door at least possession", and
+  `accepted_types` still reads a level's name. A want lists today's types
+  and lapses with its validity; a new door type joins `DOOR_LEVELS`, and
+  later wants list it. Pinned on a local EVM
+  (`tests/test_loop_verifier.py`, beside `registry-transfer(ID)`).
+- **A leg too large to verify in one call is never posted** (2026-09-29).
+  The dry run now tells a revert without a reason — the verification
+  running out of gas — from a node refusing the call: `OUT_OF_GAS`, which
+  `ChainClearing` refuses before the bond and a challenger never counts as
+  a conviction. Earlier the same day an empty revert had become "no
+  verdict", which let such a leg through.
+- **The escrow is the authority on aggregated and composed legs too**
+  (2026-09-29). The held rule of 2026-09-19 (a deposit naming an escrow
+  counts only up to what the contract holds) reached `check_match` and
+  `check_parts` but not `check_aggregate`, the pool of `aggregate_legs`, or
+  the operator gives of `check_composition`: there a declared, never-funded
+  deposit still met a counterparty's point. Every share and operator is
+  now gated with `held`.
+
+
+- **The settings table named six settings twice** (2026-09-23). An older
+  copy of `maker`, `terms`, `valid`, `bond`, `require_bond` and
+  `require_cancel` sat below the current ones, and a Python dict keeps the
+  last of two equal keys silently: `bond` and `require_cancel` showed their
+  pre-v5 help ("in the bond's asset", "at most require_bond"), and the
+  retired `require_bond` — read by nothing since the accepted v5 record —
+  was still accepted. The stale copy is gone, `set require_bond` is refused
+  as unknown, and a test fails if a setting is ever named twice.
+
 ### Security
 
 - **THREATS T18: claim hijack at the escrow's consumer edge** (found
@@ -444,6 +471,23 @@ ontodag>=0.26.1, recordstore>=0.21.0.
 
 ### Documentation
 
+- **The documentation checked against the code for the release**
+  (2026-10-01). The User Guide's tutorial (§2–§7) runs as written again:
+  the shared catalogue in its own file (`odag -f market.od …`, `loop set
+  catalogue market.od`) so places stay private and publish as their cell,
+  bare place and `time(…)` terms where the retired `where(…)`/`when(…)`
+  heads stood, outputs recaptured from a scratch home, the Python
+  snippets exact (`Fraction`s) and run in order; §7.2 on who rules (the
+  default arbitrator, factbond's ladder as the option, the deductible as
+  each resolver applies it), §8's federation through the `registry`
+  setting, §9's seats with a step and a floor and published composed
+  wants, §11's Swarm setup and TTL note. The Reference Manual gains the
+  announcement channel, arbitrators, cases and the reputation view, the
+  current signatures (`Offer`, `check_match`, `MockClearing`,
+  `ChainClearing`, `SolverAgent`, `selection`, the registry's sidecars),
+  the fold's admission table, the `key/`, `case/` and `auction/` keys, U9,
+  and the CLI's step/floor grammar; README and ARCHITECTURE say what is
+  built at 0.13.0. `loop announce --role register` is accepted.
 - **factbond's documentation is factbond's** (2026-09-28): what was a
   second copy of factbond material now points to factbond. The
   cross-repository plan `docs/plans/credentials-cover-and-options.md`
@@ -458,35 +502,6 @@ ontodag>=0.26.1, recordstore>=0.21.0.
   procedure and changes briefly and link factbond's new User Guide and
   Roadmap. factbond's register does the reverse for this register's
   primaries, so every threat entry has one full copy.
-
-### Added
-
-- **Plans: credentials, cover and options** (2026-09-25). Five documents
-  entered the plan corpus from the assurance drafts:
-  `docs/plans/credentials-cover-and-options.md` (the cross-repository
-  plan: ten decisions, a shared vocabulary, stated divergences from
-  commercial practice, the fold-in map), `counterparty-gate.md`,
-  `options-and-cover.md`, `items-and-ownership.md` and
-  `commercial-practice-review.md`. Existing plans amended by dated edit:
-  P3-guarantee-coupling §3 rule 1, §4a (the per-item NFT note overruled)
-  and §4b items 2–3 (the v6 `credentials` field superseded by the `cred/`
-  sidecar), P2-loop-selection §4a (open decisions (a) and (d) answered),
-  P3-release-and-reclearing §8 (options and cover under the ladder and the
-  escrow), P4-privacy §8, THREATS T15–T16 and a closed-items note, ROADMAP
-  P3b, CLAUDE.md's planned extensions, and the README's disclaimer.
-  ROADMAP's "factbond as the resolver" item marked done (live since
-  2026-09-19).
-
-### Fixed
-
-- **The settings table named six settings twice** (2026-09-23). An older
-  copy of `maker`, `terms`, `valid`, `bond`, `require_bond` and
-  `require_cancel` sat below the current ones, and a Python dict keeps the
-  last of two equal keys silently: `bond` and `require_cancel` showed their
-  pre-v5 help ("in the bond's asset", "at most require_bond"), and the
-  retired `require_bond` — read by nothing since the accepted v5 record —
-  was still accepted. The stale copy is gone, `set require_bond` is refused
-  as unknown, and a test fails if a setting is ever named twice.
 
 ## [0.12.0] — 2026-09-23
 
