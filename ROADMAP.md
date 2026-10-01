@@ -359,7 +359,12 @@ name factbond's redeployed `Assertions`. Hence:
    when real money arrives), ~~`examples/apartment.loop`'s naming~~ (ruled 2026-10-01: local labels,
    `cli.md` §15), ~~E1's spelling~~ (ruled 2026-10-01), ~~K1~~ (built
    2026-10-01 on the `k1-identifier` branches of ontodag and loopmarket,
-   merged when ontodag's `swarm-sharing` is released).
+   merged when ontodag's `swarm-sharing` is released). **Also 2026-10-01
+   (Peter):** the default resolver is one named adjudicator both sides
+   accept, final — built the same day (approval-block notes, key cards, the
+   case channel `loop claim`/`answer`/`hold`/`rule`, the personal view `loop
+   adjudicators`; `counterparty-gate.md` §7a); factbond's bonded ladder is
+   the option.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust
