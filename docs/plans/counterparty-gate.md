@@ -419,6 +419,15 @@ may run and a client may fold into a personal score (hansa's personalised
 trust score, deferred). A brand-new pseudonymous adjudicator has none of
 these, which is where the optional bonded ladder still earns its place.
 
+*Built the same day, in four steps:* the approval block says who would rule
+a claim on a deposit; key cards (`key/<address>`, `loop keycard`) let anyone
+seal to an adjudicator with no offer; the case — claim, answer, ruling with
+reasons — travels sealed through the book (`case.py`; `loop claim`,
+`answer`, `hold`, `rule`, `cases`), the escrow's key-resolver `hold` and
+`resolve` moving the money; and `loop adjudicators` is the personal view of
+signal (1), with the accreditation each adjudicator presents (`reputation.py`).
+No contract changed.
+
 *(Peter and the assistant, 2026-09-29; direction, not built.)* The resolver
 of a reservation — the *arbitrator* (the legal term for whoever hears a
 dispute and makes an award; factbond names its ladder's rungs
