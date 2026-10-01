@@ -632,6 +632,7 @@ keys: ephemeral key, ECDH, HKDF-SHA256, AES-256-GCM. Needs the `sig` extra
 | `open_(record, private_key_hex) -> str` | raises on a wrong key or a tampered record |
 | `public_key_of(private_key_hex) -> bytes` | compressed SEC1 |
 | `sigs.recover_public_key(offer_id, sig_hex) -> bytes` | the signer's public key from a detached signature — no key registry |
+| `sigs.sign_key_card(private_key_hex) -> (address, sig)` / `key_card_public_key(address, sig) -> bytes` | a key card: a signature over a fixed message naming the address, so anyone may seal to a key with no signed offer (stored as `key/<address>`, admitted only in its owner's book) |
 
 ## 11. `loopmarket.federation` — the aggregator
 
@@ -964,6 +965,7 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `collect [--check]` | payouts my address refused, waiting in the escrow's `owed` |
 | | `cred [SUBJECT]` / `cred present FILE [--presentation FILE]` | the statements presented about SUBJECT (me) with their state under the registers I read / present a statement about me in my book (R2) |
 | | `register issue SUBJECT CATEGORY --until T --evidence HASH --paid-by subject\|relier [--kind K] [--path ROOT]... [--deposit OFFER@ESCROW] [--scheme HASH]` | run a register in this session's book (`-f SPEC`, announced with `announce --role register`): issue a statement, its record printed for the subject; `revoke`/`suspend`/`reinstate STATEMENT`, `accredit ISSUER CATEGORY --until T`, `transfer ITEM KEY` (a title register's holder, I4), `heartbeat`, `status` — each write heartbeats and commits a root naming its predecessor |
+| | `keycard` | write my key card into my book, so anyone may seal to me (a claim to me as adjudicator, a notice when I have no signed offer) |
 | | `notice OFFER --cure DURATION [--fact STATEMENT]` | as the wanter of a cleared leg: factbond's `Notice` to the giver, sealed to its key beside a commitment, in my book; the opening kept locally for a claim |
 | | `cure OFFER [--evidence REF]` | as the giver: answer a notice on my give, sealed back to the claimant |
 | discovery | `announce [--role]` / `announced` / `fold` | say "my book is here" on `registry`; the standing set; fold the announced books myself |

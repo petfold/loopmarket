@@ -94,6 +94,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Key cards** (2026-10-01, step 2 of the default adjudicator): `key/<address>`
+  in a key's own book, a signature over a fixed message naming the
+  address (`sigs.sign_key_card`), so anyone may seal to a key that never
+  signed an offer — an adjudicator receiving a claim. The fold admits a
+  card only in its owner's book; sealing falls back to it where an offer
+  carries no signature; `loop keycard` writes mine.
 - **The default adjudicator, said where it is decided** (2026-10-01,
   Peter: one named adjudicator both sides accept, final, is the default;
   factbond's bonded ladder an option). The approval block notes a bonded

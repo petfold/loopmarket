@@ -10,6 +10,8 @@ Layout (one book = one RecordStore, one root reference per version):
     cred/<subject>/<statement_id>    -> {"statement": ..., "presentation": ...} — a statement about
                                         the book owner's key, presented for the counterparty gate
                                         (v6, R2, 2026-09-29; counterparty-gate.md §3.2)
+    key/<address>                    -> a key card: a signature over a fixed message naming the
+                                        address, so anyone may seal to the key (sigs.py, 2026-10-01)
     withdraw/<offer_id>              -> 1  (monotone tombstone: offer closed)
     fill/<offer_id>                  -> {"loop": <loop_id>, "qty": <taken>} for a give taken whole,
                                         {"loop": <loop_id>, "gives": [{"offer", "qty"}]} for a want
@@ -74,6 +76,7 @@ OPTION = "option/"     # option/<offer_id>/<loop_id> -> a hold (C2)
 EXERCISE = "exercise/"  # exercise/<offer_id>/<option loop>/<loop_id> -> what an exercise took (C2)
 ITEM = "item/"         # item/<h>/<maker>/<loop_id> -> a maker's claim on an item (I2)
 CURE = "cure/"         # cure/<loop_id>/<offer_id> -> a sealed cure (R6)
+KEY = "key/"           # key/<address> -> the key's card: its public key, recoverable (2026-10-01)
 
 
 class PartialLoopError(RuntimeError):
@@ -178,6 +181,19 @@ class OfferRegistry:
     def signature(self, offer_id: str) -> str | None:
         """The offer's detached signature, if one has been attached."""
         key = SIG + offer_id
+        return self.store.get(key) if self.store.contains(key) else None
+
+    def publish_key_card(self, address: str, sig_hex: str) -> None:
+        """Store a key card (`sigs.sign_key_card`) under `key/<address>`: the
+        key's public key, recoverable by anyone who wants to seal to it — an
+        adjudicator's, a register's, a maker's with no signed offer yet. Fail
+        closed: a card that does not recover to its address is refused."""
+        from .sigs import key_card_public_key
+        key_card_public_key(address, sig_hex)
+        self.store.put(KEY + address.lower(), sig_hex)
+
+    def key_card(self, address: str) -> str | None:
+        key = KEY + address.lower()
         return self.store.get(key) if self.store.contains(key) else None
 
     def loop_of(self, offer_id: str) -> str | None:

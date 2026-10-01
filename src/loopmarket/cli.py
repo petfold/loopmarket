@@ -2861,12 +2861,45 @@ def _notices_path(loop: str, oid: str, kind: str) -> str:
 
 
 def _public_key_of(fold, offer_id: str) -> bytes:
+    """The public key of an offer's maker: the offer's own signature, else
+    the maker's key card."""
     from .sigs import recover_public_key
     sig = fold.signature(offer_id)
-    if sig is None:
-        raise ValueError(f"{fold.get(offer_id).maker} has no public key here: "
-                         f"their offer {offer_id[:12]} carries no signature")
-    return recover_public_key(offer_id, sig)
+    if sig is not None:
+        return recover_public_key(offer_id, sig)
+    return _public_key_for(fold, fold.get(offer_id).maker)
+
+
+def _public_key_for(fold, address: str) -> bytes:
+    """A key's public key, to seal to it: its key card (`loop keycard`),
+    else a signature on any of its offers in the fold."""
+    from .sigs import key_card_public_key, recover_public_key
+    card = fold.key_card(address)
+    if card is not None:
+        return key_card_public_key(address, card)
+    for o in fold.offers(include_filled=True):
+        if o.maker.lower() == address.lower():
+            sig = fold.signature(o.offer_id)
+            if sig is not None:
+                return recover_public_key(o.offer_id, sig)
+    raise ValueError(f"{address} has no public key here: no key card (`loop keycard` in its book) "
+                     f"and no signed offer")
+
+
+def cmd_keycard(args, session, out):
+    """Write my key card into my book (2026-10-01): a signature over a fixed
+    message naming my address, so anyone may seal to me — a claim to me as
+    an adjudicator, a notice when I have no signed offer — with no key
+    registry. Needs bee_signer."""
+    from .sigs import sign_key_card
+    signer = _configured("bee_signer")
+    if not signer:
+        raise ValueError("a key card is signed with my key: set bee_signer")
+    address, sig = sign_key_card(signer)
+    session.book.publish_key_card(address, sig)
+    session.book.commit()
+    print(f"key card for {address} in my book", file=out)
+    return 0
 
 
 def _leg_with(fold, loop: str, give_id: str) -> dict:
@@ -4121,6 +4154,7 @@ loop — the loopmarket command line (docs/plans/cli.md)
                              NxDAI, or on my scale) my signature of a split, the second settling
   loop extend-claim OFFER DURATION [--loop L]  as the giver: lengthen the claim period
   loop collect [--check]     payouts my address refused, waiting for me
+  loop keycard               write my key card into my book: anyone may seal to me
   loop cred [SUBJECT]        statements presented about SUBJECT (me), with their state
   loop cred present FILE     present a statement about me in my book
   loop register issue|revoke|suspend|reinstate|accredit|transfer|heartbeat|status ...
@@ -4281,6 +4315,8 @@ def build_parser():
     p = sub.add_parser("collect", add_help=False)
     p.add_argument("--check", action="store_true")
     p.set_defaults(func=cmd_collect)
+    p = sub.add_parser("keycard", add_help=False)
+    p.set_defaults(func=cmd_keycard)
     p = sub.add_parser("cred", add_help=False)
     p.add_argument("action", nargs="?", default=None)
     p.add_argument("rest", nargs="*")

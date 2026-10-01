@@ -42,7 +42,7 @@ from dataclasses import dataclass
 from recordstore import RecordStore
 
 from .registry import (
-    CRED, CURE, EXERCISE, HANDOFF, ITEM, NOTICE, OPTION,
+    CRED, CURE, EXERCISE, HANDOFF, ITEM, KEY, NOTICE, OPTION,
     FILL, LOOP, OFFER, SIG, WITHDRAW, OfferRegistry,
     or_set_resolver,
 )
@@ -270,6 +270,21 @@ class Aggregator:
                 deferred.append((key, rec))   # handoff/ sorts before offer/
             elif key.startswith(CRED):
                 reason = self._cred_fault(owner, role, key, rec)
+                if reason:
+                    reject(key, reason)
+                    continue
+                staged.put(key, rec)
+            elif key.startswith(KEY):
+                # a key card is its owner's speech about its own key, in its
+                # own book: the address the key names, the signature its own
+                reason = "" if role == MAKER and key[len(KEY):] == owner.lower() else \
+                    "a key card for another key than the book's owner"
+                if not reason:
+                    try:
+                        from .sigs import key_card_public_key
+                        key_card_public_key(owner, rec)
+                    except Exception:            # noqa: BLE001 — unreadable or forged
+                        reason = "a key card that does not recover to the book's owner"
                 if reason:
                     reject(key, reason)
                     continue

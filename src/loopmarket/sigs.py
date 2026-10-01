@@ -94,3 +94,41 @@ def recover_public_key(offer_id: str, sig_hex: str) -> bytes:
 
 def _strip(hex_: str) -> str:
     return hex_[2:] if hex_.startswith("0x") else hex_
+
+
+# -- key cards (2026-10-01) ------------------------------------------------------
+#
+# Sealing to a key (a handoff, a notice, a claim to an adjudicator) needs its
+# public key, recovered from any signature it left. A maker leaves one on
+# every offer; an adjudicator or a register may have no offer at all. A key
+# card is the smallest such signature: over a fixed message naming the key's
+# own address, so it says nothing but "this public key is mine", and anyone
+# checks it with no store. Why not a key registry: the book is already the
+# channel, and a card in the key's own book needs nobody's permission.
+
+KEY_CARD_DOMAIN = b"loopmarket key card\n"
+
+
+def key_card_hash(address: str) -> bytes:
+    """The 32-byte message a key card signs: the domain and the address."""
+    import hashlib
+    return hashlib.sha256(KEY_CARD_DOMAIN + address.lower().encode("ascii")).digest()
+
+
+def sign_key_card(private_key_hex: str) -> tuple[str, str]:
+    """(address, signature hex) — this key's card."""
+    keys = _keys()
+    key = keys.PrivateKey(_key_bytes(private_key_hex))
+    address = key.public_key.to_checksum_address()
+    return address, key.sign_msg_hash(key_card_hash(address)).to_hex()
+
+
+def key_card_public_key(address: str, sig_hex: str) -> bytes:
+    """The compressed public key a card proves for `address`; raises when
+    the signature does not recover to that address (a card for another key)."""
+    keys = _keys()
+    sig = keys.Signature(bytes.fromhex(_strip(sig_hex)))
+    public = sig.recover_public_key_from_msg_hash(key_card_hash(address))
+    if public.to_checksum_address().lower() != address.lower():
+        raise ValueError("the key card does not recover to its address")
+    return public.to_compressed_bytes()
