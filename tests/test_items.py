@@ -43,10 +43,15 @@ def test_the_same_identifier_yields_the_same_item_and_only_that_item_matches():
     assert check_match(car, want("b", Thing(("car",), 1, "car"), 100, **V), cat, now=NOW) is not None
     assert check_match(give("s", Thing(("car",), 1, "car"), 50, **V),
                        want("b", Thing(("car", term(h)), 1, "car"), 100, **V), cat, now=NOW) is None
-    # a shortened id would contain every item it prefixes: it matches nothing
+    # a shortened id matches nothing: refused as malformed, and on the
+    # identifier kind (K1) the catalogue itself puts no other item below it
     short = f"item({h[:8]})"
     assert not well_formed(("car", short)) and well_formed(("car", term(h)))
     assert check_match(car, want("b", Thing(("car", short), 1, "car"), 100, **V), cat, now=NOW) is None
+    from ontodag import dimensions as dims
+    if hasattr(dims, "KIND_IDENTIFIER"):
+        assert cat.head_kind("item") == dims.KIND_IDENTIFIER
+        assert not cat.dag.is_below(term(h), short) and cat.dag.is_below(term(h), term(h))
 
 
 def _loop(book, seller, buyer, h, nonce, price=50, valid=V):

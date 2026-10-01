@@ -357,7 +357,9 @@ name factbond's redeployed `Assertions`. Hence:
    named final rung~~ (ruled 2026-10-01: the stand-in stays, labelled
    test-only; the first real one a multisig of named independent people
    when real money arrives), ~~`examples/apartment.loop`'s naming~~ (ruled 2026-10-01: local labels,
-   `cli.md` §15), ~~E1's spelling~~ (ruled 2026-10-01), K1.
+   `cli.md` §15), ~~E1's spelling~~ (ruled 2026-10-01), ~~K1~~ (built
+   2026-10-01 on `k1-identifier` branches in ontodag and loopmarket,
+   released with ontodag's `swarm-sharing`).
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust
@@ -380,7 +382,8 @@ name factbond's redeployed `Assertions`. Hence:
       `extendClaim`; the insured asserts the trigger, presentation,
       assignment before payout, netting, the indemnity rule. C1–C7.
 - [ ] **Items** · [design](docs/plans/items-and-ownership.md) — `item(h)`
-      on ontodag's identifier kind (an upstream ask); the per-maker rule;
+      on ontodag's identifier kind (K1, built 2026-10-01 on branches,
+      released with `swarm-sharing`); the per-maker rule;
       item claims as a clearing keyspace; certificate-final and independent
       `inspect` legs; `registry-transfer` at settlement; priced exclusivity
       in the bump after v6. I1–I6.

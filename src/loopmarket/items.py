@@ -10,13 +10,15 @@ without papers, an artwork — h is the tagging record's hash, as strong as
 the tagger who signed it. Everything that changes about the item
 (condition, reports, owners) names h and is never part of it.
 
-The term: `item(h)` with h 64 lowercase hex. ontodag's identifier kind
-(equality only, K1, an upstream ask) is the term's proper home; until it
-ships the head sits on the **prefix kind** (`Ontology.declare_item_heads`)
-and loopmarket refuses any item term whose value is not a whole id
-(`well_formed`, read by the matching gates) — so prefix containment, the
-only order the stopgap kind knows, reduces to equality: a want naming an
-item takes only that item, and a shortened id matches nothing.
+The term: `item(h)` with h 64 lowercase hex, on ontodag's **identifier
+kind** (K1, registry 4.3, 2026-10-01: equality only, so `item(ab)` contains
+no other item; `Ontology.declare_item_heads`, `identifier-dimension` in the
+seed). loopmarket still refuses any item term whose value is not a whole id
+(`well_formed`, read by the matching gates): under the identifier kind a
+lint that fails a malformed term loudly, and under the prefix kind — the
+stopgap an older ontodag or catalogue still carries — what reduces prefix
+containment to equality. A want naming an item takes only that item, and a
+shortened id matches nothing.
 """
 
 from __future__ import annotations
@@ -96,7 +98,7 @@ def ids(concepts, heads=ITEM_HEADS) -> list[str]:
 
 
 def well_formed(concepts, heads=ITEM_HEADS) -> bool:
-    """Every item term names a whole id — the stopgap's guard that makes the
-    prefix kind an equality (a shortened id would contain every item it
-    prefixes)."""
+    """Every item term names a whole id: a lint under the identifier kind,
+    and under the prefix kind the guard that makes it an equality (there a
+    shortened id would contain every item it prefixes)."""
     return all(_HEX64.match(h) for h in ids(concepts, heads))

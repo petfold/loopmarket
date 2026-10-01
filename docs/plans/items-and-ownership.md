@@ -226,7 +226,7 @@ would need P4 reopened; this draft keeps derived ids.
 
 | # | Package | Gate |
 |---|---|---|
-| I1 *(met 2026-09-29 on the prefix-kind stopgap: `items.py`, `Ontology.declare_item_heads`, `tests/test_items.py`)* | `item(h)` term: the ontodag hash kind (upstream), derived-id helpers for VIN / land register / serial | the same VIN yields the same h everywhere; a mismatched h never matches |
+| I1 *(met 2026-09-29 on the prefix-kind stopgap: `items.py`, `Ontology.declare_item_heads`, `tests/test_items.py`; on ontodag's identifier kind since 2026-10-01, K1 — the branches `k1-identifier` in both repos, released with ontodag's `swarm-sharing`)* | `item(h)` term: the ontodag hash kind (upstream), derived-id helpers for VIN / land register / serial | the same VIN yields the same h everywhere; a mismatched h never matches |
 | I2 *(met 2026-09-29 in memory; the key is `item/<h>/<maker>/<loop>`, see §2)* | item claim keyspace + per-item rule in registry and clearing (per maker, plan D5) | two offers by one maker on one h: the second leg refused while the first is open; admissible after performance; two makers on one h both clear, and the loser is a non-performance |
 | I3 *(met 2026-09-29 on a local EVM, `tests/test_beat_v6.py`; deployed on Gnosis the same day at `0x8beD11c07aC7aCAa542dF5B0F8db94FC6C1F72BC`: a beat commits each give's claim — an option's on its underlying's items, until the window ends — naming its leg; a challenge convicts a beat that omits or misstates one, and `finalize` cancels a beat whose claim meets the same maker's active claim through another offer, a race like an overfill; a fill's claim end is the clearing's `item/` record, bounded on chain only by the beat's time)* | item claims on chain (with `options-and-cover.md` C4) | a second claim on h in a concurrent beat is caught at finalize or by challenge |
 | I4 *(met 2026-09-29 night off chain: `witness.transfer_register`/`transfer_faults`, `Register.transfer`/`holder` over `title/<h>`, clearing admitting the type on a give that names an item, the CLI's `oracle registry-transfer(ID)`, `require_transfer`, `register transfer`, `watch` reporting the transfer and `countersign` refusing before it; `tests/test_registry_transfer.py`. The register is named in the type — `registry-transfer(ID)` — so the record needs no field; *ruled (Peter, 2026-10-01): this spelling stands*, verified on a local EVM to pass the chain's exact-name witness check; a register implied by the item, or registers admitted by an accrediting root, can be added beside it later)* | `registry-transfer` witness type | a leg naming it performs only on the witness's statement |
@@ -235,9 +235,13 @@ would need P4 reopened; this draft keeps derived ids.
 
 ## 8. Open
 
-- The ontodag identifier kind for `item(h)` (upstream ask, the assurance drafts' `ontodag-asks.md`
-  §1: registry minor, kind node in loopmarket's seed, `lot → item`,
-  `sample → item` as role heads).
+- ~~The ontodag identifier kind for `item(h)`~~ — **built 2026-10-01**
+  (Peter chose to build it now rather than wait for I6: the shared
+  catalogue should not say prefix for a name, and ontodag's own sharing
+  work may name records by address — `SHARING_ON_SWARM.md` S15): ontodag
+  `identifier-dimension`, registry 4.3, on the branch `k1-identifier`,
+  with loopmarket's seed and `declare_item_heads` on the same-named
+  branch; both merge when `swarm-sharing` is released.
 - When exactly an item claim ends for services-on-items (a car in repair).
 
 - The `exclusive` field, post-v6 (D5): `exclusive: bool` on a give naming

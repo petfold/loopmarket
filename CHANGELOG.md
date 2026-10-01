@@ -82,6 +82,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **`item(h)` on ontodag's identifier kind** (2026-10-01, K1; Peter):
+  equality only, so a short id contains no other item in the catalogue
+  itself, not only behind loopmarket's guard. The seed declares
+  `identifier-dimension dimension` and `item identifier-dimension`;
+  `Ontology.declare_item_heads` uses the kind, falling back to the prefix
+  stopgap on an older ontodag; `items.well_formed` stays as a lint. Needs
+  `ontodag>=0.29.0`, the release carrying registry 4.3 with ontodag's
+  `swarm-sharing` work — this lands with it.
 - **The title register as the handover witness** (2026-09-29 night, I4):
   `registry-transfer(ID)` — a give naming an item is performed when the
   register ID shows it held by the wanter (`witness.transfer_faults`,

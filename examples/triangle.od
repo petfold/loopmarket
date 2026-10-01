@@ -56,9 +56,11 @@ inspect graph-dimension operator operator-argument
 # resolvers by `root:`; finer kinds hang below (`transport-arbitrator arbitrator`)
 arbitrator
 # one unique item (items-and-ownership.md §1, 2026-09-29): `item(h)`, h the
-# 64-hex id derived from a VIN, a land register, a serial or a tagger; on the
-# prefix kind until ontodag's identifier kind ships (a whole id is required)
-item prefix-dimension
+# 64-hex id derived from a VIN, a land register, a serial or a tagger, on
+# ontodag's identifier kind (K1, registry 4.3: equality only), which a
+# catalogue declares itself
+identifier-dimension dimension
+item identifier-dimension
 # the triangle's trades
 service
 lesson service
