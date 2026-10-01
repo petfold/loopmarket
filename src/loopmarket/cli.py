@@ -139,6 +139,10 @@ _SETTINGS = {
         "the escrow contract holding my deposit: chain:RPC_URL@CONTRACT "
         "(LoopEscrow; the record names the address); `deposit [ID]` funds "
         "a give's declared bond there (empty: a declaration only)"),
+    "trust": _Setting(
+        "LOOP_TRUST", "", "--trust KEYS",
+        "makers whose choices of adjudicators I count beside my own in "
+        "`loop adjudicators` (a personal view: never a gate)"),
     "registers": _Setting(
         "LOOP_REGISTERS", "", "--registers ID=SPEC...",
         "registers I read (R3a) beyond those announced under the register "
@@ -3103,6 +3107,58 @@ def cmd_cases(args, session, out):
     return 0 if rows else 1
 
 
+def cmd_adjudicators(args, session, out):
+    """A personal view of adjudicators (2026-10-01, `counterparty-gate.md`
+    §7a): every adjudicator named on an escrow reservation where I or a
+    maker I trust (`--trust KEYS`, else the `trust` setting) was a party —
+    the legs, its rulings, who among us lost a ruling under it and chose it
+    again (the one choice a loser makes that a winner cannot fake for them),
+    and the accreditation it presents under the registers I read. For my
+    own judgement: nothing here is a gate, and nothing outside my circle is
+    counted (puppet trades manufacture counts)."""
+    from .reputation import view
+    client = _escrow_client(session)
+    me = client.account().address if _configured("bee_signer") else session.maker
+    trusted = (args.trust or _configured("trust") or "").replace(",", " ").split()
+    fold = session.fold()
+
+    def posted(maker: str, offer: str, loop: str):
+        """When `maker`'s offer on this leg was posted (its validity start):
+        the give itself, or the want the loop record says it served."""
+        try:
+            give_ = fold.get(offer)
+        except KeyError:
+            return None
+        if give_.maker.lower() == maker.lower():
+            return give_.valid.start
+        key = f"loop/{loop}"
+        rec = fold.store.get(key) if fold.store.contains(key) else None
+        for leg in (rec or {}).get("legs", []):
+            if offer in leg.get("gives", [leg["give"]]):
+                try:
+                    want_ = fold.get(leg["want"])
+                except KeyError:
+                    return None
+                return want_.valid.start if want_.maker.lower() == maker.lower() else None
+        return None
+    rows = view(client.events("Reserved"), client.events("Settled"), client.events("Deposited"),
+                me=me, trusted=trusted, posted=posted)
+    regs = _registers(session)
+    circle = {me.lower(), *(t.lower() for t in trusted)}
+    for a in rows:
+        mine = sum(1 for w, g, _ in a.legs if me.lower() in (w.lower(), g.lower()))
+        ruled = ", ".join(f"{_num(Fraction(t, 10 ** 18))} of {_num(Fraction(m, 10 ** 18))} to the wanter"
+                          for _w, _g, t, m, _ in a.rulings) or "none"
+        again = ", ".join("me" if k.lower() == me.lower() else k for k in a.chosen_again) or "nobody"
+        print(f"{a.key}: named in {len(a.legs)} leg(s) of my circle ({mine} mine); rulings: {ruled}; "
+              f"chosen again after losing under it by: {again}", file=out)
+        for st, _ in fold.statements(a.key):
+            print(f"  presents {st.category} ({st.kind}, by {st.issuer}): {_statement_state(st, regs)}", file=out)
+    if not rows:
+        print(f"no adjudicator named on a reservation of mine or of {len(circle) - 1} maker(s) I trust", file=out)
+    return 0 if rows else 1
+
+
 def cmd_notice(args, session, out):
     """R6 (§6, rung zero of every claim): as the wanter of a cleared leg,
     tell the giver which fact is wrong and until when it may cure —
@@ -4353,6 +4409,8 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop hold OFFER [--loop L]   as the adjudicator: the claim is open, the timeout stops
   loop rule OFFER AMOUNT --reason TEXT [--loop L]   as the adjudicator: rule, final
   loop cases                 the claims, answers and rulings involving me
+  loop adjudicators [--trust KEYS]   a personal view: adjudicators my circle chose,
+                             their rulings, who lost under one and chose it again
   loop cred [SUBJECT]        statements presented about SUBJECT (me), with their state
   loop cred present FILE     present a statement about me in my book
   loop register issue|revoke|suspend|reinstate|accredit|transfer|heartbeat|status ...
@@ -4534,6 +4592,9 @@ def build_parser():
     p.set_defaults(func=cmd_rule)
     p = sub.add_parser("cases", add_help=False)
     p.set_defaults(func=cmd_cases)
+    p = sub.add_parser("adjudicators", add_help=False)
+    p.add_argument("--trust", default=None)
+    p.set_defaults(func=cmd_adjudicators)
     p = sub.add_parser("cred", add_help=False)
     p.add_argument("action", nargs="?", default=None)
     p.add_argument("rest", nargs="*")

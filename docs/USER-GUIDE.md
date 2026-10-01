@@ -564,6 +564,17 @@ adjudicator may refuse a claim the giver had no chance to cure. A
 reservation whose resolver is a contract — factbond's ladder — is claimed
 there, not with `loop claim`.
 
+Choosing an adjudicator is a judgement of reputation, and the parties to a
+ruling are no witnesses to it: the winner is always satisfied and the loser
+almost never. `loop adjudicators` shows what you can see for yourself, from
+the escrow's log: the adjudicators named on reservations where you, or a
+maker you trust (`--trust KEYS`, or `set trust`), were a party; their
+rulings; and the one signal a loser gives that nobody can fake for them —
+who lost a ruling under an adjudicator and named it again in an offer
+posted after the loss. Nothing outside your circle is counted, since counts
+are what puppet trades manufacture. The accreditation an adjudicator
+presents is listed beside it, with its state under the registers you read.
+
 The claim period is matched per leg (v6): a give declares the longest it
 carries (`set claim_max 60d`), a want asks for one (`set require_claim
 30d`) and meets only gives that carry at least that; with no ask the

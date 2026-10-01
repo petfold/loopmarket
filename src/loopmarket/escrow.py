@@ -419,3 +419,17 @@ class EscrowClient:
     def deposit_of(self, offer_id: str) -> dict:
         giver, token, amount, released = self.contract().functions.deposits(offer_key(offer_id)).call()
         return {"giver": giver, "token": token, "amount": amount, "released": released}
+
+    def events(self, name: str, from_block: int = 0) -> list[dict]:
+        """The contract's `name` events (`Reserved`, `Settled`, `Deposited`,
+        ...) as dicts of their arguments plus `block` and `time` (the
+        block's timestamp), bytes32 arguments as hex — the escrow's history,
+        read from its log alone."""
+        w3, times, out = self._web3(), {}, []
+        for log in getattr(self.contract().events, name)().get_logs(from_block=from_block):
+            n = log["blockNumber"]
+            if n not in times:
+                times[n] = w3.eth.get_block(n)["timestamp"]
+            args = {k: (v.hex() if isinstance(v, (bytes, bytearray)) else v) for k, v in dict(log["args"]).items()}
+            out.append({**args, "block": n, "time": times[n]})
+        return out

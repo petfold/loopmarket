@@ -103,6 +103,16 @@ def test_a_claim_is_answered_and_ruled_through_the_book_and_paid_by_the_escrow(e
     as_("giver")
     assert "came late: half the claim" in run.ok("watch", "--once")
 
+    # the personal view: the giver lost a ruling under the judge; a later fill of the same
+    # deposit's offer, posted before that loss, is no new choice
+    loop3 = "d4" * 32
+    client("clearing").reserve(offer, loop3, addr["wanter"], addr["judge"], 10 ** 17,
+                               window=(now + 3600, now + 7200), claim_seconds=86_400)
+    as_("wanter")
+    out = run.ok("adjudicators", "--trust", addr["giver"])
+    assert f"{addr['judge']}: named in 2 leg(s) of my circle (2 mine)" in out
+    assert "rulings: 0.4 of 1 to the wanter" in out and "chosen again after losing under it by: nobody" in out
+
     # a reservation whose resolver is a contract is claimed there, not here
     loop2 = "c3" * 32
     client("clearing").reserve(offer, loop2, addr["wanter"], escrow, 10 ** 17, window=(now + 3600, now + 7200),

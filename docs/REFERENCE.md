@@ -970,6 +970,7 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `answer OFFER [--evidence R] [--text T]` | as the giver: answer the claim, sealed to the adjudicator and the claimant |
 | | `hold OFFER` / `rule OFFER AMOUNT --reason TEXT` | as the adjudicator: the escrow's `hold` (the timeout stops), and the final ruling — the escrow pays it less any deductible, the reasons sealed to both parties |
 | | `cases` | the claims, answers and rulings involving me |
+| | `adjudicators [--trust KEYS]` | a personal view, never a gate: the adjudicators named on escrow reservations where I or a maker I trust was a party, their rulings, who among us lost under one and chose it again with an offer posted after the loss, and the accreditation each presents |
 | | `notice OFFER --cure DURATION [--fact STATEMENT]` | as the wanter of a cleared leg: factbond's `Notice` to the giver, sealed to its key beside a commitment, in my book; the opening kept locally for a claim |
 | | `cure OFFER [--evidence REF]` | as the giver: answer a notice on my give, sealed back to the claimant |
 | discovery | `announce [--role]` / `announced` / `fold` | say "my book is here" on `registry`; the standing set; fold the announced books myself |
@@ -1035,6 +1036,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `option_window` | `LOOP_OPTION_WINDOW` | `1/4` | an option's window: a fraction in (0, 1) of the lead to the offer's handover time (its validity's end without one), or a duration; it closes before the handover |
 | `option_premium` | `LOOP_OPTION_PREMIUM` | `suggest` | an option's premium on my scale: `suggest` (price × ½ × the chance a buyer comes during the hold and none after it, the rate read from the book's wants for the thing over 30 days; with none, price × window/lead × ½, flagged as a guess), `N%` of the price, or an amount; never below 1% of the price |
 | `require_claim`, `require_resolvers` | `LOOP_REQUIRE_*` | none | the claim period I ask of a giver's deposit; the resolvers I accept on my wants and gives — keys, `root:ID`, `min:AMOUNT` (on my scale), `clean:DURATION` (v6, §7a) |
+| `trust` | `LOOP_TRUST` | none | makers whose choices of adjudicators `adjudicators` counts beside mine (a personal view) |
 | `require_transfer` | `LOOP_REQUIRE_TRANSFER` | none | title registers whose transfer of the item my wants accept as the witness: gives declaring `oracle registry-transfer(ID)` for one of them (I4) |
 | `require_credentials` | `LOOP_REQUIRE_CREDENTIALS` | none | what my wants require the giver to present: `;`-separated `CATEGORY KIND[,KIND...] [root:ID]... [age:DURATION] [min:AMOUNT]` (v6, R4) |
 | `registers` | `LOOP_REGISTERS` | none | registers I read beyond those announced under the `register` role: `ID=SPEC` pairs; read at their heads, pinned in my proposals, consulted for credentials, `root:` resolvers and `watch`'s lapsed statements |

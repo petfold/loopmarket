@@ -94,6 +94,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **A personal view of adjudicators** (2026-10-01, step 4 of the default
+  adjudicator; `reputation.py`, `loop adjudicators [--trust KEYS]`, the
+  `trust` setting, `EscrowClient.events`): from the escrow's log, the
+  adjudicators named where I or a maker I trust was a party, their rulings,
+  and who among us lost a ruling under one and chose it again with an offer
+  posted after the loss — a later fill of an offer posted before it is no
+  new choice — with the accreditation each presents. Never read by a gate;
+  nothing outside the circle counted.
 - **A case before one named adjudicator** (2026-10-01, step 3 of the
   default adjudicator; `case.py`): the escrow already gave a key resolver
   its `hold` and final `resolve`; the book now carries the case between
