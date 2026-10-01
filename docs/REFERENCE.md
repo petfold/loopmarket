@@ -632,7 +632,7 @@ keys: ephemeral key, ECDH, HKDF-SHA256, AES-256-GCM. Needs the `sig` extra
 | `open_(record, private_key_hex) -> str` | raises on a wrong key or a tampered record |
 | `public_key_of(private_key_hex) -> bytes` | compressed SEC1 |
 | `sigs.recover_public_key(offer_id, sig_hex) -> bytes` | the signer's public key from a detached signature — no key registry |
-| `sigs.sign_key_card(private_key_hex) -> (address, sig)` / `key_card_public_key(address, sig) -> bytes` | a key card: a signature over a fixed message naming the address, so anyone may seal to a key with no signed offer (stored as `key/<address>`, admitted only in its owner's book) |
+| `sigs.sign_contact_card(private_key_hex) -> (address, sig)` / `contact_card_public_key(address, sig) -> bytes` | a contact card: a signature over a fixed message naming the address, so anyone may seal to a key with no signed offer (stored as `key/<address>`, admitted only in its owner's book) |
 
 ## 11. `loopmarket.federation` — the aggregator
 
@@ -965,12 +965,12 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `collect [--check]` | payouts my address refused, waiting in the escrow's `owed` |
 | | `cred [SUBJECT]` / `cred present FILE [--presentation FILE]` | the statements presented about SUBJECT (me) with their state under the registers I read / present a statement about me in my book (R2) |
 | | `register issue SUBJECT CATEGORY --until T --evidence HASH --paid-by subject\|relier [--kind K] [--path ROOT]... [--deposit OFFER@ESCROW] [--scheme HASH]` | run a register in this session's book (`-f SPEC`, announced with `announce --role register`): issue a statement, its record printed for the subject; `revoke`/`suspend`/`reinstate STATEMENT`, `accredit ISSUER CATEGORY --until T`, `transfer ITEM KEY` (a title register's holder, I4), `heartbeat`, `status` — each write heartbeats and commits a root naming its predecessor |
-| | `keycard` | write my key card into my book, so anyone may seal to me (a claim to me as adjudicator, a notice when I have no signed offer) |
-| | `claim OFFER AMOUNT [--evidence R] [--text T]` | as a reservation's wanter, when its resolver is one named adjudicator (a key): the claim — `all`, `N%`, `NxDAI` or on my scale — sealed to the adjudicator and the giver |
-| | `answer OFFER [--evidence R] [--text T]` | as the giver: answer the claim, sealed to the adjudicator and the claimant |
-| | `hold OFFER` / `rule OFFER AMOUNT --reason TEXT` | as the adjudicator: the escrow's `hold` (the timeout stops), and the final ruling — the escrow pays it less any deductible, the reasons sealed to both parties |
+| | `contact-card` | write my contact card into my book, so anyone may seal to me (a claim to me as arbitrator, a notice when I have no signed offer) |
+| | `claim OFFER AMOUNT [--evidence R] [--text T]` | as a reservation's wanter, when its resolver is one named arbitrator (a key): the claim — `all`, `N%`, `NxDAI` or on my scale — sealed to the arbitrator and the giver |
+| | `answer OFFER [--evidence R] [--text T]` | as the giver: answer the claim, sealed to the arbitrator and the claimant |
+| | `hold OFFER` / `rule OFFER AMOUNT --reason TEXT` | as the arbitrator: the escrow's `hold` (the timeout stops), and the final ruling — the escrow pays it less any deductible, the reasons sealed to both parties |
 | | `cases` | the claims, answers and rulings involving me |
-| | `adjudicators [--trust KEYS]` | a personal view, never a gate: the adjudicators named on escrow reservations where I or a maker I trust was a party, their rulings, who among us lost under one and chose it again with an offer posted after the loss, and the accreditation each presents |
+| | `arbitrators [--trust KEYS]` | a personal view, never a gate: the arbitrators named on escrow reservations where I or a maker I trust was a party, their rulings, who among us lost under one and chose it again with an offer posted after the loss, and the accreditation each presents |
 | | `notice OFFER --cure DURATION [--fact STATEMENT]` | as the wanter of a cleared leg: factbond's `Notice` to the giver, sealed to its key beside a commitment, in my book; the opening kept locally for a claim |
 | | `cure OFFER [--evidence REF]` | as the giver: answer a notice on my give, sealed back to the claimant |
 | discovery | `announce [--role]` / `announced` / `fold` | say "my book is here" on `registry`; the standing set; fold the announced books myself |
@@ -1036,7 +1036,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `option_window` | `LOOP_OPTION_WINDOW` | `1/4` | an option's window: a fraction in (0, 1) of the lead to the offer's handover time (its validity's end without one), or a duration; it closes before the handover |
 | `option_premium` | `LOOP_OPTION_PREMIUM` | `suggest` | an option's premium on my scale: `suggest` (price × ½ × the chance a buyer comes during the hold and none after it, the rate read from the book's wants for the thing over 30 days; with none, price × window/lead × ½, flagged as a guess), `N%` of the price, or an amount; never below 1% of the price |
 | `require_claim`, `require_resolvers` | `LOOP_REQUIRE_*` | none | the claim period I ask of a giver's deposit; the resolvers I accept on my wants and gives — keys, `root:ID`, `min:AMOUNT` (on my scale), `clean:DURATION` (v6, §7a) |
-| `trust` | `LOOP_TRUST` | none | makers whose choices of adjudicators `adjudicators` counts beside mine (a personal view) |
+| `trust` | `LOOP_TRUST` | none | makers whose choices of arbitrators `arbitrators` counts beside mine (a personal view) |
 | `require_transfer` | `LOOP_REQUIRE_TRANSFER` | none | title registers whose transfer of the item my wants accept as the witness: gives declaring `oracle registry-transfer(ID)` for one of them (I4) |
 | `require_credentials` | `LOOP_REQUIRE_CREDENTIALS` | none | what my wants require the giver to present: `;`-separated `CATEGORY KIND[,KIND...] [root:ID]... [age:DURATION] [min:AMOUNT]` (v6, R4) |
 | `registers` | `LOOP_REGISTERS` | none | registers I read beyond those announced under the `register` role: `ID=SPEC` pairs; read at their heads, pinned in my proposals, consulted for credentials, `root:` resolvers and `watch`'s lapsed statements |

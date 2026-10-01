@@ -360,10 +360,10 @@ name factbond's redeployed `Assertions`. Hence:
    `cli.md` §15), ~~E1's spelling~~ (ruled 2026-10-01), ~~K1~~ (built
    2026-10-01 on the `k1-identifier` branches of ontodag and loopmarket,
    merged when ontodag's `swarm-sharing` is released). **Also 2026-10-01
-   (Peter):** the default resolver is one named adjudicator both sides
-   accept, final — built the same day (approval-block notes, key cards, the
+   (Peter):** the default resolver is one named arbitrator both sides
+   accept, final — built the same day (approval-block notes, contact cards, the
    case channel `loop claim`/`answer`/`hold`/`rule`, the personal view `loop
-   adjudicators`; `counterparty-gate.md` §7a); factbond's bonded ladder is
+   arbitrators`; `counterparty-gate.md` §7a); factbond's bonded ladder is
    the option.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)

@@ -537,10 +537,10 @@ quiet claim period (anyone may settle), or now on the wanter's
 countersignature, and a giver who cancels pays the ladder's amount for
 that lead. Only a *contested* claim needs a ruling.
 
-**Who rules: by default, one adjudicator both sides accept.** Name an
-adjudicator on your gives (`loop set arbitrator 0x…`, a key whose ruling
-is final, chosen by reputation or accreditation, as parties choose an
-arbitrator), and on your wants say which you accept (`set
+**Who rules: by default, one arbitrator both sides accept.** Name an
+arbitrator on your gives (`loop set arbitrator 0x…`, a key whose ruling
+is final, chosen by reputation or accreditation, as in commercial
+arbitration), and on your wants say which you accept (`set
 require_resolvers`, by key or `root:` for those a register you trust has
 accredited). The leg's resolver is the first both sides accept; it holds
 and resolves the reservation, nothing more. A give naming none leaves
@@ -550,29 +550,30 @@ is the option: a bonded ladder, an adjudicator and an arbiter above it,
 deposits forfeited on reversal — a stake standing in for the reputation a
 new pseudonymous key does not have.
 
-A case before a named adjudicator runs through the book, sealed like a
-notice. The adjudicator writes its key card once (`loop keycard`), so it can
-be reached without an offer of its own. The wanter claims (`loop claim
+A case before a named arbitrator runs through the book, sealed like a
+notice. The arbitrator writes its contact card once (`loop contact-card`: a
+card that carries nothing but its public key, signed), so it can be reached
+without an offer of its own. The wanter claims (`loop claim
 OFFER 40% --evidence REF --text "never came"`): the claim goes sealed to the
-adjudicator and to the giver, who sees it in `watch` and answers (`loop
-answer OFFER --text …`), sealed to the adjudicator and the claimant. The
-adjudicator holds the reservation (`loop hold OFFER`, the quiet timeout
+arbitrator and to the giver, who sees it in `watch` and answers (`loop
+answer OFFER --text …`), sealed to the arbitrator and the claimant. The
+arbitrator holds the reservation (`loop hold OFFER`, the quiet timeout
 stops) and rules (`loop rule OFFER 0.004xDAI --reason "came late: half"`):
 final, the escrow pays the ruling less any deductible and returns the rest,
 and the reasons go sealed to both. Send a notice first (`loop notice`): an
-adjudicator may refuse a claim the giver had no chance to cure. A
+arbitrator may refuse a claim the giver had no chance to cure. A
 reservation whose resolver is a contract — factbond's ladder — is claimed
 there, not with `loop claim`.
 
-Choosing an adjudicator is a judgement of reputation, and the parties to a
+Choosing an arbitrator is a judgement of reputation, and the parties to a
 ruling are no witnesses to it: the winner is always satisfied and the loser
-almost never. `loop adjudicators` shows what you can see for yourself, from
-the escrow's log: the adjudicators named on reservations where you, or a
+almost never. `loop arbitrators` shows what you can see for yourself, from
+the escrow's log: the arbitrators named on reservations where you, or a
 maker you trust (`--trust KEYS`, or `set trust`), were a party; their
 rulings; and the one signal a loser gives that nobody can fake for them —
-who lost a ruling under an adjudicator and named it again in an offer
+who lost a ruling under an arbitrator and named it again in an offer
 posted after the loss. Nothing outside your circle is counted, since counts
-are what puppet trades manufacture. The accreditation an adjudicator
+are what puppet trades manufacture. The accreditation an arbitrator
 presents is listed beside it, with its state under the registers you read.
 
 The claim period is matched per leg (v6): a give declares the longest it

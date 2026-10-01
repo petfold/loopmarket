@@ -1,5 +1,5 @@
-"""A personal view of adjudicators (2026-10-01, `counterparty-gate.md` §7a):
-from the escrow's log alone, the adjudicators named on reservations where I
+"""A personal view of arbitrators (2026-10-01, `counterparty-gate.md` §7a):
+from the escrow's log alone, the arbitrators named on reservations where I
 or a maker I trust was a party, their rulings, and who among us lost under
 one and chose it again — nothing outside the circle counted, so a puppet
 that loses and returns flatters nobody."""
@@ -25,7 +25,7 @@ def _end(n, to_wanter, t):
             "time": t}
 
 
-def test_a_loser_who_chooses_the_same_adjudicator_again_is_seen_and_a_puppet_is_not():
+def test_a_loser_who_chooses_the_same_arbitrator_again_is_seen_and_a_puppet_is_not():
     deposited = [{"offer": o[1], "giver": G}, {"offer": o[2], "giver": G}, {"offer": o[3], "giver": T},
                  {"offer": o[4], "giver": Q}, {"offer": o[5], "giver": Q}, {"offer": o[6], "giver": G}]
     reserved = [_res(1, W, J, 10), _res(2, W, J, 30),       # I lose under J, then name J again
@@ -49,6 +49,6 @@ def test_a_loser_who_chooses_the_same_adjudicator_again_is_seen_and_a_puppet_is_
         .chosen_again == []
     # with no reader of postings, nothing counts as a return (an unknown posting counts nothing)
     assert all(a.chosen_again == [] for a in view(reserved, settled, deposited, me=W, trusted=[T]))
-    # T's own view: the adjudicator it lost a ruling under, with no return
+    # T's own view: the arbitrator it lost a ruling under, with no return
     (only,) = view(reserved, settled, deposited, me=T, posted=posted)
     assert only.key == K and only.chosen_again == []

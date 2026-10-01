@@ -94,33 +94,33 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
-- **A personal view of adjudicators** (2026-10-01, step 4 of the default
-  adjudicator; `reputation.py`, `loop adjudicators [--trust KEYS]`, the
+- **A personal view of arbitrators** (2026-10-01, step 4 of the default
+  arbitrator; `reputation.py`, `loop arbitrators [--trust KEYS]`, the
   `trust` setting, `EscrowClient.events`): from the escrow's log, the
-  adjudicators named where I or a maker I trust was a party, their rulings,
+  arbitrators named where I or a maker I trust was a party, their rulings,
   and who among us lost a ruling under one and chose it again with an offer
   posted after the loss — a later fill of an offer posted before it is no
   new choice — with the accreditation each presents. Never read by a gate;
   nothing outside the circle counted.
-- **A case before one named adjudicator** (2026-10-01, step 3 of the
-  default adjudicator; `case.py`): the escrow already gave a key resolver
+- **A case before one named arbitrator** (2026-10-01, step 3 of the
+  default arbitrator; `case.py`): the escrow already gave a key resolver
   its `hold` and final `resolve`; the book now carries the case between
-  them — the wanter's claim, the giver's answer, the adjudicator's reasons —
+  them — the wanter's claim, the giver's answer, the arbitrator's reasons —
   as sealed records in each writer's own book, each to one recipient, the
   fold admitting only the writer's speech to the recipient the key names.
   `loop claim`, `answer`, `hold`, `rule --reason`, `cases`; `watch` opens
   each. Each party sees the other's submission. A local-EVM test runs a
   claim through to a split ruling paid by the escrow (`tests/test_case.py`).
-- **Key cards** (2026-10-01, step 2 of the default adjudicator): `key/<address>`
+- **Contact cards** (2026-10-01, step 2 of the default arbitrator): `key/<address>`
   in a key's own book, a signature over a fixed message naming the
-  address (`sigs.sign_key_card`), so anyone may seal to a key that never
-  signed an offer — an adjudicator receiving a claim. The fold admits a
+  address (`sigs.sign_contact_card`), so anyone may seal to a key that never
+  signed an offer — an arbitrator receiving a claim. The fold admits a
   card only in its owner's book; sealing falls back to it where an offer
-  carries no signature; `loop keycard` writes mine.
-- **The default adjudicator, said where it is decided** (2026-10-01,
-  Peter: one named adjudicator both sides accept, final, is the default;
+  carries no signature; `loop contact-card` writes mine.
+- **The default arbitrator, said where it is decided** (2026-10-01,
+  Peter: one named arbitrator both sides accept, final, is the default;
   factbond's bonded ladder an option). The approval block notes a bonded
-  give that names no adjudicator (the clearing's own resolver would rule a
+  give that names no arbitrator (the clearing's own resolver would rule a
   claim on its deposit) and a want relying on a deposit that accepts
   whichever the give names; the `arbitrator` setting's help and the user
   guide describe the default.

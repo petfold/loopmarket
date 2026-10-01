@@ -376,10 +376,21 @@ The disclosure on ruling is hansa's (its attester side); not built.
 
 ## 7a. Arbitrators as credentialed roles (discussed 2026-09-29)
 
+*(Terms, 2026-10-01, Peter asked: four words, kept apart.)* **arbitrator** —
+who decides a claim in the default form, chosen by the parties, its award
+final (the offer record's field and the `arbitrator` setting); **resolver** —
+the escrow's word for whichever address may `hold` and `resolve` a
+reservation, an arbitrator's key or a contract; **adjudicator** and
+**arbiter** — factbond's ladder only, its first rung, whose rulings can be
+appealed, and its final one. In law an adjudicator is anyone who decides a
+dispute (in UK construction law, adjudication binds only until arbitration
+or a court decides), an arbitrator one the parties chose, whose award is
+final — which is the default here.
+
 *(Default, Peter 2026-10-01: "make the simple form the default".)* A leg's
-resolver is, by default, **one named adjudicator both sides accept, whose
+resolver is, by default, **one named arbitrator both sides accept, whose
 ruling is final** — commercial arbitration's model: no ladder, no deposit,
-the adjudicator chosen by reputation or accreditation (an `Accept` by key or
+the arbitrator chosen by reputation or accreditation (an `Accept` by key or
 `root:`). The protocol already allows it: a give's `arbitrator`, or a want's
 accepted key, names a plain key whose `resolve` is final. factbond's bonded
 ladder (adjudicator, arbiter, deposits forfeited on reversal) becomes an
@@ -391,13 +402,13 @@ LCIA rules), awards are set aside only on narrow grounds (New York
 Convention art. V), and liability for negligence attaches to experts who
 determine (valuers, certifiers: *Sutcliffe v Thackrah*, *Arenson v
 Casson*), who carry professional indemnity — the inspector's side, not the
-adjudicator's. Losing a stake when overturned is crypto-native (Kleros).
-**What an adjudicator's reputation rests on** *(concluded with Peter the
+arbitrator's. Losing a stake when overturned is crypto-native (Kleros).
+**What an arbitrator's reputation rests on** *(concluded with Peter the
 same day: the winner is always satisfied and the loser almost never, so
 satisfaction measures who won, and any count — of rulings, ratings,
 acceptances — is manufactured by puppet trades, U12, T16).* Five signals do
 not depend on who won: (1) *the choice before the dispute* — both makers
-accept the adjudicator at clearing, not knowing who will lose, and the
+accept the arbitrator at clearing, not knowing who will lose, and the
 strongest form is a maker who lost under one and names it again; a personal
 judgement ("makers I trust, who lost under X, still choose X"), never a
 global count; (2) *delegated reputation*, accreditation by a body that vets,
@@ -408,24 +419,24 @@ reasoned rulings, or a sample, judged by other professionals whatever the
 loser thinks, publication needing redaction or consent (T17); (4) *process,
 not outcome* — losers judge process far less by outcome than they judge the
 result (Thibaut and Walker; Tyler), and comparing losers with losers across
-adjudicators cancels most of the rest, a survey and so a personal view;
+arbitrators cancels most of the rest, a survey and so a personal view;
 (5) *spot re-adjudication* — a sample re-decided blind by another
-adjudicator as an audit, no money moving, agreement as quality (the ICC
+arbitrator as an audit, no money moving, agreement as quality (the ICC
 Court's scrutiny of draft awards is a soft version). **For the default:**
 named identity (which also covers the end-game bribe: fraud is not immune),
 accreditation (2), and each maker's own past choices (1) — nothing the
 protocol counts. (3)–(5) are services an accreditor or a reputation provider
 may run and a client may fold into a personal score (hansa's personalised
-trust score, deferred). A brand-new pseudonymous adjudicator has none of
+trust score, deferred). A brand-new pseudonymous arbitrator has none of
 these, which is where the optional bonded ladder still earns its place.
 
 *Built the same day, in four steps:* the approval block says who would rule
-a claim on a deposit; key cards (`key/<address>`, `loop keycard`) let anyone
-seal to an adjudicator with no offer; the case — claim, answer, ruling with
+a claim on a deposit; contact cards (`key/<address>`, `loop contact-card`) let anyone
+seal to an arbitrator with no offer; the case — claim, answer, ruling with
 reasons — travels sealed through the book (`case.py`; `loop claim`,
 `answer`, `hold`, `rule`, `cases`), the escrow's key-resolver `hold` and
-`resolve` moving the money; and `loop adjudicators` is the personal view of
-signal (1), with the accreditation each adjudicator presents (`reputation.py`).
+`resolve` moving the money; and `loop arbitrators` is the personal view of
+signal (1), with the accreditation each arbitrator presents (`reputation.py`).
 No contract changed.
 
 *(Peter and the assistant, 2026-09-29; direction, not built.)* The resolver

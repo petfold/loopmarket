@@ -141,8 +141,8 @@ _SETTINGS = {
         "a give's declared bond there (empty: a declaration only)"),
     "trust": _Setting(
         "LOOP_TRUST", "", "--trust KEYS",
-        "makers whose choices of adjudicators I count beside my own in "
-        "`loop adjudicators` (a personal view: never a gate)"),
+        "makers whose choices of arbitrators I count beside my own in "
+        "`loop arbitrators` (a personal view: never a gate)"),
     "registers": _Setting(
         "LOOP_REGISTERS", "", "--registers ID=SPEC...",
         "registers I read (R3a) beyond those announced under the register "
@@ -174,7 +174,7 @@ _SETTINGS = {
         "evidence period plus its rung's ruling period; 0: the resolver's own"),
     "arbitrator": _Setting(
         "LOOP_ARBITRATOR", "", "--arbitrator ADDRESS",
-        "the adjudicator my gives name for claims on their deposit — by "
+        "the arbitrator my gives name for claims on their deposit — by "
         "default one key both sides accept, whose ruling is final (chosen by "
         "reputation or accreditation); factbond's Assertions, a bonded "
         "ladder, is the option for higher stakes among strangers; never "
@@ -2046,10 +2046,10 @@ def _door_notes(offer: Offer) -> list[str]:
     return notes
 
 
-def _adjudicator_notes(offer: Offer) -> list[str]:
+def _arbitrator_notes(offer: Offer) -> list[str]:
     """Who would rule a claim on a deposit, said in the block that approves
-    it (2026-10-01, Peter: the default is one named adjudicator both sides
-    accept, final): a give whose deposit names no adjudicator leaves it to
+    it (2026-10-01, Peter: the default is one named arbitrator both sides
+    accept, final): a give whose deposit names no arbitrator leaves it to
     the clearing's own resolver; a want relying on a deposit and naming no
     acceptance takes whichever the give names."""
     from .escrow import is_address
@@ -2058,11 +2058,11 @@ def _adjudicator_notes(offer: Offer) -> list[str]:
     accepts = req is not None and req.resolvers is not None
     if offer.kind == GIVE and offer.v >= 5 and offer.bond is not None \
             and not is_address(offer.arbitrator) and not accepts:
-        notes.append("no adjudicator named: a claim on my deposit would be ruled by the clearing's "
+        notes.append("no arbitrator named: a claim on my deposit would be ruled by the clearing's "
                      "own resolver — `set arbitrator KEY` names one both sides can accept, "
                      "whose ruling is final")
     if offer.kind == WANT and req is not None and (req.point or req.ladder) and not accepts:
-        notes.append("I accept whichever adjudicator the giver names — `set require_resolvers` "
+        notes.append("I accept whichever arbitrator the giver names — `set require_resolvers` "
                      "chooses (keys, or root: for those accredited by a register I trust)")
     return notes
 
@@ -2075,7 +2075,7 @@ def _publish_offers(session: Session, items, reused: bool, out, addresses=()) ->
         if i:
             print("and", file=out)
         print(render_offer(offer), file=out)
-        for note in notes + _door_notes(offer) + _adjudicator_notes(offer):
+        for note in notes + _door_notes(offer) + _arbitrator_notes(offer):
             print(f"  note     {note}", file=out)
     for address in addresses:
         print(f"  note     handoff {address} — sealed to the counterparty "
@@ -2867,7 +2867,7 @@ def _notices_path(loop: str, oid: str, kind: str) -> str:
 
 def _public_key_of(fold, offer_id: str) -> bytes:
     """The public key of an offer's maker: the offer's own signature, else
-    the maker's key card."""
+    the maker's contact card."""
     from .sigs import recover_public_key
     sig = fold.signature(offer_id)
     if sig is not None:
@@ -2876,34 +2876,34 @@ def _public_key_of(fold, offer_id: str) -> bytes:
 
 
 def _public_key_for(fold, address: str) -> bytes:
-    """A key's public key, to seal to it: its key card (`loop keycard`),
+    """A key's public key, to seal to it: its contact card (`loop contact-card`),
     else a signature on any of its offers in the fold."""
-    from .sigs import key_card_public_key, recover_public_key
-    card = fold.key_card(address)
+    from .sigs import contact_card_public_key, recover_public_key
+    card = fold.contact_card(address)
     if card is not None:
-        return key_card_public_key(address, card)
+        return contact_card_public_key(address, card)
     for o in fold.offers(include_filled=True):
         if o.maker.lower() == address.lower():
             sig = fold.signature(o.offer_id)
             if sig is not None:
                 return recover_public_key(o.offer_id, sig)
-    raise ValueError(f"{address} has no public key here: no key card (`loop keycard` in its book) "
+    raise ValueError(f"{address} has no public key here: no contact card (`loop contact-card` in its book) "
                      f"and no signed offer")
 
 
-def cmd_keycard(args, session, out):
-    """Write my key card into my book (2026-10-01): a signature over a fixed
+def cmd_contact_card(args, session, out):
+    """Write my contact card into my book (2026-10-01): a signature over a fixed
     message naming my address, so anyone may seal to me — a claim to me as
-    an adjudicator, a notice when I have no signed offer — with no key
+    an arbitrator, a notice when I have no signed offer — with no key
     registry. Needs bee_signer."""
-    from .sigs import sign_key_card
+    from .sigs import sign_contact_card
     signer = _configured("bee_signer")
     if not signer:
-        raise ValueError("a key card is signed with my key: set bee_signer")
-    address, sig = sign_key_card(signer)
-    session.book.publish_key_card(address, sig)
+        raise ValueError("a contact card is signed with my key: set bee_signer")
+    address, sig = sign_contact_card(signer)
+    session.book.publish_contact_card(address, sig)
     session.book.commit()
-    print(f"key card for {address} in my book", file=out)
+    print(f"contact card for {address} in my book", file=out)
     return 0
 
 
@@ -2916,7 +2916,7 @@ def _leg_with(fold, loop: str, give_id: str) -> dict:
     raise ValueError(f"loop {loop[:16]}… is not in the fold, or took nothing from {give_id[:12]}")
 
 
-# ---------------------------------------------------------------- a case before one adjudicator
+# ---------------------------------------------------------------- a case before one arbitrator
 
 def _cases_path(loop: str, oid: str, kind: str, to: str) -> str:
     folder = os.path.join(_home_dir(), "cases")
@@ -2949,12 +2949,12 @@ def _resolver_is_key(client, resolver: str) -> bool:
 
 
 def cmd_claim(args, session, out):
-    """As the wanter of a reservation whose resolver is one named adjudicator
+    """As the wanter of a reservation whose resolver is one named arbitrator
     (a key, the default since 2026-10-01): claim AMOUNT of it — `all`, `N%`,
-    `NxDAI`, or an amount on my scale — sealed to the adjudicator and to
+    `NxDAI`, or an amount on my scale — sealed to the arbitrator and to
     the giver (due process: the accused sees the claim), with `--evidence`
     and `--text`; the notice it follows is named when my book holds one.
-    The adjudicator then holds the reservation and rules. A reservation
+    The arbitrator then holds the reservation and rules. A reservation
     whose resolver is a contract (factbond's ladder) is claimed there."""
     from .case import claim_record, ref
     client = _escrow_client(session)
@@ -2982,8 +2982,8 @@ def cmd_claim(args, session, out):
                           notice_ref=notice_ref, text=args.text or "")
     sent = _case_to(session, fold, loop, oid, "claim", record, [r["resolver"], giver])
     print(f"claim    {_num(Fraction(amount, 10 ** 18))} on {oid[:12]} in loop {loop[:16]}… sent to "
-          f"{', '.join(sent)} (ref {ref(record)[:12]}); the adjudicator {r['resolver']} holds and rules"
-          + ("" if notice_ref else " — no notice sent first: the adjudicator may refuse a claim the "
+          f"{', '.join(sent)} (ref {ref(record)[:12]}); the arbitrator {r['resolver']} holds and rules"
+          + ("" if notice_ref else " — no notice sent first: the arbitrator may refuse a claim the "
              "giver had no chance to cure (`loop notice`)"), file=out)
     return 0
 
@@ -3003,7 +3003,7 @@ def _claim_to_me(session, fold, loop: str, oid: str) -> dict:
 
 def cmd_answer(args, session, out):
     """As the giver: answer the claim on my reservation — `--evidence`,
-    `--text` — sealed to the adjudicator and to the claimant."""
+    `--text` — sealed to the arbitrator and to the claimant."""
     from .case import answer_record, ref
     client = _escrow_client(session)
     oid, loop = _reservation_ref(session, args.offer, args.loop)
@@ -3018,20 +3018,20 @@ def cmd_answer(args, session, out):
 
 
 def cmd_hold(args, session, out):
-    """As the adjudicator named on a reservation: a claim is open, the quiet
+    """As the arbitrator named on a reservation: a claim is open, the quiet
     timeout stops (the escrow's `hold`, my key's own act)."""
     client = _escrow_client(session)
     oid, loop = _reservation_ref(session, args.offer, args.loop)
     r = client.reservation(oid, loop)
     if r["resolver"].lower() != client.account().address.lower():
-        raise ValueError(f"I am not this reservation's adjudicator ({r['resolver']})")
+        raise ValueError(f"I am not this reservation's arbitrator ({r['resolver']})")
     receipt = client.hold(oid, loop)
     print(f"held     {oid[:12]} in loop {loop[:16]}…: the claim is open, gas {receipt['gasUsed']}", file=out)
     return 0
 
 
 def cmd_rule(args, session, out):
-    """As the adjudicator: rule AMOUNT of the reservation to the wanter —
+    """As the arbitrator: rule AMOUNT of the reservation to the wanter —
     `all`, `N%`, `NxDAI`, `0`, or an amount on my scale — final; the escrow
     pays it less any deductible and the rest to the giver, and my reasons
     (`--reason`, required) go sealed to both parties. Holds first if no
@@ -3043,7 +3043,7 @@ def cmd_rule(args, session, out):
     oid, loop = _reservation_ref(session, args.offer, args.loop)
     r = client.reservation(oid, loop)
     if r["resolver"].lower() != client.account().address.lower():
-        raise ValueError(f"I am not this reservation's adjudicator ({r['resolver']})")
+        raise ValueError(f"I am not this reservation's arbitrator ({r['resolver']})")
     if r["settled"]:
         raise ValueError("the reservation is settled: nothing to rule on")
     amount = 0 if args.amount.strip() == "0" else _asset_amount(args.amount, r["amount"])
@@ -3107,9 +3107,9 @@ def cmd_cases(args, session, out):
     return 0 if rows else 1
 
 
-def cmd_adjudicators(args, session, out):
-    """A personal view of adjudicators (2026-10-01, `counterparty-gate.md`
-    §7a): every adjudicator named on an escrow reservation where I or a
+def cmd_arbitrators(args, session, out):
+    """A personal view of arbitrators (2026-10-01, `counterparty-gate.md`
+    §7a): every arbitrator named on an escrow reservation where I or a
     maker I trust (`--trust KEYS`, else the `trust` setting) was a party —
     the legs, its rulings, who among us lost a ruling under it and chose it
     again (the one choice a loser makes that a winner cannot fake for them),
@@ -3155,7 +3155,7 @@ def cmd_adjudicators(args, session, out):
         for st, _ in fold.statements(a.key):
             print(f"  presents {st.category} ({st.kind}, by {st.issuer}): {_statement_state(st, regs)}", file=out)
     if not rows:
-        print(f"no adjudicator named on a reservation of mine or of {len(circle) - 1} maker(s) I trust", file=out)
+        print(f"no arbitrator named on a reservation of mine or of {len(circle) - 1} maker(s) I trust", file=out)
     return 0 if rows else 1
 
 
@@ -4402,14 +4402,14 @@ loop — the loopmarket command line (docs/plans/cli.md)
                              NxDAI, or on my scale) my signature of a split, the second settling
   loop extend-claim OFFER DURATION [--loop L]  as the giver: lengthen the claim period
   loop collect [--check]     payouts my address refused, waiting for me
-  loop keycard               write my key card into my book: anyone may seal to me
+  loop contact-card          write my contact card (my public key) into my book: anyone may seal to me
   loop claim OFFER AMOUNT [--evidence R] [--text T] [--loop L]
-                             as the wanter: claim on a reservation before its named adjudicator
+                             as the wanter: claim on a reservation before its named arbitrator
   loop answer OFFER [--evidence R] [--text T] [--loop L]   as the giver: answer the claim
-  loop hold OFFER [--loop L]   as the adjudicator: the claim is open, the timeout stops
-  loop rule OFFER AMOUNT --reason TEXT [--loop L]   as the adjudicator: rule, final
+  loop hold OFFER [--loop L]   as the arbitrator: the claim is open, the timeout stops
+  loop rule OFFER AMOUNT --reason TEXT [--loop L]   as the arbitrator: rule, final
   loop cases                 the claims, answers and rulings involving me
-  loop adjudicators [--trust KEYS]   a personal view: adjudicators my circle chose,
+  loop arbitrators [--trust KEYS]   a personal view: arbitrators my circle chose,
                              their rulings, who lost under one and chose it again
   loop cred [SUBJECT]        statements presented about SUBJECT (me), with their state
   loop cred present FILE     present a statement about me in my book
@@ -4571,8 +4571,8 @@ def build_parser():
     p = sub.add_parser("collect", add_help=False)
     p.add_argument("--check", action="store_true")
     p.set_defaults(func=cmd_collect)
-    p = sub.add_parser("keycard", add_help=False)
-    p.set_defaults(func=cmd_keycard)
+    p = sub.add_parser("contact-card", add_help=False)
+    p.set_defaults(func=cmd_contact_card)
     p = sub.add_parser("claim", add_help=False)
     p.add_argument("offer"); p.add_argument("amount")
     for flag in ("--loop", "--evidence", "--text"):
@@ -4592,9 +4592,9 @@ def build_parser():
     p.set_defaults(func=cmd_rule)
     p = sub.add_parser("cases", add_help=False)
     p.set_defaults(func=cmd_cases)
-    p = sub.add_parser("adjudicators", add_help=False)
+    p = sub.add_parser("arbitrators", add_help=False)
     p.add_argument("--trust", default=None)
-    p.set_defaults(func=cmd_adjudicators)
+    p.set_defaults(func=cmd_arbitrators)
     p = sub.add_parser("cred", add_help=False)
     p.add_argument("action", nargs="?", default=None)
     p.add_argument("rest", nargs="*")

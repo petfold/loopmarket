@@ -1,9 +1,9 @@
-"""A case before one named adjudicator (2026-10-01, Peter: the default
-resolver of a leg is one adjudicator both sides accept, final). On a local
+"""A case before one named arbitrator (2026-10-01, Peter: the default
+resolver of a leg is one arbitrator both sides accept, final). On a local
 EVM: a giver's deposit reserved for a wanter with a plain key as resolver;
-the adjudicator has no offer, only a key card. The wanter claims — sealed
-to the adjudicator and to the giver; the giver sees it and answers; the
-adjudicator holds and rules with reasons, the escrow pays the ruling and
+the arbitrator has no offer, only a contact card. The wanter claims — sealed
+to the arbitrator and to the giver; the giver sees it and answers; the
+arbitrator holds and rules with reasons, the escrow pays the ruling and
 the rest back; each party's `watch` reports what was sealed to it. The
 wrong party is refused at every act, and a reservation whose resolver is a
 contract (a bonded ladder) is claimed there, not here."""
@@ -54,7 +54,7 @@ def test_a_claim_is_answered_and_ruled_through_the_book_and_paid_by_the_escrow(e
 
     for who in ("giver", "wanter", "judge"):                 # the judge has no offer: its card is how to reach it
         as_(who)
-        assert "key card" in run.ok("keycard")
+        assert "contact card" in run.ok("contact-card")
     offer, loop = "a1" * 32, "b2" * 32
     client("giver").deposit(offer, 2 * 10 ** 18)
     now = w3.eth.get_block("latest")["timestamp"]
@@ -81,7 +81,7 @@ def test_a_claim_is_answered_and_ruled_through_the_book_and_paid_by_the_escrow(e
     # the judge sees both, and rules — nobody else can
     as_("wanter")
     code, out, err = run("rule", *ref[:1], "1xDAI", *ref[1:], "--reason", "mine")
-    assert code != 0 and "not this reservation's adjudicator" in err
+    assert code != 0 and "not this reservation's arbitrator" in err
     as_("judge")
     out = run.ok("watch", "--once")
     assert "claims 0.6" in out and "answers the claim" in out
@@ -109,7 +109,7 @@ def test_a_claim_is_answered_and_ruled_through_the_book_and_paid_by_the_escrow(e
     client("clearing").reserve(offer, loop3, addr["wanter"], addr["judge"], 10 ** 17,
                                window=(now + 3600, now + 7200), claim_seconds=86_400)
     as_("wanter")
-    out = run.ok("adjudicators", "--trust", addr["giver"])
+    out = run.ok("arbitrators", "--trust", addr["giver"])
     assert f"{addr['judge']}: named in 2 leg(s) of my circle (2 mine)" in out
     assert "rulings: 0.4 of 1 to the wanter" in out and "chosen again after losing under it by: nobody" in out
 

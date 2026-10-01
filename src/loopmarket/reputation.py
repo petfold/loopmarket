@@ -1,14 +1,14 @@
-"""A personal view of adjudicators (2026-10-01, `counterparty-gate.md` §7a):
-what a maker can see for itself about the adjudicators it and the makers it
+"""A personal view of arbitrators (2026-10-01, `counterparty-gate.md` §7a):
+what a maker can see for itself about the arbitrators it and the makers it
 trusts have chosen — never a score the protocol reads.
 
-An adjudicator's parties are no witnesses to its quality — the winner is
+An arbitrator's parties are no witnesses to its quality — the winner is
 always satisfied and the loser almost never — and every count is
 manufactured by puppet trades (U12, THREATS T16). What remains readable is
 the choice made before a dispute, when neither side knew who would lose,
-and its strongest form: a party who lost a ruling under an adjudicator and
+and its strongest form: a party who lost a ruling under an arbitrator and
 chose it again. Restricted to me and the makers I name as trusted, a puppet
-gains nothing: it can only flatter an adjudicator in front of makers who
+gains nothing: it can only flatter an arbitrator in front of makers who
 already trusted the puppet.
 
 From the escrow's log: `Reserved` names each fill's wanter and resolver,
@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class Adjudicator:
+class Arbitrator:
     """What `view` reports about one resolver."""
 
     key: str
@@ -42,22 +42,22 @@ def _key(offer: str, loop: str) -> str:
     return reservation_key(offer, loop)
 
 
-def view(reserved, settled, deposited, *, me: str, trusted=(), posted=None) -> list[Adjudicator]:
-    """Every adjudicator named on a reservation where I or a trusted maker
+def view(reserved, settled, deposited, *, me: str, trusted=(), posted=None) -> list[Arbitrator]:
+    """Every arbitrator named on a reservation where I or a trusted maker
     was a party: the legs, the rulings, and which of us lost a ruling under
     it and chose it again afterwards. Sorted by key (U6: the same log, the
     same view)."""
     circle = {me.lower(), *(t.lower() for t in trusted)}
     giver_of = {d["offer"].removeprefix("0x"): d["giver"] for d in deposited}
     ended = {s["key"].removeprefix("0x"): s for s in settled}
-    out: dict[str, Adjudicator] = {}
+    out: dict[str, Arbitrator] = {}
     losses: dict[tuple[str, str], int] = {}           # (resolver, maker) -> time of the first loss
     for r in sorted(reserved, key=lambda r: (r["time"], r["block"])):
         offer, loop = r["offer"].removeprefix("0x"), r["loop"].removeprefix("0x")
         wanter, giver, resolver = r["wanter"], giver_of.get(offer, ""), r["resolver"]
         if not ({wanter.lower(), giver.lower()} & circle):
             continue
-        a = out.setdefault(resolver.lower(), Adjudicator(resolver))
+        a = out.setdefault(resolver.lower(), Arbitrator(resolver))
         a.legs.append((wanter, giver, r["time"]))
         for maker in (wanter, giver):
             lost_at = losses.get((resolver.lower(), maker.lower()))

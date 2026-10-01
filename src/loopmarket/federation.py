@@ -284,16 +284,16 @@ class Aggregator:
                     continue
                 staged.put(key, rec)
             elif key.startswith(KEY):
-                # a key card is its owner's speech about its own key, in its
+                # a contact card is its owner's speech about its own key, in its
                 # own book: the address the key names, the signature its own
                 reason = "" if role == MAKER and key[len(KEY):] == owner.lower() else \
-                    "a key card for another key than the book's owner"
+                    "a contact card for another key than the book's owner"
                 if not reason:
                     try:
-                        from .sigs import key_card_public_key
-                        key_card_public_key(owner, rec)
+                        from .sigs import contact_card_public_key
+                        contact_card_public_key(owner, rec)
                     except Exception:            # noqa: BLE001 — unreadable or forged
-                        reason = "a key card that does not recover to the book's owner"
+                        reason = "a contact card that does not recover to the book's owner"
                 if reason:
                     reject(key, reason)
                     continue

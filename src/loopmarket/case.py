@@ -1,8 +1,8 @@
-"""A case before one named adjudicator (2026-10-01, Peter: the default
-resolver of a leg is one adjudicator both sides accept, whose ruling is
+"""A case before one named arbitrator (2026-10-01, Peter: the default
+resolver of a leg is one arbitrator both sides accept, whose ruling is
 final — commercial arbitration's model; `counterparty-gate.md` §7a).
 
-The escrow already gives such an adjudicator its two acts: a key named as a
+The escrow already gives such an arbitrator its two acts: a key named as a
 reservation's resolver `hold`s it (the quiet timeout stops) and `resolve`s
 it, finally. What the book adds is the case between them, carried like a
 notice — sealed to each recipient beside a salted commitment, in the
@@ -10,10 +10,10 @@ writer's own book, admitted by the fold only as the writer's speech:
 
     case/<loop>/<offer>/claim/<to>    the wanter's claim: an amount of the
                                        reservation, its evidence, the notice it
-                                       follows — to the adjudicator and the giver
-    case/<loop>/<offer>/answer/<to>   the giver's answer — to the adjudicator
+                                       follows — to the arbitrator and the giver
+    case/<loop>/<offer>/answer/<to>   the giver's answer — to the arbitrator
                                        and the claimant
-    case/<loop>/<offer>/ruling/<to>   the adjudicator's reasons — to both
+    case/<loop>/<offer>/ruling/<to>   the arbitrator's reasons — to both
                                        parties; the money moves on chain
 
 Each party sees what the other submitted (the claim goes to the giver, the
@@ -23,7 +23,7 @@ a permanent public store would make it a public accusation, decided or not
 (factbond THREATS T17); a party who wants reasons read by peers — the
 reputation signal of `counterparty-gate.md` §7a — discloses the opening.
 Keys are handoff's (ECIES over secp256k1, the `sig` extra, loaded lazily:
-B1); a key with no signed offer is sealed to through its key card.
+B1); a key with no signed offer is sealed to through its contact card.
 """
 
 from __future__ import annotations
@@ -51,10 +51,10 @@ def answer_record(author: str, claim_ref: str, *, time: int, evidence_ref: str =
             "evidence_ref": evidence_ref, "text": text}
 
 
-def ruling_record(adjudicator: str, claim_ref: str, to_wanter: int, *, time: int, reason: str) -> dict:
-    """The adjudicator's ruling and its reasons; the payout is the escrow's
+def ruling_record(arbitrator: str, claim_ref: str, to_wanter: int, *, time: int, reason: str) -> dict:
+    """The arbitrator's ruling and its reasons; the payout is the escrow's
     `resolve`, this the record of why."""
-    return {"v": VERSION, "kind": "ruling", "adjudicator": adjudicator, "claim_ref": claim_ref,
+    return {"v": VERSION, "kind": "ruling", "arbitrator": arbitrator, "claim_ref": claim_ref,
             "to_wanter": int(to_wanter), "time": int(time), "reason": reason}
 
 

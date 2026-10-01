@@ -11,8 +11,8 @@ Layout (one book = one RecordStore, one root reference per version):
                                         the book owner's key, presented for the counterparty gate
                                         (v6, R2, 2026-09-29; counterparty-gate.md §3.2)
     case/<loop_id>/<offer_id>/<kind>/<to> -> a sealed claim, answer or ruling before one named
-                                        adjudicator, to one recipient (case.py, 2026-10-01)
-    key/<address>                    -> a key card: a signature over a fixed message naming the
+                                        arbitrator, to one recipient (case.py, 2026-10-01)
+    key/<address>                    -> a contact card: a signature over a fixed message naming the
                                         address, so anyone may seal to the key (sigs.py, 2026-10-01)
     withdraw/<offer_id>              -> 1  (monotone tombstone: offer closed)
     fill/<offer_id>                  -> {"loop": <loop_id>, "qty": <taken>} for a give taken whole,
@@ -186,16 +186,16 @@ class OfferRegistry:
         key = SIG + offer_id
         return self.store.get(key) if self.store.contains(key) else None
 
-    def publish_key_card(self, address: str, sig_hex: str) -> None:
-        """Store a key card (`sigs.sign_key_card`) under `key/<address>`: the
+    def publish_contact_card(self, address: str, sig_hex: str) -> None:
+        """Store a contact card (`sigs.sign_contact_card`) under `key/<address>`: the
         key's public key, recoverable by anyone who wants to seal to it — an
-        adjudicator's, a register's, a maker's with no signed offer yet. Fail
+        arbitrator's, a register's, a maker's with no signed offer yet. Fail
         closed: a card that does not recover to its address is refused."""
-        from .sigs import key_card_public_key
-        key_card_public_key(address, sig_hex)
+        from .sigs import contact_card_public_key
+        contact_card_public_key(address, sig_hex)
         self.store.put(KEY + address.lower(), sig_hex)
 
-    def key_card(self, address: str) -> str | None:
+    def contact_card(self, address: str) -> str | None:
         key = KEY + address.lower()
         return self.store.get(key) if self.store.contains(key) else None
 

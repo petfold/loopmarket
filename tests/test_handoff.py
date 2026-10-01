@@ -80,21 +80,21 @@ def test_registry_handoff_needs_the_fill_and_folds_only_for_its_owner():
         == "handoff for an offer this book does not own"
 
 
-def test_a_key_card_proves_a_public_key_with_no_offer_and_folds_only_in_its_owners_book():
-    """Key cards (2026-10-01): a signature over a fixed message naming the
+def test_a_contact_card_proves_a_public_key_with_no_offer_and_folds_only_in_its_owners_book():
+    """Contact cards (2026-10-01): a signature over a fixed message naming the
     address, so anyone may seal to a key that never signed an offer — an
-    adjudicator's, a register's. The book refuses a card for another key;
+    arbitrator's, a register's. The book refuses a card for another key;
     the fold admits a card only in its owner's own book."""
-    from loopmarket.sigs import key_card_public_key, sign_key_card
-    address, card = sign_key_card(KEY_A)
-    assert address == A and key_card_public_key(A, card) == public_key_of(KEY_A)
+    from loopmarket.sigs import contact_card_public_key, sign_contact_card
+    address, card = sign_contact_card(KEY_A)
+    assert address == A and contact_card_public_key(A, card) == public_key_of(KEY_A)
     with pytest.raises(ValueError):
-        key_card_public_key(B, card)                        # a card names its own key
+        contact_card_public_key(B, card)                        # a card names its own key
     blobs = MemoryBytesStore()
     book_a, book_b = OfferRegistry(RecordStore(blobs)), OfferRegistry(RecordStore(blobs))
-    book_a.publish_key_card(A, card)
+    book_a.publish_contact_card(A, card)
     with pytest.raises(ValueError):
-        book_b.publish_key_card(B, card)                    # A's card offered as B's
+        book_b.publish_contact_card(B, card)                    # A's card offered as B's
     book_b.store.put(f"key/{A.lower()}", card)              # a copy of A's card in B's book
     for b in (book_a, book_b):
         b.commit()
@@ -103,15 +103,15 @@ def test_a_key_card_proves_a_public_key_with_no_offer_and_folds_only_in_its_owne
     agg.announce(B, book_b.store, role=MAKER)
     manifest = agg.fold()
     folded = OfferRegistry(RecordStore(blobs, root=manifest.book_root))
-    assert folded.key_card(A) == card and folded.key_card(B) is None
+    assert folded.contact_card(A) == card and folded.contact_card(B) is None
     prov = RecordStore(blobs, root=manifest.provenance_root)
-    assert prov.get(f"reject/{B}/key/{A.lower()}")["reason"] == "a key card for another key than the book's owner"
+    assert prov.get(f"reject/{B}/key/{A.lower()}")["reason"] == "a contact card for another key than the book's owner"
     # sealing to a key known only by its card
     from loopmarket import cli
     assert cli._public_key_for(folded, A) == public_key_of(KEY_A)
     with pytest.raises(ValueError, match="no public key here"):
         cli._public_key_for(folded, B)
-    assert open_(seal("to the adjudicator", cli._public_key_for(folded, A)), KEY_A) == "to the adjudicator"
+    assert open_(seal("to the arbitrator", cli._public_key_for(folded, A)), KEY_A) == "to the arbitrator"
 
 
 # ------------------------------------------------------------------ the CLI
