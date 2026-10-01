@@ -66,6 +66,18 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Fixed
 
+- **A door requirement clears on chain** (2026-10-01, Peter's decision 11).
+  `require_door possession` wrote the level's name,
+  `door-at-least-possession`, which the off-chain gate expands but the
+  on-chain verifier compares by exact name, so an honest leg against a
+  give declaring `possession` was refused and `ChainClearing` never posted
+  it. The record now lists the types the level stands for
+  (`photo-match`, `possession`; `photo` writes `photo-match`), the
+  approval block still says "door at least possession", and
+  `accepted_types` still reads a level's name. A want lists today's types
+  and lapses with its validity; a new door type joins `DOOR_LEVELS`, and
+  later wants list it. Pinned on a local EVM
+  (`tests/test_loop_verifier.py`, beside `registry-transfer(ID)`).
 - **A leg too large to verify in one call is never posted** (2026-09-29).
   The dry run now tells a revert without a reason — the verification
   running out of gas — from a node refusing the call: `OUT_OF_GAS`, which

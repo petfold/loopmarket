@@ -580,7 +580,7 @@ refused.
 |---|---|
 | `witness.respond(challenge, bound_id, private_key_hex)` / `witness.signer(challenge, bound_id, response)` / `DoorCheck()` | the `possession` witness: a fresh challenge signed with the bound id; `DoorCheck` spends a challenge on its first response |
 | `witness.photo_commitment(photo, salt)` / `photo_opens(commitment, photo, salt)` | the `photo-match` witness: the attester's salted commitment opened at the door |
-| `witness.accepted_types(names)` / `DOOR_LEVELS` | a requirement's door level as a cumulative category |
+| `witness.accepted_types(names)` / `DOOR_LEVELS` | a door level as a cumulative category; the CLI writes the types a level stands for into the record (the chain compares exact names), and `accepted_types` still reads a level's name |
 | `witness.countersign_ready(give, *, possession=False, photo_confirmed=False) -> str` | why a countersign is not yet due, or `""` |
 | `notice.notice_record(...)` / `cure_record(...)` / `sealed(record, *, sender, recipient, recipient_public_key)` / `read(side, private_key_hex)` / `opens(side, opening)` | a notice before a claim and its cure, factbond's shape, sealed to the other party beside a salted commitment anyone checks once opened |
 | `notice.lapsed(gives, statements_of, registers)` / `gives_of(loop_record, book)` | the relied-on statements revoked or suspended since clearing — the watch's re-check |

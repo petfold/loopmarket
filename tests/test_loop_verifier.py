@@ -344,3 +344,38 @@ def test_a_v7_deposit_counts_on_chain_only_as_far_as_it_can_pay(face):
         else:
             with pytest.raises(Exception, match="deposit share below"):
                 verifier.functions.verifyLeg(beat, args).call()
+
+
+def test_a_door_requirement_verifies_on_chain_as_the_types_it_lists(face):
+    """The chain checks a give's witness type against a want's list by exact
+    name (2026-10-01): a want listing the types a door level stands for —
+    what the command line writes for `require_door possession` — verifies
+    against a give declaring possession and convicts a countersign give,
+    while a level's name in a record would refuse the honest leg (why the
+    command line no longer writes one); a title register's
+    `registry-transfer(ID)` passes the same way."""
+    from loopmarket import Requires
+    w3, verifier = face
+    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    H = "ab" * 32
+    cases = [(("photo-match", "possession"), "possession", True), (("photo-match", "possession"), "countersign", False),
+             (("photo-match",), "possession", False), (("door-at-least-possession",), "possession", False),
+             (("registry-transfer(0xREG)",), "registry-transfer(0xREG)", True)]
+    pairs = []
+    for n, (req, oracle, _) in enumerate(cases):
+        pairs.append((want(f"w{n}", Thing(("car", f"item({H})"), 1, "car"), 60, **V, **pins, nonce=n,
+                           requires=Requires(oracles=req)),
+                      give(f"g{n}", Thing(("car", f"item({H})"), 1, "car"), 45, **V, **pins, nonce=n, oracle=oracle)))
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    book.publish_many([o for p in pairs for o in p]); book.commit()
+    snap = OfferRegistry(RecordStore.at(book.store.root, book.store.blobs))
+    makers = [o.maker.encode() for p in pairs for o in p]
+    verifier.functions.setPotentials(makers, [1] * len(makers), [1] * len(makers)).transact()
+    beat = _beat(book.store.root, pins)
+    for (w, g), (req, oracle, verifies) in zip(pairs, cases):
+        args = _leg_args(snap, None, {"want": w.offer_id, "gives": [g.offer_id], "taken": ["1"]})
+        if verifies:
+            assert verifier.functions.verifyLeg(beat, args).call()[0] == w.maker.encode(), (req, oracle)
+        else:
+            with pytest.raises(Exception, match="witness type not accepted"):
+                verifier.functions.verifyLeg(beat, args).call()

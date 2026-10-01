@@ -1464,7 +1464,9 @@ def test_the_door_witness_defaults_to_possession_and_the_photo_says_what_it_cost
     run.ok("set", "require_door", "possession")
     out = run.ok("want", "apple", "9")
     w = run.session.book.get(out.strip().splitlines()[-1])
-    assert w.requires.oracles == ("door-at-least-possession",) and "T19" not in out
+    # the record lists the types the level stands for: the chain checks exact names (2026-10-01)
+    assert w.requires.oracles == ("photo-match", "possession") and "T19" not in out
+    assert "oracle door at least possession" in out
     ont = run.session.catalogue
     counter = lambda oracle: give("0x" + "99" * 20, w.thing, 5, valid=w.valid, nonce=1, oracle=oracle,
                                   ontology_root=w.ontology_root, registry_version=w.registry_version,
@@ -1476,6 +1478,7 @@ def test_the_door_witness_defaults_to_possession_and_the_photo_says_what_it_cost
     out = run.ok("want", "apple", "8")
     assert "requires the counterparty's photo at the door" in out
     photo_want = run.session.book.get(out.strip().splitlines()[-1])
+    assert photo_want.requires.oracles == ("photo-match",)
     assert check_match(counter("possession"), photo_want, ont, now=NOW) is None
     run.ok("set", "require_door", "")
     run.ok("set", "oracle", "photo-match")

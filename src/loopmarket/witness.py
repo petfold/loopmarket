@@ -26,9 +26,15 @@ transfer is non-performance. The register is named in the type itself, as
 a term names its argument: the wanter accepts exactly the registers she
 names, and the record needs no field for it.
 
-A requirement names a *door level*, a cumulative category, never a bare
-type (`DOOR_LEVELS`): `door-at-least-possession` is met by possession or
-photo-match, `door-at-least-photo` by photo-match alone. `countersign_ready`
+A *door level* is a cumulative category (`DOOR_LEVELS`):
+`door-at-least-possession` is met by possession or photo-match,
+`door-at-least-photo` by photo-match alone. The command line takes the
+level and writes the types it stands for into the record (2026-10-01,
+Peter): the chain checks a give's witness type against a want's list by
+exact name, so a level's name in a record would refuse an honest leg on
+chain. A want lists today's types and lapses with its validity; a new door
+type joins `DOOR_LEVELS`, and later wants list it. `accepted_types` still
+reads a level's name, for a record that carries one. `countersign_ready`
 is the settlement check: a leg whose give declares a door type may be
 countersigned only once its witness has been produced. hansa's handover
 app is the device side (`hansa.binding`); the protocol — what is signed,

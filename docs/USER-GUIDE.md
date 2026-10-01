@@ -823,7 +823,10 @@ giver declares what it settles against with `loop set oracle possession`.
 must be asked for explicitly: a photo resolves to a legal identity almost
 anywhere now, so it hands the counterparty a provable link from a face to
 a key and its whole history (THREATS T19), and the approval block of
-either side says so. Ask for it only where the stakes need it.
+either side says so. Ask for it only where the stakes need it. The record
+lists the witness types the level accepts (`photo-match possession` for
+`possession`, `photo-match` for `photo`), since that is what the clearing
+contract compares; the approval block says "door at least possession".
 
 **On chain**: a beat pins the register roots, each leg's commitment
 carries its statements, and `StatementVerifier` checks that each is

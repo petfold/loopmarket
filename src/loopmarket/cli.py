@@ -1319,7 +1319,7 @@ def render_offer(offer: Offer) -> str:
         lines.insert(-2, f"  requires point {_num(req.point)}"
                      + (f"  ladder {' '.join(f'{lead}s:{_num(a)}' for lead, a in req.ladder)}" if req.ladder else "")
                      + (f"  accepts {'; '.join(' '.join(a.concepts) + f' {a.unit} {_num(a.price)}' for a in req.accepts)}" if req.accepts else "")
-                     + (f"  oracle {' '.join(req.oracles)}" if req.oracles else "")
+                     + (f"  oracle {_oracles_text(req.oracles)}" if req.oracles else "")
                      + (f"  escrow {' '.join(req.escrows)}" if req.escrows else "")
                      + (f"  claim {_duration_text(req.claim_period)}" if req.claim_period else "")
                      + (f"  resolvers {_resolvers_text(req.resolvers)}" if req.resolvers is not None else "")
@@ -1611,8 +1611,14 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
         accepts.append(Acceptance(*default_asset()))
     escrows = tuple(t for t in (_configured("require_escrows") or "").split() if t)
     door = (_configured("require_door") or "").strip() if side == WANT else ""
-    oracles = ({"possession": ("door-at-least-possession",), "photo": ("door-at-least-photo",)}[door]
-               if door else ())
+    # the types a door level stands for, not the level's name: the chain
+    # checks a give's witness type against the want's list by exact name
+    # (LoopVerifier), so a level name would refuse an honest leg on chain
+    # (2026-10-01, Peter: a want lists today's types and lapses with its
+    # validity; a new door type joins DOOR_LEVELS and later wants list it)
+    from .witness import DOOR_LEVELS
+    oracles = (tuple(DOOR_LEVELS[{"possession": "door-at-least-possession",
+                                  "photo": "door-at-least-photo"}[door]]) if door else ())
     if side == WANT:
         oracles += tuple(f"registry-transfer({r})" for r in (_configured("require_transfer") or "").split())
     if ((resolvers is not None and resolvers.min_deposit) or any(c.min_bond for c in credentials)) \
@@ -2005,6 +2011,18 @@ def _publish_offer(session: Session, offer: Offer, notes: list[str],
     return _publish_offers(session, [(offer, notes)], reused, out, addresses)
 
 
+def _oracles_text(oracles) -> str:
+    """The witness types a requirement accepts, a door level named where
+    the types are exactly one level's (`door at least possession`)."""
+    from .witness import DOOR_LEVELS
+    names = set(oracles)
+    for level, types in DOOR_LEVELS.items():
+        if set(types) <= names:
+            rest = sorted(names - set(types))
+            return " ".join([level.replace("door-at-least-", "door at least "), *rest])
+    return " ".join(sorted(names))
+
+
 def _door_notes(offer: Offer) -> list[str]:
     """What a photo at the door gives away, said in the block that approves
     it (THREATS T19, 2026-09-29): possession is the default because it
@@ -2015,7 +2033,8 @@ def _door_notes(offer: Offer) -> list[str]:
                      "a provable link from my face to my key and every trade it made (T19); "
                      "`set oracle possession` proves control without it")
     req = offer.requires if offer.v >= 5 else None
-    if req is not None and "door-at-least-photo" in req.oracles:
+    from .witness import PHOTO_MATCH, accepted_types
+    if req is not None and accepted_types(req.oracles) == {PHOTO_MATCH}:
         notes.append("requires the counterparty's photo at the door: their face linked to their key (T19); "
                      "`set require_door possession` asks for control of the key only")
     return notes
