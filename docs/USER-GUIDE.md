@@ -581,7 +581,11 @@ these acts since its 2026-09-29 redeploy, the deductible since that
 evening's, and cover covering a reservation since that night's
 (`0xddDB7276F705671673F0885aEf93B99b890Eb5A9`,
 factbond's `Assertions` at `0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270` as its
-resolver).
+resolver). **Test amounts only:** the deployed `Assertions`' adjudicator and
+final rung (its arbiter) are both the operator's own keys — a stand-in
+until a named, independent final rung exists (Peter, 2026-10-01) — so the
+operator rules finally on every contested claim it reserved. Do not put
+real money behind it.
 
 A deposit may carry a **deductible** (v7): `loop set deductible 2` — on
 your scale, like `bond`, held in the deposit's asset at the price your
@@ -1242,7 +1246,7 @@ every session with the settings sees the same beats:
 $ loop set beat chain:https://rpc.gnosischain.com@0xC47575b57E08b389c344AaBf415606Cd0B3011d4      # BeatClearing
 $ loop set auction chain:https://rpc.gnosischain.com@0x513731eC7ca8012F296E54e1b148044c5e9B0Bd9   # SealedBeat
 $ loop set escrow chain:https://rpc.gnosischain.com@0xddDB7276F705671673F0885aEf93B99b890Eb5A9    # LoopEscrow
-$ loop set resolver 0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270                                       # factbond's Assertions
+$ loop set resolver 0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270                                       # factbond's Assertions (test amounts only: its rungs are the operator's keys)
 $ loop propose                       # clear locally, post each loop as one beat (a bond, a challenge window)
 $ loop beats --open                  # what stands
 $ loop challenge 1 --check           # rebuild the record from the submitter's book, ask the verifier, send only what convicts

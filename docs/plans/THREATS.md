@@ -586,30 +586,40 @@ encounter links (`P4-privacy.md`, open problems). Residual: any in-person
 handover shows a face to the counterparty; unlinkability, not anonymity,
 is the goal the protocol can serve.
 
-## T20 — A resolver's stake leaves after clearing (added 2026-09-29)
+## T20 — A resolver's stake is thinner than it reads (added 2026-09-29, corrected 2026-10-01)
+
+*(Corrected 2026-10-01: the first text said an adjudicator could withdraw
+its deposit after clearing and rule with nothing at stake. It cannot: with
+an arbiter above it, factbond's `rule` requires `deposits ≥ depositWei` at
+the moment of ruling, `depositWei` is fixed at construction, and a rung
+without a deposit cannot rule — its case escalates. What a maker's `min:`
+floor reads at clearing is therefore at stake on every appealable ruling.
+Three narrower gaps remain.)*
 
 **Attack.** A maker accepts resolvers by property (`counterparty-gate.md`
-§7a): at least `min_deposit` at stake on a reversed ruling. Clearing reads
-the resolver contract's rung deposit and admits it; the adjudicator then
-withdraws the deposit — factbond's `withdrawDeposit` needs only that none
-of its rulings is open to appeal — and rules on the claim with nothing at
-stake, or the owner swaps in an adjudicator with none (`setAdjudicator`
-emits no event). The floor the wanter set was true at clearing and false
-at the ruling.
+§7a). (1) *Concurrent rulings share one deposit:* `rule` checks the deposit
+covers one `depositWei` however many rulings are open, so a rung holding
+one deposit can have ten open at once and ten reversals forfeit it once.
+(2) *The adjudicator is swapped after clearing:* `setAdjudicator` (the
+owner's) emits no event, so a key accredited at clearing can be replaced by
+an unaccredited one before the claim — it still needs `depositWei` to rule,
+but the maker's `root:` acceptance is bypassed. (3) *The stake is a
+constant:* a ruling over a large reservation risks the same `depositWei` as
+one over a small reservation.
 
-**Economics.** Free to mount: the withdrawal is the adjudicator's own act,
-and the ruling it wants to bend is worth up to the reservation.
+**Economics.** (1) A bribe for many concurrent rulings costs one deposit.
+(2) Free to the owner. (3) Bites only when reservations outgrow `depositWei`.
 
-**Defense.** Partial. (1) A rung cannot rule on an appealable claim without
-`depositWei` posted (factbond's `rule` requires it), so with an arbiter a
-bent first ruling still risks a deposit — but the deposit it posts then is
-not the one the floor measured. (2) The clean record is the contract's,
-not the key's, so swapping the adjudicator does not wipe reversals.
-(3) **Not built, factbond's to add:** a withdrawal notice longer than a
-reservation's claim period, or a lock on the rung deposit while an escrow
-reservation naming the contract is open — the escrow's own rule (the
-giver leaves only after notice) applied to the resolver. Until then a
-deposit floor is a screen at clearing, not a guarantee at the ruling.
+**Defense.** The clean record is the contract's, so a swap does not wipe
+reversals, and a maker's `min:` is set against her own stake. **Ruled
+(Peter, 2026-10-01), at the factbond redeploy that names a real final
+rung (deferred the same day until real money arrives; the stand-in is
+labelled test-only):** a per-ruling lock (`rule` requires `deposits ≥
+(openRulings + 1) × depositWei`, and only the unlocked part withdraws), and
+no `setAdjudicator` (one contract per adjudicator: what a maker accepted is
+what rules; replacing an adjudicator is a new contract that new
+reservations name). (3) waits for a stake scaled to the claim, when claims
+outgrow a constant one.
 
 ## The ten fee/bond rules (by construction)
 

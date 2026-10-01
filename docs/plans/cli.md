@@ -683,6 +683,27 @@ sealed to the maker with `bee_signer`. `handoffs` lists them. `--once`
 is a predicate for scripts. Design and the harvesting argument:
 `P1-spacetime-terms.md` §4.
 
+## 15. Naming an offer in a script: local labels (decided 2026-10-01, not built)
+
+An offer's id is the hash of its record, known only after publishing, so a
+`.loop` stream cannot say "the flat I just offered" when it reaches
+`option` or `exercise` (the planned `examples/apartment.loop`: a landlord's
+flat, a viewer's option on it, the exercise). *Ruled (Peter, 2026-10-01),
+recorded and not built:* a verb, `name LABEL [ID]`, gives the offer just
+published (or ID) a local label, kept in the home like `place`'s names and
+never in a record; anywhere an offer id is accepted, an argument made only
+of hex digits is an id prefix as today, and anything else is a label
+(`option flat --until 7d`, `exercise hold 950`). No sign marks a label
+(Peter asked whether `@` was needed; it is not): `name` refuses a label
+spelled only with hex digits (`cafe`, `face`, `2026`), so a label can never
+shadow a prefix — a mistyped label is "no offer named …", a mistyped
+prefix "no such offer", neither landing on another offer — and a trailing
+number in `exercise` is always the price. Chosen over hardcoded prefixes
+under a fixed `now` (break on any record change), "the last offer" (`.`,
+one step back only), resolving by content (an id position taking a query
+is ambiguous) and a shell script for the example (leaves the `.loop`
+form).
+
 ## Open problems
 
 - ~~The binary's name~~ — `loop`, confirmed by Peter 2026-09-12.

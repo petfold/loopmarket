@@ -318,8 +318,9 @@ name factbond's redeployed `Assertions`. Hence:
    (`covers`: the cover's claim opens only after the covered reservation is
    assigned to the insurer; the payout nets what it already paid her),
    redeployed at `0xddDB…b5A9` and gated live (`scripts/gate_cover.py`).
-   Open for M4: D-1 (a false presentation reduces the payout: a ruling that
-   states an amount, factbond's decision) and D-3's doctrine (factbond's
+   Open for M4: D-1 (a false presentation reduces the payout — ruled
+   2026-10-01 as final-offer arbitration in factbond, not yet built) and
+   D-3's doctrine (factbond's
    adjudicators; its structural half holds).
 9. **Also built 2026-09-29, outside the sequence** (Peter's calls through
    the day): options made easy (a suggested window and premium, `options
@@ -342,15 +343,21 @@ name factbond's redeployed `Assertions`. Hence:
    and the `register` role — for every gate it builds);
    the inspection rules — ~~independence (E2)~~ **built the same night**
    (`matching.independence_faults`, at clearing and in the solver);
-   certificate-final (E1) **waits for Peter**: how the flag and the
-   certified categories are spelled in the `inspect` term, the report's
-   record (written after clearing, so not in the fill), and how a claim is
-   routed to the inspector's deposit or the giver's. Also built that night:
+   certificate-final (E1) **ruled 2026-10-01, recorded and not built**: the
+   inspection's catalogue category says what it certifies, a
+   `certificate-final` marker makes it final, the report travels as the
+   inspection leg's handoff, the routing is doctrine in factbond's
+   evidence policy (`items-and-ownership.md` §3). Also built that night:
    C7's `cred` and `register` verbs and `require_credentials` (the dentist
    case from the command line), and I4, the title register's transfer as
    the witness (`registry-transfer(ID)`, the register named in the type —
-   a spelling for Peter's review). Waiting on Peter: D-1's mechanism, the
-   named final rung, `examples/apartment.loop`'s naming, E1's spelling, K1.
+   ruled to stand, 2026-10-01). Waiting on Peter: ~~D-1's mechanism~~ (ruled
+   2026-10-01: final-offer arbitration, recorded in factbond, built with
+   its next redeploy), ~~the
+   named final rung~~ (ruled 2026-10-01: the stand-in stays, labelled
+   test-only; the first real one a multisig of named independent people
+   when real money arrives), ~~`examples/apartment.loop`'s naming~~ (ruled 2026-10-01: local labels,
+   `cli.md` §15), ~~E1's spelling~~ (ruled 2026-10-01), K1.
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust

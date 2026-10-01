@@ -149,8 +149,11 @@ _SETTINGS = {
     "resolver": _Setting(
         "LOOP_RESOLVER", "", "--resolver ADDRESS",
         "who resolves a contested claim on a deposit my clearing reserves: "
-        "factbond's Assertions contract once deployed (a give's declared "
-        "arbitrator wins); empty: my own key rules directly"),
+        "factbond's Assertions contract (a give's declared arbitrator wins); "
+        "empty: my own key rules directly. The deployed Assertions "
+        "0x3c1B…e270 is for test amounts only: its adjudicator and final "
+        "rung are the operator's own keys, a stand-in until a named, "
+        "independent final rung exists"),
     "escrow_claim": _Setting(
         "LOOP_ESCROW_CLAIM", "7d", "--escrow-claim DURATION",
         "how long after a leg's handover window a claim on its deposit may "

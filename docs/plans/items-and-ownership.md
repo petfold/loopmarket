@@ -114,14 +114,23 @@ inspected(dekra)`) need the composition shape of plan D4.
 
 *(applied practice review, 2026-09-25)* Two rules on inspection legs:
 
-- **Certificate-final** (plan E1; *not built — open for Peter,
-  2026-09-29 night:* the flag cannot sit inside the `inspect(...)`
-  argument, which is what the inspector accepts, so it needs its own
-  spelling — a catalogue category under `inspect`, or a role head beside
-  it, `certifies(mileage condition)`; the report is written after clearing,
-  so it is a sidecar like a handoff rather than a hash in the fill; and the
-  claim's routing to the inspector's reservation or the giver's is a rule
-  for the resolver to apply): an `inspect` term may carry
+- **Certificate-final** (plan E1; *ruled by Peter 2026-10-01, recorded and
+  not built:* (i) an inspection's catalogue category says what it
+  certifies — `mileage-check ⊑ inspect`, `roadworthiness-check ⊑ inspect`
+  — and a catalogue marker `certificate-final` makes a category under it
+  final for what it certifies, required through `requires.legs` as today
+  (the flag cannot sit inside `inspect(...)`, whose argument is what the
+  inspector accepts); (ii) the report travels as the inspection leg's
+  handoff, its Swarm reference and hash sealed to the buyer — which needs
+  the handoff lookup (`cli._leg_of`) to find an operator give, not only a
+  leg's first give; (iii) the routing is doctrine in factbond's evidence
+  policy: a claim against the seller on an attribute a certificate-final
+  inspection certified is refuted, one against the inspector's reservation
+  admissible up to its deposit, the cap in its offer. Chosen over a
+  `certifies(...)` role term, a `report/` sidecar and an escrow refusing
+  misrouted claims: routing is a judgement about which fact was false, the
+  adjudicator's anyway; structure can follow if the reversal record shows
+  misrouting): an `inspect` term may carry
   `certificate-final`, and its report enumerates the categories it
   certifies. A claim on a certified attribute is admissible only against
   the inspector's statement (its deposit or cover, capped in its offer); a
@@ -220,7 +229,7 @@ would need P4 reopened; this draft keeps derived ids.
 | I1 *(met 2026-09-29 on the prefix-kind stopgap: `items.py`, `Ontology.declare_item_heads`, `tests/test_items.py`)* | `item(h)` term: the ontodag hash kind (upstream), derived-id helpers for VIN / land register / serial | the same VIN yields the same h everywhere; a mismatched h never matches |
 | I2 *(met 2026-09-29 in memory; the key is `item/<h>/<maker>/<loop>`, see §2)* | item claim keyspace + per-item rule in registry and clearing (per maker, plan D5) | two offers by one maker on one h: the second leg refused while the first is open; admissible after performance; two makers on one h both clear, and the loser is a non-performance |
 | I3 *(met 2026-09-29 on a local EVM, `tests/test_beat_v6.py`; deployed on Gnosis the same day at `0x8beD11c07aC7aCAa542dF5B0F8db94FC6C1F72BC`: a beat commits each give's claim — an option's on its underlying's items, until the window ends — naming its leg; a challenge convicts a beat that omits or misstates one, and `finalize` cancels a beat whose claim meets the same maker's active claim through another offer, a race like an overfill; a fill's claim end is the clearing's `item/` record, bounded on chain only by the beat's time)* | item claims on chain (with `options-and-cover.md` C4) | a second claim on h in a concurrent beat is caught at finalize or by challenge |
-| I4 *(met 2026-09-29 night off chain: `witness.transfer_register`/`transfer_faults`, `Register.transfer`/`holder` over `title/<h>`, clearing admitting the type on a give that names an item, the CLI's `oracle registry-transfer(ID)`, `require_transfer`, `register transfer`, `watch` reporting the transfer and `countersign` refusing before it; `tests/test_registry_transfer.py`. The register is named in the type — `registry-transfer(ID)` — so the record needs no field; that spelling is the assistant's, for Peter's review)* | `registry-transfer` witness type | a leg naming it performs only on the witness's statement |
+| I4 *(met 2026-09-29 night off chain: `witness.transfer_register`/`transfer_faults`, `Register.transfer`/`holder` over `title/<h>`, clearing admitting the type on a give that names an item, the CLI's `oracle registry-transfer(ID)`, `require_transfer`, `register transfer`, `watch` reporting the transfer and `countersign` refusing before it; `tests/test_registry_transfer.py`. The register is named in the type — `registry-transfer(ID)` — so the record needs no field; *ruled (Peter, 2026-10-01): this spelling stands*, verified on a local EVM to pass the chain's exact-name witness check; a register implied by the item, or registers admitted by an accrediting root, can be added beside it later)* | `registry-transfer` witness type | a leg naming it performs only on the witness's statement |
 | I5 | inspection history query + "all inspections disclosed" requirement | a hidden inspection of h makes the requirement unmet |
 | I6 | `lot(h)` and recall through a register | a recalled lot's uncleared legs meet nothing; notices written for cleared ones |
 

@@ -415,7 +415,12 @@ competitive market of them, and each maker chooses which it accepts.
   domain authority for its own fact class (a chamber for licences, a land
   register for title, a ride-dispute board); a drawn-juror court for small
   stakes; a mutual's committee for the mutual's own claims. Today the
-  deployed `Assertions` names a stand-in key.
+  deployed `Assertions` names a stand-in key. *Ruled (Peter, 2026-10-01):*
+  the stand-in stays, labelled test amounts only (the user guide, the
+  `resolver` setting's help), until real money arrives; the first real
+  final rung is then a multisig of named people independent of the
+  operator — a Safe is an address, so no contract change — deployed with
+  the per-ruling lock and the fixed adjudicator (T20).
 
 *(built 2026-09-29 night, off chain: `arbitrators.py`, `tests/test_arbitrators.py`;
 on Peter's "build acceptance of arbitrators by property". The record is
@@ -441,6 +446,13 @@ build chose the conservative reading, each listed for a ruling.)*
   redeploy). *Choice 2:* `Accept` has no `max_root_age`, so its freshness
   is R5's alone — every register on the path read at its newest root by
   clearing's clock — and a gate with no newest-root reader refuses (U7).
+  *Ruled (Peter, 2026-10-01: option C, "keep it simple for now; we can
+  add features later if required"):* both conventions stand, and two
+  `Accept` fields are reserved for the next record bump that happens for
+  another reason — `category` (absent: `arbitrator` for a resolver, the
+  entry's category for a required leg) and `max_root_age` (absent: the
+  newest root by clearing's clock, no reader no pass). No bump for them
+  alone.
 - **The deposit floor (`min_deposit`).** What one reversed ruling
   forfeits, on the chain: `min(deposits(adjudicator), depositWei)`, and
   nothing when there is no arbiter (one rung: its rulings are final, the
@@ -456,7 +468,9 @@ build chose the conservative reading, each listed for a ruling.)*
   §7a's "admits every new arbitrator that meets the bar" holds for
   accreditation and deposit; a look-back admits it when its record is long
   enough. A key ruling directly has no appeal ledger and meets no
-  `clean_for`.
+  `clean_for`. *Ruled (Peter, 2026-10-01): the tenure reading stands* — a
+  track record needs a track; a maker who wants newcomers to compete sets
+  no `clean:`, and accreditation and the deposit floor admit them on day one.
 - **Both sides accept.** `require_resolvers` states one acceptance for a
   maker's wants and gives alike. A leg's resolver is the first candidate
   both admit — the give's `arbitrator`; then every key either acceptance
@@ -468,11 +482,13 @@ build chose the conservative reading, each listed for a ruling.)*
   anywhere have no candidate and meet nothing: a directory of arbitrators
   (announcements under an `arbitrator` role, say) is the missing source.
 - **Not built:** `issuance` (D8); the chain's check of any of it (resolvers are the
-  semantic half). **A gap found on the way, factbond's:** an adjudicator's
-  deposit is withdrawable whenever none of its rulings is open to appeal,
-  so a floor read at clearing may leave before the claim it was meant to
-  back — the asks are a withdrawal notice, or a lock while a reservation
-  naming the contract is open (factbond ROADMAP).
+  semantic half). **Gaps found on the way, factbond's** (THREATS T20,
+  corrected 2026-10-01: `rule` requires `depositWei` at the ruling, so the
+  floor read at clearing is at stake on every appealable ruling):
+  concurrent rulings share one deposit, and the owner can swap the
+  adjudicator after clearing. *Ruled (Peter, 2026-10-01):* a per-ruling
+  lock and one contract per adjudicator, at the factbond redeploy that
+  names a real final rung (factbond ROADMAP).
 
 ## 8. Boundaries
 
