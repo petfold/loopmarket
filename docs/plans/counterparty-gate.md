@@ -376,6 +376,49 @@ The disclosure on ruling is hansa's (its attester side); not built.
 
 ## 7a. Arbitrators as credentialed roles (discussed 2026-09-29)
 
+*(Default, Peter 2026-10-01: "make the simple form the default".)* A leg's
+resolver is, by default, **one named adjudicator both sides accept, whose
+ruling is final** — commercial arbitration's model: no ladder, no deposit,
+the adjudicator chosen by reputation or accreditation (an `Accept` by key or
+`root:`). The protocol already allows it: a give's `arbitrator`, or a want's
+accepted key, names a plain key whose `resolve` is final. factbond's bonded
+ladder (adjudicator, arbiter, deposits forfeited on reversal) becomes an
+option for makers dealing with strangers at higher stakes, where a
+pseudonymous key has no reputation to lose and a stake stands in for one.
+Real practice behind the choice: arbitrators are immune short of bad faith
+(England's Arbitration Act 1996 s.29; US courts' arbitral immunity; ICC and
+LCIA rules), awards are set aside only on narrow grounds (New York
+Convention art. V), and liability for negligence attaches to experts who
+determine (valuers, certifiers: *Sutcliffe v Thackrah*, *Arenson v
+Casson*), who carry professional indemnity — the inspector's side, not the
+adjudicator's. Losing a stake when overturned is crypto-native (Kleros).
+**What an adjudicator's reputation rests on** *(concluded with Peter the
+same day: the winner is always satisfied and the loser almost never, so
+satisfaction measures who won, and any count — of rulings, ratings,
+acceptances — is manufactured by puppet trades, U12, T16).* Five signals do
+not depend on who won: (1) *the choice before the dispute* — both makers
+accept the adjudicator at clearing, not knowing who will lose, and the
+strongest form is a maker who lost under one and names it again; a personal
+judgement ("makers I trust, who lost under X, still choose X"), never a
+global count; (2) *delegated reputation*, accreditation by a body that vets,
+keeps a disciplinary record and can strike off (the Chartered Institute of
+Arbitrators, a bar, an institution) — the `root:` acceptance, its negative
+signal revocation, not a rating; (3) *reasons read by peers* — published
+reasoned rulings, or a sample, judged by other professionals whatever the
+loser thinks, publication needing redaction or consent (T17); (4) *process,
+not outcome* — losers judge process far less by outcome than they judge the
+result (Thibaut and Walker; Tyler), and comparing losers with losers across
+adjudicators cancels most of the rest, a survey and so a personal view;
+(5) *spot re-adjudication* — a sample re-decided blind by another
+adjudicator as an audit, no money moving, agreement as quality (the ICC
+Court's scrutiny of draft awards is a soft version). **For the default:**
+named identity (which also covers the end-game bribe: fraud is not immune),
+accreditation (2), and each maker's own past choices (1) — nothing the
+protocol counts. (3)–(5) are services an accreditor or a reputation provider
+may run and a client may fold into a personal score (hansa's personalised
+trust score, deferred). A brand-new pseudonymous adjudicator has none of
+these, which is where the optional bonded ladder still earns its place.
+
 *(Peter and the assistant, 2026-09-29; direction, not built.)* The resolver
 of a reservation — the *arbitrator* (the legal term for whoever hears a
 dispute and makes an award; factbond names its ladder's rungs
