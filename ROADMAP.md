@@ -357,7 +357,9 @@ name factbond's redeployed `Assertions`. Hence:
    named final rung~~ (ruled 2026-10-01: the stand-in stays, labelled
    test-only; the first real one a multisig of named independent people
    when real money arrives), ~~`examples/apartment.loop`'s naming~~ (ruled 2026-10-01: local labels,
-   `cli.md` §15), ~~E1's spelling~~ (ruled 2026-10-01), K1.
+   `cli.md` §15), ~~E1's spelling~~ (ruled 2026-10-01), ~~K1~~ (built
+   2026-10-01 on the `k1-identifier` branches of ontodag and loopmarket,
+   merged when ontodag's `swarm-sharing` is released).
 
 - [ ] **The counterparty gate** · [design](docs/plans/counterparty-gate.md)
       — v6 `requires.counterparty` (category, kinds, deposit floor, trust
