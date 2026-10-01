@@ -9,8 +9,26 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-10-01
+
+The v6 and v7 records and everything built on them since 0.12.0: the
+counterparty gate, registers and their roots' sequence, options (holds)
+and items, cover on the escrow with the deductible, assignment and
+netting, the escrow's acts as verbs, arbitrators accepted by property,
+the default arbitrator — one named key both sides accept, final — with
+contact cards and the case channel, notices and cures, the title
+register as a witness, and door requirements that clear on chain. Pins:
+ontodag>=0.26.1, recordstore>=0.21.0.
+
 ### Deployed
 
+- **The default arbitrator, live on Gnosis** (2026-10-01,
+  `scripts/gate_arbitrator.py`): against the escrow `0xddDB…b5A9` with a
+  throwaway key as arbitrator, through `loop` — contact cards, the
+  wanter's claim of 0.0015 sealed to the arbitrator and the giver, the
+  giver's answer, the arbitrator's `hold` and final ruling of 0.001 paid
+  on chain, the reasons opened by the wanter's `watch`, and `loop
+  arbitrators` reading the ruling from the escrow's log.
 - **The escrow redeployed with assignment and netting** (2026-09-29 night,
   C5 stage 2): `LoopEscrow` at `0xddDB7276F705671673F0885aEf93B99b890Eb5A9`.
   Live, the taxi case: a cover claim refused until the insured assigned her

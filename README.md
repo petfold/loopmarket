@@ -150,8 +150,8 @@ per fill — gated in matching, checked on chain, and since 2026-09-19
 contract as a maker) holds the deposit, the gate counts a bond only up
 to what the contract holds, `loop finalize` reserves the share per fill,
 and every undisputed case settles by timeout or the parties' own acts —
-a contested claim is factbond's. Since 2026-09-28/29 (the v6 record, on
-`main` after 0.12.0) a want can require **credentials** of the other side
+a contested claim is factbond's. Since 2026-09-28/29 (the v6 record,
+released in 0.13.0) a want can require **credentials** of the other side
 — statements presented in its book, issued under accredited registers,
 checked by the counterparty gate in seven steps, the registers' roots a
 checked sequence (each keeps every earlier revocation: recordstore 0.21.0's

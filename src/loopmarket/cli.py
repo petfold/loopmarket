@@ -3084,7 +3084,7 @@ def _cases_in(session, fold, out, seen: list) -> bool:
         frm = rec.get("from")
         if kind == "claim":
             what = f"claims {_num(Fraction(body['amount'], 10 ** 18))}" if body else "claims (sealed; set bee_signer)"
-            hint = " — `loop answer` if I am the giver, `loop hold`/`loop rule` if I adjudicate"
+            hint = " — `loop answer` if I am the giver, `loop hold`/`loop rule` if I am the arbitrator"
         elif kind == "answer":
             what, hint = "answers the claim", ""
         else:

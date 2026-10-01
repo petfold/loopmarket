@@ -705,8 +705,8 @@ concession, the ruling and its appeal) is factbond's to document: its
 ### 7.3 Options: holding an offer for someone
 
 An **option** is a give of the right to take one of your offers later, at
-the price that offer already names (the v6 record, on `main` since
-2026-09-29, after 0.12.0; `docs/plans/options-and-cover.md`). You write it
+the price that offer already names (the v6 record, released in
+0.13.0; `docs/plans/options-and-cover.md`). You write it
 on your own open offer; the premium is what the option itself costs, on
 your scale (here in a catalogue with `flat` and a `ljubljana` place):
 
