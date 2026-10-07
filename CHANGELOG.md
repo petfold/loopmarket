@@ -17,6 +17,24 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   `mass(..8kg)`. A graph-kind term sorts its constraints, so the courier's
   term is now stored as `transport(mass(..8kg) small-item)`. Requires
   `ontodag>=0.30.0`. Tests, docstrings and docs follow.
+- **The example catalogues carry prelude v4** (`examples/delivery.od`,
+  `examples/triangle.od`): their inlined prelude was v3, so they refused
+  `mass(...)`.
+- **An unknown prelude term says how to get it**: `weight(...)` is told to
+  spell `mass(...)`; a store whose prelude predates a head (`mass`, `in`,
+  `about`, `shared-with`) is told to merge the current one, which moves the
+  catalogue root.
+
+### Fixed
+
+- **A head pinned to a unit family is its own base** (`Ontology.base_head`,
+  `head_kind`, `_kind_of`, the CLI's `_head_kind` and handover-base
+  lookup). ontodag 0.30 files `mass ⊑ linear-dimension(mass)`; the family
+  node is a kind node, never a head, and the base lookup had returned it,
+  depending on set order.
+- **`Ontology.load` takes typed parents**: a term the store makes on first
+  use (`in(egg)`, `mass(3kg)`) or a family pin (`linear-dimension(mass)`),
+  in any order. Core v12 and the packs now file parts that way.
 
 ## [0.13.0] — 2026-10-01
 

@@ -236,3 +236,36 @@ def test_declare_operator_takes_a_category_and_two_ends():
         cat.declare_operator({"transport": ("geo", "to")})   # a base, not a role
     cat.declare_operator({"transport": ("from", "to")})      # the category is created
     assert cat.operator_of("transport(x)") == "transport"
+
+
+def test_a_head_pinned_to_a_unit_family_is_its_own_base():
+    """ontodag 0.30 pins a unit head in its kind: `mass ⊑
+    linear-dimension(mass) ⊑ linear-dimension`. The family node is a kind
+    node, never a head, so a pinned head is its own base and a role under
+    it respells as the head's own terms."""
+    from ontodag import OntoDAG
+    from ontodag.prelude import apply as apply_prelude
+    dag = OntoDAG()
+    apply_prelude(dag)
+    cat = Ontology(dag)
+    assert cat.base_head("mass") == "mass"
+    assert cat.head_kind("linear-dimension(mass)") is None
+    cat.declare_roles({"max-load": "mass"})
+    assert cat.base_head("max-load") == "mass"
+    assert cat.bare("max-load(8kg)") == "mass(8kg)"
+
+
+def test_load_takes_typed_parents():
+    """Core v12 files parts under `in(...)` and pins heads under
+    `linear-dimension(FAMILY)`: a bulk load takes both as parents the store
+    makes, in any order."""
+    from ontodag import OntoDAG
+    from ontodag.prelude import apply as apply_prelude
+    dag = OntoDAG()
+    apply_prelude(dag)
+    cat = Ontology(dag)
+    cat.load({"egg-white": ["in(egg)", "food"], "egg": ["food"], "food": [],
+              "crate": ["mass(3kg)"], "payload": ["linear-dimension(mass)"]})
+    assert dag.is_below("egg-white", "in(egg)")
+    assert dag.is_below("crate", "mass(..5kg)")
+    assert "payload" in {n.name for n in dag.get(["linear-dimension(mass)"])}

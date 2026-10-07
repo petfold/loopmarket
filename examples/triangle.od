@@ -1,25 +1,41 @@
 # ontodag store v1 — the triangle demo's catalogue (examples/demo_triangle.py)
-# ontodag's prelude (what `odag prelude` merges), so roles can hang under geo/time
+# ontodag's prelude v4 (what `odag prelude` merges), so roles can hang under geo/time
 dimension
 linear-dimension dimension
 calendar-dimension dimension
 prefix-dimension dimension
 dominance-dimension dimension
 count-dimension dimension
-weight linear-dimension
-length linear-dimension
-duration linear-dimension
-area linear-dimension
-volume linear-dimension
-speed linear-dimension
-pressure linear-dimension
-temperature linear-dimension
-energy linear-dimension
+graph-dimension dimension
+transitive-dimension dimension
+enclosing-dimension dimension
+reversed-dimension dimension
+'linear-dimension(mass)' linear-dimension
+'linear-dimension(length)' linear-dimension
+'linear-dimension(duration)' linear-dimension
+'linear-dimension(area)' linear-dimension
+'linear-dimension(volume)' linear-dimension
+'linear-dimension(speed)' linear-dimension
+'linear-dimension(pressure)' linear-dimension
+'linear-dimension(temperature)' linear-dimension
+'linear-dimension(energy)' linear-dimension
+mass 'linear-dimension(mass)'
+length 'linear-dimension(length)'
+duration 'linear-dimension(duration)'
+area 'linear-dimension(area)'
+volume 'linear-dimension(volume)'
+speed 'linear-dimension(speed)'
+pressure 'linear-dimension(pressure)'
+temperature 'linear-dimension(temperature)'
+energy 'linear-dimension(energy)'
 count count-dimension
 handover
 time calendar-dimension handover
 geo prefix-dimension handover
 size dominance-dimension
+in transitive-dimension
+about enclosing-dimension
+shared-with reversed-dimension
 # handover coordinates (docs/plans/P1-spacetime-terms.md §3, 2026-09-13): geo
 # and time hang under `handover` above, so a bare cell, place or window says
 # where/when the offer holds, and a route's `from`/`to` and a transport's
@@ -29,11 +45,10 @@ size dominance-dimension
 # and the operators (P2-loop-selection.md §10): a category under `operator`
 # moves a thing along the dimension whose two ends its give names (`from`
 # under operator-input, `to` under operator-output); its parenthesised
-# argument is what it accepts — `transport(small-item weight(..8kg))` — and
+# argument is what it accepts — `transport(mass(..8kg) small-item)` — and
 # matches want-within-give, the operator's own want (Peter, 2026-09-13). The
 # solver composes such a give with the thing's give to satisfy a want at the
 # output coordinate.
-graph-dimension dimension
 operator
 transport graph-dimension operator
 storage graph-dimension operator

@@ -70,7 +70,7 @@ own, `market.od`, and builds it with `odag -f market.od put CHILD
 PARENT...` (run everything from one directory, or give the full path):
 
 ```console
-$ odag -f market.od prelude                 # the standard dimensions: geo, time, weight, ...
+$ odag -f market.od prelude                 # the standard dimensions: geo, time, mass, ...
 $ odag -f market.od put handover
 $ odag -f market.od put geo handover        # where and when a thing changes hands
 $ odag -f market.od put time handover

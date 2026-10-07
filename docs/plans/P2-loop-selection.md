@@ -518,8 +518,8 @@ evening (two couriers of one packet), operators declared in the catalogue
 (`Ontology.declare_operator({"transport": ("from", "to")})`: a category
 under `operator`, moving along the dimension whose two ends its give
 names). **The operator's argument is its want** (Peter, 2026-09-13
-evening): `transport(small-item weight(..8kg))` is what the courier
-accepts and matches the wanter's `transport(bicycle weight(5kg))`
+evening): `transport(mass(..8kg) small-item)` is what the courier
+accepts and matches the wanter's `transport(bicycle mass(5kg))`
 want-within-give; the same argument is the payload check of a composed
 leg (`Ontology.accepts`) — the box goes with the small-item courier, the
 piano does not. The term is ontodag's graph kind (#19, 0.26.1). The reseller form clears too as a

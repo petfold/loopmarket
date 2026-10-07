@@ -1518,3 +1518,21 @@ def test_the_door_witness_defaults_to_possession_and_the_photo_says_what_it_cost
     out = run.ok("give", "apple", "6")
     assert "T19" not in out and run.session.book.get(out.strip().splitlines()[-1]).oracle == "possession"
     assert run("set", "require_door", "face")[0] != 0 and run("set", "oracle", "retina")[0] != 0
+
+
+def test_an_unknown_prelude_term_says_how_to_get_it():
+    """ontodag 0.30's prelude v4 says `mass`, never `weight`, and brings
+    `mass`, `in`, `about`, `shared-with`: a store on an older prelude is
+    told to merge the current one, and `weight(...)` is told its name."""
+    from ontodag import OntoDAG
+    from ontodag.prelude import apply as apply_prelude
+    from loopmarket.cli import _unknown_hint
+    dag = OntoDAG()
+    apply_prelude(dag)
+    assert "spell it mass(3kg)" in _unknown_hint("weight(3kg)", dag)
+    assert _unknown_hint("durian", dag).startswith("`odag put durian PARENT`")
+    old = OntoDAG()
+    for name, parents in [("dimension", []), ("linear-dimension", ["dimension"]),
+                          ("weight", ["linear-dimension"])]:
+        old.put(name, parents)
+    assert "predates `mass`" in _unknown_hint("mass(3kg)", old)

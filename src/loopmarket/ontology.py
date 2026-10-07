@@ -144,12 +144,26 @@ class Ontology:
     def load(self, edges: dict[str, list[str]]) -> "Ontology":
         """Bulk declaration: {sub: [supers...]}, order-independent."""
         pending = dict(edges)
+
+        def made_by_put(s):
+            # A typed parent the store makes on first use: a term of a
+            # declared head (`in(egg)`, `mass(3kg)`, once its constraints
+            # exist) or a family pin under its kind (`linear-dimension(mass)`).
+            pin = _dims.kind_node(s)
+            if pin is not None and pin[1] is not None:
+                return pin[0] in self.dag.nodes
+            try:
+                return self.dag.is_term(s)
+            except ValueError:
+                return False                # a constraint not filed yet
+
         while pending:
             progressed = False
             for sub, supers in list(pending.items()):
-                if all(s in self.dag.nodes or s in edges for s in supers):
+                if all(s in self.dag.nodes or made_by_put(s) or s in edges
+                       for s in supers):
                     for s in supers:
-                        if s not in self.dag.nodes:
+                        if s not in self.dag.nodes and not made_by_put(s):
                             self.dag.put(s, [])
                     self.dag.put(sub, supers)
                     del pending[sub]
@@ -232,7 +246,7 @@ class Ontology:
 
     def _graph_kind(self, head: str) -> None:
         kind = self.head_kind(head)
-        if kind not in (None, _dims.KIND_GRAPH) or head in _dims.KINDS:
+        if kind not in (None, _dims.KIND_GRAPH) or _dims.is_kind_node(head):
             raise ValueError(f"{head!r} is a {kind} head, not a graph-kind head")
         if kind is None:
             if _dims.KIND_GRAPH not in self.dag.nodes:
@@ -253,7 +267,7 @@ class Ontology:
         none; a give naming none never fits a want that names one."""
         for head in heads:
             kind = self.head_kind(head)
-            if kind not in (None, _dims.KIND_PREFIX) or head in _dims.KINDS:
+            if kind not in (None, _dims.KIND_PREFIX) or _dims.is_kind_node(head):
                 raise ValueError(f"{head!r} is a {kind} head, not an item head")
             if kind is None:
                 if _dims.DIMENSION_ROOT not in self.dag.nodes:
@@ -305,7 +319,7 @@ class Ontology:
         category, because its argument is what it accepts.)"""
         for category, (inp, out) in operators.items():
             kind = self.head_kind(category)
-            if kind not in (None, _dims.KIND_GRAPH) or category in _dims.KINDS:
+            if kind not in (None, _dims.KIND_GRAPH) or _dims.is_kind_node(category):
                 raise ValueError(
                     f"{category!r} is a {kind} head: an operator is a "
                     f"category whose argument is what it accepts")
@@ -334,7 +348,7 @@ class Ontology:
         bare `transport` both name `transport` — or None."""
         split = _dims.split_term(term)
         head = term if split is None else split[0]
-        if head not in self.dag.nodes or head in _dims.KINDS \
+        if head not in self.dag.nodes or _dims.is_kind_node(head) \
                 or OPERATOR not in self.dag.nodes \
                 or not self.dag.is_below(head, OPERATOR):
             return None
@@ -342,8 +356,8 @@ class Ontology:
 
     def argument(self, term: str) -> tuple[str, ...]:
         """The constraints an operator term's argument states, in
-        ontodag's canonical spelling: `transport(mass(..8000g)
-        small-item)` → `("small-item", "mass(..8kg)")`; a bare operator
+        ontodag's canonical spelling: `transport(small-item
+        mass(..8000g))` → `("mass(..8kg)", "small-item")`; a bare operator
         accepts anything: `()`. A term the catalogue refuses (an unknown or
         redundant constraint) has no argument here — `known` is where it
         fails closed."""
@@ -377,7 +391,8 @@ class Ontology:
             return None
         node = self.dag.nodes[head]
         for item in [node, *self.dag.get_ancestors(node)]:
-            if any(p.name in _dims.KINDS for p in item.parents):
+            if not _dims.is_kind_node(item.name) \
+                    and any(_dims.is_kind_node(p.name) for p in item.parents):
                 return item.name
         return None
 
@@ -464,15 +479,15 @@ class Ontology:
         """The registry kind a declared dimension head orders its values by
         (`linear-dimension`, `prefix-dimension`, ...), else None. Kind
         nodes themselves and plain categories are not heads."""
-        if head in _dims.KINDS or head not in self.dag.nodes:
+        if _dims.is_kind_node(head) or head not in self.dag.nodes:
             return None
         return self._kind_of(head)
 
     def _kind_of(self, name: str) -> str | None:
         """`name`'s kind: itself if it is a kind node, else the kind it
         inherits. Used where a role's *base* may be either."""
-        if name in _dims.KINDS:
-            return name if name in self.dag.nodes else None
+        if _dims.is_kind_node(name):      # a kind node, or a family pin under one
+            return _dims.kind_node(name)[0] if name in self.dag.nodes else None
         if name not in self.dag.nodes:
             return None
         for kind in sorted(_dims.KINDS):

@@ -226,7 +226,7 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 | `.declare_descriptive(heads)` | opt a geo/time head out (`made_in`, `made`) under the `descriptive` marker: its terms describe the thing and match one-way |
 | `.handover_class(concept)` / `.handover_heads()` | the head whose coordinate a term states (`None` for categories and descriptive terms; a bare place node states `geo`'s); the marked base heads |
 | `.declare_operator({category: (input_head, output_head)})` | `{"transport": ("from", "to"), "storage": ("depart", "arrive")}`: the category under the `operator` marker (created if absent), the two ends — roles of one dimension — under `operator-input`/`operator-output`; a give naming the category and both ends moves a thing along that dimension (composition, `P2-loop-selection.md` §10); the category's parenthesised argument is what it accepts. 0.5.0's `{base: (in, out)}` shape raises |
-| `.operator_of(term)` / `.argument(term)` | the operator category a term names (`transport(bicycle)` and bare `transport` → `transport`; None otherwise); the constraints of its argument in ontodag's canonical spelling (`transport(mass(..8000g) small-item)` → `("small-item", "mass(..8kg)")`; bare → `()`; a term the catalogue refuses → `()`, and `known` is False) — the term is ontodag's graph kind (#19, 0.26.1) |
+| `.operator_of(term)` / `.argument(term)` | the operator category a term names (`transport(bicycle)` and bare `transport` → `transport`; None otherwise); the constraints of its argument in ontodag's canonical spelling (`transport(small-item mass(..8000g))` → `("mass(..8kg)", "small-item")`; bare → `()`; a term the catalogue refuses → `()`, and `known` is False) — the term is ontodag's graph kind (#19, 0.26.1) |
 | `.ends(concepts)` / `.accepts(concepts, operator_terms)` | the moves an operator give states, `[(base, input_term, output_term)]`; whether a thing fits every constraint of the operator terms' arguments (the payload check of `check_composition`) |
 | `.base_head(head)` / `.coordinate(concepts, base)` / `.bare(term)` | a role's base head; the bare coordinate of `base` a conjunction states; a role term respelled as the bare coordinate it denotes (`to(u2e4)` → `geo(u2e4)`, `from(shop)` → `shop`) |
 | `.head_kind(head)` | the registry kind a declared head orders values by, else `None` |
@@ -566,7 +566,7 @@ defaults to the contract's `filled`. The receipt's reason names the beat
 |---|---|
 | `Item(key, takes, legs, gain, payload=None)` | a candidate loop: what it takes from each offer (`{offer id: quantity}` — a want whole, a give by the leg's quantity), its leg count and uniform gain, the loop itself as `payload` |
 | `pack(items, capacity, *, prior=0, factor=None, exact_up_to=24, budget=200_000) -> Packing` | the set worth most under per-offer capacities (`{offer id: what is left}`): exact branch and bound up to `exact_up_to` items within a node `budget`, greedy beyond, `order_key`'s total order (U6); `Packing(chosen, exact, infeasible)` |
-| `mass(item, prior=0, factor=None)` | the objective per loop: Π(1+gain) exactly, or (1−p)^legs·ln(1+gain) in fixed-precision decimal with a failure prior; `factor` the risk-weight hook nobody sets |
+| `weight(item, prior=0, factor=None)` | the objective per loop: Π(1+gain) exactly, or (1−p)^legs·ln(1+gain) in fixed-precision decimal with a failure prior; `factor` the risk-weight hook nobody sets |
 
 ## 8e. `loopmarket.escrow` — the crypto escrow (P3 §5a/§5e, 2026-09-19)
 

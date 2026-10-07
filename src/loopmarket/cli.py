@@ -1018,10 +1018,29 @@ def parse_offer_tokens(tokens: list[str]) -> Parsed:
 _FIELD_KINDS = frozenset({_dims.KIND_LINEAR, _dims.KIND_COUNT})
 
 
+def _unknown_hint(term: str, dag: OntoDAG) -> str:
+    """How to make an unknown concept known. A term of a prelude head the
+    catalogue lacks means its prelude predates the head (ontodag 0.30's
+    prelude v4 brought `mass`, `in`, `about`, `shared-with`); `weight(...)`
+    is no prelude term at all since v4, which says `mass`."""
+    from ontodag.prelude import DECLARATIONS
+    split = _dims.split_term(term)
+    if split is not None and split[0] not in dag.nodes:
+        if split[0] == "weight":
+            return (f"ontodag's prelude has no `weight` since v4 (weight is a "
+                    f"force): spell it mass({split[1]})")
+        if split[0] in {name for name, _ in DECLARATIONS}:
+            return (f"the catalogue's prelude predates `{split[0]}`: "
+                    f"`odag prelude` merges the current one (it moves the "
+                    f"catalogue root, so offers pinned to the old root stop "
+                    f"matching)")
+    return f"`odag put {term} PARENT` adds it to the catalogue"
+
+
 def _head_kind(dag: OntoDAG, head: str) -> str | None:
     """The dimension kind a declared head belongs to, else None."""
     if head not in dag.nodes or "dimension" not in dag.nodes \
-            or not dag.is_below(head, "dimension"):
+            or _dims.is_kind_node(head) or not dag.is_below(head, "dimension"):
         return None
     for kind in sorted(_dims.KINDS):
         if kind in dag.nodes and dag.is_below(head, kind):
@@ -1082,7 +1101,7 @@ def _handover_base(ontology: Ontology, kind: str, spelling: str) -> str:
     dag = ontology.dag
     bases = [head for head in sorted(ontology.handover_heads())
              if _head_kind(dag, head) == kind
-             and any(p.name in _dims.KINDS for p in dag.nodes[head].parents)]
+             and any(_dims.is_kind_node(p.name) for p in dag.nodes[head].parents)]
     if len(bases) > 1:
         raise ValueError(
             f"{spelling}: the catalogue marks several {kind} heads as "
@@ -1213,8 +1232,8 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
 
 def _canonical(term: str, dag, notes: list[str]) -> str:
     """The catalogue's canonical spelling of a known term — `mass(8000g)`
-    → `mass(8kg)`, `transport(mass(..8kg) small-item)` →
-    `transport(small-item mass(..8kg))` — so one denotation is one offer
+    → `mass(8kg)`, `transport(small-item mass(..8kg))` →
+    `transport(mass(..8kg) small-item)` — so one denotation is one offer
     id (U2). The catalogue's rule, not the CLI's: `surface.elaborate`."""
     from ontodag.surface import elaborate
     canonical = elaborate(term, dag)
@@ -1464,7 +1483,7 @@ def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology,
         if not ontology.known(c):
             raise ValueError(
                 f"unknown category: {c} — vocabulary fails closed (U7); "
-                f"`odag put {c} PARENT` adds it to the catalogue")
+                + _unknown_hint(c, ontology.dag))
 
     # An omitted quantity is the schema's own default, not a typed `1`:
     # canonical JSON tells 1 from 1.0, and `Thing(("x",))` from the API
