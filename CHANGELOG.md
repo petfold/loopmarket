@@ -25,6 +25,18 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   `about`, `shared-with`) is told to merge the current one, which moves the
   catalogue root.
 
+- **The on-chain verifier compares version pins by major, as matching
+  does** (`LoopVerifier._verifyOffer`, `beat.submission`). A beat pins the
+  registry and contract majors (`"4"`, `"0"`), and every offer pinned
+  within them verifies. It used to demand the beat's exact versions,
+  taken from the first want, so offers written either side of an ontodag
+  minor upgrade (registry 4.2 and 4.3) matched off-chain and reverted
+  on-chain with "registry pin". Sound because ontodag's contract 0.4 (G7)
+  promises a minor never takes an answer away on one catalogue root; a
+  different major is still refused. `_LEGACY_BEATS` and the struct keep
+  their field names, so encoding is unchanged. A deployed verifier needs
+  redeploying for the new rule.
+
 ### Fixed
 
 - **A head pinned to a unit family is its own base** (`Ontology.base_head`,

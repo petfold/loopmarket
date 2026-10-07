@@ -127,7 +127,7 @@ def _hashes(legs):
 
 
 def _pins(root):
-    return (bytes.fromhex(root), bytes.fromhex(PINS["ontology_root"]), b"4.2", b"0.1", 0)
+    return (bytes.fromhex(root), bytes.fromhex(PINS["ontology_root"]), b"4", b"0", 0)
 
 
 def _submit_fn(beat, root, hashes, fills, makers, potentials):

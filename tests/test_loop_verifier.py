@@ -55,16 +55,19 @@ def face():
     return w3, w3.eth.contract(address=receipt["contractAddress"], abi=artifact["abi"])
 
 
-def _cleared_book():
+def _cleared_book(newer=False):
     """A book with pins, a cleared triangle including a partial fill of a
-    divisible give, and the loop record clearing wrote."""
+    divisible give, and the loop record clearing wrote. `newer`: b1's
+    offers are pinned to a later minor (registry 4.3, contract 0.4) than
+    farm's, as offers written either side of an ontodag upgrade are."""
     cat = Ontology(OntoDAG()).load({"apple": [], "lesson": [], "repair": []})
     pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    later = dict(pins, registry_version="4.3", contract_version="0.4") if newer else pins
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
     offers = [
         give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins),        # 2/kg, by 5 kg
-        want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins),
-        give("b1", Thing(("lesson",)), 80, **V, **pins),
+        want("b1", Thing(("apple",), 40, "kg"), 90, **V, **later),
+        give("b1", Thing(("lesson",)), 80, **V, **later),
         want("farm", Thing(("lesson",)), 85, **V, **pins),
     ]
     book.publish_many(offers); book.commit()
@@ -98,8 +101,10 @@ def _L(want, gives, taken):
 
 
 def _beat(root, pins):
+    """A beat pins the majors its offers are pinned within."""
     return (bytes.fromhex(root), bytes.fromhex(pins["ontology_root"]),
-            pins["registry_version"].encode(), pins["contract_version"].encode(), 0)
+            pins["registry_version"].split(".")[0].encode(),
+            pins["contract_version"].split(".")[0].encode(), 0)
 
 
 def test_a_cleared_loop_verifies_leg_by_leg(face):
@@ -117,6 +122,28 @@ def test_a_cleared_loop_verifies_leg_by_leg(face):
         assert [m.decode() for m in give_makers] == [snapshot.get(g).maker for g in leg["gives"]]
         gas.append(verifier.functions.verifyLeg(_beat(root, pins), args).estimate_gas())
     print("\ngas per leg (one give each):", gas)
+
+
+def test_offers_pinned_either_side_of_a_minor_upgrade_verify_together(face):
+    """Off-chain matching admits offers whose pins differ in the minor
+    version (`matching._major_skew`); the verifier admits the same loops,
+    so nothing that clears off-chain reverts with "registry pin". A beat
+    pins majors, and a different major is still refused."""
+    w3, verifier = face
+    snapshot, root, rec, pins = _cleared_book(newer=True)
+    makers = list(rec["potentials"])
+    verifier.functions.setPotentials([m.encode() for m in makers],
+                                     [_rat(rec["potentials"][m])[0] for m in makers],
+                                     [_rat(rec["potentials"][m])[1] for m in makers]).transact()
+    beat = _beat(root, pins)
+    assert beat[2:4] == (b"4", b"0")
+    for leg in rec["legs"]:
+        assert verifier.functions.verifyLeg(beat, _leg_args(snapshot, rec, leg)).call()
+    leg = rec["legs"][0]
+    for other, match in (((b"5", b"0"), "registry pin"), ((b"4", b"1"), "contract pin")):
+        with pytest.raises(Exception) as exc:
+            verifier.functions.verifyLeg(beat[:2] + other + beat[4:], _leg_args(snapshot, rec, leg)).call()
+        assert match in str(exc.value), str(exc.value)
 
 
 def test_every_structural_fault_is_refused(face):
@@ -152,10 +179,10 @@ def test_every_structural_fault_is_refused(face):
     refused(_L(want_p, gives_p, taken), match="left")
     verifier.functions.setFilled(gid, 0, 1).transact()
     # pins: the beat names another catalogue root, registry, contract
-    refused(good, beat_=(bytes.fromhex(root), bytes(32), b"4.2", b"0.1", 0), match="ontology pin")
-    refused(good, beat_=(bytes.fromhex(root), bytes.fromhex("ab" * 32), b"5.0", b"0.1", 0), match="registry pin")
+    refused(good, beat_=(bytes.fromhex(root), bytes(32), b"4", b"0", 0), match="ontology pin")
+    refused(good, beat_=(bytes.fromhex(root), bytes.fromhex("ab" * 32), b"5", b"0", 0), match="registry pin")
     # another book root: the proof does not hash there
-    refused(good, beat_=(bytes(32), bytes.fromhex("ab" * 32), b"4.2", b"0.1", 0))
+    refused(good, beat_=(bytes(32), bytes.fromhex("ab" * 32), b"4", b"0", 0))
     # potentials that do not balance: the buyer's potential too small
     verifier.functions.setPotentials([b"b1", b"farm"], [1, 1], [10, 1]).transact()
     refused(good, match="balance")

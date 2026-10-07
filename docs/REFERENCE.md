@@ -336,7 +336,10 @@ order:
    offers must carry all three pins; mixed pinning (one side declares,
    the other silent) always refuses; equal `ontology_root` when both
    pin; registry/contract versions refuse on **major** skew (minor is
-   vocabulary-additive and interoperates)
+   additive and interoperates: ontodag's CONTRACT.md G7 promises a newer
+   minor never takes an answer away). The on-chain verifier applies the
+   same rule: a beat pins the majors (`"4"`, `"0"`) and admits every offer
+   pinned within them
 9. meaning: `ontology.satisfies(give concepts, want concepts)`
 
 ### `meets(mine, other, ontology, *, taken=None, whole=None, held=None, gate=None, legs_checked=False) -> bool`
@@ -545,7 +548,7 @@ defaults to the contract's `filled`. The receipt's reason names the beat
 
 | name | one line |
 |---|---|
-| `submission(proposal, snapshot, *, potentials=None, records=None, gate=None, ontology=None) -> Submission` | pure: every leg as `LoopVerifier.Leg` (value blobs and trie paths under the snapshot's root, quantities taken as `n/d`, each option give's underlying record), `leg_hashes` = keccak of each leg's and its statements' ABI encoding, `fills` (with each give's taker), `holds` and `claims` (C4, I3: an item claim's end from the clearing's `item/` `records`), `registers` (the pinned register roots), `statements` (R3b: the ones `gate.chosen` accepts over the snapshot, with their proofs), `makers`/`potentials`, `pins`; refuses a snapshot that is not the proposal's book root, and a leg whose evidence it cannot build |
+| `submission(proposal, snapshot, *, potentials=None, records=None, gate=None, ontology=None) -> Submission` | pure: every leg as `LoopVerifier.Leg` (value blobs and trie paths under the snapshot's root, quantities taken as `n/d`, each option give's underlying record), `leg_hashes` = keccak of each leg's and its statements' ABI encoding, `fills` (with each give's taker), `holds` and `claims` (C4, I3: an item claim's end from the clearing's `item/` `records`), `registers` (the pinned register roots), `statements` (R3b: the ones `gate.chosen` accepts over the snapshot, with their proofs), `makers`/`potentials`, `pins` (book root, catalogue root, the registry and contract *majors* of the first want, addressing); refuses a snapshot that is not the proposal's book root, and a leg whose evidence it cannot build |
 | `commitment(sub) -> (legs, potentials, registers)` | the three hashes `BeatClearing.submit` stores — what a rebuilt submission must equal |
 | `find_evidence(state, books, *, ontology=None, register_at=None, span=None)` | the `loop/` record behind a beat whose rebuilt submission hashes to its commitments |
 | `BeatClient(rpc_url, address, *, key=None, client=None)` | `.bond()`, `.submit(sub) -> (beat, receipt)`, `.challenge(beat, index, sub) -> reason`, `.finalize(beat)`, `.filled(offer_id) -> Fraction`, `.beat(beat) -> dict`, `.pending_holds/pending_claims(beat)`, `.held_against(offer_id, taker, at)`, `.item_claim(item, maker)`, `.verdict_of(sub, index, ...)`; web3 lazy (`chain` extra) |

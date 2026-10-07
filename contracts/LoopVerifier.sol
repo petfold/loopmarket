@@ -56,8 +56,8 @@ library LoopVerifier {
     struct Beat {
         bytes32 bookRoot;
         bytes32 ontologyRoot;      // as the offers pin it (32 bytes of the hex root)
-        bytes registryVersion;     // e.g. "4.2"
-        bytes contractVersion;     // e.g. "0.1"
+        bytes registryVersion;     // the major the offers pin within: "4" admits 4.2 and 4.3
+        bytes contractVersion;     // likewise: "0" admits 0.1 and 0.4 (ontodag CONTRACT.md G7)
         uint8 addressing;          // the book root's scheme: 0 sha256, 1 Swarm (BMT) — 2026-09-18
     }
 
@@ -418,11 +418,21 @@ library LoopVerifier {
         uint8 ver = _hasExact(r, bytes('"v":7,')) ? 7 : _hasExact(r, bytes('"v":6,')) ? 6
             : _hasExact(r, bytes('"v":5,')) ? 5 : _hasExact(r, bytes('"v":4,')) ? 4 : 0;
         require(ver != 0, "not a v4-v7 record");
-        require(_hasExact(r, abi.encodePacked('"ontology_root":"', _hex(beat.ontologyRoot), '"')),
+        // The catalogue root is pinned exactly; the registry and contract
+        // versions by major, as off-chain matching compares them: within a
+        // major a newer ontodag only adds answers (its CONTRACT.md G7), so
+        // offers pinned either side of a minor upgrade mean the same thing on
+        // one catalogue root. A beat pins the major ("4"), and "4." after the
+        // opening quote admits 4.2 and 4.3, never 14.x. (One shape for all
+        // three checks: the optimizer shares it, and LegVerifier is near
+        // EIP-170's limit.)
+        bytes memory closed = '"';
+        bytes memory within = '.';
+        require(_hasExact(r, abi.encodePacked('"ontology_root":"', _hex(beat.ontologyRoot), closed)),
                 "ontology pin");
-        require(_hasExact(r, abi.encodePacked('"registry_version":"', beat.registryVersion, '"')),
+        require(_hasExact(r, abi.encodePacked('"registry_version":"', beat.registryVersion, within)),
                 "registry pin");
-        require(_hasExact(r, abi.encodePacked('"contract_version":"', beat.contractVersion, '"')),
+        require(_hasExact(r, abi.encodePacked('"contract_version":"', beat.contractVersion, within)),
                 "contract pin");
         // the two sides: gives before maker before wants (sorted keys)
         uint256 g = _index(r, '"gives":{', 0);

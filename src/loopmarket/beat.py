@@ -126,9 +126,15 @@ ADDRESSING = {"sha256": 0, "swarm": 1}
 ADDRESSING_NAMES = {v: k for k, v in ADDRESSING.items()}
 
 
+def _major(version: str) -> bytes:
+    """The beat pins majors (`"4.3"` -> `b"4"`): the verifier admits every
+    offer pinned within them, as off-chain matching does (`_major_skew`)."""
+    return version.split(".")[0].encode()
+
+
 @dataclass(frozen=True)
 class Submission:
-    pins: tuple            # (bookRoot, ontologyRoot, registryVersion, contractVersion, addressing)
+    pins: tuple            # (bookRoot, ontologyRoot, registry major, contract major, addressing)
     legs: list             # LoopVerifier.Leg tuples, in the loop record's order
     leg_hashes: list       # keccak256(abi.encode(leg, statements)) each
     fills: list            # (offer id, n, d, cap n, cap d, taker): a give's cap its quantity, a want's 1/1
@@ -223,7 +229,7 @@ def submission(proposal: LoopProposal, snapshot: OfferRegistry, *,
     first = circ.legs[0].want
     pins = (bytes.fromhex(proposal.book_root),
             bytes.fromhex(proposal.ontology_root) if proposal.ontology_root else bytes(32),
-            first.registry_version.encode(), first.contract_version.encode(),
+            _major(first.registry_version), _major(first.contract_version),
             _addressing(snapshot, first.offer_id))
     registers = []
     for rid, root in sorted(proposal.register_roots):
