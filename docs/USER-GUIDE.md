@@ -1345,8 +1345,8 @@ The contracts live on the EVM chain Swarm settles on (Gnosis today) and
 every session with the settings sees the same beats:
 
 ```console
-$ loop set beat chain:https://rpc.gnosischain.com@0xC47575b57E08b389c344AaBf415606Cd0B3011d4      # BeatClearing
-$ loop set auction chain:https://rpc.gnosischain.com@0x513731eC7ca8012F296E54e1b148044c5e9B0Bd9   # SealedBeat
+$ loop set beat chain:https://rpc.gnosischain.com@0x4A35ee6e86C266de94134BaD5523A8D7C8fA5cF4      # BeatClearing
+$ loop set auction chain:https://rpc.gnosischain.com@0xfC5519dD267c8C398Cd29Fa1B9748078A180B5cE   # SealedBeat
 $ loop set escrow chain:https://rpc.gnosischain.com@0xddDB7276F705671673F0885aEf93B99b890Eb5A9    # LoopEscrow
 $ loop set resolver 0x3c1B4C944398bcc30890d6A6c78f1F9AA2dFe270                                       # factbond's Assertions (test amounts only: its rungs are the operator's keys)
 $ loop propose                       # clear locally, post each loop as one beat (a bond, a challenge window)

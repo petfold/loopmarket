@@ -7,7 +7,7 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
-## [Unreleased]
+## [0.14.0] — 2026-10-07
 
 ### Changed
 
@@ -34,8 +34,11 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   on-chain with "registry pin". Sound because ontodag's contract 0.4 (G7)
   promises a minor never takes an answer away on one catalogue root; a
   different major is still refused. `_LEGACY_BEATS` and the struct keep
-  their field names, so encoding is unchanged. A deployed verifier needs
-  redeploying for the new rule.
+  their field names, so encoding is unchanged. Redeployed on Gnosis the
+  same day: BeatClearing `0x4A35ee6e86C266de94134BaD5523A8D7C8fA5cF4`
+  (predecessor and retired: `0xC475…11d4`), SealedBeat
+  `0xfC5519dD267c8C398Cd29Fa1B9748078A180B5cE`; a mixed 4.2/4.3 loop checked
+  live verifies there and is refused by the retired contract.
 
 ### Fixed
 
