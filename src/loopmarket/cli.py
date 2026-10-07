@@ -934,9 +934,9 @@ def parse_part_tokens(tokens: list[str]) -> Parsed:
 
 def _join_terms(tokens: list[str]) -> list[str]:
     """An operator's argument may be a conjunction —
-    `transport(small-item weight(..8kg))` — and the line splits on spaces,
+    `transport(small-item mass(..8kg))` — and the line splits on spaces,
     so tokens are rejoined while a parenthesis is open (the same line
-    quoted, `'transport(small-item weight(..8kg))'`, arrives whole). The
+    quoted, `'transport(small-item mass(..8kg))'`, arrives whole). The
     catalogue then spells it canonically (`_canonical`)."""
     out, depth, cur = [], 0, ""
     for tok in tokens:
@@ -1212,9 +1212,9 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
 
 
 def _canonical(term: str, dag, notes: list[str]) -> str:
-    """The catalogue's canonical spelling of a known term — `weight(8000g)`
-    → `weight(8kg)`, `transport(weight(..8kg) small-item)` →
-    `transport(small-item weight(..8kg))` — so one denotation is one offer
+    """The catalogue's canonical spelling of a known term — `mass(8000g)`
+    → `mass(8kg)`, `transport(mass(..8kg) small-item)` →
+    `transport(small-item mass(..8kg))` — so one denotation is one offer
     id (U2). The catalogue's rule, not the CLI's: `surface.elaborate`."""
     from ontodag.surface import elaborate
     canonical = elaborate(term, dag)

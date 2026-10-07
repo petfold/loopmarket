@@ -40,8 +40,8 @@ besides the dimensions'):
   coordinate of that dimension;
 - **want within give**, for the argument of an operator — `transport(...)`,
   the category under the marker `operator`. The courier who moves small
-  items writes `give transport(small-item weight(..8kg))`; the wanter with
-  a bicycle writes `want transport(bicycle weight(12kg))`. The argument is
+  items writes `give transport(small-item mass(..8kg))`; the wanter with
+  a bicycle writes `want transport(bicycle mass(12kg))`. The argument is
   the operator's own want — what it accepts, an implicit want the give
   carries (Peter, 2026-09-13) — so it is matched like one, with the sides
   swapped: every constraint of the give's argument must contain a term of
@@ -291,7 +291,7 @@ class Ontology:
         """Declare operators: {category: (input head, output head)} —
         `{"transport": ("from", "to"), "storage": ("depart", "arrive")}`.
         The category goes under `operator` and under ontodag's
-        `graph-dimension` kind (so `transport(small-item weight(..8kg))`
+        `graph-dimension` kind (so `transport(small-item mass(..8kg))`
         is a term the graph orders, ontodag #19; the kind is declared under
         `dimension` if the catalogue lacks it), the two heads — roles of
         one dimension — under `operator-input` and `operator-output`:
@@ -342,8 +342,8 @@ class Ontology:
 
     def argument(self, term: str) -> tuple[str, ...]:
         """The constraints an operator term's argument states, in
-        ontodag's canonical spelling: `transport(weight(..8000g)
-        small-item)` → `("small-item", "weight(..8kg)")`; a bare operator
+        ontodag's canonical spelling: `transport(mass(..8000g)
+        small-item)` → `("small-item", "mass(..8kg)")`; a bare operator
         accepts anything: `()`. A term the catalogue refuses (an unknown or
         redundant constraint) has no argument here — `known` is where it
         fails closed."""
@@ -441,7 +441,7 @@ class Ontology:
         """Is `concept` vocabulary of this catalogue?
 
         A node is. So is a *parametric term of a declared dimension head*
-        — `from(u2e4x)`, `weight(..11kg)` — although no such node exists:
+        — `from(u2e4x)`, `mass(..11kg)` — although no such node exists:
         the head is pinned by the catalogue root, the value grammar by the
         registry version, and ontodag orders these terms by computation
         (prefix containment, interval arithmetic). Asking the DAG to order

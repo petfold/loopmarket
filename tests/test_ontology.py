@@ -27,9 +27,9 @@ def test_known_accepts_terms_ontodag_can_interpret_and_nothing_else():
     dag.put("from", ["prefix-dimension"])
     dag.put("ride", [])
     ont = Ontology(dag)
-    assert ont.known("ride") and ont.known("from(u2e4x)") and ont.known("weight(..11kg)")
+    assert ont.known("ride") and ont.known("from(u2e4x)") and ont.known("mass(..11kg)")
     assert not ont.known("bogus(u2e)") and not ont.known("durian")
-    assert not ont.known("weight(11 kg)")             # malformed value
+    assert not ont.known("mass(11 kg)")             # malformed value
     assert ont.covers("from(u2e)", "from(u2e4x)")
     assert not ont.covers("from(u2e4x)", "from(u2e)")
     assert ont.satisfies(["ride", "from(u2e4x)"], ["ride", "from(u2e)"])
@@ -192,30 +192,30 @@ def test_an_operators_argument_is_its_want_and_matches_reversed():
 
 
 def test_a_conjunction_in_the_argument_is_several_constraints():
-    """`transport(small-item weight(..8kg))` is the same term as
-    `transport(small-item) transport(weight(..8kg))` — a list of cones the
+    """`transport(small-item mass(..8kg))` is the same term as
+    `transport(small-item) transport(mass(..8kg))` — a list of cones the
     payload must sit within, however the two sides spell it; the 12 kg
     bicycle fails the 8 kg limit in every spelling."""
     cat = _operators()
     ok = cat.satisfies
-    courier = ["transport(small-item weight(..8kg))"]
-    split = ["transport(small-item)", "transport(weight(..8kg))"]
+    courier = ["transport(small-item mass(..8kg))"]
+    split = ["transport(small-item)", "transport(mass(..8kg))"]
     for give in (courier, split):
-        assert ok(give, ["transport(bicycle weight(5kg))"])
-        assert ok(give, ["transport(bicycle)", "transport(weight(5kg))"])
-        assert not ok(give, ["transport(bicycle weight(12kg))"])
+        assert ok(give, ["transport(bicycle mass(5kg))"])
+        assert ok(give, ["transport(bicycle)", "transport(mass(5kg))"])
+        assert not ok(give, ["transport(bicycle mass(12kg))"])
         assert not ok(give, ["transport(bicycle)"])          # silent on weight
-    assert cat.known("transport(small-item weight(..8kg))")
+    assert cat.known("transport(small-item mass(..8kg))")
     assert not cat.known("transport(unicorn)")               # fails closed (U7)
     # ontodag #19 refuses a redundant constraint (one canonical name per
     # set): the spelling is unknown here, and a give carrying it is not read
     # as "accepts anything" — it matches nothing
     assert not cat.known("transport(bicycle small-item)")
     assert not ok(["transport(bicycle small-item)"], ["transport(racing-bicycle)"])
-    assert cat.argument("transport(weight(..8000g) bicycle)") == ("bicycle", "weight(..8kg)")
+    assert cat.argument("transport(mass(..8000g) bicycle)") == ("bicycle", "mass(..8kg)")
     assert not cat.known("delivery(bicycle)")                # not an operator
-    assert cat.argument("transport(weight(..8kg) small-item)") == \
-        ("small-item", "weight(..8kg)")
+    assert cat.argument("transport(small-item mass(..8kg))") == \
+        ("mass(..8kg)", "small-item")
     assert cat.operator_of("transport") == "transport" and cat.operator_of("from(flat)") is None
     assert cat.ends(["transport", "from(flat)", "to(shop)"]) == [("geo", "from(flat)", "to(shop)")]
     assert cat.ends(["transport", "from(flat)"]) == []

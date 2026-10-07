@@ -496,8 +496,8 @@ on why `want transport(bicycle)` should match `give transport(goods)` when
 `want apples` does not match `give fruit`: *the parameter of the transport
 is a want from the transporter's side*. So the third relation: the
 argument of a category under `operator` is matched want-within-give (the
-courier's `transport(small-item weight(..8kg))` must contain the wanter's
-`transport(bicycle weight(5kg))`, constraint by constraint), the operator
+courier's `transport(small-item mass(..8kg))` must contain the wanter's
+`transport(bicycle mass(5kg))`, constraint by constraint), the operator
 category itself give-within-want, and a give constraint the want is silent
 on refuses. The same argument is the payload check of a composed leg
 (`Ontology.accepts`): the box goes with the small-item courier, the piano

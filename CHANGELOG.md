@@ -9,6 +9,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Changed
+
+- **ontodag 0.30 (prelude v4): the mass head is `mass`, not `weight`.**
+  ontodag's prelude no longer declares `weight` (weight is a force) and
+  pins `mass` to the mass family, so a catalogue's typed masses are spelled
+  `mass(..8kg)`. A graph-kind term sorts its constraints, so the courier's
+  term is now stored as `transport(mass(..8kg) small-item)`. Requires
+  `ontodag>=0.30.0`. Tests, docstrings and docs follow.
+
 ## [0.13.0] — 2026-10-01
 
 The v6 and v7 records and everything built on them since 0.12.0: the

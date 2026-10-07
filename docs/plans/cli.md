@@ -79,14 +79,14 @@ three things:
 - **A bare word is a category.** `apple`, `ride`, `piano-lesson`,
   `my_home` (§4). Nothing bare is ever reserved.
 - **`head(param)` is a term**, in ontodag's canonical spelling —
-  `weight(10kg..10.5kg)`, `time(2026-10-01..2026-12-31)`,
+  `mass(10kg..10.5kg)`, `time(2026-10-01..2026-12-31)`,
   `from(my_home)`, `valid(2h)`. Quoted in a shell exactly as odag's own
   help says ("quote the parentheses in a shell"); unquoted at the `loop`
   prompt and in batch scripts. An operator's argument may be a
-  conjunction — `transport(small-item weight(..8kg))`, what the courier
+  conjunction — `transport(small-item mass(..8kg))`, what the courier
   accepts (2026-09-13) — so the tokens of a line are rejoined while a
   parenthesis is open, and every term is stored in the catalogue's
-  canonical spelling (`weight(8000g)` → `weight(8kg)`, constituents
+  canonical spelling (`mass(8000g)` → `mass(8kg)`, constituents
   sorted; one offer id). A `key=value` spelling was proposed and
   **rejected** on 2026-09-11 for being a second grammar; if a shell-safe
   spelling is ever wanted it lands upstream (§11) and loopmarket follows.
@@ -94,7 +94,7 @@ three things:
   price.** `give 10kg apple 100`; `give apple 100`; `give apple` (§5).
   odag has neither concept, so these are the only deviations — plus, on
   the want side only, the part separator `+` of a composed want (§13,
-  confirmed 2026-09-12); the long forms `weight(10kg)` and an
+  confirmed 2026-09-12); the long forms `mass(10kg)` and an
   explicit price are always accepted, so anything valid at the odag
   prompt is valid here.
 
@@ -271,10 +271,10 @@ re-asked:
 4. *Should the recipient then order transport with leeway, `..11kg`?*
    Case-dependent and guessy. The resolution: **each party declares only
    the direction they know**, and containment composes.
-   - the grower knows the variability: `give apple 'weight(10kg..10.5kg)'`
+   - the grower knows the variability: `give apple 'mass(10kg..10.5kg)'`
      (10 nominal, never more than 10.5; a precise grower declares a point);
-   - the recipient knows their floor: `weight(10kg..)`;
-   - the courier knows their ceiling: `weight(..11kg)`.
+   - the recipient knows their floor: `mass(10kg..)`;
+   - the courier knows their ceiling: `mass(..11kg)`.
    Nobody invents leeway for anyone else; the solver checks the grower's
    band ⊑ the recipient's floor and ⊑ the courier's ceiling by
    containment on stored names — exact, deterministic. No courier whose

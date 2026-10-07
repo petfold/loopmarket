@@ -156,7 +156,7 @@ def test_g1_triangle_as_text_reproduces_the_python_loop_id(env, monkeypatch):
 # ---------------------------------------------------------------- G2: grammar
 
 CANONICAL_TERMS = [
-    "weight(10kg)", "weight(10kg..21/2kg)", "weight(10kg..)", "weight(..11kg)",
+    "mass(10kg)", "mass(10kg..21/2kg)", "mass(10kg..)", "mass(..11kg)",
     "time(2026-10-01T00:00:00Z..2026-12-31T23:59:59Z)", "count(3)",
     "duration(7200s)", "geo(u2e4)", "length(10/33m)", "temperature(300K)",
 ]
@@ -323,7 +323,7 @@ def test_g6_dimension_terms_refuse_until_quantities_are_terms(env, tmp_path,
     (tmp_path / "dims.od").write_text("\n".join(lines) + "\n")
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "dims.od"))
     run = Runner()
-    code, out, err = run("give", "apple", "weight(10kg..10.5kg)", "5")
+    code, out, err = run("give", "apple", "mass(10kg..10.5kg)", "5")
     assert code == 1 and "quantity term" in err and "ontodag-coupling.md" in err
     # a time term is a catalogue term like any other since the v3 record
     out = run.ok("give", "apple", "time(2026-10)", "5")
@@ -894,7 +894,7 @@ def test_offer_line_is_pythons_offer_literal(loop):
 
 
 def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, monkeypatch):
-    """`give transport(small-item weight(..8kg)) from(u2e4) to(u2e4)`: the
+    """`give transport(small-item mass(..8kg)) from(u2e4) to(u2e4)`: the
     line splits on spaces, the tokens rejoin while a parenthesis is open,
     the constituents are stored sorted (one offer id, U2), and the wanter
     who names the bicycle matches the courier who names the class — the
@@ -909,16 +909,16 @@ def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, m
                       ("piano", [])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "city.od"))
     run = Runner()
-    out = run.ok("give", "transport(weight(..8000g)", "small-item)", "from(u2e4)", "to(u2e4)", "5")
-    assert "transport(small-item weight(..8kg))" in out   # the catalogue's spelling, constituents included
+    out = run.ok("give", "transport(small-item", "mass(..8000g))", "from(u2e4)", "to(u2e4)", "5")
+    assert "transport(mass(..8kg) small-item)" in out   # the catalogue's spelling, constituents included
     code, out, err = run("give", "transport(small-item", "5")
     assert code == 1 and "unbalanced" in err
     code, out, err = run("give", "transport(unicorn)", "from(u2e4)", "to(u2e4)", "5")
     assert code == 1 and "'unicorn' is neither a category" in err   # ontodag's reason; fails closed, U7
     monkeypatch.setenv("LOOP_MAKER", "bruno")
-    run.ok("want", "transport(bicycle weight(5kg))", "from(u2e4x)", "to(u2e4y)", "6")
+    run.ok("want", "transport(bicycle mass(5kg))", "from(u2e4x)", "to(u2e4y)", "6")
     out = run.ok("matches")
-    assert "amara gives from(u2e4) to(u2e4) transport(small-item weight(..8kg)) to bruno" in out
+    assert "amara gives from(u2e4) to(u2e4) transport(mass(..8kg) small-item) to bruno" in out
     monkeypatch.setenv("LOOP_MAKER", "chen")
     run.ok("want", "transport(piano)", "from(u2e4x)", "to(u2e4y)", "6")
     assert "chen" not in run.ok("matches")                  # the courier takes no pianos
