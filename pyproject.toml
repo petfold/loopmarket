@@ -36,8 +36,11 @@ dependencies = [
 [project.optional-dependencies]
 # The Swarm deployment path: BeeBytesStore blobs + signed SwarmFeedPointer
 # head, both reached through recordstore so versions stay in step with it
-# (mirrors ontodag's own [swarm] extra).
-swarm = ["recordstore[bee,feeds]>=0.21.0"]
+# (mirrors ontodag's own [swarm] extra). 0.21.1: BeeBytesStore keeps 32
+# reads in flight (was 16, a guess; measured against a Bee light node, reads
+# of chunks it must fetch scale about linearly to 32), so a follower
+# hydrating a book from the network reads about twice as fast.
+swarm = ["recordstore[bee,feeds]>=0.21.1"]
 # Detached offer signatures (U8's off-feed layer): the same secp256k1
 # identity that owns the maker's feed, recoverable without a node.
 # ...and sealed handoffs (`handoff.py`): ECDH on the same curve + AES-GCM.

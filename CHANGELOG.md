@@ -7,6 +7,19 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
+## [Unreleased]
+
+### Changed
+
+- **The `swarm` extra needs recordstore 0.21.1**, whose `BeeBytesStore`
+  (the book's blobs on Swarm, through `swarm_store`) keeps 32 reads in
+  flight instead of 16. 16 was a guess; measured against a Bee 2.8.2 light
+  node, reads of chunks the node must fetch scale about linearly to 32
+  (60/s at 16, 85-108/s at 32), so a follower hydrating a book from the
+  network reads about twice as fast. Nothing in loopmarket set the number,
+  so nothing else changes. swarmfs 0.12 (released the same night) changes
+  nothing here: the book does not use a local-first store.
+
 ## [0.14.0] — 2026-10-07
 
 ### Changed
