@@ -39,7 +39,7 @@ is the settlement check: a leg whose give declares a door type may be
 countersigned only once its witness has been produced. hansa's handover
 app is the device side (`hansa.binding`); the protocol — what is signed,
 what is spent, what opens — is fixed here, where clearing and settlement
-read it. eth-keys loads lazily (B1).
+read it. Signatures are `sigs`' (B1: loaded lazily).
 """
 
 from __future__ import annotations
@@ -70,14 +70,6 @@ def accepted_types(names) -> set[str]:
     return out
 
 
-def _keys():
-    try:
-        from eth_keys import keys
-    except ImportError as exc:  # pragma: no cover - exercised only without the extra
-        raise RuntimeError("the door's witnesses need eth-keys: pip install 'loopmarket[sig]'") from exc
-    return keys
-
-
 def digest(challenge: str, bound_id: str) -> str:
     """What the key signs: the challenge and the id it vouches for."""
     return hashlib.sha256(bytes.fromhex(challenge) + bytes.fromhex(bound_id)).hexdigest()
@@ -85,18 +77,15 @@ def digest(challenge: str, bound_id: str) -> str:
 
 def respond(challenge: str, bound_id: str, private_key_hex: str) -> str:
     """The giver's device: sign the challenge with the bound id."""
-    keys = _keys()
-    return keys.PrivateKey(bytes.fromhex(private_key_hex.removeprefix("0x"))) \
-        .sign_msg_hash(bytes.fromhex(digest(challenge, bound_id))).to_hex()
+    from .sigs import _sign
+    return _sign(private_key_hex, bytes.fromhex(digest(challenge, bound_id)))
 
 
 def signer(challenge: str, bound_id: str, response: str) -> str:
     """Who signed a response, or "" for a malformed one."""
     try:
-        keys = _keys()
-        sig = keys.Signature(signature_bytes=bytes.fromhex(response.removeprefix("0x")))
-        return sig.recover_public_key_from_msg_hash(bytes.fromhex(digest(challenge, bound_id))) \
-            .to_checksum_address()
+        from .sigs import _address, _recover_key
+        return _address(_recover_key(bytes.fromhex(digest(challenge, bound_id)), response))
     except Exception:  # noqa: BLE001 — malformed: invalid, never an error
         return ""
 

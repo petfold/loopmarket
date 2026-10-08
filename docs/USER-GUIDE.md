@@ -44,7 +44,7 @@ Extras, when you need them:
 | extra | gives you | needed for |
 |---|---|---|
 | `.[swarm]` | `recordstore[bee,feeds]` | running against a live Bee node (§11); reading a feed's signed sequence of roots (§7.5) |
-| `.[sig]` | `eth-keys` | detached offer signatures (§8.4), a key as your identity |
+| `.[sig]` | `swarmfs[feeds]`, `coincurve`, `cryptography`, `eth-hash` | detached offer signatures (§8.4), a key as your identity |
 | `.[chain]` | `web3` | the contracts on Gnosis: announcements, beats, the escrow (§7.2, §11.1) |
 | `.[evm]` | `web3`, `py-solc-x`, `eth-tester` | compiling the contracts and running them on a local EVM (the contract tests) |
 

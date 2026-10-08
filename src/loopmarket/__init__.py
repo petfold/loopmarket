@@ -36,7 +36,7 @@ from .graph import Circulation, ExchangeGraph, Loop, find_circulations
 from .clearing import LoopProposal, MockClearing, Receipt, Clearing
 from .solver.agent import SolverAgent
 
-__version__ = "0.14.1"
+__version__ = "0.14.2"
 
 __all__ = [
     "Acceptance",

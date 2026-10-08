@@ -21,36 +21,71 @@ fold rule (an offer from a foreign feed without a valid signature never
 enters the fold) lands with the P1 aggregator; this module is the primitive
 it will call.
 
-eth-keys loads lazily inside each function: signing is a federation-edge
-concern, never a requirement of the model (boundary B1) — install the
-`sig` extra to use it.
+The cryptography is libsecp256k1's, through swarmfs's shared signer
+(`swarmfs.signer`, the same one that signs the maker's feed); this module
+owns only the encoding. A signature is stored as eth-keys wrote it before
+2026-10-08: `0x`, then r ‖ s ‖ v in hex with v 0 or 1 — unchanged byte for
+byte (tests/test_sigs.py pins eth-keys' own outputs). Recovery needs no
+compiled library; signing does. The signer loads lazily inside each
+function: signing is a federation-edge concern, never a requirement of the
+model (boundary B1) — install the `sig` extra to use it.
 """
 
 from __future__ import annotations
 
 from .schema import Offer
 
+_EXTRA = "pip install 'loopmarket[sig]'"
 
-def _keys():
+
+def _signer():
     try:
-        from eth_keys import keys
+        from swarmfs import signer
     except ImportError as e:  # pragma: no cover - exercised only without extra
-        raise RuntimeError(
-            "detached offer signatures need eth-keys: "
-            "pip install 'loopmarket[sig]'"
-        ) from e
-    return keys
+        raise RuntimeError(f"signatures need swarmfs's signer: {_EXTRA}") from e
+    if not hasattr(signer, "recover_hash"):  # pragma: no cover - old swarmfs
+        raise RuntimeError(f"signatures need swarmfs 0.14.0 or later: {_EXTRA}")
+    return signer
 
 
-def _key_bytes(private_key_hex: str) -> bytes:
-    return bytes.fromhex(private_key_hex.removeprefix("0x"))
+def _key(private_key_hex: str):
+    S = _signer()
+    try:
+        return S.Signer(private_key_hex)
+    except ImportError as e:  # pragma: no cover - exercised only without extra
+        raise RuntimeError(f"signing needs coincurve: {_EXTRA}") from e
+
+
+def _to_hex(signature: bytes) -> str:
+    """The stored form: `0x` and r ‖ s ‖ v with v 0 or 1."""
+    return "0x" + (signature[:64] + bytes([signature[64] - 27])).hex()
+
+
+def _from_hex(sig_hex: str) -> bytes:
+    """Bytes of a stored signature; only the stored form is accepted."""
+    sig = bytes.fromhex(_strip(sig_hex))
+    if len(sig) != 65 or sig[64] not in (0, 1):
+        raise ValueError("a signature is 65 bytes ending in v = 0 or 1")
+    return sig
+
+
+def _sign(private_key_hex: str, hash32: bytes) -> str:
+    return _to_hex(_key(private_key_hex).sign_hash(hash32))
+
+
+def _recover_key(hash32: bytes, sig_hex: str) -> bytes:
+    """The signer's uncompressed public key."""
+    return _signer().recover_hash_key(_from_hex(sig_hex), hash32)
+
+
+def _address(public_key: bytes) -> str:
+    S = _signer()
+    return S.checksum_address(S.address_of(public_key))
 
 
 def maker_address(private_key_hex: str) -> str:
     """The Ethereum-style address this key signs as — use it as `maker`."""
-    keys = _keys()
-    return keys.PrivateKey(_key_bytes(private_key_hex)) \
-        .public_key.to_checksum_address()
+    return _signer().checksum_address(_key(private_key_hex).address)
 
 
 def sign_offer(offer: Offer, private_key_hex: str) -> str:
@@ -60,18 +95,12 @@ def sign_offer(offer: Offer, private_key_hex: str) -> str:
     SHA-256 of the canonical bytes) and lets verifiers work from the id
     alone — no record hydration to check who is speaking.
     """
-    keys = _keys()
-    key = keys.PrivateKey(_key_bytes(private_key_hex))
-    return key.sign_msg_hash(bytes.fromhex(offer.offer_id)).to_hex()
+    return _sign(private_key_hex, bytes.fromhex(offer.offer_id))
 
 
 def recover_maker(offer_id: str, sig_hex: str) -> str:
     """The address that signed this offer id."""
-    keys = _keys()
-    sig = keys.Signature(signature_bytes=_key_bytes(sig_hex))
-    return sig.recover_public_key_from_msg_hash(
-        bytes.fromhex(offer_id)
-    ).to_checksum_address()
+    return _address(_recover_key(bytes.fromhex(offer_id), sig_hex))
 
 
 def verify_offer_sig(offer: Offer, sig_hex: str) -> bool:
@@ -86,10 +115,7 @@ def recover_public_key(offer_id: str, sig_hex: str) -> bytes:
     """The signer's compressed public key, from a detached signature over
     an offer id — what `handoff.seal` encrypts to. No key registry: any
     signature a maker left is their public key."""
-    keys = _keys()
-    sig = keys.Signature(bytes.fromhex(_strip(sig_hex)))
-    return sig.recover_public_key_from_msg_hash(
-        bytes.fromhex(offer_id)).to_compressed_bytes()
+    return _signer().compressed(_recover_key(bytes.fromhex(offer_id), sig_hex))
 
 
 def _strip(hex_: str) -> str:
@@ -117,18 +143,14 @@ def contact_card_hash(address: str) -> bytes:
 
 def sign_contact_card(private_key_hex: str) -> tuple[str, str]:
     """(address, signature hex) — this key's card."""
-    keys = _keys()
-    key = keys.PrivateKey(_key_bytes(private_key_hex))
-    address = key.public_key.to_checksum_address()
-    return address, key.sign_msg_hash(contact_card_hash(address)).to_hex()
+    address = maker_address(private_key_hex)
+    return address, _sign(private_key_hex, contact_card_hash(address))
 
 
 def contact_card_public_key(address: str, sig_hex: str) -> bytes:
     """The compressed public key a card proves for `address`; raises when
     the signature does not recover to that address (a card for another key)."""
-    keys = _keys()
-    sig = keys.Signature(bytes.fromhex(_strip(sig_hex)))
-    public = sig.recover_public_key_from_msg_hash(contact_card_hash(address))
-    if public.to_checksum_address().lower() != address.lower():
+    public = _recover_key(contact_card_hash(address), sig_hex)
+    if _address(public).lower() != address.lower():
         raise ValueError("the contact card does not recover to its address")
-    return public.to_compressed_bytes()
+    return _signer().compressed(public)

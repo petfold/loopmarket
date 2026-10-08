@@ -174,7 +174,7 @@ def test_forged_maker_dies_at_the_fold():
 
 
 def test_foreign_offer_with_valid_signature_enters():
-    pytest.importorskip("eth_keys")
+    pytest.importorskip("coincurve")
     from loopmarket import maker_address, sign_offer
 
     blobs = MemoryBytesStore()

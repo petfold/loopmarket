@@ -7,7 +7,7 @@ Tutorial: [USER-GUIDE.md](USER-GUIDE.md). Rationale:
 
 Floors: Python ≥ 3.11, `ontodag` ≥ 0.26.1, `recordstore` ≥ 0.21.0.
 Extras: `[swarm]` = `recordstore[bee,feeds]` (Bee blobs + signed feeds),
-`[sig]` = `eth-keys`, `eth-hash`, `coincurve`, `cryptography` (detached
+`[sig]` = `swarmfs[feeds]`, `eth-hash`, `coincurve`, `cryptography` (detached
 signatures; sealed handoffs, notices and case records), `[chain]` = `web3`
 (the contracts on Gnosis: announcements, beats, the escrow), `[evm]` =
 `web3`, `py-solc-x`, `eth-tester` (compiling the contracts, a local EVM),
@@ -714,9 +714,13 @@ beat, and the sealed beat's reserve bid.
 
 ## 10. `loopmarket.sigs` — detached signatures (U8's off-feed layer)
 
-All functions lazily import `eth-keys` (`[sig]`); without it they raise
+All functions lazily import swarmfs's shared signer (`swarmfs.signer`,
+`[sig]`; libsecp256k1 through coincurve); without it they raise
 `RuntimeError` (except `verify_offer_sig`, which returns `False` —
-verification failing closed).
+verification failing closed). Recovery works without coincurve; signing
+needs it. A signature is stored as hex: `0x`, then r ‖ s ‖ v with v 0 or 1
+(the form eth-keys wrote before 0.14.2, unchanged byte for byte); any other
+form is refused.
 
 | function | meaning |
 |---|---|

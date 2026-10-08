@@ -9,7 +9,7 @@ import secrets
 import pytest
 from recordstore import MemoryBytesStore, RecordStore
 
-pytest.importorskip("eth_keys", reason="the door's witnesses need the sig extra")
+pytest.importorskip("coincurve", reason="the door's witnesses need the sig extra")
 
 from loopmarket import MockClearing, OfferRegistry, Ontology, Requires, SolverAgent, Thing, TimeWindow, give, want  # noqa: E402
 from loopmarket.matching import check_match  # noqa: E402

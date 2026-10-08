@@ -9,6 +9,21 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.14.2] — 2026-10-08
+
+### Changed
+
+- **Signatures go through swarmfs's shared signer, not eth-keys.** Offer
+  signatures, contact cards and door witnesses (`sigs.py`, `witness.py`)
+  sign and recover with `swarmfs.signer` (0.14.0: libsecp256k1 through
+  coincurve, the same signer that owns the maker's feed). The stored form
+  is unchanged byte for byte: `tests/test_sigs.py` pins eth-keys' own
+  outputs for three keys, and recovers them with and without coincurve
+  (a reader needs no compiled library). Only that form is accepted now: a
+  signature with v 27/28 was refused by eth-keys' parser and is refused by
+  ours. The `sig` extra is `swarmfs[feeds]>=0.14.0`, `eth-hash`,
+  `coincurve`, `cryptography`; eth-keys is gone from it.
+
 ## [0.14.1] — 2026-10-08
 
 ### Changed

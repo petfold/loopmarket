@@ -172,7 +172,7 @@ class OfferRegistry:
         their home feed; feed ownership stays primary. Fail closed: a
         signature that does not recover to the offer's maker is refused,
         so the book never holds a sidecar that lies about who is speaking.
-        Needs the `sig` extra (eth-keys).
+        Needs the `sig` extra.
         """
         from .sigs import recover_maker
 

@@ -63,7 +63,7 @@ agent.step()                          # snapshot → match → candidates → se
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 305 tests (three need a live Bee node, sixty the evm extra, one swarmfs — skipped per test without them)
+python3 -m pytest tests/ -v           # 315 tests (three need a live Bee node, sixty the evm extra, one swarmfs — skipped per test without them)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
@@ -115,7 +115,7 @@ same code runs with the book on Swarm.
 
 ## What is built, and what is designed
 
-**Built (as of 0.14.1):** the full pipeline above runs
+**Built (as of 0.14.2):** the full pipeline above runs
 in memory — and, since 2026-09-12, from the command line (`loop`) — and since 2026-08-01 also end-to-end on a real Gnosis-mainnet
 Bee node — catalogue and book on Swarm, book head in a signed feed, fills
 atomic (the gated `tests/test_swarm_book.py`). Since 2026-08-21 the
