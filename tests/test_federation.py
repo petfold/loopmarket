@@ -402,3 +402,30 @@ def test_two_whole_books_claiming_one_offer_fail_loudly(rival):
     agg.announce("0-rival", rival_book, role=CLEARING)
     with pytest.raises(PartialLoopError):
         agg.fold()
+
+
+def test_a_bad_number_rejects_its_record_not_the_book():
+    """A record whose numbers cannot be read is rejected on its own; the
+    rest of its maker's book is folded (a zero denominator escaped the
+    admission rules as ZeroDivisionError until 2026-10-09, and an exponent
+    like 1e10000000 took 12 s to read)."""
+    blobs = MemoryBytesStore()
+    books = _maker_books(blobs)
+    amara = books["amara"].store
+    honest = sorted(k for k in amara.keys() if k.startswith("offer/"))
+    record = amara.get(honest[0])
+    bad = {}
+    for n, (side, field, text) in enumerate((("wants", "amount", "1/0"),
+                                             ("gives", "qty", "1e10000000"))):
+        broken = {**record, side: {**record[side], field: text}}
+        key = "offer/" + f"{n:02d}" * 32
+        amara.put(key, broken)
+        bad[key] = text
+    amara.commit()
+    manifest = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"]).fold()
+    provenance = dict(RecordStore.at(manifest.provenance_root, blobs).items())
+    for key in bad:
+        assert provenance[f"reject/amara/{key}"]["reason"] == "unreadable offer record"
+    assert "reject/amara/*" not in provenance
+    folded = OfferRegistry(RecordStore.at(manifest.book_root, blobs))
+    assert {f"offer/{o.offer_id}" for o in folded.offers(now=NOW) if o.maker == "amara"} == set(honest)

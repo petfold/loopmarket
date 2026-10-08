@@ -83,3 +83,69 @@ def test_time_and_geo_fits_within():
     far = GeoDisc(48.0, 16.0, 1_000)
     assert not big.intersects(far)
 
+
+
+def test_a_record_number_can_neither_stall_nor_crash_the_reader():
+    """Records are untrusted input. `q` read `"1e10000000"` by computing
+    10**10000000 (12 s, and each further digit of the exponent costs at
+    least ten times more), and let `"1/0"` escape as ZeroDivisionError,
+    which the fold's admission rules do not catch (both found 2026-10-09
+    by fuzzing `Offer.from_record`). The bomb here is finite, so that a
+    regression fails the timing check rather than hanging the suite."""
+    import time
+    from fractions import Fraction
+
+    from loopmarket.schema import q
+    for text in ("1/0", "1e10000000", "1e-10000000"):
+        started = time.perf_counter()
+        with pytest.raises(ValueError):
+            q(text)
+        assert time.perf_counter() - started < 1
+    assert q("1e3") == 1000 and q("21/2") == Fraction(21, 2) and q("10.5") == Fraction(21, 2)
+
+
+def test_no_mutated_record_escapes_the_admission_errors():
+    """The fold rejects a single record when reading it raises ValueError,
+    KeyError, TypeError or AttributeError; anything else rejects the whole
+    book. A seeded mutator of real records found two escapes on
+    2026-10-09, both numbers (`"1/0"`, `"1e10000000"`); this keeps the
+    count at none."""
+    import copy
+    import random
+
+    now = 1_700_000_000
+    valid = TimeWindow(now - 1, now + 86_400)
+    records = [o.to_record() for o in (
+        give("amara", Thing(("piano-lesson",), unit="course"), 100, nonce=1,
+             service=TimeWindow(now, now + 86_400), where=GeoDisc(46.0, 14.5, 5000),
+             valid=valid),
+        give("amara", Thing(("piano-lesson", "time(2026-10)"), unit="course"), 100,
+             nonce=2, valid=valid),
+        want("bruno", Thing(("vegetable-box",), unit="course"), 52, nonce=4, valid=valid))]
+    garbage = [None, 0, -1, 10**40, 1.5, float("nan"), "", "xxx", [], {}, [1, 2],
+               {"a": 1}, True, "1/0", "-5", "1e10000000", "1e-10000000", "9" * 5000]
+
+    def paths(value, prefix=()):
+        items = value.items() if isinstance(value, dict) else \
+            enumerate(value) if isinstance(value, list) else ()
+        for key, child in items:
+            yield prefix + (key,)
+            yield from paths(child, prefix + (key,))
+
+    rng = random.Random(1)
+    for _ in range(3000):
+        rec = copy.deepcopy(rng.choice(records))
+        for _ in range(rng.choice((1, 1, 2))):
+            path = rng.choice(list(paths(rec)))
+            parent = rec
+            for key in path[:-1]:
+                parent = parent[key]
+            if rng.random() < 0.2 and isinstance(parent, dict):
+                del parent[path[-1]]
+            else:
+                parent[path[-1]] = copy.deepcopy(rng.choice(garbage))
+        try:
+            offer = Offer.from_record(rec)
+            offer.offer_id, offer.unit_price
+        except (ValueError, KeyError, TypeError, AttributeError):
+            pass

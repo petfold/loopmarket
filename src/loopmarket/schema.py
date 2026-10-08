@@ -38,6 +38,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 import time as _time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -62,9 +63,28 @@ def q(x) -> Fraction:
         raise TypeError("a boolean is not a quantity")
     if isinstance(x, float):
         return Fraction(repr(x))
-    if isinstance(x, (int, str)):
+    if isinstance(x, str):
+        # A record is untrusted input, and `Fraction` computes `10**e`
+        # exactly: `"1e10000000"` took 12 s, and every further digit of the
+        # exponent costs at least ten times more, enough to stall a fold.
+        # Python itself refuses to read an int of more than 4300 digits
+        # from a string; an exponent beyond that is refused here for the
+        # same reason. And `"1/0"` raised ZeroDivisionError, which no
+        # caller catches (both found 2026-10-09).
+        exponent = _EXPONENT.search(x)
+        if exponent and abs(int(exponent.group(1))) > _MAX_DIGITS:
+            raise ValueError(f"not a number of at most {_MAX_DIGITS} digits: {x[:40]!r}")
+        try:
+            return Fraction(x)
+        except ZeroDivisionError:
+            raise ValueError(f"zero denominator: {x!r}") from None
+    if isinstance(x, int):
         return Fraction(x)
     raise TypeError(f"not a number: {x!r}")
+
+
+_EXPONENT = re.compile(r"[eE]\s*([+-]?\d+)")
+_MAX_DIGITS = 4300      # sys.int_info.default_max_str_digits
 
 
 def rat(x) -> str:

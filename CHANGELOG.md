@@ -27,6 +27,16 @@ Found in the 2026-10-09 review of ontodag and loopmarket (ontodag's
   loudly: choosing between them is the open problem of
   `P1-federated-book.md` §3, and settling it by owner name would let a
   chosen owner id win races.
+- **A number in a record could stall or crash the reader.** `q`, which
+  reads every quantity and amount, handed strings to `Fraction`, which
+  computes `10**e` exactly: `"1e10000000"` took 12 s, and every further
+  digit of the exponent costs at least ten times more. `"1/0"` raised
+  `ZeroDivisionError`, which the fold's admission rules did not catch. An
+  exponent beyond 4300 (Python's own limit on digits read from a string)
+  and a zero denominator are now `ValueError`s, so such a record is
+  rejected on its own and the rest of its book is folded. Found by
+  fuzzing `Offer.from_record` (20,000 mutated records: none escapes now);
+  the seeded mutator is now a test (3,000 records, under a second).
 - **`loop help` listed about thirty flags that `loop` refused** (for
   example `loop --registry memory: status` was an argparse error). The
   global flags are now derived from the settings table, so every flag the
