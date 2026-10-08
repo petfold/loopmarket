@@ -180,7 +180,7 @@ class TestRoleTerms:
                     ["transport", "transport(produce)", "transport(vegetable-box)",
                      "transport(fruit-box local)", "transport(fruit-box produce)"]))
                 # the last spelling is redundant when fruit-box ⊑ produce: ontodag
-                # refuses it, and both generators must agree on refusing the give
+                # drops produce (0.30.6), and both generators must agree on it
             thing = Thing(tuple(terms), qty=rng.choice([1, 2]),
                           divisible=rng.random() < 0.5)
             side = give if rng.random() < 0.5 else want

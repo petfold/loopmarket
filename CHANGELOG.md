@@ -9,6 +9,19 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.14.4] — 2026-10-08
+
+### Changed
+
+- **Floor `ontodag>=0.30.6`.** ontodag now stores a graph-kind term with
+  several constraints as its parts and drops a redundant constraint
+  instead of refusing it, so a give spelled `transport(bicycle
+  small-item)` is known and accepts bicycles (once bicycles are small
+  items), where it used to be refused and matched nothing. The test that
+  pinned the refusal now pins the new reading. The index's candidates are
+  unchanged: two same-head terms on one give still mean one thing that
+  meets both.
+
 ## [0.14.3] — 2026-10-08
 
 ### Changed

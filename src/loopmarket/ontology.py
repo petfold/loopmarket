@@ -66,9 +66,9 @@ three relations are `is_below`, and the seed decides the direction. The
 operator term itself is ontodag's: a head of the *graph kind*
 (`graph-dimension`, ontodag #19, 0.26.0) takes a conjunction of
 constraints on the graph as its parameter, canonicalises it (sorted,
-deduplicated, a redundant constraint refused, an unknown one failing
-closed) and orders two such terms by the graph; this module only reads
-the head and the constraints off it.
+deduplicated, a redundant constraint dropped since ontodag 0.30.6, an
+unknown one failing closed) and orders two such terms by the graph; this
+module only reads the head and the constraints off it.
 
 Offers pin the catalogue version they were written against
 (`Offer.ontology_root`): persistence through `EagerOntoDAG` over a
@@ -358,9 +358,11 @@ class Ontology:
         """The constraints an operator term's argument states, in
         ontodag's canonical spelling: `transport(small-item
         mass(..8000g))` → `("mass(..8kg)", "small-item")`; a bare operator
-        accepts anything: `()`. A term the catalogue refuses (an unknown or
-        redundant constraint) has no argument here — `known` is where it
-        fails closed."""
+        accepts anything: `()`. A redundant constraint is dropped
+        (`transport(bicycle small-item)` → `("bicycle",)` once bicycles
+        are small items). A term the catalogue refuses (an unknown
+        constraint) has no argument here — `known` is where it fails
+        closed."""
         split = _dims.split_term(term)
         if split is None:
             return ()
@@ -526,8 +528,8 @@ class Ontology:
         Strict on vocabulary (U7): a wanted category nobody knows never
         matches; an extra unknown category on the offered side only
         narrows the offer and is ignored — except an operator term the
-        catalogue refuses (an unknown or redundant constraint), which
-        would widen the give to "accepts anything" and so refuses; a give
+        catalogue refuses (an unknown constraint), which would widen the
+        give to "accepts anything" and so refuses; a give
         whose same-head terms are provably disjoint describes nothing and
         satisfies nothing.
 

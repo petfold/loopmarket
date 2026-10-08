@@ -207,11 +207,12 @@ def test_a_conjunction_in_the_argument_is_several_constraints():
         assert not ok(give, ["transport(bicycle)"])          # silent on weight
     assert cat.known("transport(small-item mass(..8kg))")
     assert not cat.known("transport(unicorn)")               # fails closed (U7)
-    # ontodag #19 refuses a redundant constraint (one canonical name per
-    # set): the spelling is unknown here, and a give carrying it is not read
-    # as "accepts anything" — it matches nothing
-    assert not cat.known("transport(bicycle small-item)")
-    assert not ok(["transport(bicycle small-item)"], ["transport(racing-bicycle)"])
+    # a redundant constraint is dropped (ontodag 0.30.6; it was refused):
+    # the spelling means what its finer constraint says, so the courier
+    # accepts bicycles, and a racing bicycle fits
+    assert cat.known("transport(bicycle small-item)")
+    assert cat.argument("transport(bicycle small-item)") == ("bicycle",)
+    assert ok(["transport(bicycle small-item)"], ["transport(racing-bicycle)"])
     assert cat.argument("transport(mass(..8000g) bicycle)") == ("bicycle", "mass(..8kg)")
     assert not cat.known("delivery(bicycle)")                # not an operator
     assert cat.argument("transport(small-item mass(..8kg))") == \
