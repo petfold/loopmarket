@@ -5,7 +5,7 @@ Tutorial: [USER-GUIDE.md](USER-GUIDE.md). Rationale:
 [ARCHITECTURE.md](../ARCHITECTURE.md). Working rules and roadmap:
 [CLAUDE.md](../CLAUDE.md).*
 
-Floors: Python ≥ 3.11, `ontodag` ≥ 0.26.1, `recordstore` ≥ 0.21.0.
+Floors: Python ≥ 3.11, `ontodag` ≥ 0.30.5, `recordstore` ≥ 0.22.1.
 Extras: `[swarm]` = `recordstore[bee,feeds]` (Bee blobs + signed feeds),
 `[sig]` = `swarmfs[feeds]`, `eth-hash`, `coincurve`, `cryptography` (detached
 signatures; sealed handoffs, notices and case records), `[chain]` = `web3`

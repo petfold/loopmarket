@@ -9,6 +9,23 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.14.3] — 2026-10-08
+
+### Changed
+
+- **Floors: `ontodag>=0.30.5`, `recordstore>=0.22.1`** (and the `swarm`
+  extra `recordstore[bee,feeds]>=0.22.1`). ontodag 0.30.1 fixed a store
+  with a role head under `geo` answering `get geo(...)` with nothing after
+  a native load, which is loopmarket's `from`/`to`; 0.30.5 is the current
+  release. recordstore 0.22.1's `diff()` and `merge()` load ahead level by
+  level, so the aggregator's `RecordStore.merge` folds read a maker's book
+  in a few rounds per trie level instead of one per node. That matters for
+  large books; the live federation test, whose books are small and whose
+  time goes to feed lookups, took the same time (359 s, 350 s before).
+  0.22 reaches Bee
+  only through swarmfs, so the `swarm` extra pulls neither `requests` nor
+  `swarm-bee`.
+
 ## [0.14.2] — 2026-10-08
 
 ### Changed
