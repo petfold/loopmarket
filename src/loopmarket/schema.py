@@ -803,6 +803,12 @@ class Offer:
     # requirements, `claim_max` and the option's two fields; a v5 offer
     # re-encodes as v5.
     v: int = 4                    # record version; identity includes it
+    # Caches of two values an offer computes from its immutable fields,
+    # filled on first use; outside the record, equality and the hash. The
+    # solver asked each a few hundred thousand times per step, rebuilding
+    # the canonical bytes or a Fraction every time (2026-10-09 review).
+    _id: str = field(default="", init=False, repr=False, compare=False)
+    _unit_price: Any = field(default=None, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         thing_sides = [s for s in (self.gives, self.wants) if isinstance(s, (Thing, Parts))]
@@ -922,7 +928,10 @@ class Offer:
     def unit_price(self) -> Fraction:
         """Maker-tokens per unit of the thing, exact (U9). A composed want
         has a price for the lot, not per unit: use `amount`."""
-        return q(self.tokens.amount) / q(self.thing.qty)
+        if self._unit_price is None:
+            object.__setattr__(self, "_unit_price",
+                               q(self.tokens.amount) / q(self.thing.qty))
+        return self._unit_price
 
     # -- encoding -----------------------------------------------------------
 
@@ -1039,7 +1048,10 @@ class Offer:
     @property
     def offer_id(self) -> str:
         """Logical content address: SHA-256 of the canonical encoding."""
-        return hashlib.sha256(self.canonical_bytes()).hexdigest()
+        if not self._id:
+            object.__setattr__(self, "_id",
+                               hashlib.sha256(self.canonical_bytes()).hexdigest())
+        return self._id
 
 
 # ---------------------------------------------------------------- convenience

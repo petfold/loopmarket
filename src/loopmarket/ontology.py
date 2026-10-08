@@ -366,8 +366,9 @@ class Ontology:
         split = _dims.split_term(term)
         if split is None:
             return ()
+        from ontodag.surface import elaborate    # ontodag's public spelling
         try:
-            canonical = self.dag._canonical_name(term)
+            canonical = elaborate(term, self.dag)
         except ValueError:
             return ()
         return _dims.constraints(_dims.split_term(canonical)[1])

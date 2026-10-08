@@ -311,3 +311,94 @@ def test_dropped_tombstone_is_an_omission_too():
     found = audit_manifest(m, blobs)
     assert [(o.owner, o.key) for o in found] == [("bruno", f"withdraw/{regret}")]
     assert not OfferRegistry(RecordStore(blobs, root=m.book_root)).is_withdrawn(regret)
+
+
+def test_a_hostile_book_cannot_stop_the_fold():
+    """Anyone may announce a book, so the fold is an admission boundary for
+    untrusted input: what it cannot read is rejected with its reason, never
+    allowed to abort the fold for every reader (2026-10-09: a record that is
+    not an object raised AttributeError, and a "clearing" book with a loop
+    and no fills raised PartialLoopError, so one announced book stopped
+    every reader's fold)."""
+    blobs = MemoryBytesStore()
+    books = _maker_books(blobs)
+    garbled = RecordStore(blobs)
+    garbled.put("offer/" + "ab" * 32, "not an object")
+    garbled.commit()
+    fake = RecordStore(blobs)
+    fake.put("loop/" + "cd" * 32,
+             {"legs": [{"give": "ef" * 32, "want": "01" * 32, "qty": "1"}]})
+    fake.commit()
+    agg = _aggregator(blobs, "agg-0", books, ["amara", "bruno", "chen"])
+    agg.announce("mallory", garbled)
+    agg.announce("fake-clearing", fake, role=CLEARING)
+    manifest = agg.fold()
+    rejected = {k for k, _ in RecordStore.at(manifest.provenance_root, blobs).items()
+                if k.startswith("reject/")}
+    assert "reject/fake-clearing/*" in rejected
+    assert any(k.startswith("reject/mallory/offer/") for k in rejected)
+    folded = OfferRegistry(RecordStore.at(manifest.book_root, blobs))
+    makers = {o.maker for o in folded.offers(now=NOW)}
+    assert makers == {"amara", "bruno", "chen"}       # the honest books stand
+    honest = _aggregator(blobs, "agg-1", books, ["amara", "bruno", "chen"]).fold()
+    assert manifest.book_root == honest.book_root
+
+
+def _cleared(blobs, base_root, solver_id):
+    """A clearing book: one solver clears the fold at `base_root`."""
+    reg = OfferRegistry(RecordStore(blobs, root=base_root))
+    agent = SolverAgent(reg, ONT, MockClearing(reg, ONT, clock=lambda: NOW),
+                        solver_id=solver_id)
+    receipts = agent.step(now=NOW)
+    assert len(receipts) == 1 and receipts[0].accepted
+    return reg
+
+
+@pytest.mark.parametrize("hostile", ["0-clearing", "zz-clearing"])
+def test_owner_names_cannot_decide_admission(hostile):
+    """A clearing book is tested against the makers alone, so a broken book
+    is rejected and an honest one admitted whichever owner sorts first."""
+    blobs = MemoryBytesStore()
+    books = _maker_books(blobs)
+    m1 = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"]).fold()
+    honest = _cleared(blobs, m1.book_root, "fed-solver")
+    fake = RecordStore(blobs)
+    fake.put("loop/" + "cd" * 32,
+             {"legs": [{"give": "ef" * 32, "want": "01" * 32, "qty": "1"}]})
+    fake.commit()
+    agg = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"])
+    agg.announce("clearing-0", honest.store, role=CLEARING)
+    agg.announce(hostile, fake, role=CLEARING)
+    manifest = agg.fold()
+    rejected = {k for k, _ in RecordStore.at(manifest.provenance_root, blobs).items()
+                if k.startswith("reject/")}
+    assert rejected == {f"reject/{hostile}/*"}
+    folded = OfferRegistry(RecordStore.at(manifest.book_root, blobs))
+    assert list(folded.offers(now=NOW)) == []   # the honest loop filled all
+
+
+@pytest.mark.parametrize("rival", ["00" * 32, "ff" * 32])
+def test_two_whole_books_claiming_one_offer_fail_loudly(rival):
+    """Two books, each whole on its own, clear the same offers in different
+    loops (two clearers solving one fold give one loop id, so the rival is
+    written by hand). Neither is rejected, and the merged book fails U11:
+    the open problem of P1-federated-book.md §3. Admitting whichever owner
+    sorts first would settle races by name, and an owner id can be chosen
+    to win them."""
+    from loopmarket import PartialLoopError
+    blobs = MemoryBytesStore()
+    books = _maker_books(blobs)
+    m1 = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"]).fold()
+    honest = _cleared(blobs, m1.book_root, "fed-solver")
+    rival_book = RecordStore(blobs)
+    for key, rec in honest.store.items():
+        if key.startswith("loop/"):
+            rival_book.put("loop/" + rival, rec)
+        elif key.startswith("fill/"):
+            rival_book.put(key, {**rec, "loop": rival})
+    rival_book.commit()
+    agg = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"])
+    agg.announce("clearing-0", honest.store, role=CLEARING)
+    agg.announce("0-rival", rival_book, role=CLEARING)
+    with pytest.raises(PartialLoopError):
+        agg.fold()

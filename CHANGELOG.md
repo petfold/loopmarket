@@ -9,6 +9,53 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+Found in the 2026-10-09 review of ontodag and loopmarket (ontodag's
+`docs/plans/REVIEW_2026-10.md`; pointer in `docs/plans/review-2026-10.md`).
+
+### Fixed
+
+- **One announced book could stop every reader's fold.** Anyone may
+  announce a book, but a record that is not an object raised
+  `AttributeError` inside the admission rules, and a "clearing" book with a
+  loop and no fills raised `PartialLoopError` after the merge; either
+  aborted `Aggregator.fold()` for everyone. Now an unreadable book is
+  rejected whole (`reject/OWNER/*`, with the error's type), and a clearing
+  book is admitted only if its loops are whole (U11) against the maker
+  books alone. Each book is tested on its own, so which other books were
+  announced, and how their owners sort, cannot decide whether it gets in.
+  Two books that are each whole but claim one offer still fail U11
+  loudly: choosing between them is the open problem of
+  `P1-federated-book.md` §3, and settling it by owner name would let a
+  chosen owner id win races.
+- **`loop help` listed about thirty flags that `loop` refused** (for
+  example `loop --registry memory: status` was an argparse error). The
+  global flags are now derived from the settings table, so every flag the
+  help prints is accepted.
+- **`watch` missed the second giver of a composed leg.** It matched a
+  fill only against a leg's first give, so a second giver got no "filled"
+  line, and the wanter's line named only the first giver. It now matches
+  every give and names every giver.
+- **The approval block rounded durations.** `cli.py` defined
+  `_duration_text` twice, and the second, rounding definition replaced
+  the exact one, so a 36-hour `claim_max` showed as `1.5d` and a
+  100-second one as `1.67m`. The rounding one is now `_duration_approx`,
+  used only by the option notes that estimate.
+
+### Changed
+
+- **Faster solver steps.** `Offer.offer_id` and `Offer.unit_price` are
+  computed once and cached on the offer (outside the record, equality and
+  the hash). The solver asked for them a few hundred thousand times per
+  step. `SolverAgent.find_loops` over 100 offers a side: 26 s → 7.9 s.
+  Most of the remaining time is `enumerate_cycles`; the bigger win is the
+  indexed candidate generator (8–13× faster than the product, same
+  matches), which the solver still does not use (review §6, §8).
+- `Ontology.argument` uses ontodag's public `surface.elaborate` instead
+  of the private `dag._canonical_name`.
+- The B2 boundary test also checks that `import loopmarket` loads none of
+  the Swarm path's clients since recordstore 0.22: `swarmfs`, `aiohttp`,
+  `coincurve`.
+
 ## [0.14.4] — 2026-10-08
 
 ### Changed

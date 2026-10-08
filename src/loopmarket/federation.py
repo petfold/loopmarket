@@ -43,7 +43,7 @@ from recordstore import RecordStore
 
 from .registry import (
     CASE, CRED, CURE, EXERCISE, HANDOFF, ITEM, KEY, NOTICE, OPTION,
-    FILL, LOOP, OFFER, SIG, WITHDRAW, OfferRegistry,
+    FILL, LOOP, OFFER, SIG, WITHDRAW, OfferRegistry, PartialLoopError,
     or_set_resolver,
 )
 from .schema import Offer, Statement
@@ -161,16 +161,51 @@ class Aggregator:
                 continue
             blobs, store_type = store.blobs, type(store)
             source = store_type.at(root, blobs)
-            staged = self._sanitize(owner, role, root, source, provenance)
+            try:
+                staged = self._sanitize(owner, role, root, source, provenance)
+            except Exception as exc:   # noqa: BLE001 — hostile input fails closed
+                # A book the admission rules cannot read is not folded; it
+                # used to abort the fold, so one announced book stopped
+                # every reader (2026-10-09).
+                provenance.put(f"reject/{owner}/*", {
+                    "owner": owner,
+                    "reason": f"unreadable book ({type(exc).__name__})"})
+                continue
             staged_root = staged.commit()
             if staged_root:
-                staged_roots.append(staged_root)
+                staged_roots.append((role, owner, staged_root))
 
-        book_root = None
-        for staged_root in staged_roots:
-            book_root = staged_root if book_root is None else \
-                store_type.merge(blobs, None, book_root, staged_root,
-                                 resolver=or_set_resolver)
+        def merged(base, staged_root):
+            return staged_root if base is None else store_type.merge(
+                blobs, None, base, staged_root, resolver=or_set_resolver)
+
+        # The maker books first. A clearing book is then admitted only if
+        # its loops are whole (U11) against the makers alone; one that is
+        # not is rejected with its reason, where it used to abort the fold
+        # for every reader (an announced "clearing" book with a loop and no
+        # fills did, 2026-10-09). Each book is tested on its own, so which
+        # other books were announced, and how their owners sort, cannot
+        # decide whether it is admitted. Two books that are each whole but
+        # claim one offer still fail U11 below, loudly: choosing between
+        # them is the loop-granularity resolver's open problem
+        # (P1-federated-book.md §3), not a rule for the fold to invent.
+        makers_root = None
+        for role, _owner, staged_root in staged_roots:
+            if role != CLEARING:
+                makers_root = merged(makers_root, staged_root)
+        book_root = makers_root
+        for role, owner, staged_root in staged_roots:
+            if role != CLEARING:
+                continue
+            alone = merged(makers_root, staged_root)
+            try:
+                OfferRegistry(store_type.at(alone, blobs)).verify_loop_atomicity()
+            except PartialLoopError as exc:
+                provenance.put(f"reject/{owner}/*", {
+                    "owner": owner,
+                    "reason": f"loops not whole against the makers: {exc}"})
+                continue
+            book_root = merged(book_root, staged_root)
         book_root = book_root or ""
 
         if book_root:
@@ -220,7 +255,9 @@ class Aggregator:
                 oid = key[len(OFFER):]
                 try:
                     offer = Offer.from_record(rec)
-                except (ValueError, KeyError, TypeError):
+                except (ValueError, KeyError, TypeError, AttributeError):
+                    # AttributeError: a record that is not an object at all;
+                    # uncaught, it aborted every reader's fold (2026-10-09)
                     reject(key, "unreadable offer record")
                     continue
                 if offer.offer_id != oid:

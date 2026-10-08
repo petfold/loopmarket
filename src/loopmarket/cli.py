@@ -1459,7 +1459,6 @@ def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology,
     to its value — plus the notes that carry the surface spellings. Shared
     by a simple offer, a draft and each part of a composed want. Refusals
     here are the loud kind."""
-    now = session.now
     notes: list[str] = []
     if parsed.band:
         point = parsed.band.split("..")[-1].split(":")[0] or parsed.band.split("..")[0] or "10kg"
@@ -2331,11 +2330,11 @@ def _option_plan(session, p: Offer, now: int, until_text: str | None = None,
                                  f"no lead to take {rule} of — pass --until, or set option_window "
                                  f"to a duration")
             until = now + int(lead * rule)
-            notes.append(f"window {text} of {lead_name} ({_duration_text(until - now)}), "
+            notes.append(f"window {text} of {lead_name} ({_duration_approx(until - now)}), "
                          f"until {_iso(until)}")
         else:
             until = now + rule
-            notes.append(f"window {_duration_text(rule)}, until {_iso(until)}")
+            notes.append(f"window {_duration_approx(rule)}, until {_iso(until)}")
     if until <= now:
         raise ValueError("the exercise window ends after now")
     if p.valid.end is not None and until > p.valid.end:
@@ -2366,7 +2365,7 @@ def _option_plan(session, p: Offer, now: int, until_text: str | None = None,
             loss = math.exp(-rate * max(span - w, 0)) - math.exp(-rate * span)
             premium = _round_amount(float(price) * 0.5 * loss)
             notes.append(f"premium suggested: {n} want(s) for this in 30 days, a buyer every "
-                         f"~{_duration_text(int(DEMAND_LOOKBACK / n))}; the chance one comes during the "
+                         f"~{_duration_approx(int(DEMAND_LOOKBACK / n))}; the chance one comes during the "
                          f"hold and none after it, the holder exercising half the time")
     floor = _round_amount(max(price / 100, Fraction(1, 100)))
     if premium < floor:
@@ -2375,7 +2374,12 @@ def _option_plan(session, p: Offer, now: int, until_text: str | None = None,
     return until, premium, notes
 
 
-def _duration_text(seconds: int) -> str:
+def _duration_approx(seconds: int) -> str:
+    """Seconds in the largest unit they reach, rounded: for notes that
+    estimate (an option's window, a demand rate). Exact spellings, for
+    what an offer states, are `_duration_text`'s; until 2026-10-09 this one
+    had the same name, so it silently replaced the exact one in the
+    approval block (a 100 s claim period showed as `1.67m`)."""
     for unit, size in (("d", 86_400), ("h", 3_600), ("m", 60)):
         if seconds >= size:
             value = Fraction(seconds, size)
@@ -2620,15 +2624,26 @@ def _remember_handoff(offer_id: str, text: str) -> None:
 
 
 def _leg_of(fold: OfferRegistry, offer_id: str):
-    """(loop_id, leg, my side) for a filled offer, else None."""
+    """(loop_id, leg, my side) for a filled offer, else None. A composed or
+    aggregated leg has several gives, any of them the give side (`give`
+    is only the first, kept for readers of the 2026-08 shape; matching it
+    alone left the second giver of a composed leg without its report until
+    2026-10-09)."""
     loop_id = fold.loop_of(offer_id)
     if not loop_id:
         return None
     rec = fold.store.get(f"loop/{loop_id}")
     for leg in rec.get("legs", []):
-        if offer_id in (leg["give"], leg["want"]):
-            return loop_id, leg, ("give" if leg["give"] == offer_id else "want")
+        if offer_id in _gives_of(leg):
+            return loop_id, leg, "give"
+        if offer_id == leg["want"]:
+            return loop_id, leg, "want"
     return None
+
+
+def _gives_of(leg: dict) -> list:
+    """Every give of a `loop/` record's leg (a 2026-08 record names one)."""
+    return list(leg.get("gives") or [leg["give"]])
 
 
 def cmd_handoff(args, session, out):
@@ -2741,8 +2756,10 @@ def _watch_pass(session: Session, out) -> bool:
         other = fold.get(leg["want"] if side == "give" else leg["give"])
         thing = " ".join(_bare_key(tuple(c for p in (offer if side == "give" else other).parts for c in p.concepts)))
         verb = f"gives {thing} to" if side == "give" else f"receives {thing} from"
+        counterparties = other.maker if side == "give" else ", ".join(
+            sorted({fold.get(g).maker for g in _gives_of(leg)}))
         print(f"filled   {oid[:12]} in loop {loop_id[:16]}…: {me} {verb} "
-              f"{other.maker}", file=out)
+              f"{counterparties}", file=out)
         seen["fills"].append(oid)
         news = True
     # the demand signal (2026-09-29): someone would pay to hold what I give
@@ -4777,6 +4794,12 @@ _GLOBAL_FLAGS = {
     "--bee-api": "bee_api", "--bee-batch": "bee_batch",
     "--bee-signer": "bee_signer",
 }
+# Every setting's documented flag is a real one: `loop help` prints each
+# setting's flag, and until 2026-10-09 thirty of them were not accepted
+# (`loop --registry memory: status` was an argparse error).
+for _key, _setting in _SETTINGS.items():
+    if _setting.flag and _setting.flag.startswith("--") and "/" not in _setting.flag:
+        _GLOBAL_FLAGS.setdefault(_setting.flag.split()[0], _key)
 
 
 def main(argv=None) -> None:

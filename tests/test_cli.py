@@ -664,6 +664,18 @@ def test_main_global_flags_and_version(env, capsys):
     assert exc.value.code == 2
 
 
+def test_every_advertised_flag_is_accepted(env, capsys):
+    # `loop help` prints a flag for every setting; each must be one `main`
+    # accepts (30 were not, until 2026-10-09).
+    for key, setting in cli._SETTINGS.items():
+        if setting.flag and "/" not in setting.flag:
+            assert setting.flag.split()[0] in cli._GLOBAL_FLAGS, key
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["--trust", "0xabc", "set", "trust"])
+    assert exc.value.code == 0
+    assert capsys.readouterr().out.strip() == "trust = 0xabc"
+
+
 def test_help_lists_every_setting(env):
     run = Runner()
     out = run.ok("help")
@@ -1536,3 +1548,34 @@ def test_an_unknown_prelude_term_says_how_to_get_it():
                           ("weight", ["linear-dimension"])]:
         old.put(name, parents)
     assert "predates `mass`" in _unknown_hint("mass(3kg)", old)
+
+
+def test_every_give_of_a_composed_leg_finds_its_leg():
+    # A composed or aggregated leg names several gives; `give` is only the
+    # first. Until 2026-10-09 `_leg_of` matched `give` alone, so `watch`
+    # never told the second giver its offer was filled.
+    from recordstore import MemoryBytesStore, RecordStore
+    from loopmarket.registry import OfferRegistry
+    store = RecordStore(MemoryBytesStore())
+    loop_id, a, b, w = "l" * 64, "a" * 64, "b" * 64, "c" * 64
+    store.put(f"loop/{loop_id}", {"legs": [{"give": a, "gives": [a, b], "want": w}]})
+    for oid in (a, b, w):
+        store.put(f"fill/{oid}", {"loop": loop_id})
+    fold = OfferRegistry(store)
+    assert cli._leg_of(fold, a)[2] == "give"
+    assert cli._leg_of(fold, b)[2] == "give"
+    assert cli._leg_of(fold, w)[2] == "want"
+    assert cli._gives_of({"give": a, "want": w}) == [a]   # the 2026-08 shape
+
+
+def test_the_approval_block_spells_a_claim_period_exactly(loop):
+    """The approval block shows what the offer states, so a duration is
+    spelled exactly. Until 2026-10-09 a second, rounding `_duration_text`
+    later in cli.py replaced the exact one, and a 36-hour claim showed as
+    `1.5d` (a 100-second one as `1.67m`)."""
+    run = loop
+    run.ok("set", "claim_max", "36h")
+    out = run.ok("give", "apple", "home", "5")
+    assert "claim_max 36h" in out
+    g = next(o for o in run.session.book.offers(include_filled=True) if o.kind == "give")
+    assert g.claim_max == 36 * 3600

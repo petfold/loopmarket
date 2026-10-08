@@ -33,7 +33,10 @@ def test_b2_no_bee_modules_at_import():
         "import sys\n"
         "import loopmarket\n"
         "import loopmarket.cli\n"
-        "loaded = [m for m in sys.modules if 'requests' in m or 'swarm_bee' in m]\n"
+        # the Swarm path's clients: requests/swarm_bee until recordstore
+        # 0.22, swarmfs over aiohttp since (and coincurve for its signer)
+        "loaded = [m for m in sys.modules if m.split('.')[0] in "
+        "('requests', 'swarm_bee', 'swarmfs', 'aiohttp', 'coincurve')]\n"
         "print('LOADED:' + ','.join(loaded))\n"
     )
     out = subprocess.run(

@@ -99,6 +99,17 @@ Live-node runs follow ontodag's convention: skip unless `BEE_API` **and** `BEE_B
 - **P4 Privacy** — staged disclosure, committed offers, ZK fits-within/range proofs, private matching experiments.
 - **Later (post-P4) — price and capacity schedules in offers** (owner-added 2026-08-21): the offer's single price generalizes to a static, immutable schedule over quantity (supply/demand curves) and/or validity time (a pre-committed Dutch/English ladder in one offer — no oversell, unlike a ladder of short-validity offers); the same record family covers **capacity/slot schedules** (k seats, one lesson per non-overlapping hour), with fills becoming slot/quantity-parameterized — until then the working forms are one-offer-per-slot/seat (strict today) and P2's qty-as-flow-capacity partial fills. Divisible-leg clearing stays a polynomial flow-LP under piecewise-linear convex costs; details and the standing rejections (continuous in-protocol price dynamics: speed races, U4/U6) in `docs/plans/P2-loop-selection.md` open problems. Until then, dynamic pricing quantizes to the beat: tombstone + repost.
 
+## Review (2026-10-09)
+
+`docs/plans/review-2026-10.md` points to the joint review kept in ontodag
+(`docs/plans/REVIEW_2026-10.md`): goals against code, complexity,
+compatibility, performance, coverage, recommendations. They are proposals;
+nothing in it is decided. Its fixes here are unreleased (CHANGELOG
+[Unreleased]). Two open findings matter before touching the fold or the
+solver. The fold admits a clearing book's fills unchecked (review §4). The
+solver still matches by the give × want product, which is 8–13× slower
+than the indexed generator with the same matches (§6).
+
 ## Conventions
 
 - `src/` layout; tests via pytest from the repo root (conftest handles the path).
