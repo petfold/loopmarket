@@ -9,6 +9,8 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+## [0.14.1] — 2026-10-08
+
 ### Changed
 
 - **The `swarm` extra needs recordstore 0.21.1**, whose `BeeBytesStore`
