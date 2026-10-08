@@ -37,6 +37,12 @@ Found in the 2026-10-09 review of ontodag and loopmarket (ontodag's
   rejected on its own and the rest of its book is folded. Found by
   fuzzing `Offer.from_record` (20,000 mutated records: none escapes now);
   the seeded mutator is now a test (3,000 records, under a second).
+- **A statement that was not an object rejected its whole book.** The
+  admission rule for `cred/` records caught `ValueError`, `KeyError` and
+  `TypeError` but not the `AttributeError` such a statement raises, so
+  the book's honest offers were dropped with it. It is now rejected on
+  its own. Found by a fold test that puts garbage under every keyspace of
+  a maker book (200 books, none rejected whole).
 - **`loop help` listed about thirty flags that `loop` refused** (for
   example `loop --registry memory: status` was an argparse error). The
   global flags are now derived from the settings table, so every flag the

@@ -376,7 +376,9 @@ class Aggregator:
         subject, _, sid = key[len(CRED):].partition("/")
         try:
             statement = Statement.from_record(rec["statement"])
-        except (ValueError, KeyError, TypeError):
+        except (ValueError, KeyError, TypeError, AttributeError):
+            # AttributeError: a statement that is not an object at all;
+            # uncaught, it rejected the whole book (2026-10-09)
             return "unreadable statement record"
         if statement.statement_id != sid or statement.subject != subject:
             return "content address mismatch"

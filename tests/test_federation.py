@@ -429,3 +429,38 @@ def test_a_bad_number_rejects_its_record_not_the_book():
     assert "reject/amara/*" not in provenance
     folded = OfferRegistry(RecordStore.at(manifest.book_root, blobs))
     assert {f"offer/{o.offer_id}" for o in folded.offers(now=NOW) if o.maker == "amara"} == set(honest)
+
+
+def test_garbage_under_any_keyspace_is_rejected_record_by_record():
+    """A maker book with garbage under every keyspace: the fold finishes,
+    rejects the garbage record by record, never the whole book, and keeps
+    the maker's honest offers. (Found 2026-10-09 by this mutator: a
+    statement that was not an object rejected the whole book.)"""
+    import random
+    prefixes = ["sig/", "withdraw/", "handoff/", "cred/", "notice/", "cure/",
+                "key/", "case/", "loop/", "fill/", "option/", "exercise/",
+                "item/", "zzz/"]
+    values = [None, 0, -1, 1.5, "", "x", "0x" + "ab" * 20, [], {}, [1, "a"],
+              {"from": "amara"}, {"statement": {}}, {"statement": None},
+              {"statement": {"subject": "amara"}}, {"presentation": 5},
+              {"loop": 7}, {"qty": "1/0"}, {"legs": [{}]}, True,
+              {"sealed": "zz", "from": "amara"}, "1e10000000"]
+    for trial in range(200):
+        rng = random.Random(trial)
+        blobs = MemoryBytesStore()
+        books = _maker_books(blobs)
+        amara = books["amara"].store
+        honest = sorted(k for k in amara.keys() if k.startswith("offer/"))
+        for _ in range(rng.randint(1, 4)):
+            parts = [rng.choice(["", "ab" * 32, "amara", rng.choice(honest)[6:],
+                                 "x/y", "0x" + "cd" * 20])
+                     for _ in range(rng.choice((1, 2, 3)))]
+            amara.put(rng.choice(prefixes) + "/".join(parts), rng.choice(values))
+        amara.commit()
+        manifest = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"]).fold()
+        provenance = dict(RecordStore.at(manifest.provenance_root, blobs).items())
+        assert "reject/amara/*" not in provenance, (trial, provenance.get("reject/amara/*"))
+        folded = OfferRegistry(RecordStore.at(manifest.book_root, blobs))
+        kept = {f"offer/{o.offer_id}" for o in folded.offers(now=NOW, include_filled=True)
+                if o.maker == "amara"}
+        assert kept == set(honest), trial
