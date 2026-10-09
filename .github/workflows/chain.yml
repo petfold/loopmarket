@@ -21,6 +21,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      # A few tests compile factbond's Assertions.sol from a checkout beside
+      # this one, and skip without it.
+      - run: git clone --depth 1 https://github.com/petfold/factbond ../factbond
       - run: pip install -e ".[test,sig,evm]"
       # The whole suite, so the chain tests run beside what they share code
       # with; the live Swarm and Gnosis tests still skip without their keys.

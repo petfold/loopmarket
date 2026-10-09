@@ -26,6 +26,9 @@ jobs:
       # chain) run before every release; the tests workflow skips them, and
       # chain.yml runs them nightly (review 2026-10, question 9).
       - run: pip install -e ".[test,sig,evm]"
+      # A few tests compile factbond's Assertions.sol from a checkout beside
+      # this one, and skip without it.
+      - run: git clone --depth 1 https://github.com/petfold/factbond ../factbond
       # The lint is tests.yml's, repeated because a tag need not wait for it.
       - run: pip install pyflakes==3.4.0
       - run: git ls-files -- '*.py' | xargs python -m pyflakes
