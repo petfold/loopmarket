@@ -305,9 +305,10 @@ The joint review is in ontodag (`docs/plans/REVIEW_2026-10.md`;
 so far: it is in ontodag's release gate, its chain tests run nightly and
 before releases, and pyflakes runs in CI (item 5, built); one matching
 engine, ontodag's index, with the default solver kept apart from the rest
-of loopmarket (item 2; not built yet: Peter decides the remaining
-questions first, then everything decided is built). Open for Peter:
-items 4 (comparing offer pins with the installed ontodag), 9 (checking a
+of loopmarket (item 2); matching and clearing refuse an offer whose
+registry or contract major differs from the installed ontodag's (item
+4). Neither is built yet: Peter decides the remaining questions first,
+then everything decided is built. Open for Peter: items 9 (checking a
 clearing book's fills before the fold admits them; until then the fold's
 fills are advisory), 10 (splitting `cli.py`), 11 (one duration grammar
 with ontodag: `loop` reads `90m` as minutes, ontodag as metres), 12
