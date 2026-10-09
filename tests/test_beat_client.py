@@ -254,7 +254,7 @@ def test_the_cli_posts_lists_challenges_and_finalizes(chain, tmp_path, monkeypat
         cat.dag.put(name, [])
     cat.save()
     monkeypatch.setenv("LOOP_CATALOGUE", spec)
-    monkeypatch.setattr(cli, "_beat_client", lambda session: BeatClient("", address, key=key, client=w3))
+    monkeypatch.setattr(cli.clients, "_beat_client", lambda session: BeatClient("", address, key=key, client=w3))
 
     def run(*argv):
         import io
@@ -319,7 +319,7 @@ def test_finalize_reports_a_beat_cancelled_by_a_race(chain, tmp_path, monkeypatc
     cat.save()
     monkeypatch.setenv("LOOP_CATALOGUE", spec)
     client = BeatClient("", address, key=key, client=w3)
-    monkeypatch.setattr(cli, "_beat_client", lambda session: client)
+    monkeypatch.setattr(cli.clients, "_beat_client", lambda session: client)
 
     def run(*argv):
         import io

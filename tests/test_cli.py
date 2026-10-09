@@ -1002,7 +1002,7 @@ def test_a_fold_is_computed_under_the_books_addressing(env, tmp_path, monkeypatc
                                          pointer=FilePointer(str(path / "root"))))
     mine, peer = swarm_book(tmp_path / "mine"), swarm_book(tmp_path / "peer")
     peer.publish(give("farm", Thing(("apple",), 3), 9, valid=TimeWindow(0))); peer.commit()
-    monkeypatch.setattr(cli, "_open_book",
+    monkeypatch.setattr(cli.stores, "_open_book",
                         lambda spec: mine if spec == "rs:mine" else peer)
     monkeypatch.setenv("LOOP_BOOK", "rs:mine")
     monkeypatch.setenv("LOOP_PEERS", "rs:peer")
@@ -1202,7 +1202,7 @@ def test_deposit_funds_the_declared_bond_on_the_escrow_contract(loop, monkeypatc
     giver = w3.eth.account.from_key(key).address
     w3.eth.wait_for_transaction_receipt(w3.eth.send_transaction({"to": giver, "value": 10 ** 20}))
     client = EscrowClient("", address, key=key, client=w3)
-    monkeypatch.setattr(cli, "_escrow_client", lambda session: client)
+    monkeypatch.setattr(cli.clients, "_escrow_client", lambda session: client)
     run = loop
     run.ok("set", "escrow", f"chain:http://x@{address}")
     run.ok("set", "default_asset", "xdai xDAI 1")
@@ -1254,7 +1254,7 @@ def test_the_escrow_acts_are_verbs(loop, monkeypatch):
     address = receipt["contractAddress"]
     as_ = {name: EscrowClient("", address, key=k, client=w3) for name, k in keys.items()}
     me = {"who": "giver"}
-    monkeypatch.setattr(cli, "_escrow_client", lambda session: as_[me["who"]])
+    monkeypatch.setattr(cli.clients, "_escrow_client", lambda session: as_[me["who"]])
     run = loop
     run.ok("set", "escrow", f"chain:http://x@{address}")
     run.ok("set", "default_asset", "xdai xDAI 1")
@@ -1315,7 +1315,7 @@ def test_the_settings_table_names_each_setting_once():
     `require_bond` was still accepted. Each name once, or this fails."""
     import ast
     import inspect
-    tree = ast.parse(inspect.getsource(cli))
+    tree = ast.parse(inspect.getsource(cli.settings))       # where the table is written
     table = next(n.value for n in ast.walk(tree) if isinstance(n, ast.Assign)
                  and any(getattr(t, "id", None) == "_SETTINGS" for t in n.targets))
     names = [k.value for k in table.keys]
@@ -1575,3 +1575,38 @@ def test_the_approval_block_spells_a_claim_period_exactly(loop):
     assert "claim_max 36h" in out
     g = next(o for o in run.session.book.offers(include_filled=True) if o.kind == "give")
     assert g.claim_max == 36 * 3600
+
+
+def test_a_client_replaced_on_its_module_reaches_every_command(loop, monkeypatch):
+    """The command line is a package by area, and every command looks a
+    client up on the module that defines it, `cli.clients`: replaced there
+    once, the replacement reaches `beats` (beats.py), `collect`
+    (deposits.py) and the hunt's chain fills (clients.py itself, for
+    `loops` in solving.py). Replaced on the package, it would reach none."""
+    run = loop
+    filled = []
+
+    class Beats:
+        def filled(self, oid):
+            filled.append(oid)
+            return 0
+
+        def beats(self):
+            return [{"beat": 1, "submitter": "0xabc", "book_root": "f" * 64, "fills": 2,
+                     "cancelled": False, "finalized": False, "open": True, "window_end": 99}]
+
+    class Escrow:
+        def account(self):
+            return type("Account", (), {"address": "0xme"})()
+
+        def owed(self, who):
+            return 5 * 10 ** 17
+
+    monkeypatch.setattr(cli.clients, "_beat_client", lambda session: Beats())
+    monkeypatch.setattr(cli.clients, "_escrow_client", lambda session: Escrow())
+    assert "beat 1 by 0xabc root ffffffffffffffff… 2 fills, open until block 99" in run.ok("beats")
+    assert run.ok("collect", "--check").strip() == "0.5 owed to 0xme"
+    run.ok("give", "apple", "home", "5")
+    monkeypatch.setenv("LOOP_BEAT", "chain:http://x@0x1")
+    assert run("loops")[0] == 1 and filled                    # nothing to clear, but the chain was asked
+    assert not hasattr(cli, "_beat_client") and not hasattr(cli, "_escrow_client")

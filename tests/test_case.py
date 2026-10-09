@@ -44,7 +44,7 @@ def test_a_claim_is_answered_and_ruled_through_the_book_and_paid_by_the_escrow(e
         w3.eth.contract(abi=art["abi"], bytecode=art["bin"]).constructor(addr["clearing"], 2).transact())
     escrow = receipt["contractAddress"]
     client = lambda who: EscrowClient("", escrow, key=keys[who], client=w3)
-    monkeypatch.setattr(cli, "_escrow_client", lambda session: client(os.environ["BEE_ROLE"]))
+    monkeypatch.setattr(cli.clients, "_escrow_client", lambda session: client(os.environ["BEE_ROLE"]))
     monkeypatch.delenv("LOOP_MAKER")                         # identity = the signer's address
     run = Runner()
 

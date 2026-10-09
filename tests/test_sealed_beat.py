@@ -255,9 +255,9 @@ def test_the_cli_commits_reveals_and_derives_the_outcome(chain, tmp_path, monkey
         cat.dag.put(name, [])
     cat.save()
     monkeypatch.setenv("LOOP_CATALOGUE", spec)
-    monkeypatch.setattr(cli, "_beat_client", lambda session: BeatClient("", clearing_addr, key=keys[0], client=w3))
+    monkeypatch.setattr(cli.clients, "_beat_client", lambda session: BeatClient("", clearing_addr, key=keys[0], client=w3))
     memory = MemorySealedBeat(period=10, commit_blocks=4, solver="loop-cli")
-    monkeypatch.setattr(cli, "_MEMORY_SEALED", memory)
+    monkeypatch.setattr(cli.clients, "_MEMORY_SEALED", memory)
 
     def run(*argv):
         out, err = io.StringIO(), io.StringIO()
