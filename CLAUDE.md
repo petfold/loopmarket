@@ -312,11 +312,12 @@ chain is configured only on-chain fills hide an offer (item 9; until then
 anyone can hide an offer with an invented loop); `cli.py` split by area,
 with a `Reads` object and a `LegRecord` type, built first of these (item
 10); durations and relative times in ontodag's units, `min` and `wk`, a
-bare `m` or `w` refused with the fix named (item 11). Of these only item
-5 is built: Peter decides the remaining questions first, then everything
-decided is built. Open for Peter: items 12 (retiring v1/v2 offers,
-renaming `MockClearing`) and 17 (the build order against the README's
-gates).
+bare `m` or `w` refused with the fix named (item 11); v1/v2 offers
+retired once circulator's benchmark and the tests write v4+ (old records
+stay readable), and `MockClearing` renamed `BookClearing` (item 12). Of
+these only item 5 is built: Peter decides the remaining questions first,
+then everything decided is built. Open for Peter: item 17 (the build
+order against the README's gates).
 
 ## Conventions
 
