@@ -7,10 +7,15 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
-## [Unreleased]
+## [0.14.5] — 2026-10-09
 
 Found in the 2026-10-09 review of ontodag and loopmarket (ontodag's
 `docs/plans/REVIEW_2026-10.md`; pointer in `docs/plans/review-2026-10.md`).
+
+### Dependencies
+
+- **`recordstore>=0.22.2`** (base and `swarm`): committing a large book
+  is linear again (0.22.1 was quadratic beyond about 11,000 records).
 
 ### Fixed
 

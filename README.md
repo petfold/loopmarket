@@ -115,7 +115,7 @@ same code runs with the book on Swarm.
 
 ## What is built, and what is designed
 
-**Built (as of 0.14.4):** the full pipeline above runs
+**Built (as of 0.14.5):** the full pipeline above runs
 in memory — and, since 2026-09-12, from the command line (`loop`) — and since 2026-08-01 also end-to-end on a real Gnosis-mainnet
 Bee node — catalogue and book on Swarm, book head in a signed feed, fills
 atomic (the gated `tests/test_swarm_book.py`). Since 2026-08-21 the
