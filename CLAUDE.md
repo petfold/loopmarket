@@ -309,12 +309,13 @@ of loopmarket (item 2); matching and clearing refuse an offer whose
 registry or contract major differs from the installed ontodag's (item
 4); every reader's fold re-checks a clearing book's loops, and where a
 chain is configured only on-chain fills hide an offer (item 9; until then
-anyone can hide an offer with an invented loop). None is built yet:
-Peter decides the remaining questions first, then everything decided is
-built. Open for Peter: items 10 (splitting `cli.py`), 11 (one duration grammar
-with ontodag: `loop` reads `90m` as minutes, ontodag as metres), 12
-(retiring v1/v2 offers, renaming `MockClearing`) and 17 (the build order
-against the README's gates).
+anyone can hide an offer with an invented loop); `cli.py` split by area,
+with a `Reads` object and a `LegRecord` type, built first of these (item
+10). Of these only item 5 is built: Peter decides the remaining questions
+first, then everything decided is built. Open for Peter: items 11 (one
+duration grammar with ontodag: `loop` reads `90m` as minutes, ontodag as
+metres), 12 (retiring v1/v2 offers, renaming `MockClearing`) and 17 (the
+build order against the README's gates).
 
 ## Conventions
 
