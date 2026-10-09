@@ -52,7 +52,7 @@ from fractions import Fraction
 from .clearing import LoopProposal, MockClearing
 from .graph import Circulation
 from .matching import Leg
-from .registry import OfferRegistry
+from .registry import LegRecord, OfferRegistry
 from .schema import q
 
 OFFER_PROOF_TYPE = "(bytes32,bytes,bytes[])"
@@ -332,10 +332,10 @@ def legs_from_record(rec: dict, book: OfferRegistry) -> tuple[Leg, ...]:
     aggregated leg's explicit quantities (the six lifters), so the rebuilt
     leg clears through the same check the original did."""
     legs = []
-    for lr in rec["legs"]:
-        want = book.get(lr["want"])
-        gives = tuple(book.get(g) for g in lr.get("gives", [lr["give"]]))
-        taken = tuple(q(t) for t in lr.get("taken", []))
+    for lr in map(LegRecord.from_record, rec["legs"]):
+        want = book.get(lr.want)
+        gives = tuple(book.get(g) for g in lr.gives)
+        taken = lr.quantities
         leg = Leg(want, gives)
         if taken and taken != tuple(leg.taken(i) for i in range(len(gives))):
             leg = Leg(want, gives, taken)

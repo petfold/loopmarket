@@ -13,7 +13,7 @@ from loopmarket import (
     GeoDisc, MockClearing, OfferRegistry, Ontology, PartialLoopError,
     SolverAgent, Thing, TimeWindow, give, want,
 )
-from loopmarket.registry import or_set_resolver
+from loopmarket.registry import LegRecord, or_set_resolver
 
 NOW = 1_700_000_000
 W = dict(
@@ -167,3 +167,45 @@ def test_reconciled_commit_runs_the_checker():
     b.mark_filled(("o3", "o4", "o5", "o6"), "L2", _loop_rec([("o3", "o4"), ("o5", "o6")]))
     with pytest.raises(PartialLoopError):
         b.commit()
+
+
+# --------------------------------------------------------- the one parser of loop/ records
+
+def test_a_leg_record_reads_every_shape_a_loop_record_has_had():
+    """`LegRecord` is the one parser of a `loop/` record's legs: a leg as
+    clearing writes it names every give under `gives` (with `give`, the
+    first, beside it for older readers) and what it took from each; a
+    2026-08 leg names a single `give`. Both read the same way, and a leg
+    naming only `gives` reads too."""
+    from fractions import Fraction
+    a, b, w = "a" * 64, "b" * 64, "c" * 64
+    now = LegRecord.from_record({"give": a, "gives": [a, b], "taken": ["2", "1/2"], "want": w})
+    assert (now.want, now.gives, now.quantities) == (w, (a, b), (Fraction(2), Fraction(1, 2)))
+    assert now.offer_ids == (a, b, w)
+    old = LegRecord.from_record({"give": a, "want": w, "rate": 1.25})
+    assert (old.gives, old.taken, old.quantities) == ((a,), (), ())
+    assert LegRecord.from_record({"gives": [b], "want": w}).gives == (b,)
+    record = {"legs": [{"give": a, "gives": [a], "taken": ["3"], "want": w},
+                       {"give": b, "want": a}]}
+    assert [leg.gives for leg in LegRecord.of_loop(record)] == [(a,), (b,)]
+    assert LegRecord.of_loop({}) == ()
+    with pytest.raises(KeyError):
+        LegRecord.from_record({"want": w})              # a leg with no give is no leg
+
+
+def test_a_leg_record_reads_quantities_only_when_asked():
+    """A reader that never weighs a leg — the fold's U11 check, `watch` —
+    never fails on a number it does not read; the one that does, fails as
+    `q` does (U9)."""
+    leg = LegRecord.from_record({"give": "a" * 64, "gives": ["a" * 64], "taken": ["1/0"], "want": "c" * 64})
+    assert leg.gives == ("a" * 64,)
+    with pytest.raises(ValueError):
+        leg.quantities
+
+
+def test_the_book_reads_a_loops_legs():
+    blobs, base_root = _base()
+    book = _writer(blobs, base_root)
+    book.mark_filled(("o1", "o2"), "L1", {"legs": [{"give": "o1", "gives": ["o1"], "want": "o2"}]})
+    assert [(leg.gives, leg.want) for leg in book.loop_legs("L1")] == [(("o1",), "o2")]
+    assert book.loop_legs("L2") == ()

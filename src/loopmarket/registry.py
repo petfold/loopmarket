@@ -61,8 +61,9 @@ Deployment shapes (see ARCHITECTURE.md §5):
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from fractions import Fraction
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, Sequence
 
 from .schema import q, rat, Offer, Statement
 
@@ -80,6 +81,48 @@ ITEM = "item/"         # item/<h>/<maker>/<loop_id> -> a maker's claim on an ite
 CURE = "cure/"         # cure/<loop_id>/<offer_id> -> a sealed cure (R6)
 KEY = "key/"           # key/<address> -> the key's card: its public key, recoverable (2026-10-01)
 CASE = "case/"         # case/<loop_id>/<offer_id>/<kind>/<to> -> a sealed case record (2026-10-01)
+
+
+@dataclass(frozen=True, slots=True)
+class LegRecord:
+    """One leg of a `loop/` record, read: the want it filled, the gives that
+    served it in order, and what it took from each, as the record spells
+    it (`n/d` strings, U9). The one parser of a loop record's legs; every
+    reader of `loop/` goes through it.
+
+    A leg as `LoopProposal.to_record` writes it names every give under
+    `gives` and what was taken from each under `taken`, with `give`, the
+    first give, beside them for readers of the 2026-08 shape; a leg of
+    that shape names a single `give` and nothing taken, and reads as a leg
+    of one give. A simple leg's `rate` is not read back: a reader derives
+    it from the offers. The quantities are parsed only when asked
+    (`quantities`): the fold's U11 check and `watch` never weigh a leg, so
+    a number they do not read cannot fail them."""
+
+    want: str
+    gives: tuple[str, ...]
+    taken: Sequence = ()
+
+    @classmethod
+    def from_record(cls, leg: dict) -> LegRecord:
+        gives = leg["gives"] if "gives" in leg else (leg["give"],)
+        taken = leg.get("taken", ())
+        return cls(leg["want"], tuple(gives), tuple(taken) if isinstance(taken, list) else taken)
+
+    @classmethod
+    def of_loop(cls, record: dict) -> tuple[LegRecord, ...]:
+        """Every leg of a `loop/` record, in the record's order."""
+        return tuple(cls.from_record(leg) for leg in record.get("legs", []))
+
+    @property
+    def quantities(self) -> tuple[Fraction, ...]:
+        """What the leg took from each give, exact; empty for a 2026-08 leg."""
+        return tuple(q(t) for t in self.taken)
+
+    @property
+    def offer_ids(self) -> tuple[str, ...]:
+        """The gives, then the want: every offer the leg filled."""
+        return (*self.gives, self.want)
 
 
 class PartialLoopError(RuntimeError):
@@ -221,6 +264,12 @@ class OfferRegistry:
         for k, rec in self.store.items(CASE):
             loop_id, offer_id, kind, _to = k[len(CASE):].split("/")
             yield loop_id, offer_id, kind, rec
+
+    def loop_legs(self, loop_id: str) -> tuple[LegRecord, ...]:
+        """The legs of the loop `loop_id` as this book's `loop/` record
+        names them; none when the book holds no such record."""
+        key = LOOP + loop_id
+        return LegRecord.of_loop(self.store.get(key)) if self.store.contains(key) else ()
 
     def loop_of(self, offer_id: str) -> str | None:
         """The loop that filled `offer_id` whole, if any; for a partially
@@ -464,8 +513,8 @@ class OfferRegistry:
         """
         for key, rec in self.store.items(LOOP):
             lid = key[len(LOOP):]
-            for leg in rec.get("legs", []):
-                for oid in (*leg.get("gives", [leg["give"]]), leg["want"]):
+            for leg in LegRecord.of_loop(rec):
+                for oid in leg.offer_ids:
                     claim = (self.store.get(FILL + oid)
                              if self.store.contains(FILL + oid) else None)
                     winner = claim.get("loop") if isinstance(claim, dict) else None

@@ -65,7 +65,7 @@ from .clearing import MockClearing
 from .graph import Circulation
 from .matching import candidate_matches
 from .ontology import Ontology
-from .registry import OfferRegistry
+from .registry import LegRecord, OfferRegistry
 from .schema import GIVE, WANT, Offer, Parts, Thing, TimeWindow, give, q, want
 from .solver.agent import SolverAgent
 from .spacetime import cell_for_coords
@@ -2627,26 +2627,23 @@ def _remember_handoff(offer_id: str, text: str) -> None:
 
 
 def _leg_of(fold: OfferRegistry, offer_id: str):
-    """(loop_id, leg, my side) for a filled offer, else None. A composed or
-    aggregated leg has several gives, any of them the give side (`give`
-    is only the first, kept for readers of the 2026-08 shape; matching it
-    alone left the second giver of a composed leg without its report until
-    2026-10-09)."""
+    """(loop_id, leg, my side) for a filled offer, else None; the leg a
+    `LegRecord`. A composed or aggregated leg has several gives, any of them
+    the give side."""
     loop_id = fold.loop_of(offer_id)
     if not loop_id:
         return None
-    rec = fold.store.get(f"loop/{loop_id}")
-    for leg in rec.get("legs", []):
-        if offer_id in _gives_of(leg):
+    for leg in LegRecord.of_loop(fold.store.get(f"loop/{loop_id}")):
+        if offer_id in leg.gives:
             return loop_id, leg, "give"
-        if offer_id == leg["want"]:
+        if offer_id == leg.want:
             return loop_id, leg, "want"
     return None
 
 
 def _gives_of(leg: dict) -> list:
-    """Every give of a `loop/` record's leg (a 2026-08 record names one)."""
-    return list(leg.get("gives") or [leg["give"]])
+    """Every give of a raw `loop/` leg, read as `LegRecord` reads it."""
+    return list(LegRecord.from_record(leg).gives)
 
 
 def cmd_handoff(args, session, out):
@@ -2684,7 +2681,7 @@ def _seal_pending(session: Session, fold: OfferRegistry, out, *, only=None) -> b
         if session.book.handoff(loop_id, oid) is not None \
                 or fold.handoff(loop_id, oid) is not None:
             continue
-        other = fold.get(leg["want"] if side == "give" else leg["give"])
+        other = fold.get(leg.want if side == "give" else leg.gives[0])
         sig = fold.signature(other.offer_id)
         if sig is None:
             print(f"handoff  {oid[:12]} waits: no public key for {other.maker} "
@@ -2711,7 +2708,7 @@ def _incoming(session: Session, fold: OfferRegistry):
         if found is None:
             continue
         loop_id, leg, side = found
-        other_id = leg["want"] if side == "give" else leg["give"]
+        other_id = leg.want if side == "give" else leg.gives[0]
         record = fold.handoff(loop_id, other_id)
         if record is not None and record.get("to") == me:
             yield f"{loop_id}/{other_id}", loop_id, fold.get(other_id).maker, record
@@ -2756,11 +2753,11 @@ def _watch_pass(session: Session, out) -> bool:
         if found is None:
             continue
         loop_id, leg, side = found
-        other = fold.get(leg["want"] if side == "give" else leg["give"])
+        other = fold.get(leg.want if side == "give" else leg.gives[0])
         thing = " ".join(_bare_key(tuple(c for p in (offer if side == "give" else other).parts for c in p.concepts)))
         verb = f"gives {thing} to" if side == "give" else f"receives {thing} from"
         counterparties = other.maker if side == "give" else ", ".join(
-            sorted({fold.get(g).maker for g in _gives_of(leg)}))
+            sorted({fold.get(g).maker for g in leg.gives}))
         print(f"filled   {oid[:12]} in loop {loop_id[:16]}…: {me} {verb} "
               f"{counterparties}", file=out)
         seen["fills"].append(oid)
@@ -2797,7 +2794,7 @@ def _transfers_shown(session, fold, out, seen: list) -> bool:
     from .witness import transfer_register
     news = False
     for loop, leg, want_ in _my_legs(session, fold, "want"):
-        for g in leg.get("gives", [leg["give"]]):
+        for g in leg.gives:
             rid = transfer_register(fold.get(g).oracle)
             key = f"{loop}/{g}"
             if not rid or key in seen or _transfer_faults(session, g, loop, want_.maker):
@@ -2819,11 +2816,9 @@ def _my_legs(session, fold, side: str):
         if o.maker != me or (o.kind == WANT) != (side == "want"):
             continue
         for loop in fold.loops_of(o.offer_id):
-            key = f"loop/{loop}"
-            rec = fold.store.get(key) if fold.store.contains(key) else None
-            for leg in (rec or {}).get("legs", []):
-                if (side == "want" and leg["want"] == o.offer_id) or \
-                        (side != "want" and o.offer_id in leg.get("gives", [leg["give"]])):
+            for leg in fold.loop_legs(loop):
+                if (side == "want" and leg.want == o.offer_id) or \
+                        (side != "want" and o.offer_id in leg.gives):
                     yield loop, leg, o
 
 
@@ -2843,7 +2838,7 @@ def _check_lapsed(session, fold, out, seen: list) -> bool:
         cats = [c.category for c in req.counterparty] if req is not None else []
         if not cats:
             continue
-        gives = [(g, fold.get(g).maker) for g in leg.get("gives", [leg["give"]])]
+        gives = [(g, fold.get(g).maker) for g in leg.gives]
         statements = lambda m: [st for st, _ in fold.statements(m)]
         for oid, st, change in lapsed(gives, statements, regs):
             if not any(ontology.satisfies((st.category,), (c,)) for c in cats):
@@ -2870,7 +2865,7 @@ def _notices_in(session, fold, out, seen: list) -> bool:
         if side is not None and side.get("to") == me:
             rows.append(("notice", loop, give_.offer_id, side))
     for loop, leg, _want in _my_legs(session, fold, "want"):
-        for g in leg.get("gives", [leg["give"]]):
+        for g in leg.gives:
             side = fold.cure(loop, g)
             if side is not None and side.get("to") == me:
                 rows.append(("cure", loop, g, side))
@@ -2946,11 +2941,9 @@ def cmd_contact_card(args, session, out):
     return 0
 
 
-def _leg_with(fold, loop: str, give_id: str) -> dict:
-    key = f"loop/{loop}"
-    rec = fold.store.get(key) if fold.store.contains(key) else None
-    for leg in (rec or {}).get("legs", []):
-        if give_id in leg.get("gives", [leg["give"]]):
+def _leg_with(fold, loop: str, give_id: str) -> LegRecord:
+    for leg in fold.loop_legs(loop):
+        if give_id in leg.gives:
             return leg
     raise ValueError(f"loop {loop[:16]}… is not in the fold, or took nothing from {give_id[:12]}")
 
@@ -3170,12 +3163,10 @@ def cmd_arbitrators(args, session, out):
             return None
         if give_.maker.lower() == maker.lower():
             return give_.valid.start
-        key = f"loop/{loop}"
-        rec = fold.store.get(key) if fold.store.contains(key) else None
-        for leg in (rec or {}).get("legs", []):
-            if offer in leg.get("gives", [leg["give"]]):
+        for leg in fold.loop_legs(loop):
+            if offer in leg.gives:
                 try:
-                    want_ = fold.get(leg["want"])
+                    want_ = fold.get(leg.want)
                 except KeyError:
                     return None
                 return want_.valid.start if want_.maker.lower() == maker.lower() else None
@@ -3213,7 +3204,7 @@ def cmd_notice(args, session, out):
     fold, me, now = session.fold(), session.maker, session.now
     oid, loop = _reservation_ref(session, args.offer, args.loop)
     leg = _leg_with(fold, loop, oid)
-    if fold.get(leg["want"]).maker != me:
+    if fold.get(leg.want).maker != me:
         raise ValueError(f"{oid[:12]} in loop {loop[:16]}… is not a leg I receive on")
     giver = fold.get(oid).maker
     fact = oid
@@ -3252,7 +3243,7 @@ def cmd_cure(args, session, out):
     leg = _leg_with(fold, loop, oid)
     cure = cure_record(ref(notice), me, session.now, args.evidence or "")
     back, opening = sealed(cure, sender=me, recipient=notice["notifier"],
-                           recipient_public_key=_public_key_of(fold, leg["want"]))
+                           recipient_public_key=_public_key_of(fold, leg.want))
     session.book.send_cure(loop, oid, back)
     session.book.commit()
     _write_json(_notices_path(loop, oid, "cure"), opening)
@@ -3705,11 +3696,10 @@ def cmd_reservations(args, session, out):
             rows += [("giver", o.offer_id, loop) for loop in fold.loops_of(o.offer_id)]
         elif o.kind == WANT:
             for loop in fold.loops_of(o.offer_id):
-                rec = fold.store.get(f"loop/{loop}") if fold.store.contains(f"loop/{loop}") else None
-                for leg in (rec or {}).get("legs", []):
-                    if leg["want"] != o.offer_id:
+                for leg in fold.loop_legs(loop):
+                    if leg.want != o.offer_id:
                         continue
-                    for g in leg["gives"]:
+                    for g in leg.gives:
                         try:
                             give_ = fold.get(g)
                         except KeyError:
@@ -4067,11 +4057,11 @@ def cmd_challenge(args, session, out):
     rec, book = result.evidence.record, result.evidence.snapshot
     print(f"loop {rec['loop_id'][:16]}… surplus {100 * float(q(rec['surplus'])):.2f}%, "
           f"solver {rec.get('solver', '?')}", file=out)
-    for verdict, leg in zip(result.legs, rec["legs"]):
-        gives = [book.get(g) for g in leg.get("gives", [leg["give"]])]
+    for verdict, leg in zip(result.legs, LegRecord.of_loop(rec)):
+        gives = [book.get(g) for g in leg.gives]
         off = "holds" if verdict.local is None else verdict.local
         on = verdict.chain or "no verdict (the node would not run the call)"
-        print(f"  [{verdict.index}] {_leg_line(gives, book.get(leg['want']))}", file=out)
+        print(f"  [{verdict.index}] {_leg_line(gives, book.get(leg.want))}", file=out)
         print(f"      off chain: {off}", file=out)
         print(f"      on chain:  {on}", file=out)
     if result.overall and result.overall != "no evidence" \
@@ -4275,9 +4265,9 @@ def cmd_clearing(args, session, out):
             rec = book.store.get(f"loop/{r.loop_id}")
             print(f"cleared {r.loop_id[:16]}… surplus "
                   f"{100 * float(q(rec['surplus'])):.2f}%", file=out)
-            for leg in rec["legs"]:
-                gives = [book.get(g) for g in leg.get("gives", [leg["give"]])]
-                print("  " + _leg_line(gives, book.get(leg["want"])), file=out)
+            for leg in LegRecord.of_loop(rec):
+                gives = [book.get(g) for g in leg.gives]
+                print("  " + _leg_line(gives, book.get(leg.want)), file=out)
         else:
             print(f"rejected {r.loop_id[:16]}…: {r.reason}", file=_err())
     if cleared:

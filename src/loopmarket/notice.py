@@ -42,6 +42,7 @@ import os
 from typing import Any, Iterable
 
 from .handoff import open_, seal
+from .registry import LegRecord
 from .schema import Statement
 
 NOTICE = "notice/"
@@ -148,9 +149,9 @@ def gives_of(loop_record: dict, book, *, wanter: str | None = None) -> Iterable[
     """(give offer id, its maker) for every give a cleared loop took — or,
     with `wanter`, only the gives on legs whose want is that maker's: the
     ones whose statements it relied on, and whose notices are its to send."""
-    for leg in loop_record.get("legs", []):
-        if wanter is not None and book.get(leg["want"]).maker != wanter:
+    for leg in LegRecord.of_loop(loop_record):
+        if wanter is not None and book.get(leg.want).maker != wanter:
             continue
-        for oid in leg.get("gives", [leg.get("give")]):
+        for oid in leg.gives:
             if oid:
                 yield oid, book.get(oid).maker
