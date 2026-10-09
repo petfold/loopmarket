@@ -70,6 +70,33 @@ def test_registry_and_contract_pins_refuse_major_skew():
     assert check_match(a, minor, ONT, now=NOW) is not None
 
 
+def test_an_offer_pinned_to_another_major_than_the_installed_ontodag_never_matches():
+    """Review item 4 (decided by Peter 2026-10-10): matching refuses an
+    offer whose registry or contract major differs from the ontodag it runs
+    on, even when the two offers agree with each other — on the day of a new
+    major an upgraded node must not match old offers under rules neither was
+    written under. The refusal names both majors and says to re-post; a
+    minor apart still interoperates (ontodag D10)."""
+    from ontodag import CONTRACT_VERSION
+    from ontodag.dimensions import REGISTRY_VERSION
+    from loopmarket.matching import major, version_fault
+    registry, contract = int(major(REGISTRY_VERSION)), int(major(CONTRACT_VERSION))
+    here = dict(ontology_root="r", registry_version=REGISTRY_VERSION, contract_version=CONTRACT_VERSION)
+    for other, what, pinned in ((dict(here, registry_version=f"{registry - 1}.9"), "registry", registry - 1),
+                                (dict(here, contract_version=f"{contract + 1}.0"), "contract", contract + 1)):
+        a = give("x", Thing(("vegetable-box",)), 50, **other, **W)
+        b = want("y", Thing(("produce",)), 60, **other, **W)
+        assert check_match(a, b, ONT, now=NOW) is None
+        reason = version_fault(a)
+        runs = registry if what == "registry" else contract
+        assert f"{what} major {pinned}" in reason and f"major {runs}" in reason and "re-post" in reason
+    minor = dict(here, registry_version=f"{registry}.0")
+    a = give("x", Thing(("vegetable-box",)), 50, **minor, **W)
+    b = want("y", Thing(("produce",)), 60, **minor, **W)
+    assert check_match(a, b, ONT, now=NOW) is not None and version_fault(a) is None
+    assert version_fault(give("x", Thing(("vegetable-box",)), 50, **W)) is None   # pins nothing
+
+
 def test_mixed_pinning_refuses_even_under_an_unpinned_catalogue():
     # one side declares its semantic ground, the other is silent: agreement
     # cannot be confirmed, so the pair is refused (proof-fabric gate G2) —

@@ -31,7 +31,11 @@ Conditions, in cheap-to-expensive order:
                skew is vocabulary-additive and interoperates) — and once
                the verifier's own catalogue is pinned, absence refuses too
                (planned U10: the fail-open '' wildcard dies when there is
-               a persistent root to demand; docs/plans/proof-fabric.md §3)
+               a persistent root to demand; docs/plans/proof-fabric.md §3).
+               Nor may either side's majors differ from the ontodag this
+               node runs (`version_fault`, review item 4): offers that
+               agree with each other under an old major are not matched
+               under rules neither was written under
 
 The match's `rate` is the exchange this handoff implies between the two
 personal scales: the receiver's quoted price over the giver's quoted
@@ -91,9 +95,45 @@ class Match:
         return self.want
 
 
+def major(version: str) -> str:
+    """A version's major (`"4.3"` -> `"4"`), the part ontodag's D10 refuses
+    across: the one parser of a major, for matching, clearing and the beat's
+    pins alike."""
+    return version.split(".")[0]
+
+
 def _major_skew(a: str, b: str) -> bool:
     """Both sides pin a version and the majors differ (refuse, per D10)."""
-    return bool(a) and bool(b) and a.split(".")[0] != b.split(".")[0]
+    return bool(a) and bool(b) and major(a) != major(b)
+
+
+def installed_versions() -> tuple[str, str]:
+    """(registry version, contract version) of the ontodag this process
+    runs, read when asked."""
+    import ontodag
+    from ontodag import dimensions
+    return dimensions.REGISTRY_VERSION, ontodag.CONTRACT_VERSION
+
+
+def version_fault(offer: Offer) -> str | None:
+    """Why this node refuses `offer`'s version pins, or None (review item
+    4, decided by Peter 2026-10-10): its registry or contract major differs
+    from the ontodag this node runs, whose arithmetic and guarantees are not
+    the ones the offer was written under. Matching, clearing's step 0 and a
+    challenger's re-derivation all ask it. The offer is not touched: it
+    stays in its book and matches here once its maker re-posts it under this
+    major, so at a major the market splits by major until makers re-post
+    and nodes upgrade. An offer that pins nothing is left to the pin rules
+    of `_gates` (absent pins pass only under an unpinned catalogue)."""
+    registry, contract = installed_versions()
+    for what, pinned, here in (("registry", offer.registry_version, registry),
+                               ("contract", offer.contract_version, contract)):
+        if _major_skew(pinned, here):
+            return (f"offer {offer.offer_id[:12]} pins ontodag's {what} major {major(pinned)} "
+                    f"({pinned}) and this node runs {what} {here}, major {major(here)}: refused "
+                    f"here; it stays in its book, and matches here once re-posted under "
+                    f"{what} major {major(here)}")
+    return None
 
 
 def admits(accept, key: str, **reads) -> bool:
@@ -268,6 +308,8 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
         return False
     if _major_skew(give.registry_version, want.registry_version) or \
             _major_skew(give.contract_version, want.contract_version):
+        return False
+    if version_fault(give) or version_fault(want):   # agreeing with each other is not enough
         return False
     return True
 

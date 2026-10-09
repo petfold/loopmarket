@@ -413,7 +413,8 @@ requirements met by the other's declarations (§7.2, §7.5) → validity
 windows open at `now` → (v1/v2 only) service windows and discs intersect
 → quantity within what is left, on the step and above the floor, in the
 same unit → **version pins** (mixed pinning refuses; pinned catalogues
-refuse unpinned offers; major registry/contract skew refuses) → catalogue
+refuse unpinned offers; major registry/contract skew refuses, and so does
+a major other than the installed ontodag's, with the advice to re-post) → catalogue
 subsumption. `candidate_matches(offers, catalogue, now=...)` runs it over
 the full give × want product — fine in memory, and §10 shows the indexed
 generator for bigger books.

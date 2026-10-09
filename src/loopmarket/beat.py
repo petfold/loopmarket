@@ -51,7 +51,7 @@ from fractions import Fraction
 
 from .clearing import LoopProposal, BookClearing
 from .graph import Circulation
-from .matching import Leg
+from .matching import Leg, major
 from .reads import Reads
 from .registry import LegRecord, OfferRegistry
 from .schema import q
@@ -129,8 +129,10 @@ ADDRESSING_NAMES = {v: k for k, v in ADDRESSING.items()}
 
 def _major(version: str) -> bytes:
     """The beat pins majors (`"4.3"` -> `b"4"`): the verifier admits every
-    offer pinned within them, as off-chain matching does (`_major_skew`)."""
-    return version.split(".")[0].encode()
+    offer pinned within them, as off-chain matching does (`_major_skew`).
+    The contract cannot know which major the challenger runs; the
+    off-chain check refuses another one (`matching.version_fault`)."""
+    return major(version).encode()
 
 
 @dataclass(frozen=True)

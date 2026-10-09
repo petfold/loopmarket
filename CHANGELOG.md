@@ -13,8 +13,8 @@ The 2026-10 review's item 10 (ontodag's `docs/plans/REVIEW_2026-10.md`
 §8): the command line split by area, with a `Reads` object and a
 `LegRecord` type. On every record the code writes, no command prints or
 does anything different, and no record byte or id changes. Item 11
-changes how `loop` reads and prints durations (below); it changes no
-record byte or id either.
+changes how `loop` reads and prints durations, and item 4 what matching
+and clearing admit (below); neither changes a record byte or an id.
 
 ### Changed
 
@@ -33,6 +33,25 @@ record byte or id either.
   before as `90m` is refused at its next use with the same fix. No other
   quantity passes as a duration either: `5km` used to be read as 5000
   seconds.
+- **Matching, clearing and a challenger refuse an offer pinned to another
+  ontodag major** (the review's item 4, decided by Peter 2026-10-10).
+  Offers were compared only with each other (catalogue roots equal,
+  majors agreeing) and clearing checked only the catalogue root, so on the
+  day of a new major an upgraded node would have matched and cleared old
+  offers under rules neither was written under, and the beat, which pins
+  the offers' own major, would have accepted it.
+  `matching.version_fault(offer)` names an offer whose registry or
+  contract major differs from the installed ontodag's
+  (`ontodag.dimensions.REGISTRY_VERSION`, `ontodag.CONTRACT_VERSION`),
+  with both majors and the advice to re-post: `check_match` and the other
+  checks refuse such an offer, `BookClearing.submit` refuses it at step 0,
+  and `verify_leg`, which a challenger re-derives each leg with, gives it
+  as the leg's reason. The offer is not touched: it stays in its book and
+  matches on that node once re-posted under its major. At a major the
+  market therefore splits by major until makers re-post and nodes
+  upgrade, so a major needs announcing. `matching.major(version)` is the
+  one parser of a major (the beat's pins use it too), and
+  `matching.installed_versions()` reads the installed pair.
 - **`MockClearing` is `BookClearing`** (the review's item 12, decided by
   Peter 2026-10-10). The class clears the book in process, with the same
   checklist the chain contract re-derives; it mocks nothing, and the old

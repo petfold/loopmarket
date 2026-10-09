@@ -339,8 +339,23 @@ order:
    additive and interoperates: ontodag's CONTRACT.md G7 promises a newer
    minor never takes an answer away). The on-chain verifier applies the
    same rule: a beat pins the majors (`"4"`, `"0"`) and admits every offer
-   pinned within them
+   pinned within them. Neither offer's majors may differ from the
+   installed ontodag's either (`version_fault`, below; review item 4):
+   offers agreeing with each other under an old major are not matched
+   under this node's rules
 9. meaning: `ontology.satisfies(give concepts, want concepts)`
+
+### `version_fault(offer) -> str | None`
+Why this node refuses `offer`'s version pins, or `None` (review item 4,
+decided by Peter 2026-10-10): its registry or contract major differs from
+the installed ontodag's (`installed_versions()` reads
+`ontodag.dimensions.REGISTRY_VERSION` and `ontodag.CONTRACT_VERSION` when
+asked). The reason names both majors and says to re-post: the offer stays
+in its book and matches on this node once re-posted under its major, so at
+a major the market splits by major until makers re-post and nodes upgrade.
+An offer that pins nothing is left to gate 8's pin rules. Matching (gate
+8), `BookClearing.submit` (step 0) and `verify_leg` ask it. `major(version)`
+(`"4.3"` → `"4"`) is the one parser of a major, the beat's pins included.
 
 ### `meets(mine, other, ontology, *, taken=None, whole=None, held=None, gate=None, legs_checked=False) -> bool`
 Is `mine`'s `requires` met by `other`'s declarations (v5+, admissibility
@@ -516,14 +531,20 @@ keeps this shape):
 
 0. **pins**: `proposal.ontology_root` must *equal* the clearing's own
    `ontology.root` (absence and mismatch both refuse; `'' == ''` keeps
-   the in-memory flow working), and every register a leg names as a
-   trust root is pinned in `register_roots`
+   the in-memory flow working); every offer's registry and contract
+   majors are the installed ontodag's (`matching.version_fault`, review
+   item 4: the reason names both majors and says to re-post; the beat
+   pins the offers' own major, so only this check stops an upgraded node
+   clearing them); and every register a leg names as a trust root is
+   pinned in `register_roots`
 1. every offer exists in the *current* book, is unfilled (in the book and
    on chain), is not tombstoned, is used once, and names an oracle type
    in `verifiable_oracles`
 2. every leg re-derived against the current book, what fills have left of
    each give and the clearing's own catalogue and gate (`.verify_leg(leg,
-   *, now, available, held=None, gate=None) -> reason | None`):
+   *, now, available, held=None, gate=None) -> reason | None`, whose
+   reason for an offer of another major is `version_fault`'s, as a
+   challenger reports it):
    `check_match` for a simple leg, `check_composition`, `check_parts` or
    `check_aggregate` for the others; across legs, an inspector is no
    party to the item it inspects

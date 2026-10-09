@@ -31,7 +31,7 @@ from .graph import Circulation, Loop
 from fractions import Fraction
 
 from .schema import q, rat
-from .matching import check_aggregate, check_composition, check_match, check_parts
+from .matching import check_aggregate, check_composition, check_match, check_parts, version_fault
 from .ontology import Ontology
 from .reads import Reads, authorities, reads_of
 from .registry import OfferRegistry
@@ -274,6 +274,15 @@ class BookClearing:
         #    confirm; '' == '' keeps the in-memory flow working.
         if proposal.ontology_root != self.ontology.root:
             return reject("ontology pin mismatch")
+        #    every offer's registry and contract majors are the ontodag this
+        #    clearing runs (review item 4): offers written under another
+        #    major agree with each other, and the beat, pinning their own
+        #    major, would accept them, but this node's rules are not theirs
+        for leg in loop.legs:
+            for offer in (*leg.gives, leg.want):
+                fault = version_fault(offer)
+                if fault:
+                    return reject(fault)
         #    and every register a leg's requirement names as a trust root is
         #    pinned (R3a): a statement's status is read under a root the
         #    proposal fixed, never a live lookup, or not at all (U4, U7)
@@ -363,6 +372,10 @@ class BookClearing:
             reads = reads.replace(gate=self.gate(now=now))
         fresh_want = self.registry.get(leg.want.offer_id)
         fresh_gives = [self.registry.get(g.offer_id) for g in leg.gives]
+        for offer in (*fresh_gives, fresh_want):
+            fault = version_fault(offer)    # the checks refuse it too; this says why
+            if fault:
+                return fault
         if leg.quantities is not None:
             ok = check_aggregate(fresh_want, fresh_gives, leg.quantities, self.ontology,
                                  now=now, reads=reads)

@@ -454,7 +454,12 @@ truth: kinds and distinct makers; both on one side of the v2/v3 line; both
 validity windows open; for v1/v2 records the service windows
 overlap (a delivery instant exists) and the service discs intersect (a handover
 point exists); quantity within capacity (equality unless divisible); same
-unit; agreeing ontology pins; and `satisfies` under the catalogue. Its
+unit; agreeing ontology pins, and registry and contract majors that are the
+installed ontodag's (review item 4: offers written under an old major agree
+with each other, and the beat pins their own major, so only this node's
+check stops it matching and clearing them under rules neither was written
+under; such an offer stays in its book until re-posted); and `satisfies`
+under the catalogue. Its
 self-containedness is a design requirement, not tidiness: settlement re-runs
 it, so no index, cache or heuristic may be load-bearing for correctness.
 

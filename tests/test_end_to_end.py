@@ -1,5 +1,6 @@
 """The whole machine: publish -> snapshot-solve -> clearing, atomically."""
 
+import pytest
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
@@ -21,20 +22,21 @@ ONT = Ontology().load({
 })
 
 
-def _book(chen_oracle="countersign"):
+def _book(chen_oracle="countersign", pins=None):
     registry = OfferRegistry(RecordStore(MemoryBytesStore()))
     a_flat = GeoDisc(46.05, 14.50, 5_000)
     b_farm = GeoDisc(46.10, 14.55, 15_000)
     c_shop = GeoDisc(46.06, 14.51, 4_000)
+    P = pins or {}
     registry.publish_many([
-        give("amara", Thing(("piano-lesson",), unit="course"), 100, where=a_flat, **W),
+        give("amara", Thing(("piano-lesson",), unit="course"), 100, where=a_flat, **W, **P),
         want("amara", Thing(("produce", "local", "weekly"), unit="course"), 104,
-            where=a_flat, **W),
-        give("bruno", Thing(("vegetable-box",), unit="course"), 50, where=b_farm, **W),
-        want("bruno", Thing(("bicycle-repair",), unit="course"), 52, where=b_farm, **W),
+            where=a_flat, **W, **P),
+        give("bruno", Thing(("vegetable-box",), unit="course"), 50, where=b_farm, **W, **P),
+        want("bruno", Thing(("bicycle-repair",), unit="course"), 52, where=b_farm, **W, **P),
         give("chen", Thing(("bicycle-repair",), unit="course"), 80, where=c_shop,
-            oracle=chen_oracle, **W),
-        want("chen", Thing(("music-lesson",), unit="course"), 83, where=c_shop, **W),
+            oracle=chen_oracle, **W, **P),
+        want("chen", Thing(("music-lesson",), unit="course"), 83, where=c_shop, **W, **P),
     ])
     registry.commit()
     return registry
@@ -112,6 +114,36 @@ def test_clearing_refuses_unverifiable_oracle_types():
     lax = BookClearing(registry, ONT, clock=lambda: NOW,
                          verifiable_oracles={"countersign", "photo"})
     assert lax.submit(proposal).accepted
+
+
+@pytest.mark.parametrize("which", ["registry", "contract"])
+def test_an_upgraded_node_refuses_offers_pinned_to_the_old_major(which, monkeypatch):
+    """Review item 4 (decided by Peter 2026-10-10): clearing's step 0
+    refuses an offer whose registry or contract major differs from the
+    ontodag it runs on, as matching does, and the refusal names both
+    majors and says to re-post. Here the offers pin the installed versions,
+    a loop is found, and then the node upgrades to the next major: the loop
+    is refused, nothing is filled, the six offers still sit in their book,
+    and the upgraded node's own solver pairs none of them."""
+    import ontodag
+    from ontodag import dimensions
+    from loopmarket import LoopProposal
+    from loopmarket.matching import major
+    pins = dict(ontology_root="", registry_version=dimensions.REGISTRY_VERSION,
+                contract_version=ontodag.CONTRACT_VERSION)
+    registry = _book(pins=pins)
+    _, loops = SolverAgent(registry, ONT, None).find_loops(now=NOW)
+    assert len(loops) == 1
+    proposal = LoopProposal(loops[0], registry.store.root, "", "s", NOW)
+    module, attr = (dimensions, "REGISTRY_VERSION") if which == "registry" else (ontodag, "CONTRACT_VERSION")
+    old = int(major(getattr(module, attr)))
+    monkeypatch.setattr(module, attr, f"{old + 1}.0")
+    receipt = BookClearing(registry, ONT, clock=lambda: NOW).submit(proposal)
+    assert not receipt.accepted
+    assert f"{which} major {old}" in receipt.reason and f"major {old + 1}" in receipt.reason
+    assert "re-post" in receipt.reason
+    assert len(list(registry.offers(now=NOW))) == 6
+    assert SolverAgent(registry, ONT, None).find_loops(now=NOW)[1] == []
 
 
 def test_snapshot_isolation():

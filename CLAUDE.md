@@ -80,7 +80,8 @@ documents and enter here only when their enforcing code and tests land.
   `to_record` re-encodes each offer in its own version, so old ids never
   change (pinned by corpora, e.g. `tests/test_v6_record.py`).
 - **U3 Clearing trusts no solver.** `BookClearing.submit` checks the
-  proposal's ontology pin and register pins, re-derives every leg against
+  proposal's ontology pin and register pins and every offer's registry and
+  contract majors against the installed ontodag's, re-derives every leg against
   the current book and its own ontology (`check_match`, or
   `check_composition` for a composed leg), re-checks balance (node
   potentials exist), surplus and fills, and only then commits all fills
@@ -175,7 +176,9 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
   against the baseline. Not yet used by the solver (review item 2).
 - `matching.py`: the exact checks (`check_match`, `check_composition`,
   `check_parts`, `check_aggregate`), `meets` (every requirement fails
-  closed) and the give × want candidate generator the solver uses.
+  closed), `version_fault` (an offer pinned to another major than the
+  installed ontodag's, refused by matching, clearing and a challenger) and
+  the give × want candidate generator the solver uses.
 - `reads.py`: `Reads`, what the checks, the solver and the clearing read
   beyond the offers: `available`, `held`, `gate`, the chain's fills and
   the escrow's holdings. A solver or a clearing is given the last two and
@@ -340,7 +343,7 @@ before releases, and pyflakes runs in CI (item 5, built); one matching
 engine, ontodag's index, with the default solver kept apart from the rest
 of loopmarket (item 2); matching and clearing refuse an offer whose
 registry or contract major differs from the installed ontodag's (item
-4); every reader's fold re-checks a clearing book's loops, and where a
+4, built); every reader's fold re-checks a clearing book's loops, and where a
 chain is configured only on-chain fills hide an offer (item 9; until then
 anyone can hide an offer with an invented loop); `cli.py` split by area,
 with a `Reads` object and a `LegRecord` type, built first of these (item
@@ -351,7 +354,7 @@ records stay readable), and `BookClearing` renamed `BookClearing` (item
 12); the
 phase gates restated for what they still guard (item 17, under "Roadmap
 (state)"). Every review item for loopmarket is decided, and the decided
-items are being built: items 5, 10 and 11 so far.
+items are being built: items 5, 10, 11 and 4 so far.
 
 ## Conventions
 

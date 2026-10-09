@@ -150,6 +150,24 @@ def test_an_honest_beat_verifies_from_its_record_and_nothing_is_sent(chain):
     assert off.overall == "ontology pin mismatch" and off.sent is None and not off.verifies
 
 
+def test_an_upgraded_challenger_refuses_offers_of_the_old_major(chain, monkeypatch):
+    """Review item 4 (decided by Peter 2026-10-10): a challenger's off-chain
+    check refuses an offer whose registry major differs from the ontodag it
+    runs on, naming both majors and saying to re-post. The beat pins the
+    offers' own major, so the contract's verifier passes every leg: nothing
+    is sent, and the fault is reported off chain (the arbiter's, P3)."""
+    from ontodag import dimensions
+    from loopmarket.matching import major
+    cat, book, client, beat, loop_id = _posted(chain)
+    old = int(major(dimensions.REGISTRY_VERSION))
+    monkeypatch.setattr(dimensions, "REGISTRY_VERSION", f"{old + 1}.0")     # the challenger upgrades
+    result = challenge_beat(client, beat, [book], cat, now=NOW)
+    assert result.evidence is not None and not result.verifies and result.sent is None
+    assert f"registry major {old}" in result.overall and f"major {old + 1}" in result.overall
+    assert all(v.local and "re-post" in v.local for v in result.legs)
+    assert [v.chain for v in result.legs] == ["leg verifies"] * 2
+
+
 def test_a_structural_forgery_is_convicted_and_the_bond_paid(chain):
     """The submitter's record claims 105 kg of a 100 kg give and the beat
     commits to it: the challenger rebuilds that very submission from the
