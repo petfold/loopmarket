@@ -253,8 +253,11 @@ word.
    stay excluded (the reseller is the route), and a give's floor is in the
    record but the CLI spelling `10kg..` on a give is not wired.
 2. **Candidate generation is the give × want product in the solver.** The
-   indexed generator (`dimensions.py`) finds the same matches 8–13× faster
-   (review §6); wiring it in is review item 2.
+   indexed generator (`dimensions.py`) finds the same matches 6–16× faster
+   from 100 offers a side. Decided (review item 2, 2026-10-10), not built
+   yet: it becomes the one engine, for simple matches and the aggregation
+   search, with no threshold, and the default solver is kept apart from
+   the rest of loopmarket, the way an outside solver would be.
 3. **Geo: cells for v3 and later, discs for v1/v2.** A place is a cell, a
    place node under a cell, or a region node above cells, and containment
    is exact; a region's covering is a lower bound. Covering as a value
@@ -300,13 +303,16 @@ word.
 The joint review is in ontodag (`docs/plans/REVIEW_2026-10.md`;
 `docs/plans/review-2026-10.md` here points to it). Decided for loopmarket
 so far: it is in ontodag's release gate, its chain tests run nightly and
-before releases, and pyflakes runs in CI (item 5). Open for Peter: items 2
-(the indexed matcher in the solver), 4 (comparing offer pins with the
-installed ontodag), 9 (checking a clearing book's fills before the fold
-admits them; until then the fold's fills are advisory), 10 (splitting
-`cli.py`), 11 (one duration grammar with ontodag: `loop` reads `90m` as
-minutes, ontodag as metres), 12 (retiring v1/v2 offers, renaming
-`MockClearing`) and 17 (the build order against the README's gates).
+before releases, and pyflakes runs in CI (item 5, built); one matching
+engine, ontodag's index, with the default solver kept apart from the rest
+of loopmarket (item 2; not built yet: Peter decides the remaining
+questions first, then everything decided is built). Open for Peter:
+items 4 (comparing offer pins with the installed ontodag), 9 (checking a
+clearing book's fills before the fold admits them; until then the fold's
+fills are advisory), 10 (splitting `cli.py`), 11 (one duration grammar
+with ontodag: `loop` reads `90m` as minutes, ontodag as metres), 12
+(retiring v1/v2 offers, renaming `MockClearing`) and 17 (the build order
+against the README's gates).
 
 ## Conventions
 
