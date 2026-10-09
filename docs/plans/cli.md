@@ -1,6 +1,6 @@
 # loopmarket — the command line (P1 tooling)
 
-Status: **built 2026-09-12** — `src/loopmarket/cli.py`, gates G1–G6 in
+Status: **built 2026-09-12** — `src/loopmarket/cli/`, gates G1–G6 in
 `tests/test_cli.py`, the triangle as `examples/triangle.loop` (§12 records
 what landed, the two rulings Peter made that day, and the decisions the
 build forced; §13, the same evening, adds drafts and composed wants — `draft`, `+`,
@@ -53,7 +53,9 @@ helpers are not imported — they churn — with one exception noted in §11:
 opening a catalogue from an odag store spec should be a public ontodag
 call, not a copy of `_load_native`.
 
-Layout: `src/loopmarket/cli.py` (parsing, dispatch, rendering) and a
+Layout: the package `src/loopmarket/cli/`, one module per area (parsing
+in `grammar` and `spellings`, rendering in `render`, dispatch in `shell`;
+the rest by command family) and a
 two-line `src/loopmarket/__main__.py` so `python -m loopmarket` works;
 console scripts `loop` and `loopmarket` (§Open problems on the name); a
 `loop-mcp` sibling later (§10).

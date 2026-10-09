@@ -7,6 +7,55 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
+## [Unreleased]
+
+The 2026-10 review's item 10 (ontodag's `docs/plans/REVIEW_2026-10.md`
+§8): the command line split by area, with a `Reads` object and a
+`LegRecord` type. On every record the code writes, no command prints or
+does anything different, and no record byte or id changes.
+
+### Changed
+
+- **The command line is a package by area.** `cli.py` (4,837 lines)
+  became `loopmarket.cli` with one module per area: `settings`, `stores`
+  (the session), `spellings`, `render`, `grammar`, `guarantees`,
+  `entry`, `drafts`, `options`, `book`, `clients`, `solving`, `beats`,
+  `deposits`, `registers`, `claims`, `watch` and `shell`, none above 550
+  lines. `from loopmarket import cli`, `loopmarket.cli.dispatch`,
+  `Session`, `offer_from_line`, `line_for` and the other public pieces,
+  `python -m loopmarket` and the `loop` script work as before, and
+  `python -m loopmarket.cli` too. A test that replaces a client replaces
+  it on the module that defines it, where every command looks it up:
+  `cli.clients._beat_client`, `cli.clients._escrow_client`,
+  `cli.clients._MEMORY_SEALED`, `cli.stores._open_book`.
+- **`Reads`** (`loopmarket.reads`): what the exact checks, the solver and
+  the clearing read beyond the offers, `available`, `held`, `gate`, the
+  chain's fills and the escrow's holdings, is one object, passed as
+  `reads=` to the matching functions, `MockClearing.verify_leg`,
+  `SolverAgent`, `MockClearing`, `ChainClearing` and the auction's
+  `outcome` and `baseline_proposals`. The keyword parameters it replaces
+  keep working (`available=`, `held=` and `gate=` on the matching
+  functions and `verify_leg`; `chain_fills=` and `escrow_held=` on the
+  solver, the clearings and the auction), so outside solvers need no
+  change. A read given both ways is a `TypeError`, and so is giving a
+  solver or a clearing `available`, `held` or a gate, which each pass
+  derives from its snapshot.
+- **`LegRecord`** (`loopmarket.registry`): the one parser of a `loop/`
+  record's legs: the want, the gives (`gives`, else the 2026-08 single
+  `give`) and what was taken from each, parsed only when asked.
+  `OfferRegistry.loop_legs(loop_id)` reads a loop's legs from a book. The
+  U11 check, the beat's evidence, `notice.gives_of` and every command
+  that reads a loop go through it. `reservations` read a leg by its
+  `gives` alone, so a 2026-08 loop record stopped it with an error; it
+  now reads one as every other reader does. The record format is
+  untouched.
+- **Catalogue setup through `Ontology.declare_*`:**
+  `Ontology.declare_place(name, cell, address=, adopted=)` is the write
+  `loop place` makes, beside the other `declare_*` methods: the place
+  under its `geo` cell, the address on the node, and ontodag's prelude
+  adopted first where `geo` is not yet a prefix head (the one adoption
+  every `declare_*` method shares). Same catalogue, same root.
+
 ## [0.14.5] — 2026-10-09
 
 Found in the 2026-10-09 review of ontodag and loopmarket (ontodag's

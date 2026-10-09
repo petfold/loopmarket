@@ -43,8 +43,8 @@ loopmarket  →  ontodag (>=0.30.6)  →  recordstore (>=0.22.2)  →  swarmfs  
   containment: a want is the wider cone, a give the narrower. `Ontology`
   (`ontology.py`) is the facade (`covers`, `satisfies`, `accepts` over
   `is_below`) where pinned catalogue roots surface. Names are the identity
-  at its boundary. `cli.py` still opens stores through ontodag's CLI
-  module (`_open_catalogue`) and reads recordstore's private
+  at its boundary. `cli/stores.py` still opens stores through ontodag's
+  CLI module (`_open_catalogue`) and reads recordstore's private
   `_addressing_name`; ontodag 0.31 will have the public `ontodag.open`.
 - **recordstore**: the book's kernel: canonical roots, snapshots
   (`RecordStore.at(root, blobs)`; the attribute is `.blobs`), three-way
@@ -162,7 +162,8 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
 - `spacetime.py`: geohash cells; `LAT,LON,R` becomes the finest cell
   containing the radius. Input only; ontodag orders the stored names.
 - `ontology.py`: the catalogue facade: build (`load`, the `declare_*`
-  methods), query (`covers`, `satisfies`, `accepts`), pin
+  methods, among them `declare_place`, the write `loop place` makes),
+  query (`covers`, `satisfies`, `accepts`), pin
   (`persistent`, `commit`). The matching rules: handover coordinates
   (`geo`, `time` and roles under the `handover` marker) match when one side
   contains the other; categories and descriptive terms match one way (the
@@ -175,6 +176,12 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
 - `matching.py`: the exact checks (`check_match`, `check_composition`,
   `check_parts`, `check_aggregate`), `meets` (every requirement fails
   closed) and the give × want candidate generator the solver uses.
+- `reads.py`: `Reads`, what the checks, the solver and the clearing read
+  beyond the offers: `available`, `held`, `gate`, the chain's fills and
+  the escrow's holdings. A solver or a clearing is given the last two and
+  derives the first three each pass; the checks take `reads=`. The
+  keywords it replaced still work (outside solvers pass them), and a read
+  given both ways is refused.
 - `graph.py`: `ExchangeGraph`, Bellman–Ford, `Loop`, `enumerate_cycles`,
   `Circulation`, `find_circulations`.
 - `selection.py`: `pack`, the set of loops worth most under the offers'
@@ -188,7 +195,10 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
 - `registry.py`: the book and its keyspaces (`offer/`, `sig/`,
   `withdraw/`, `fill/`, `loop/`, `handoff/`, `cred/`, `option/`,
   `exercise/`, `item/`), snapshots, availability, `or_set_resolver`,
-  `verify_loop_atomicity`, `swarm_offer_book`. No index in the book.
+  `verify_loop_atomicity`, `swarm_offer_book`. `LegRecord` is the one
+  parser of a `loop/` record's legs (`gives`, else the 2026-08 single
+  `give`; quantities parsed when asked), and `OfferRegistry.loop_legs`
+  reads a loop's legs. No index in the book.
 - `federation.py`: `Aggregator` folds announced books under the admission
   rules (rejections kept as attributed provenance) into a `Manifest`;
   `audit_manifest` checks a manifest against the announced set.
@@ -213,8 +223,26 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
   challenge, finalize, `filled`), finding a beat's evidence.
   `auction.py`: the sealed-proposal beat (`SealedBeat`: commit, reveal,
   outcome).
-- `cli.py` (and `__main__.py`): the `loop` command line, about 4,800
-  lines (review item 10). It encodes only what the schema holds.
+- `cli/` (and `__main__.py`): the `loop` command line, a package by area.
+  `settings` (the settings table, the config files, the output streams),
+  `stores` (`Session`: my book, the fold, the catalogue and the personal
+  layer), `spellings` (times, durations, coordinates and numbers in),
+  `render` (the approval block, tables, numbers out), `grammar` (the
+  offer line, its terms and places, a resolved `Part`), `guarantees` (the
+  guarantee settings as offer fields), `entry` (give, want, offer,
+  withdraw, option, exercise, place), `drafts`, `options` (windows,
+  premiums, demand; `holds`), `book` (offers, show, matches, mine,
+  status, announce, fold, export, import), `clients` (the clearing
+  contract, the escrow, the sealed beat, the registers, and the `Reads`
+  they supply), `solving` (loops, clearing, propose, the sealed beat),
+  `beats` (beats, challenge, finalize), `deposits` (deposit,
+  reservations, the escrow's acts), `registers` (cred, register),
+  `claims` (contact cards, notices, cures, cases, arbitrators), `watch`
+  (watch, handoffs) and `shell` (help, set, the parser, dispatch, the
+  prompt, `main`); `cli/__init__.py` re-exports the public pieces. A test
+  replaces a client on the module that defines it
+  (`cli.clients._escrow_client`, `cli.stores._open_book`), where every
+  command looks it up. It encodes only what the schema holds.
 
 `contracts/`: the Solidity sources (`LoopBookRegistry`,
 `TrieProofVerifier` with `SwarmAddress`, `LoopVerifier`, `LegVerifier`
@@ -316,14 +344,14 @@ registry or contract major differs from the installed ontodag's (item
 chain is configured only on-chain fills hide an offer (item 9; until then
 anyone can hide an offer with an invented loop); `cli.py` split by area,
 with a `Reads` object and a `LegRecord` type, built first of these (item
-10); durations and relative times in ontodag's units, `min` and `wk`, a
-bare `m` or `w` refused with the fix named (item 11); v1/v2 offers
-retired once circulator's benchmark and the tests write v4+ (old records
-stay readable), and `MockClearing` renamed `BookClearing` (item 12); the
+10, built); durations and relative times in ontodag's units, `min` and
+`wk`, a bare `m` or `w` refused with the fix named (item 11); v1/v2
+offers retired once circulator's benchmark and the tests write v4+ (old
+records stay readable), and `MockClearing` renamed `BookClearing` (item
+12); the
 phase gates restated for what they still guard (item 17, under "Roadmap
-(state)"). Every review item for loopmarket is decided; of them only
-item 5 is built, because Peter decides the remaining questions first and
-then everything decided is built.
+(state)"). Every review item for loopmarket is decided, and the decided
+items are being built: items 5 and 10 so far.
 
 ## Conventions
 

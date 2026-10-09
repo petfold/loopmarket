@@ -25,9 +25,10 @@ pass derives the first three from them and from the snapshot it reads
 read those three. `Reads` carries all five as one value, so the command
 line, the solver, the clearing and the checks pass one object instead of
 threading five keyword parameters through some twenty signatures. The
-public functions still take the five keywords and fold them into a
-`Reads` (`reads_of`), because solvers outside this package call them
-that way.
+public functions still take the keywords each took before (the checks
+`available`, `held` and `gate`; the solver, the clearings and the
+auction `chain_fills` and `escrow_held`) and fold them into a `Reads`
+(`reads_of`), because solvers outside this package call them that way.
 """
 
 from __future__ import annotations
