@@ -307,10 +307,11 @@ before releases, and pyflakes runs in CI (item 5, built); one matching
 engine, ontodag's index, with the default solver kept apart from the rest
 of loopmarket (item 2); matching and clearing refuse an offer whose
 registry or contract major differs from the installed ontodag's (item
-4). Neither is built yet: Peter decides the remaining questions first,
-then everything decided is built. Open for Peter: items 9 (checking a
-clearing book's fills before the fold admits them; until then the fold's
-fills are advisory), 10 (splitting `cli.py`), 11 (one duration grammar
+4); every reader's fold re-checks a clearing book's loops, and where a
+chain is configured only on-chain fills hide an offer (item 9; until then
+anyone can hide an offer with an invented loop). None is built yet:
+Peter decides the remaining questions first, then everything decided is
+built. Open for Peter: items 10 (splitting `cli.py`), 11 (one duration grammar
 with ontodag: `loop` reads `90m` as minutes, ontodag as metres), 12
 (retiring v1/v2 offers, renaming `MockClearing`) and 17 (the build order
 against the README's gates).
