@@ -44,6 +44,7 @@ from ..matching import Leg, aggregate_legs, candidate_matches, composed_legs, in
 from ..schema import q
 from ..selection import item_of, pack, weight
 from ..ontology import Ontology
+from ..reads import NO_READS, Reads, authorities
 from ..registry import OfferRegistry
 from ..clearing import LoopProposal, Receipt, Clearing
 
@@ -59,11 +60,9 @@ class SolverAgent:
     min_surplus: float = 0.005       # don't bother below half a percent
     max_loops_per_step: int = 10
     receipts: list[Receipt] = field(default_factory=list)
-    #: offer id -> quantity the chain has recorded as taken (`BeatClearing.
-    #: filled`), or None: a spent offer is not hunted through (2026-09-18).
+    #: The older spelling of `reads.chain_fills` and `reads.escrow_held`
+    #: (below), still accepted and kept equal to them.
     chain_fills: object = None
-    #: offer id -> what the escrow holds behind it (asset units), or None:
-    #: a deposit naming an escrow counts only up to what is held (2026-09-19).
     escrow_held: object = None
     #: Selection (P2-loop-selection.md, 2026-09-18): every simple cycle up
     #: to `max_legs` legs is a candidate (`graph.enumerate_cycles`, at most
@@ -87,6 +86,18 @@ class SolverAgent:
     #: record (§7a) — the same reads the clearing's gate is given
     register_latest: object = None
     resolver_profile: object = None
+    #: What the hunt reads beyond the snapshot (`reads.Reads`): the chain's
+    #: fills (offer id -> quantity `BeatClearing.filled` has recorded as
+    #: taken: a spent offer is not hunted through) and the escrow's holdings
+    #: (offer id -> what it holds behind the offer, in the asset's unit: a
+    #: deposit naming an escrow counts only up to what is held). Each pass
+    #: derives `available`, `held` and the gate from them and its snapshot.
+    reads: Reads = NO_READS
+
+    def __post_init__(self) -> None:
+        self.reads = authorities(self.reads, chain_fills=self.chain_fills,
+                                 escrow_held=self.escrow_held, taker="a solver")
+        self.chain_fills, self.escrow_held = self.reads.chain_fills, self.reads.escrow_held
 
     def find_loops(self, *, now: int | None = None
                    ) -> tuple[str, list[Loop | Circulation]]:
@@ -104,13 +115,14 @@ class SolverAgent:
         divisible give shared up to its remainder — exactly while the
         candidates are few, greedily beyond, in §8's total order (U6)."""
         now = int(_time.time()) if now is None else now
+        chain_fills, escrow_held = self.reads.chain_fills, self.reads.escrow_held
         root, book = self.registry.snapshot()
         offers = list(book.offers(now=now))
         available = book.availability(offers, now)  # partial fills leave remainders, holds keep theirs
-        if self.chain_fills is not None:           # and the chain's fills are the authority
+        if chain_fills is not None:                # and the chain's fills are the authority
             kept = []
             for o in offers:
-                on_chain = q(self.chain_fills(o.offer_id))
+                on_chain = q(chain_fills(o.offer_id))
                 if o.composed:
                     if on_chain > 0:
                         continue
@@ -122,12 +134,12 @@ class SolverAgent:
                 kept.append(o)
             offers = kept
         held = None
-        if self.escrow_held is not None:
-            held = {o.offer_id: q(self.escrow_held(o.offer_id)) for o in offers
+        if escrow_held is not None:
+            held = {o.offer_id: q(escrow_held(o.offer_id)) for o in offers
                     if o.v >= 5 and o.bond is not None and o.bond.escrow}
         gate = self.gate(book, now=now, held=held)
-        matches = list(candidate_matches(offers, self.ontology, now=now,
-                                         available=available, held=held, gate=gate))
+        reads = self.reads.replace(available=available, held=held, gate=gate)
+        matches = list(candidate_matches(offers, self.ontology, now=now, reads=reads))
         cycles, complete = enumerate_cycles(matches, max_legs=self.max_legs,
                                             limit=self.cycle_limit, min_surplus=self.min_surplus)
         candidates: dict[str, Loop | Circulation] = {c.loop_id: c for c in cycles}
@@ -137,10 +149,9 @@ class SolverAgent:
             for loop in graph.find_profitable_loops(min_surplus=self.min_surplus,
                                                     limit=self.max_loops_per_step):
                 candidates.setdefault(loop.loop_id, loop)
-        composed = list(composed_legs(offers, self.ontology, now=now, available=available, held=held,
-                                      gate=gate)) \
-            + list(parts_legs(offers, self.ontology, now=now, available=available, held=held, gate=gate)) \
-            + list(aggregate_legs(offers, self.ontology, now=now, available=available, held=held, gate=gate))
+        composed = list(composed_legs(offers, self.ontology, now=now, reads=reads)) \
+            + list(parts_legs(offers, self.ontology, now=now, reads=reads)) \
+            + list(aggregate_legs(offers, self.ontology, now=now, reads=reads))
         if composed:
             legs = composed + [Leg.from_match(m) for m in matches]
             for circ in find_circulations(legs, min_surplus=self.min_surplus,

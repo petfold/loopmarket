@@ -65,6 +65,7 @@ from .clearing import MockClearing
 from .graph import Circulation
 from .matching import candidate_matches
 from .ontology import Ontology
+from .reads import Reads
 from .registry import LegRecord, OfferRegistry
 from .schema import GIVE, WANT, Offer, Parts, Thing, TimeWindow, give, q, want
 from .solver.agent import SolverAgent
@@ -3431,9 +3432,8 @@ def cmd_loops(args, session, out):
     """Find on a pinned snapshot, print, never clear. Exit 1 when nothing
     is profitable, so `loop loops && loop clear` reads naturally."""
     fold = session.fold()
-    agent = SolverAgent(fold, session.catalogue, clearing=None,
-                        solver_id="loop-cli", min_surplus=0.0, chain_fills=_chain_fills(session),
-                        escrow_held=_escrow_held(session), span=_calendar_span, **_gate_reads(session))
+    agent = SolverAgent(fold, session.catalogue, clearing=None, solver_id="loop-cli", min_surplus=0.0,
+                        reads=_reads(session), span=_calendar_span, **_gate_reads(session))
     root, loops = agent.find_loops(now=session.now)
     for loop in loops:
         _print_loop(loop, fold, out)
@@ -3459,6 +3459,13 @@ def _chain_fills(session):
     return _beat_client(session).filled
 
 
+def _reads(session) -> Reads:
+    """What the hunt reads beyond the book, where this session names it:
+    the clearing contract's fills and the escrow's holdings (`Reads`, each
+    None when its contract is not set)."""
+    return Reads(chain_fills=_chain_fills(session), escrow_held=_escrow_held(session))
+
+
 def cmd_propose(args, session, out):
     """Clear locally as `clearing` does and post every accepted loop as one
     beat on the clearing contract (P2, 2026-09-15): the book keeps the data,
@@ -3471,12 +3478,12 @@ def cmd_propose(args, session, out):
         session.book.commit()
     book, ontology = session.book, session.catalogue
     client = _beat_client(session)
-    held = _escrow_held(session)
+    reads = Reads(chain_fills=client.filled, escrow_held=_escrow_held(session))
     agent = SolverAgent(book, ontology,
                         ChainClearing(book, ontology, beat_client=client, clock=lambda: now,
-                                      escrow_held=held, **_clearing_reads(session)),
-                        solver_id="loop-cli", min_surplus=0.0, chain_fills=client.filled,
-                        escrow_held=held, span=_calendar_span, **_gate_reads(session))
+                                      reads=reads, **_clearing_reads(session)),
+                        solver_id="loop-cli", min_surplus=0.0, reads=reads, span=_calendar_span,
+                        **_gate_reads(session))
     receipts = agent.step(now=now)
     posted = 0
     for r in receipts:
@@ -4123,7 +4130,7 @@ def cmd_commit(args, session, out):
                          f"at block {sealed.window(beat + 1)[0]}")
     fold = session.fold()
     agent = SolverAgent(fold, session.catalogue, clearing=None, solver_id="loop-cli", min_surplus=0.0,
-                        chain_fills=_chain_fills(session))
+                        reads=Reads(chain_fills=_chain_fills(session)))
     root, loops = agent.find_loops(now=session.now)
     if not loops:
         print(f"beat {beat}: nothing to propose on root {root[:16]}…", file=_err())
@@ -4208,9 +4215,9 @@ def cmd_outcome(args, session, out):
     book, ontology = session.book, session.catalogue
     root, snapshot = book.snapshot()
     revealed = sealed.revealed(beat)
-    fills = _chain_fills(session)
-    result = outcome(beat, revealed, snapshot, ontology, now=now, chain_fills=fills,
-                     baseline=baseline_proposals(snapshot, ontology, now=now, chain_fills=fills))
+    reads = Reads(chain_fills=_chain_fills(session))
+    result = outcome(beat, revealed, snapshot, ontology, now=now, reads=reads,
+                     baseline=baseline_proposals(snapshot, ontology, now=now, reads=reads))
     print(f"beat {beat}: {len(revealed)} revealed, {result.candidates} candidate loop(s), "
           f"{len(result.winners)} winner(s), score {float(result.score):.4f}", file=out)
     for lid, why in sorted(result.rejected.items()):

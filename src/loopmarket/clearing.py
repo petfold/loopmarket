@@ -31,6 +31,7 @@ from fractions import Fraction
 from .schema import q, rat
 from .matching import check_aggregate, check_composition, check_match, check_parts
 from .ontology import Ontology
+from .reads import Reads, authorities, reads_of
 from .registry import OfferRegistry
 from .register import named_registers
 from .gate import CounterpartyGate
@@ -143,27 +144,30 @@ class MockClearing:
                  min_surplus: float = 0.0, require_per_node: bool = True,
                  clock=_time.time, verifiable_oracles=VERIFIABLE_ORACLES,
                  chain_fills=None, escrow_held=None, register_at=None, span=None, register_latest=None,
-                 resolver_profile=None):
+                 resolver_profile=None, reads: Reads | None = None):
         self.registry = registry
         self.ontology = ontology
         self.min_surplus = min_surplus
         self.require_per_node = require_per_node
         self.clock = clock  # injectable for tests / deterministic replay
         self.verifiable_oracles = frozenset(verifiable_oracles)
-        #: offer id -> quantity the chain has recorded as taken (`BeatClearing.
-        #: filled`), or None. The chain is the fill authority once a beat is
-        #: finalized, and a book that never folded that clearing's fills does
-        #: not know (live 2026-09-18: a fold of twelve offers, six spent on chain,
-        #: proposed a loop through a spent one) — so what the chain has taken is
-        #: subtracted from what the book says is left, everywhere the checklist
-        #: asks.
-        self.chain_fills = chain_fills
-        #: offer id -> quantity the escrow contract holds behind it, in the
-        #: asset's unit (`EscrowClient.held` scaled), or None: with it, a
-        #: deposit that names an escrow counts only up to what is held
-        #: (`matching.meets`, 2026-09-19) — the chain is the authority on
-        #: the deposit as on the fills.
-        self.escrow_held = escrow_held
+        #: What the checklist reads beyond the book (`reads.Reads`), by
+        #: either spelling (`chain_fills=`, `escrow_held=` are the older):
+        #: `chain_fills`, offer id -> quantity the chain has recorded as
+        #: taken (`BeatClearing.filled`). The chain is the fill authority
+        #: once a beat is finalized, and a book that never folded that
+        #: clearing's fills does not know (live 2026-09-18: a fold of twelve
+        #: offers, six spent on chain, proposed a loop through a spent one) —
+        #: so what the chain has taken is subtracted from what the book says
+        #: is left, everywhere the checklist asks. `escrow_held`, offer id ->
+        #: quantity the escrow contract holds behind it, in the asset's unit
+        #: (`EscrowClient.held` scaled): with it, a deposit that names an
+        #: escrow counts only up to what is held (`matching.meets`,
+        #: 2026-09-19) — the chain is the authority on the deposit as on the
+        #: fills. Each `submit` derives `available`, `held` and the gate
+        #: from these and the book.
+        self.reads = authorities(reads, chain_fills=chain_fills, escrow_held=escrow_held,
+                                 taker="a clearing")
         #: (register id, root) -> the `Register` read at that root, or None
         #: (R4, 2026-09-29): the counterparty gate re-reads every register
         #: the proposal pinned, here, never the solver's copy (U3); without
@@ -182,6 +186,16 @@ class MockClearing:
         #: accreditation admit
         self.resolver_profile = resolver_profile
 
+    @property
+    def chain_fills(self):
+        """`reads.chain_fills`, by its older name."""
+        return self.reads.chain_fills
+
+    @property
+    def escrow_held(self):
+        """`reads.escrow_held`, by its older name."""
+        return self.reads.escrow_held
+
     def gate(self, register_roots=(), *, now: int) -> CounterpartyGate:
         """The counterparty gate over this clearing's own book, the
         registers read at the pinned roots, what the escrow holds."""
@@ -190,7 +204,8 @@ class MockClearing:
             for rid, root in register_roots:
                 if root:
                     registers[rid] = self.register_at(rid, root)
-        held = None if self.escrow_held is None else _Held(self.escrow_held)
+        escrow_held = self.reads.escrow_held
+        held = None if escrow_held is None else _Held(escrow_held)
 
         def capacity(oid: str):
             try:
@@ -204,9 +219,10 @@ class MockClearing:
     def deposits(self, offer_ids) -> dict | None:
         """What the escrow holds behind each offer, or None when no escrow
         is consulted (the declaration then stands, as before)."""
-        if self.escrow_held is None:
+        escrow_held = self.reads.escrow_held
+        if escrow_held is None:
             return None
-        return {oid: q(self.escrow_held(oid)) for oid in offer_ids}
+        return {oid: q(escrow_held(oid)) for oid in offer_ids}
 
     def available(self, offer_ids, now: int | None = None) -> dict:
         """What may still be taken from each offer: the book's remainder,
@@ -214,11 +230,12 @@ class MockClearing:
         and, given `now`, less what active holds keep (C2) — a holder's own
         exercise adds its hold back at the gate."""
         out = {}
+        chain_fills = self.reads.chain_fills
         for oid in offer_ids:
             left = self.registry.available(oid)
-            if self.chain_fills is not None:
+            if chain_fills is not None:
                 offer = self.registry.get(oid)
-                on_chain = q(self.chain_fills(oid))
+                on_chain = q(chain_fills(oid))
                 if offer.composed:
                     left = Fraction(0) if on_chain > 0 else left
                 else:
@@ -230,9 +247,10 @@ class MockClearing:
 
     def filled_on_chain(self, offer) -> bool:
         """Has the chain recorded this offer as taken whole, or down to dust?"""
-        if self.chain_fills is None:
+        chain_fills = self.reads.chain_fills
+        if chain_fills is None:
             return False
-        on_chain = q(self.chain_fills(offer.offer_id))
+        on_chain = q(chain_fills(offer.offer_id))
         if offer.composed:
             return on_chain > 0
         return offer.thing.exhausted(q(offer.thing.qty) - on_chain)
@@ -292,10 +310,10 @@ class MockClearing:
         #    composed leg is re-composed (`check_composition`) from the
         #    current book, operators included, against what fills have
         #    left of every give (a partial fill's remainder)
-        available = self.available(loop.offer_ids, now)
-        gate = self.gate(proposal.register_roots, now=now)
+        reads = self.reads.replace(available=self.available(loop.offer_ids, now),
+                                   gate=self.gate(proposal.register_roots, now=now))
         for leg in loop.legs:
-            reason = self.verify_leg(leg, now=now, available=available, gate=gate)
+            reason = self.verify_leg(leg, now=now, reads=reads)
             if reason:
                 return reject(reason)
 
@@ -324,41 +342,39 @@ class MockClearing:
         root = self.registry.commit()
         return Receipt(True, lid, book_root=root)
 
-    def verify_leg(self, leg, *, now: int, available: dict, held: dict | None = None,
-                   gate: CounterpartyGate | None = None) -> str | None:
+    def verify_leg(self, leg, *, now: int, reads: Reads | None = None, available: dict | None = None,
+                   held: dict | None = None, gate: CounterpartyGate | None = None) -> str | None:
         """Re-derive one leg from this clearing's book and ontology — the
         exact check for its shape: `check_aggregate` for explicit shares,
         `check_parts` for a composed want, `check_match` for one give,
         `check_composition` for a thing moved by operators — against what
-        `available` says fills have left of each give, and `held` (the
-        escrow's holdings, this clearing's own when not given) says of each
-        deposit. None when the leg
-        holds, else the reason. The unit of U3, and of a challenger's
-        re-derivation (beat.py): the same code that cleared a leg is what
-        convicts it."""
-        if held is None:
-            held = self.deposits(leg.offer_ids)
-        if gate is None:
-            gate = self.gate(now=now)
+        `reads.available` says fills have left of each give, and
+        `reads.held` (the escrow's holdings, this clearing's own when not
+        given) says of each deposit, under `reads.gate` (this clearing's own
+        when not given). None when the leg holds, else the reason. The unit
+        of U3, and of a challenger's re-derivation (beat.py): the same code
+        that cleared a leg is what convicts it."""
+        reads = reads_of(reads, available=available, held=held, gate=gate)
+        if reads.held is None:
+            reads = reads.replace(held=self.deposits(leg.offer_ids))
+        if reads.gate is None:
+            reads = reads.replace(gate=self.gate(now=now))
         fresh_want = self.registry.get(leg.want.offer_id)
         fresh_gives = [self.registry.get(g.offer_id) for g in leg.gives]
         if leg.quantities is not None:
             ok = check_aggregate(fresh_want, fresh_gives, leg.quantities, self.ontology,
-                                 now=now, available=available, held=held, gate=gate)
+                                 now=now, reads=reads)
         elif fresh_want.composed:
-            ok = check_parts(fresh_want, fresh_gives, self.ontology, now=now,
-                             available=available, held=held, gate=gate)
+            ok = check_parts(fresh_want, fresh_gives, self.ontology, now=now, reads=reads)
         elif leg.simple:
-            ok = check_match(fresh_gives[0], fresh_want, self.ontology, now=now,
-                             available=available, held=held, gate=gate)
+            ok = check_match(fresh_gives[0], fresh_want, self.ontology, now=now, reads=reads)
         else:
-            ok = check_composition(fresh_want, fresh_gives, self.ontology, now=now,
-                                   available=available, held=held, gate=gate)
+            ok = check_composition(fresh_want, fresh_gives, self.ontology, now=now, reads=reads)
         if ok is None:
             reason = (f"leg fails re-verification: "
                       f"{'+'.join(g.offer_id[:8] for g in leg.gives)}"
                       f" -> {leg.want.offer_id[:8]}")
-            faults = self.gate_faults(fresh_want, fresh_gives, gate)
+            faults = self.gate_faults(fresh_want, fresh_gives, reads.gate)
             return reason + (" — the counterparty gate: " + " | ".join(faults) if faults else "")
         return None
 
@@ -420,8 +436,8 @@ class MockClearing:
         challenger runs it against the beat's snapshot."""
         dry = MockClearing(_Dry(self.registry), self.ontology, min_surplus=self.min_surplus,
                            require_per_node=self.require_per_node, clock=self.clock,
-                           verifiable_oracles=self.verifiable_oracles, chain_fills=self.chain_fills,
-                           escrow_held=self.escrow_held, register_at=self.register_at, span=self.span,
+                           verifiable_oracles=self.verifiable_oracles, reads=self.reads,
+                           register_at=self.register_at, span=self.span,
                            register_latest=self.register_latest, resolver_profile=self.resolver_profile)
         return dry.submit(proposal)
 
@@ -438,7 +454,9 @@ class ChainClearing(MockClearing):
     `reason` carries the beat id on acceptance."""
 
     def __init__(self, registry, ontology, *, beat_client, snapshot_of=None, **kw):
-        kw.setdefault("chain_fills", beat_client.filled)     # the chain is the fill authority
+        reads = kw.get("reads")
+        if "chain_fills" not in kw and (reads is None or reads.chain_fills is None):
+            kw["chain_fills"] = beat_client.filled           # the chain is the fill authority
         super().__init__(registry, ontology, **kw)
         self.beat_client = beat_client
         self.snapshot_of = snapshot_of or (lambda root: OfferRegistry(

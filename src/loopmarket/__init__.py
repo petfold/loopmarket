@@ -28,7 +28,8 @@ from .schema import (
 )
 from .federation import Aggregator, Manifest, Omission, audit_manifest
 from .ontology import Ontology
-from .registry import OfferRegistry, PartialLoopError, swarm_offer_book
+from .registry import LegRecord, OfferRegistry, PartialLoopError, swarm_offer_book
+from .reads import Reads
 from .matching import Leg, Match, aggregate_legs, candidate_matches, check_aggregate, check_composition, check_match, check_parts, parts_legs
 from .sigs import maker_address, recover_maker, sign_offer, verify_offer_sig
 from .dimensions import DimensionIndex, candidate_matches_indexed
@@ -50,7 +51,7 @@ __all__ = [
     "Tokens", "give", "want", "ask", "bid", "q", "rat",
     "check_parts", "parts_legs", "check_aggregate", "aggregate_legs",
     "Aggregator", "Manifest", "Omission", "audit_manifest", "Ontology", "OfferRegistry",
-    "PartialLoopError", "swarm_offer_book",
+    "LegRecord", "PartialLoopError", "swarm_offer_book", "Reads",
     "Match", "candidate_matches", "check_match",
     "maker_address", "recover_maker", "sign_offer", "verify_offer_sig",
     "DimensionIndex", "candidate_matches_indexed", "ExchangeGraph", "Loop",

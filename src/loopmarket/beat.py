@@ -52,6 +52,7 @@ from fractions import Fraction
 from .clearing import LoopProposal, MockClearing
 from .graph import Circulation
 from .matching import Leg
+from .reads import Reads
 from .registry import LegRecord, OfferRegistry
 from .schema import q
 
@@ -481,7 +482,7 @@ def challenge_beat(client: "BeatClient", beat: int, books, ontology, *, now: int
             local = "ontology pin mismatch"
         else:
             try:
-                local = mock.verify_leg(leg, now=now, available=available, gate=gate)
+                local = mock.verify_leg(leg, now=now, reads=Reads(available=available, gate=gate))
             except KeyError as exc:
                 local = f"unknown offer: {exc}"
         legs.append(LegVerdict(i, local, client.verdict(state, i, ev.submission)))
