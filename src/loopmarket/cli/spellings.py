@@ -2,9 +2,13 @@
 
 Times: relative spellings elaborate to fixed UTC at entry (cli.md §2),
 through the registry's own calendar grammar, so the CLI never grows a
-second date parser. Durations, radii, coordinates and typed numbers are
-read exactly (U9). The line's conventions: `+`, the part separator of a
-composed want, and `valid`, the one head the CLI interprets onto a field."""
+second date parser. Durations, and the offsets of relative times, are
+ontodag's (review item 11, decided by Peter 2026-10-10): read by its
+duration arithmetic in its units (`90min`, `2h`, `30d`, `1wk`), with no
+unit table here, so a spelling means in `loop` what it means in `odag`.
+Radii, coordinates and typed numbers are read exactly too (U9). The
+line's conventions: `+`, the part separator of a composed want, and
+`valid`, the one head the CLI interprets onto a field."""
 
 from __future__ import annotations
 
@@ -17,11 +21,15 @@ from ontodag import dimensions as _dims
 from ..schema import TimeWindow
 
 
-_REL_RE = re.compile(r"^([+-])(\d+(?:\.\d+)?)([smhdw])$")
-_DUR_RE = re.compile(r"^(\d+(?:\.\d+)?)([smhdw])$")
-_UNIT_S = {"s": 1, "m": 60, "h": 3600, "d": 86_400, "w": 7 * 86_400}
 _TERM_RE = re.compile(r"^time\((.*)\)$")
 _RATIONAL_RE = re.compile(r"^(-?\d+)(?:/(\d+))?([A-Za-z][A-Za-z0-9]*)$")
+# A number with a unit after it: what `--until` reads as a duration rather
+# than an instant (an ISO date has a dash after its digits, unix seconds no
+# unit), so a refused duration says why instead of failing as a bad date.
+_QUANTITY_RE = re.compile(r"^\d+(?:\.\d+)?(?:/\d+)?[A-Za-z]")
+# The two spellings `loop` read differently from ontodag until review item
+# 11: `m` (minutes here, metres there) and `w` (a week here, no unit there).
+_OLD_SPELLING_RE = re.compile(r"^(\d+(?:\.\d+)?(?:/\d+)?)([mw])$")
 
 
 def _iso(ts: int) -> str:
@@ -64,10 +72,9 @@ def _side_span(text: str, now: int) -> tuple[int, int]:
     if text in ("today", "tomorrow"):
         day = now - now % 86_400 + (86_400 if text == "tomorrow" else 0)
         return day, day + 86_400
-    m = _REL_RE.match(text)
-    if m:
-        delta = float(m.group(2)) * _UNIT_S[m.group(3)]
-        ts = int(now + delta if m.group(1) == "+" else now - delta)
+    if text[:1] in ("+", "-"):
+        delta = _seconds(text[1:], shown=text)
+        ts = int(now + delta if text[0] == "+" else now - delta)
         return ts, ts
     try:
         return _calendar_span(text)
@@ -98,15 +105,42 @@ def window(text: str, now: int) -> TimeWindow:
 
 
 def duration_s(text: str) -> int:
-    """Seconds from `30d`, `2h`, `90m`, or any ontodag duration spelling."""
-    m = _DUR_RE.match(text.strip())
-    if m:
-        return int(float(m.group(1)) * _UNIT_S[m.group(2)])
+    """Whole seconds from an ontodag duration spelling: `30d`, `2h`,
+    `90min`, `1wk`, `1/2d` (review item 11)."""
+    return int(_seconds(text.strip()))
+
+
+def _seconds(text: str, *, shown: str | None = None) -> Fraction:
+    """`text` as one ontodag duration, in seconds, exact: ontodag's own
+    canonical form of `duration(TEXT)`, accepted only when its unit family
+    is duration. `shown` is the spelling the person typed, for the error
+    (`+90m` for a relative time's offset). A bare `m` or `w` is refused with
+    the fix named, never read as minutes or a week: ontodag reads `90m` as
+    90 metres and has no `w` (`W` is watts)."""
+    shown = text if shown is None else shown
+    old = _OLD_SPELLING_RE.match(text)
+    if old:
+        sign = shown[: len(shown) - len(text)]
+        number, unit = old.groups()
+        if unit == "m":
+            raise ValueError(f"{shown} is metres in ontodag; write {sign}{number}min")
+        raise ValueError(f"{shown}: ontodag has no unit w (W is watts); a week is wk — "
+                         f"write {sign}{number}wk")
+    if ".." in text:
+        raise ValueError(f"{shown}: a duration is one length of time, not a range")
     try:
         canonical = _dims.canonicalize(f"duration({text})", _dims.KIND_LINEAR)
+        family = _dims.family_of(canonical, _dims.KIND_LINEAR)
     except ValueError as exc:
-        raise ValueError(f"{text!r} is not a duration (30d, 2h, 90m)") from exc
-    return int(_rational(re.match(r"^duration\((.*)\)$", canonical).group(1)))
+        raise ValueError(f"{shown!r} is not a duration: ontodag's units are s, min, h, d "
+                         f"and wk (30d, 2h, 90min, 1wk)") from exc
+    if family == "count":
+        raise ValueError(f"{shown} is a bare number; a duration needs its unit, as ontodag "
+                         f"spells it: {text}s, {text}min, {text}h, {text}d or {text}wk")
+    if family != "duration":
+        raise ValueError(f"{shown} is {family} in ontodag, not a duration: its units are s, "
+                         f"min, h, d and wk")
+    return _rational(_dims.split_term(canonical)[1])
 
 
 def _seconds_or_zero(text: str | None) -> int:
@@ -193,8 +227,8 @@ def _looks_like_time(token: str) -> bool:
 
 def _until(text: str, now: int) -> int:
     """`--until`: a duration from now (`3d`, `12h`) or an instant (ISO-8601,
-    unix seconds)."""
-    try:
+    unix seconds). A number with a unit is a duration, so `90m` is refused
+    as one, with its fix, rather than as a malformed instant."""
+    if _QUANTITY_RE.match(text.strip()):
         return now + duration_s(text)
-    except ValueError:
-        return parse_now(text)
+    return parse_now(text)

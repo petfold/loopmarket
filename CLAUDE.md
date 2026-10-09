@@ -345,13 +345,13 @@ chain is configured only on-chain fills hide an offer (item 9; until then
 anyone can hide an offer with an invented loop); `cli.py` split by area,
 with a `Reads` object and a `LegRecord` type, built first of these (item
 10, built); durations and relative times in ontodag's units, `min` and
-`wk`, a bare `m` or `w` refused with the fix named (item 11); v1/v2
+`wk`, a bare `m` or `w` refused with the fix named (item 11, built); v1/v2
 offers retired once circulator's benchmark and the tests write v4+ (old
 records stay readable), and `BookClearing` renamed `BookClearing` (item
 12); the
 phase gates restated for what they still guard (item 17, under "Roadmap
 (state)"). Every review item for loopmarket is decided, and the decided
-items are being built: items 5 and 10 so far.
+items are being built: items 5, 10 and 11 so far.
 
 ## Conventions
 

@@ -266,10 +266,20 @@ Things to notice:
   never leaves your machine; its value does. (`home` was declared as 5 km
   around a point that lies near a cell edge, so its cell is the coarser
   one containing the whole radius: a cell is what the offer *says*.)
+
+  Durations, and the offsets of relative times (`+7d`, `-2h`), are
+  ontodag's, in its units: `s`, `min`, `h`, `d`, `wk` — `valid(90min)`,
+  `set claim_max 2wk`. A bare `m` is metres in ontodag and it has no `w`,
+  so `loop` refuses both and names the fix rather than guess:
+
+  ```console
+  $ loop set valid 90m
+  loop: 90m is metres in ontodag; write 90min
+  ```
 - **An omitted price is your last unit price** for the same side and the
   same bare categories, scaled by quantity, read from your own book, and
   marked in the block (`note price 100 reused: unit price 100/unit from
-  offer 23e1d080a2ea (0m ago)`). No earlier offer means an error, never a
+  offer 23e1d080a2ea (0min ago)`). No earlier offer means an error, never a
   guess; in a script a reused price refuses the line unless `confirm` is
   `off`, because nobody saw it.
 - **Offers are immutable values with a content address.** Equal content

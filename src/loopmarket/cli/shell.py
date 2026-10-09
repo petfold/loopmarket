@@ -25,9 +25,15 @@ from .registers import cmd_cred, cmd_register
 from .settings import (_ERR, _OUT, _OVERRIDES, _SETTINGS, _book_spec, _configured, _err, _out,
                        _read_config, _want_limit, _write_config)
 from .solving import cmd_clearing, cmd_commit, cmd_loops, cmd_outcome, cmd_propose, cmd_reveal, cmd_sealed
-from .spellings import _looks_like_time, parse_coords, parse_now, validity, window
+from .spellings import _looks_like_time, _seconds_or_zero, parse_coords, parse_now, validity, window
 from .stores import Session
 from .watch import cmd_handoff, cmd_handoffs, cmd_watch
+
+
+#: The settings that hold one duration (`valid`, which may be a window, and
+#: `option_window`, which may be a fraction, are read by their own rules).
+_DURATION_SETTINGS = ("interval", "escrow_claim", "claim_max", "require_claim",
+                      "claim_min_challenge", "claim_min_ruling")
 
 
 def _shown_setting(key: str) -> str:
@@ -58,6 +64,8 @@ def cmd_set(args, session, out):
         parse_now(value)
     if args.key == "valid":
         validity(value, 0)
+    if args.key in _DURATION_SETTINGS and value:
+        _seconds_or_zero(value)                 # ontodag's units; `90m` refused with its fix
     if args.key in ("require_point", "require_cancel") and value:
         try:
             amount = q(value)
@@ -202,7 +210,9 @@ CLI interprets is valid(DURATION|A..B|A..) — how long the offer stands
 (A.. is until withdrawn). Relative time and LAT,LON,R are input spellings.
 A composed want (`+` between parts, one price last) is one v4 offer: all
 the parts or nothing, one price (docs/plans/cli.md §13).
-Time: now, today, tomorrow, +90d, -2h, ISO dates, A..B.
+Time: now, today, tomorrow, +90d, -2h, ISO dates, A..B. Durations are
+ontodag's: s, min, h, d, wk (90min, 1wk); a bare m is metres, so 90m is
+refused with the fix named.
 
   loop give 10kg apple 100
   loop want ride my_home 'today..+7d' 5

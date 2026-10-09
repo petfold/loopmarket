@@ -129,11 +129,12 @@ def render_offer(offer: Offer) -> str:
 
 
 def _duration_text(seconds: int) -> str:
-    """Seconds as the largest whole unit: 30d, 2h, 90m, 45s."""
-    for unit, size in (("d", 86_400), ("h", 3_600), ("m", 60)):
-        if seconds and seconds % size == 0:
-            return f"{seconds // size}{unit}"
-    return f"{seconds}s"
+    """Seconds spelled as ontodag spells a duration — its renderer picks the
+    largest of its units the value is whole in: `45s`, `90min`, `36h`,
+    `30d`, `2wk` (review item 11). What `loop` prints, `odag` and `loop`
+    read back to the same seconds."""
+    from ontodag.surface import render
+    return _dims.split_term(render(f"duration({int(seconds)}s)", kind=_dims.KIND_LINEAR))[1]
 
 
 def _span(w: TimeWindow, fmt=None) -> str:
@@ -197,8 +198,9 @@ def _resolvers_text(acc) -> str:
 
 
 def _age(seconds: int) -> str:
+    """How long ago, rounded down, in ontodag's units."""
     if seconds < 3600:
-        return f"{max(seconds, 0) // 60}m"
+        return f"{max(seconds, 0) // 60}min"
     if seconds < 86_400:
         return f"{seconds // 3600}h"
     return f"{seconds // 86_400}d"
@@ -221,15 +223,17 @@ def _round_amount(x) -> Fraction:
 
 
 def _duration_approx(seconds: int) -> str:
-    """Seconds in the largest unit they reach, rounded: for notes that
-    estimate (an option's window, a demand rate). Exact spellings, for
-    what an offer states, are `_duration_text`'s; until 2026-10-09 this one
-    had the same name, so it silently replaced the exact one in the
-    approval block (a 100 s claim period showed as `1.67m`)."""
-    for unit, size in (("d", 86_400), ("h", 3_600), ("m", 60)):
+    """Seconds in the largest of ontodag's units `d`, `h`, `min` they
+    reach, rounded: for notes that estimate (an option's window, a demand
+    rate). Exact spellings, for what an offer states, are
+    `_duration_text`'s; until 2026-10-09 this one had the same name, so it
+    silently replaced the exact one in the approval block (a 100 s claim
+    period showed rounded)."""
+    from .spellings import duration_s
+    for unit in ("d", "h", "min"):
+        size = duration_s(f"1{unit}")             # the unit's size is ontodag's
         if seconds >= size:
-            value = Fraction(seconds, size)
-            return f"{_num(_round_amount(value))}{unit}"
+            return f"{_num(_round_amount(Fraction(seconds, size)))}{unit}"
     return f"{seconds}s"
 
 

@@ -12,10 +12,27 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 The 2026-10 review's item 10 (ontodag's `docs/plans/REVIEW_2026-10.md`
 §8): the command line split by area, with a `Reads` object and a
 `LegRecord` type. On every record the code writes, no command prints or
-does anything different, and no record byte or id changes.
+does anything different, and no record byte or id changes. Item 11
+changes how `loop` reads and prints durations (below); it changes no
+record byte or id either.
 
 ### Changed
 
+- **Durations and relative times are ontodag's** (the review's item 11,
+  decided by Peter 2026-10-10). `loop` reads a duration (`valid(...)`,
+  the duration settings, `--until`, `extend-claim`, `notice --cure`,
+  `age:` and `clean:` in the requirement settings) and the offset of a
+  relative time (`+90min`, `-2h`) with ontodag's own duration arithmetic,
+  in its units `s`, `min`, `h`, `d` and `wk`, and prints a duration as
+  ontodag's renderer does, in the largest unit the value is whole in
+  (`90min`, `36h`, `2wk`; a week printed as `7d` before, and minutes as
+  `m`). Its own unit table is gone. A bare `m` or `w` is refused with the
+  fix named (`90m is metres in ontodag; write 90min`; ontodag has no `w`,
+  and `W` is watts) instead of being read as minutes or a week, and `set`
+  refuses one in a duration setting when it is set; a setting written
+  before as `90m` is refused at its next use with the same fix. No other
+  quantity passes as a duration either: `5km` used to be read as 5000
+  seconds.
 - **`MockClearing` is `BookClearing`** (the review's item 12, decided by
   Peter 2026-10-10). The class clears the book in process, with the same
   checklist the chain contract re-derives; it mocks nothing, and the old

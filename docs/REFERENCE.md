@@ -1073,12 +1073,18 @@ fields today. A floor alone or a ceiling alone in quantity position
 much.
 
 **Time** (input vocabulary, stored absolute UTC): `now`, `today`,
-`tomorrow`, `+90d`/`-2h` (units `s m h d w`), any ontodag time literal
-(`2026-10`, `2026-10-01`, `2026-10-01T10:00:00Z`), and ranges `A..B`,
-`..B` (from now), `A..` (open-ended: for `valid`, until withdrawn). A name
-whose node hangs under a `time(...)` term is a window too (`evenings`).
-Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
-`500m`, bare metres.
+`tomorrow`, `+90d`/`-2h`/`+90min` (an offset is a duration), any ontodag
+time literal (`2026-10`, `2026-10-01`, `2026-10-01T10:00:00Z`), and ranges
+`A..B`, `..B` (from now), `A..` (open-ended: for `valid`, until
+withdrawn). A name whose node hangs under a `time(...)` term is a window
+too (`evenings`). **Durations** are ontodag's, read by its duration
+arithmetic in its units — `s`, `min`, `h`, `d`, `wk` (`30d`, `2h`,
+`90min`, `1wk`, `1/2d`) — and printed as ontodag prints them, in the
+largest unit the value is whole in (`90min`, `36h`, `2wk`). A bare `m` or
+`w` is refused with the fix named (`90m is metres in ontodag; write
+90min`; ontodag has no `w`, `W` is watts), never read as minutes or a
+week (review item 11), and `set` refuses one in a duration setting when
+it is set. Radii: `5km`, `500m`, bare metres.
 
 ### Commands
 

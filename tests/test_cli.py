@@ -198,6 +198,72 @@ def test_relative_time_elaborates_to_fixed_utc():
         cli.window("soonish..+2d", NOW)
 
 
+def test_durations_and_relative_times_read_in_ontodags_units():
+    """Review item 11 (decided by Peter 2026-10-10): `loop` reads a duration
+    or a relative time in ontodag's units — `s`, `min`, `h`, `d`, `wk` —
+    through ontodag's own duration arithmetic, and keeps no unit table of
+    its own. A bare `m` or `w` is refused with the fix named rather than
+    read as minutes or a week: `90m` is 90 metres in ontodag, which has no
+    `w` at all. Nor is any other quantity read as seconds (`5km` was 5000)."""
+    from loopmarket.cli import spellings
+    assert not hasattr(spellings, "_UNIT_S")
+    assert cli.duration_s("90min") == 5400 and cli.duration_s("1wk") == 7 * 86_400
+    assert cli.duration_s("2h") == 7200 and cli.duration_s("30d") == 30 * 86_400
+    assert cli.duration_s("45s") == 45 and cli.duration_s("1/2d") == 43_200
+    assert cli.duration_s("1.5h") == 5400
+    with pytest.raises(ValueError, match=r"^90m is metres in ontodag; write 90min$"):
+        cli.duration_s("90m")
+    with pytest.raises(ValueError, match=r"W is watts.*write 1wk$"):
+        cli.duration_s("1w")
+    for not_a_duration in ("5km", "3kg", "90", "1h..2h", "soon"):
+        with pytest.raises(ValueError, match="duration"):
+            cli.duration_s(not_a_duration)
+    w = cli.window("now..+90min", NOW)
+    assert (w.start, w.end) == (NOW, NOW + 5400)
+    assert cli.window("today..+1wk", NOW).end == NOW + 7 * 86_400
+    assert cli.window("-2h..+2h", NOW).start == NOW - 7200
+    with pytest.raises(ValueError, match=r"write \+90min$"):
+        cli.window("now..+90m", NOW)
+    with pytest.raises(ValueError, match=r"write -1wk$"):
+        cli.window("-1w..now", NOW)
+    # `--until`: a duration from now, else an instant; a refused duration
+    # says why instead of failing as a malformed date
+    assert spellings._until("3d", NOW) == NOW + 3 * 86_400
+    assert spellings._until("2026-10-01", NOW) == cli.parse_now("2026-10-01")
+    with pytest.raises(ValueError, match="write 90min"):
+        spellings._until("90m", NOW)
+
+
+def test_durations_print_in_ontodags_units(loop):
+    """What `loop` prints it spells as ontodag does — ontodag's renderer
+    picks the largest unit the value is whole in — so a printed duration
+    reads back to the same seconds in `loop` and in `odag`; the estimates
+    in notes round in the same units."""
+    from loopmarket.cli import render
+    spelled = {45: "45s", 5400: "90min", 36 * 3600: "36h", 14 * 86_400: "2wk", 30 * 86_400: "30d"}
+    for seconds, text in spelled.items():
+        assert render._duration_text(seconds) == text
+        assert cli.duration_s(text) == seconds
+        assert surface.elaborate(f"duration({text})", kind="linear-dimension") == f"duration({seconds}s)"
+    assert render._age(120) == "2min" and render._duration_approx(100) == "1.67min"
+    loop.ok("set", "claim_max", "90min")
+    assert "claim_max 90min" in loop.ok("give", "apple", "home", "5")
+
+
+def test_a_duration_setting_is_read_when_set(env):
+    """`set` reads every duration setting as it writes it, so `90m` is
+    refused where it is typed, with the fix named, not at the next command
+    that reads the setting."""
+    run = Runner()
+    for key in ("valid", "interval", "escrow_claim", "claim_max", "require_claim",
+                "claim_min_challenge", "claim_min_ruling", "option_window"):
+        code, _out, err = run("set", key, "90m")
+        assert code == 1 and "90m is metres in ontodag; write 90min" in err, (key, err)
+        run.ok("set", key, "90min")
+    code, _out, err = run("set", "valid", "1w")
+    assert code == 1 and "write 1wk" in err
+
+
 # ---------------------------------------------------------------- G4: approve = show
 
 def test_g4_approval_block_is_the_show_renderer(loop):
@@ -325,7 +391,7 @@ def test_omitted_price_is_my_last_unit_price_scaled_and_marked(loop):
     out = loop.ok("give", "5kg", "apple", "home")
     assert "price    50 (10/kg" in out
     assert re.search(r"note     price 50 reused: unit price 10/kg from offer "
-                     r"[0-9a-f]{12} \(0m ago\)", out)
+                     r"[0-9a-f]{12} \(0min ago\)", out)
 
 
 def test_price_memory_is_keyed_by_side_and_bare_categories(loop):
