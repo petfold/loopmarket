@@ -61,6 +61,23 @@ does anything different, and no record byte or id changes.
   adopted first where `geo` is not yet a prefix head (the one adoption
   every `declare_*` method shares). Same catalogue, same root.
 
+### Removed
+
+- **Dead code** (the review's §3.2). Nothing calls any of it: not
+  loopmarket, its tests, examples or scripts, nor circulator, factbond,
+  categorio or ontodag-fs. `TimeWindow.from_iso`; `Bond.payable` (`meets`
+  computes the payable share itself, from what the escrow holds);
+  `Ontology.assert_edge`, whose `bond` argument was never enforced (bonded
+  assertions became coverage gives on 2026-09-25); `register.newest_reader`
+  (the command line reads every register at its head);
+  `EscrowClient.ladder_at` (the contract's `ladderAt` stays: `cancel` reads
+  it); `SolverAgent.run`; and the two fallback copies of `canonical_bytes`
+  in `schema` and `auction`. Those ran only if recordstore, a base
+  dependency, failed to import, and differed from it: neither refused NaN,
+  and the auction's escaped every non-ASCII character, so a bundle whose
+  loop has a maker named `Čeh` would have been sealed as other bytes than
+  the canonical ones.
+
 ## [0.14.5] — 2026-10-09
 
 Found in the 2026-10-09 review of ontodag and loopmarket (ontodag's

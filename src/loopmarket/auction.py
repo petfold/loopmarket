@@ -51,17 +51,13 @@ import secrets
 from dataclasses import dataclass, field
 from fractions import Fraction
 
+from recordstore import canonical_bytes
+
 from .beat import proposal_from_record
 from .clearing import LoopProposal, BookClearing
 from .reads import Reads, reads_of
 from .registry import OfferRegistry
 from .selection import Item, disjoint_capacity, item_of, pack
-
-try:
-    from recordstore import canonical_bytes
-except ImportError:  # pragma: no cover
-    def canonical_bytes(value) -> bytes:
-        return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
 
 
 COMMIT, REVEAL, CLOSED, PENDING = 0, 1, 2, 3

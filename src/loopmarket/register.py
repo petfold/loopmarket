@@ -220,20 +220,3 @@ def named_registers(offers) -> set[str]:
         for entry in getattr(req, "legs", ()):
             out.update(entry.accept.roots)
     return out
-
-
-def newest_reader(pointer_for, blobs):
-    """The gate's `latest` (R5) over registers' feeds: `pointer_for(rid)` is
-    the register's feed pointer (or None), and the reader opens the register
-    at the root the feed's tip names, over `blobs`. The root read is the
-    newest the reader can see — a node withholding the tip makes a stale pin
-    pass here, which is why the signed sequence (recordstore's
-    `verify_feed_update`) and an anchor are the evidence a claim uses, and
-    this only the clearing's own look."""
-    from recordstore import RecordStore
-
-    def latest(rid: str):
-        pointer = pointer_for(rid)
-        root = pointer.get() if pointer is not None else None
-        return Register(RecordStore.at(root, blobs)) if root else None
-    return latest

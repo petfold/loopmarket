@@ -91,8 +91,8 @@ what":)* the `Requires.coverage` (v6) it planned for loopmarket is one
 operator's" is the argument-only operator of `options-and-cover.md` §4.1
 (`operator-argument`, declared by its argument with no ends). One field,
 one composition path, one v6 bump for cover, inspection and catalogue
-coverage alike; `Ontology.assert_edge(bond=)` retires in favour of coverage
-gives as that document says.
+coverage alike; `Ontology.assert_edge(bond=)` retired in favour of coverage
+gives as that document says (removed from the code 2026-10-10).
 
 This one v6 bump carries, with `options-and-cover.md`'s `underlying` and `exercise`, all the
 new fields; P3 §4b's planned `credentials` field is subsumed by the `cred/`
@@ -275,8 +275,8 @@ recordstore's, since a monotone-prefix proof is useful to any store)*
   (`prove_extension`, checked by `verify_extension` with no store), its size
   the change's, not the register's.
 - **Latest as of the clock, read from the feed.** With a reader of each
-  register's feed tip (`MockClearing(register_latest=)`,
-  `register.newest_reader(pointer_for, blobs)`), the gate opens the newest
+  register's feed tip (`MockClearing(register_latest=)`; the command line
+  opens every register at its head), the gate opens the newest
   root published by clearing's clock (its heartbeat at or before; an
   unstamped successor counts) and refuses a leg whose statement is revoked or
   suspended there though not at the pin, or whose newest root drops a

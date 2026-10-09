@@ -306,8 +306,8 @@ against, matching refuses to pair offers pinned to different roots, and
 proposals carry the root they were checked under: the semantic ground cannot
 move beneath a committed loop, and "which catalogue said the cello fits the
 crate" is answerable forever. Bonded assertions (stakes on ⊑ edges, scaled to
-centrality) are P3; `assert_edge(sub, supers, bond=)` already carries the
-argument.
+centrality) are P3; since 2026-09-25 they take the form of coverage gives
+(`docs/plans/counterparty-gate.md` §1).
 
 **Update 2026-08-01 — the P3 mechanism design has a home: factbond**
 (github.com/petfold/factbond, design stage; grew out of the
