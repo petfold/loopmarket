@@ -87,6 +87,19 @@ does anything different, and no record byte or id changes.
   since: loop records of 2026-07-29 to 2026-08-21, whose legs named `ask`
   and `bid`, and v5 offers of 2026-09-18, whose requirement was replaced
   within v5 the next day.
+- **The tests and the matching probe write v4 offers** (the review's item
+  12, its first step). Eight test files made v2 offers, with a service
+  window and a disc as fields. Where place and time are the point (the
+  time and space gates, the index's recall book) they are now `geo` and
+  `time` terms, under a catalogue that declares them handover heads;
+  where they were incidental (every disc intersected every other) they
+  are left out. A test that needs an old record reads it from the golden
+  corpus (`golden`, a fixture in `tests/conftest.py`): the v1 re-encoding
+  and the fuzzed reader's v2 seed. `scripts/perf_matching.py` finds the
+  same matches as before (552, 8,312 and 35,541 at 100, 400 and 800
+  offers a side) in about the same time. A federation test took its
+  maker's first offer for her give; under v4 ids the first is her want,
+  so it picks the give.
 
 ## [0.14.5] — 2026-10-09
 

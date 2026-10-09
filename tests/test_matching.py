@@ -1,14 +1,12 @@
 """Exact pairwise matching: meaning, time, space, quantity, version pins."""
 
-from loopmarket import GeoDisc, Ontology, Thing, TimeWindow, give, want
+from ontodag import OntoDAG
+
+from loopmarket import Ontology, Thing, TimeWindow, give, want
 from loopmarket.matching import check_match
 
 NOW = 5_000
-W = dict(
-    service=TimeWindow(1_000, 100_000),
-    where=GeoDisc(46.0, 14.0, 10_000),
-    valid=TimeWindow(0, 1_000_000),
-)
+W = dict(valid=TimeWindow(0, 1_000_000))
 ONT = Ontology().load({
     "produce": [], "local": [], "weekly": [],
     "vegetable-box": ["produce", "local", "weekly"],
@@ -35,13 +33,21 @@ def test_unknown_vocabulary_fails_closed():
 
 
 def test_time_space_and_validity_gates():
-    a = give("x", Thing(("vegetable-box",)), 50, **W)
-    late = dict(W, service=TimeWindow(200_000, 300_000))
-    assert check_match(a, want("y", Thing(("produce",)), 60, **late), ONT, now=NOW) is None
-    far = dict(W, where=GeoDisc(48.0, 20.0, 1_000))
-    assert check_match(a, want("y", Thing(("produce",)), 60, **far), ONT, now=NOW) is None
-    expired = dict(W, valid=TimeWindow(0, 100))
-    assert check_match(a, want("y", Thing(("produce",)), 60, **expired), ONT, now=NOW) is None
+    """When and where the thing changes hands are terms: a want at another
+    time or another place is refused, and so is a want no longer valid."""
+    cat = Ontology(OntoDAG())
+    cat.declare_handover(["geo", "time"])
+    cat.load({"produce": [], "local": [], "weekly": [],
+              "vegetable-box": ["produce", "local", "weekly"]})
+    season, here = "time(2026-10-01..2026-12-31)", "geo(u2e4x)"
+    a = give("x", Thing(("vegetable-box", here, season)), 50, **W)
+    assert check_match(a, want("y", Thing(("produce", here, season)), 60, **W), cat, now=NOW) is not None
+    late = want("y", Thing(("produce", here, "time(2027-01)")), 60, **W)
+    assert check_match(a, late, cat, now=NOW) is None
+    far = want("y", Thing(("produce", "geo(u2f)", season)), 60, **W)
+    assert check_match(a, far, cat, now=NOW) is None
+    expired = want("y", Thing(("produce", here, season)), 60, valid=TimeWindow(0, 100))
+    assert check_match(a, expired, cat, now=NOW) is None
 
 
 def test_quantity_and_divisibility():
@@ -104,7 +110,6 @@ def test_handover_terms_match_when_one_contains_the_other():
     the flexible one (Peter, 2026-09-13); siblings share nothing. `from`
     is a role of `geo`, so it is a handover coordinate with `geo`; a
     descriptive head under `geo` would opt out."""
-    from ontodag import OntoDAG
     cat = Ontology(OntoDAG())
     cat.declare_roles({"from": "geo", "made_in": "geo"})
     cat.declare_handover(["geo"])
@@ -135,7 +140,6 @@ def test_places_regions_and_floors_match_through_the_graph():
     coordinates match when one contains the other: the region serves the
     place inside it and the place serves a buyer collecting anywhere in the
     region; two floors of one building never serve each other."""
-    from ontodag import OntoDAG
     cat = Ontology(OntoDAG())
     cat.declare_handover(["geo", "time"])
     cat.load({"ride": [], "delivery": []})

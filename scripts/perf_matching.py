@@ -5,7 +5,10 @@ catalogue of 300 random categories, books of n gives and n wants with
 random concepts, then: candidate generation by the give x want product
 (what `SolverAgent` runs) against the ontodag index
 (`candidate_matches_indexed`), checked to find the same matches; the cost
-of building a `DimensionIndex`; and one `SolverAgent.find_loops`.
+of building a `DimensionIndex`; and one `SolverAgent.find_loops`. The
+offers are v4 records and say nothing of where or when, so categories
+alone decide the matches (the review's numbers came from v2 offers that
+all shared one window and one disc, which pruned nothing either).
 
 Numbers are wall-clock times on whatever machine runs this; the review's
 were taken on an i7-3612QM laptop with 8 GB.
@@ -20,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 from recordstore import MemoryBytesStore, RecordStore  # noqa: E402
 
-from loopmarket import (GeoDisc, BookClearing, Ontology, OfferRegistry,  # noqa: E402
+from loopmarket import (BookClearing, Ontology, OfferRegistry,  # noqa: E402
                         SolverAgent, Thing, TimeWindow, give, want)
 from loopmarket.dimensions import DimensionIndex, candidate_matches_indexed  # noqa: E402
 from loopmarket.matching import candidate_matches  # noqa: E402
@@ -41,8 +44,7 @@ def catalogue(size=300, seed=1):
 
 def book(names, n, seed=2):
     rng = random.Random(seed)
-    w = dict(service=TimeWindow(1_000, 2_000), where=GeoDisc(46.0, 14.0, 1_000),
-             valid=TimeWindow(0, 10_000))
+    w = dict(valid=TimeWindow(0, 10_000))
     offers = []
     for i in range(n):
         offers.append(give(f"m{i % 50}", Thing((rng.choice(names[1:]),)),

@@ -4,11 +4,7 @@ import pytest
 
 from loopmarket.schema import GeoDisc, Offer, Thing, TimeWindow, Tokens, give, want
 
-W = dict(
-    service=TimeWindow(1_000, 2_000),
-    where=GeoDisc(46.0, 14.0, 1_000),
-    valid=TimeWindow(0, 10_000),
-)
+W = dict(valid=TimeWindow(0, 10_000))
 
 
 def test_uniform_form_enforced():
@@ -49,26 +45,25 @@ def test_record_roundtrip():
 def test_version_dispatch_fails_closed():
     o = give("a", Thing(("x",)), 10, nonce=7, **W)
     rec = o.to_record()
-    assert rec["v"] == 2
+    assert rec["v"] == 4
     with pytest.raises(ValueError):
-        Offer.from_record(dict(rec, v=5))        # unknown future version
+        Offer.from_record(dict(rec, v=8))        # unknown future version
     with pytest.raises(ValueError):
-        Offer.from_record(dict(rec, v=3))        # v3 defines no service/where
+        Offer.from_record(dict(rec, v=5))        # a v5 record carries requires
     with pytest.raises(ValueError):
         Offer.from_record({k: v for k, v in rec.items() if k != "v"})
-    with pytest.raises(ValueError):
-        give("a", Thing(("x",)), 10, v=1, registry_version="4.1", **W)
+    with pytest.raises(ValueError):              # a field this version does not define
+        Offer.from_record(dict(rec, service=[1_000, 2_000]))
 
 
-def test_v1_records_re_encode_as_v1():
+def test_v1_records_re_encode_as_v1(golden):
     # an offer read from an old book must reproduce its original id (U2):
     # version is identity, never silently upgraded on the way through
-    v1 = give("a", Thing(("x",)), 10, nonce=7, v=1, **W)
-    rec = v1.to_record()
-    assert rec["v"] == 1 and "registry_version" not in rec
-    back = Offer.from_record(rec)
-    assert back == v1 and back.offer_id == v1.offer_id
-    v2 = give("a", Thing(("x",)), 10, nonce=7, **W)
+    rec = next(r for k, r in golden.items() if k.startswith("offer/") and r["v"] == 1)
+    assert "registry_version" not in rec
+    v1 = Offer.from_record(rec)
+    assert v1.v == 1 and v1.to_record() == rec
+    v2 = Offer.from_record(dict(rec, v=2, registry_version="", contract_version=""))
     assert v2.offer_id != v1.offer_id            # the bump is part of identity
 
 
@@ -104,24 +99,23 @@ def test_a_record_number_can_neither_stall_nor_crash_the_reader():
     assert q("1e3") == 1000 and q("21/2") == Fraction(21, 2) and q("10.5") == Fraction(21, 2)
 
 
-def test_no_mutated_record_escapes_the_admission_errors():
+def test_no_mutated_record_escapes_the_admission_errors(golden):
     """The fold rejects a single record when reading it raises ValueError,
     KeyError, TypeError or AttributeError; anything else rejects the whole
     book. A seeded mutator of real records found two escapes on
     2026-10-09, both numbers (`"1/0"`, `"1e10000000"`); this keeps the
-    count at none."""
+    count at none. A v2 record is among them: old records are read for
+    good."""
     import copy
     import random
 
     now = 1_700_000_000
     valid = TimeWindow(now - 1, now + 86_400)
-    records = [o.to_record() for o in (
-        give("amara", Thing(("piano-lesson",), unit="course"), 100, nonce=1,
-             service=TimeWindow(now, now + 86_400), where=GeoDisc(46.0, 14.5, 5000),
-             valid=valid),
-        give("amara", Thing(("piano-lesson", "time(2026-10)"), unit="course"), 100,
-             nonce=2, valid=valid),
-        want("bruno", Thing(("vegetable-box",), unit="course"), 52, nonce=4, valid=valid))]
+    records = [next(r for k, r in golden.items() if k.startswith("offer/") and r["v"] == 2)] + \
+        [o.to_record() for o in (
+            give("amara", Thing(("piano-lesson", "time(2026-10)"), unit="course"), 100,
+                 nonce=2, valid=valid),
+            want("bruno", Thing(("vegetable-box",), unit="course"), 52, nonce=4, valid=valid))]
     garbage = [None, 0, -1, 10**40, 1.5, float("nan"), "", "xxx", [], {}, [1, 2],
                {"a": 1}, True, "1/0", "-5", "1e10000000", "1e-10000000", "9" * 5000]
 
