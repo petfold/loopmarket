@@ -30,7 +30,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from .notice import _body, ref  # noqa: F401  (ref: a case record's reference, as factbond computes it)
+from .notice import ref     # a case record's reference, as factbond computes it
+
+__all__ = ["CASE", "KINDS", "VERSION", "answer_record", "claim_record",
+           "fault", "key", "read", "ref", "ruling_record", "sealed"]
 
 CASE = "case/"
 VERSION = 1

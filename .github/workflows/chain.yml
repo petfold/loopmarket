@@ -1,0 +1,27 @@
+name: chain tests
+
+# loopmarket's Solidity contracts (the clearing, the leg and statement
+# verifiers, the escrow, the sealed auction, the trie proofs), compiled with
+# solc 0.8.24 and run on an in-memory chain (eth-tester's py-evm). The tests
+# workflow skips them, since it installs no `evm` extra: they take minutes,
+# and the contracts change rarely. Here they run every night and on demand,
+# and the publish workflow runs them before every release (review 2026-10,
+# question 9). Until then they had run only on a developer's machine.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[test,sig,evm]"
+      # The whole suite, so the chain tests run beside what they share code
+      # with; the live Swarm and Gnosis tests still skip without their keys.
+      - run: pytest

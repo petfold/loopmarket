@@ -60,7 +60,7 @@ from ontodag import dimensions as _dims
 
 from . import __version__
 from .clearing import MockClearing
-from .graph import Circulation, Loop
+from .graph import Circulation
 from .matching import candidate_matches
 from .ontology import Ontology
 from .registry import OfferRegistry
@@ -1470,8 +1470,8 @@ def _resolve_part(session: Session, parsed: Parsed, ontology: Ontology,
     if side == WANT and (parsed.min or (parsed.step is not None and parsed.qty is not None
                                         and q(parsed.step) not in (0, q(parsed.qty)))):
         raise ValueError(
-            f"a floor or a step is the give's: a want names what it wants "
-            f"(the give's `step` and `min` decide the fill, cli.md §6)")
+            "a floor or a step is the give's: a want names what it wants "
+            "(the give's `step` and `min` decide the fill, cli.md §6)")
     defaults = _default_terms(session, parsed)
     for term in defaults:
         notes.append(f"default {term}")
@@ -1576,7 +1576,7 @@ def _guarantees(now: int, concepts=(), side: str = GIVE) -> dict:
     v6 (E2, 2026-09-29): a give's `claim_max`; a want's `require_claim` and
     `require_resolvers` in its `Requires`; `arbitrator` on a give (a field
     every version carries)."""
-    from .schema import Accept, Acceptance, Bond, Requires, Thing
+    from .schema import Acceptance, Bond, Requires, Thing
     out: dict = {}
     if side == GIVE:
         if _configured("arbitrator"):

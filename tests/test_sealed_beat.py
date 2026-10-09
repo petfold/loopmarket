@@ -8,11 +8,10 @@ skips without the `evm` extra."""
 import importlib.util
 
 import pytest
-from ontodag import OntoDAG
 
 from recordstore import MemoryBytesStore, RecordStore
 
-from loopmarket import MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want
+from loopmarket import OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want
 from loopmarket.auction import (
     CLOSED, COMMIT, REVEAL, Candidate, MemorySealedBeat, baseline_proposals, bundle_bytes,
     fairness_filter, outcome, references, score, seal, select, unbundle,

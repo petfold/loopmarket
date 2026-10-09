@@ -142,7 +142,7 @@ def test_swarm_addressed_book_proves_under_its_swarm_root(face, tmp_path):
     offers = [give(f"m{i}", Thing(("apple",), i + 1), 10 + i, valid=TimeWindow(0), nonce=i)
               for i in range(12)]
     book.publish_many(offers)
-    root = book.commit()
+    book.commit()
     gas = []
     for o in offers[:4]:
         proof = book.store.prove("offer/" + o.offer_id)

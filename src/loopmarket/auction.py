@@ -54,7 +54,6 @@ from fractions import Fraction
 from .beat import proposal_from_record
 from .clearing import LoopProposal, MockClearing
 from .registry import OfferRegistry
-from .schema import q
 from .selection import Item, disjoint_capacity, item_of, pack
 
 try:

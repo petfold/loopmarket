@@ -17,7 +17,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, q, want,
+    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
 )
 
 

@@ -14,7 +14,6 @@ Here the dentist is his own maker (the solo form; a practice attesting for
 its dentists is the same statement with the practice as subject, the
 person at the door bound by R7's witness)."""
 
-import pytest
 from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 

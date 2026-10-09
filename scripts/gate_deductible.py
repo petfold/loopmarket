@@ -53,7 +53,6 @@ def main() -> None:
     offer = hashlib.sha256(f"deductible-gate-offer-{stamp}".encode()).hexdigest()
     loop = hashlib.sha256(f"deductible-gate-loop-{stamp}".encode()).hexdigest()
     escrow = EscrowClient(rpc, escrow_addr, key=key, client=w3)
-    esc = escrow.contract()
     fb = w3.eth.contract(address=assertions_addr, abi=ASSERTIONS_ABI)
     fee, floor = fb.functions.feeWei().call(), fb.functions.floorWei().call()
     ruling, min_window = fb.functions.rulingSeconds().call(), fb.functions.minChallengeSeconds().call()
@@ -95,7 +94,6 @@ def main() -> None:
        "the giver received the 0.003 left, the deductible in it")
 
     print("4. a v7 record through the clearing contracts")
-    from ontodag import OntoDAG
     from recordstore import MemoryBytesStore, RecordStore
 
     from loopmarket import Bond, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want

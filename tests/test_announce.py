@@ -6,14 +6,15 @@ proof, like a dropped record. GSOC was dropped the same day: the chain is
 what a censored announcement would be detected against, so the chain is
 the channel."""
 
-import os
+
+import importlib
 
 import pytest
 from recordstore import MemoryBytesStore, RecordStore, verify_proof
 
 from loopmarket import OfferRegistry, Thing, TimeWindow, give, want
 from loopmarket.announce import (
-    ABI, CLEARING, MAKER, Announcement, ChainAnnouncements, MemoryAnnouncements,
+    ABI, CLEARING, MAKER, ChainAnnouncements, MemoryAnnouncements,
     open_announcements,
 )
 from loopmarket.federation import Aggregator, audit_manifest
@@ -157,7 +158,7 @@ def test_chain_logs_decode_to_the_standing_set():
     # without web3 installed the real client fails closed with the pip hint
     bare = ChainAnnouncements("http://rpc", "0xC0")
     try:
-        import web3  # noqa: F401
+        importlib.import_module("web3")
     except ImportError:
         with pytest.raises(RuntimeError, match=r"loopmarket\[chain\]"):
             bare.announced()

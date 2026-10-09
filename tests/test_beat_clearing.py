@@ -99,7 +99,6 @@ def _rat(text):
 
 
 def _legs(snapshot, rec):
-    from eth_abi import encode
     from web3 import Web3
     def proof(oid):
         p = snapshot.store.prove("offer/" + oid)

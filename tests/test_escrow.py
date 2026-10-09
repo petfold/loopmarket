@@ -26,45 +26,6 @@ OFFER = "ab" * 32
 LOOP = "cd" * 32
 LOOP2 = "ef" * 32
 
-TOKEN_SRC = """
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-contract Coin {
-    mapping(address => uint256) public balanceOf;
-    mapping(address => mapping(address => uint256)) public allowance;
-    constructor() { balanceOf[msg.sender] = 1e24; }
-    function approve(address s, uint256 a) external returns (bool) { allowance[msg.sender][s] = a; return true; }
-    function transfer(address to, uint256 a) external returns (bool) {
-        balanceOf[msg.sender] -= a; balanceOf[to] += a; return true; }
-    function transferFrom(address f, address to, uint256 a) external returns (bool) {
-        allowance[f][msg.sender] -= a; balanceOf[f] -= a; balanceOf[to] += a; return true; }
-}
-"""
-
-
-@pytest.fixture(scope="module")
-def chain():
-    import solcx
-    from web3 import EthereumTesterProvider, Web3
-    solcx.install_solc("0.8.24")
-    compiled = solcx.compile_files([os.path.join(HERE, "..", "contracts", "LoopEscrow.sol")],
-                                   output_values=["abi", "bin"], solc_version="0.8.24",
-                                   optimize=True, optimize_runs=200, via_ir=True,
-                                   allow_paths=os.path.join(HERE, "..", "contracts"))
-    art = next(v for k, v in compiled.items() if k.endswith(":LoopEscrow"))
-    coin_art = solcx.compile_source(TOKEN_SRC, output_values=["abi", "bin"], solc_version="0.8.24")["<stdin>:Coin"]
-    w3 = Web3(EthereumTesterProvider())
-    accounts = w3.eth.accounts
-    w3.eth.default_account = accounts[0]
-    clearing = accounts[1]
-    receipt = w3.eth.wait_for_transaction_receipt(
-        w3.eth.contract(abi=art["abi"], bytecode=art["bin"]).constructor(clearing, NOTICE).transact())
-    escrow = w3.eth.contract(address=receipt["contractAddress"], abi=art["abi"])
-    receipt = w3.eth.wait_for_transaction_receipt(
-        w3.eth.contract(abi=coin_art["abi"], bytecode=coin_art["bin"]).constructor().transact())
-    coin = w3.eth.contract(address=receipt["contractAddress"], abi=coin_art["abi"])
-    return w3, escrow, coin, clearing
-
 
 def _as(w3, who):
     """The tester accounts have no keys to sign with, so the calls here go

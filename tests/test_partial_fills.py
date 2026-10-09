@@ -11,7 +11,7 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
     MockClearing, OfferRegistry, Ontology, PartialLoopError, SolverAgent, Thing,
-    TimeWindow, check_match, give, q, want,
+    TimeWindow, check_match, give, want,
 )
 
 NOW = 5_000
@@ -79,7 +79,6 @@ def test_dust_exhausts_a_stepped_give_and_the_floor_holds():
 
 
 def test_oversold_and_double_filled_gives_are_caught_at_the_fold():
-    cat = catalogue()
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
     apples = give("farm", Thing(("apple",), 100, "kg", divisible=True), 200, **V)
     book.publish(apples)

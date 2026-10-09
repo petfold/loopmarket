@@ -8,7 +8,7 @@ and refuses a tampered one."""
 from ontodag import OntoDAG
 
 from loopmarket import (
-    Circulation, ExchangeGraph, Leg, Loop, MockClearing, OfferRegistry, Ontology,
+    Circulation, ExchangeGraph, Leg, MockClearing, OfferRegistry, Ontology,
     SolverAgent, Thing, TimeWindow, check_composition, find_circulations, give, want,
 )
 from loopmarket.clearing import LoopProposal
@@ -218,7 +218,6 @@ def test_two_couriers_carry_one_packet():
     leg = check_composition(at_door, (box, a, b), cat, now=NOW)
     assert leg is not None and leg.tails == ("grocer", "courierA", "courierB")
     assert check_composition(at_door, (box, b, a), cat, now=NOW) is None   # wrong order
-    s = dict(valid=TimeWindow(0))
     offers = [box, a, b, at_door,
               want("grocer", Thing(("bicycle-repair", "shop")), 6, **V),
               want("courierA", Thing(("piano-lesson", "barcelona")), 5, **V),

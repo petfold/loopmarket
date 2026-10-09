@@ -13,7 +13,6 @@ from loopmarket import (
     Circulation, MockClearing, Offer, OfferRegistry, Ontology, Parts, SolverAgent,
     Thing, TimeWindow, check_match, check_parts, give, parts_legs, q, rat, want,
 )
-from loopmarket.matching import Leg, _gates
 
 NOW = 5_000
 V = dict(valid=TimeWindow(0, 1_000_000))

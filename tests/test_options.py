@@ -135,7 +135,6 @@ def test_a_divisible_give_is_held_only_in_part():
 
 
 def test_an_option_on_someone_elses_or_an_unfit_offer_clears_nowhere():
-    cat = _cat()
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
     p = give(W, Thing(("flat",), 1, "lease"), 100, valid=TimeWindow(0, OPEN + 10), nonce=1)
     foreign = give(X, Thing(("option(flat)",), 1, "lease"), 5, **LONG, nonce=2, underlying=p.offer_id,

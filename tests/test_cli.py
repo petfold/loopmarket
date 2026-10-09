@@ -17,7 +17,7 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket.spacetime import cell_for_coords
 from loopmarket import (
-    GeoDisc, MockClearing, OfferRegistry, Ontology, SolverAgent, Thing,
+    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 from loopmarket import cli
@@ -47,25 +47,6 @@ def write_od(path, edges):
     with open(path, "w", encoding="utf-8") as fh:
         for name, parents in edges.items():
             fh.write(" ".join([name, *parents]) + "\n")
-
-
-@pytest.fixture
-def env(tmp_path, monkeypatch):
-    """A scratch home for both tools, an unpinned `.od` catalogue, a fixed
-    clock, no confirmation prompts."""
-    monkeypatch.setenv("LOOP_HOME", str(tmp_path / "loop"))
-    monkeypatch.setenv("ONTODAG_HOME", str(tmp_path / "odag"))
-    od = tmp_path / "cat.od"
-    write_od(od, CATALOGUE)
-    monkeypatch.setenv("LOOP_CATALOGUE", str(od))
-    monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'book'}")
-    monkeypatch.setenv("LOOP_CONFIRM", "off")
-    monkeypatch.setenv("LOOP_NOW", str(NOW))
-    monkeypatch.setenv("LOOP_MAKER", "amara")
-    for var in ("LOOP_WHERE", "LOOP_PEERS", "BEE_SIGNER"):
-        monkeypatch.delenv(var, raising=False)
-    cli._OVERRIDES.clear()
-    return tmp_path
 
 
 class Runner:
@@ -999,7 +980,7 @@ def test_a_fold_is_computed_under_the_books_addressing(env, tmp_path, monkeypatc
     if importlib.util.find_spec("swarmfs") is None:
         pytest.skip("Swarm addressing needs swarmfs: pip install 'swarmfs[feeds]'")
     from recordstore import DirBytesStore, FilePointer, RecordStore
-    from loopmarket import OfferRegistry, Thing, TimeWindow, give, want
+    from loopmarket import OfferRegistry, Thing, TimeWindow, give
 
     def swarm_book(path):
         return OfferRegistry(RecordStore(DirBytesStore(str(path / "blobs"), addressing="swarm"),
@@ -1355,7 +1336,7 @@ def test_an_option_is_written_held_and_exercised_from_the_command_line(env, tmp_
     run.ok("clearing")
     out = run.ok("holds")
     assert run("options")[0] != 0                                          # renamed 2026-09-29
-    assert f"holder mia" in out and "active yes" in out and p[:16] in out
+    assert "holder mia" in out and "active yes" in out and p[:16] in out
     out = run.ok("exercise", o[:12], "1500")
     assert f"exercising {o[:12]}" in out
     run.ok("give", "painting", "10")

@@ -7,7 +7,6 @@ admits the type only on a give that names an item; the register records
 titles (`transfer`, `holder`); the wanter's `watch` reports the transfer
 and `countersign` refuses before it."""
 
-import json
 
 from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
@@ -77,7 +76,7 @@ def test_the_wanter_names_the_register_and_clearing_needs_an_item():
     assert receipts and not receipts[0].accepted and "unverifiable oracle type" in receipts[0].reason
 
 
-from test_cli import Runner, _od_with_prelude, env  # noqa: E402,F401  (fixture)
+from test_cli import Runner, _od_with_prelude
 
 
 def test_the_title_register_at_the_command_line(env, tmp_path, monkeypatch):

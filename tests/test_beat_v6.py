@@ -19,12 +19,11 @@ import dataclasses
 import importlib.util
 
 import pytest
-from ontodag import OntoDAG
 
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
+    OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
 )
 from loopmarket.clearing import ChainClearing, LoopProposal
 from loopmarket.graph import Loop

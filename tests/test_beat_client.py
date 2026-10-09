@@ -5,7 +5,6 @@ and posts the beat in one motion; after the window `finalize` records the
 fills and the chain answers `filled` exactly. Skips without the `evm` extra."""
 
 import importlib.util
-import os
 
 import pytest
 
@@ -15,7 +14,7 @@ from recordstore import DirBytesStore, MemoryBytesStore, RecordStore
 from loopmarket import (
     MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
 )
-from loopmarket.beat import BeatClient, abi, submission
+from loopmarket.beat import BeatClient, submission
 from loopmarket.clearing import ChainClearing
 
 

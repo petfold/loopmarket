@@ -48,6 +48,8 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
 
 Installing deps: this environment's Python may be PEP-668 externally managed — use `pip install --break-system-packages` (or a venv). `pip install -e ".[test]"` for development; add `.[swarm]` only when running against a Bee node.
 
+CI (2026-10-09, review question 9): the tests workflow runs the suite without the `evm` extra, so the 61 chain tests skip there; `chain.yml` runs the whole suite with `[test,sig,evm]` every night and on demand, and the publish workflow runs it the same way before every release (about 10 minutes on a laptop, the Solidity compiles dominating). Both workflows lint every tracked `.py` file with pinned pyflakes, which ignores `# noqa`; so shared fixtures (`env`, `chain`) live in `tests/conftest.py`, never imported from another test module, and an optional import is tried with `importlib.import_module`. ontodag's release gate runs this suite (without `evm`) against every ontodag candidate.
+
 Live-node runs follow ontodag's convention: skip unless `BEE_API` **and** `BEE_BATCH` are set, and always pass a real purchased batch id so nothing auto-buys. The Swarm-book test additionally needs `BEE_SIGNER` (a throwaway key: it writes feeds under timestamped topics so reruns don't inherit an old book); so does `tests/test_swarm_register.py` (2026-09-29 night: a register on a Swarm feed read by the CLI's `registers` setting at its tip, a stale pin refused after a revocation).
 
 ## Architecture map (one line per module)

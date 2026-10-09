@@ -111,7 +111,7 @@ def test_the_watch_finds_a_statement_that_lapsed_since_clearing():
     assert lapsed(pairs, statements_of, {}) == []                       # an unread register reports nothing
 
 
-from test_cli import NOW as CLI_NOW, Runner, _od_with_prelude, env  # noqa: E402,F401  (fixture)
+from test_cli import NOW as CLI_NOW, Runner, _od_with_prelude
 
 
 def test_watch_reports_a_lapsed_licence_and_the_notice_and_cure_travel_sealed(env, tmp_path, monkeypatch):
@@ -201,7 +201,7 @@ def test_the_credential_case_runs_from_the_command_line(env, tmp_path, monkeypat
                                              ("dentist-licensed", ["licence"])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "town.od"))
     monkeypatch.delenv("LOOP_MAKER")
-    (kp, P), (kd, D), (ka, A) = _keys(), _keys(), _keys()
+    (kp, _), (kd, D), (ka, A) = _keys(), _keys(), _keys()
 
     def as_(key):
         monkeypatch.setenv("BEE_SIGNER", key)

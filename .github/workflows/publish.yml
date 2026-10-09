@@ -22,7 +22,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - run: pip install -e ".[test,sig]"
+      # `evm` too, so the chain tests (the Solidity contracts on an in-memory
+      # chain) run before every release; the tests workflow skips them, and
+      # chain.yml runs them nightly (review 2026-10, question 9).
+      - run: pip install -e ".[test,sig,evm]"
+      # The lint is tests.yml's, repeated because a tag need not wait for it.
+      - run: pip install pyflakes==3.4.0
+      - run: git ls-files -- '*.py' | xargs python -m pyflakes
       # A v* tag publishes irreversibly — PyPI never allows re-uploading a
       # version, only yanking. Run the suite first so a tag cannot ship a red
       # build.

@@ -17,7 +17,7 @@ pytest.importorskip("coincurve", reason="sealed case records need the sig extra"
 
 from loopmarket import cli  # noqa: E402
 from loopmarket.sigs import maker_address  # noqa: E402
-from test_cli import Runner, _od_with_prelude, env  # noqa: E402,F401  (fixture)
+from test_cli import Runner
 
 HERE = os.path.dirname(__file__)
 

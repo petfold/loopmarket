@@ -116,7 +116,7 @@ def test_a_contact_card_proves_a_public_key_with_no_offer_and_folds_only_in_its_
 
 # ------------------------------------------------------------------ the CLI
 
-from test_cli import Runner, _od_with_prelude, env  # noqa: E402,F401  (fixture)
+from test_cli import Runner, _od_with_prelude
 
 
 def test_watch_reports_fills_seals_and_opens_handoffs(env, tmp_path, monkeypatch):
@@ -135,7 +135,6 @@ def test_watch_reports_fills_seals_and_opens_handoffs(env, tmp_path, monkeypatch
     run.ok("place", "home", "46.05,14.50,5km", "Trubarjeva", "12,", "4th", "floor")
     out = run.ok("want", "ride", "home", "5")
     assert "note     handoff home: Trubarjeva 12, 4th floor — sealed" in out
-    want_id = out.strip().splitlines()[-1]
     out = run.ok("give", "piano-lesson", "home", "4")
     give_id = out.strip().splitlines()[-1]
     run.ok("handoff", give_id[:12], "Ring", "twice")   # overrides the place text

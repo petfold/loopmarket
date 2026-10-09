@@ -28,7 +28,7 @@ from loopmarket.beat import proposal_from_record, snapshot_of
 from loopmarket.escrow import cover_predicate, reservations_for, to_wei
 from loopmarket.matching import check_match
 
-from test_escrow import _HAVE_EVM, _advance, _factbond, _now, _reverts, _terms, chain  # noqa: F401
+from test_escrow import _HAVE_EVM, _advance, _factbond, _now, _reverts, _terms
 
 pytestmark = pytest.mark.skipif(not _HAVE_EVM, reason="needs the evm extra: pip install 'loopmarket[evm]'")
 

@@ -70,7 +70,6 @@ def main() -> None:
         fund(w3, insurer, account.address, value)
     clearing = EscrowClient(rpc, escrow_addr, key=key, client=w3)
     as_ = lambda account: EscrowClient(rpc, escrow_addr, key=account.key.hex(), client=w3)
-    esc = clearing.contract()
     as_(driver).deposit(ride, 4 * MILLI)
     clearing.deposit(cover, 10 * MILLI)
     now = w3.eth.get_block("latest")["timestamp"]
