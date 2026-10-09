@@ -2556,9 +2556,10 @@ def cmd_mine(args, session, out):
 
 def cmd_place(args, session, out):
     """The dated bridge (cli.md §4, §11.1): a place node under the cell of
-    that radius around that point, written to the personal layer — the
-    cell is the place (no disc anywhere since the v3 record). Deleted the
-    day odag accepts `geo(LAT,LON,R)` as input vocabulary. When the
+    that radius around that point, written to the personal layer through
+    the catalogue facade (`Ontology.declare_place`) — the cell is the
+    place (no disc anywhere since the v3 record). Deleted the day odag
+    accepts `geo(LAT,LON,R)` as input vocabulary. When the
     personal store *is* the catalogue the name is vocabulary and offers
     say `NAME` bare (ontodag #15 orders the name); under a separate
     pinned catalogue the place is private and offers say its cell. The
@@ -2567,23 +2568,13 @@ def cmd_place(args, session, out):
     of an offer naming the place and sealed to the cleared counterparty."""
     lat, lon, radius = parse_coords(args.coords)
     personal = session.personal_session
-    dag = personal.dag
-    if not ("geo" in dag.nodes and "prefix-dimension" in dag.nodes
-            and dag.is_below("geo", "prefix-dimension")):
-        # The cell edge is what lets ontodag interpret the name (`my_home`
-        # under `geo(u2e4x)` is how `from(my_home)` is ordered, or how a
-        # private place gets the cell it publishes as), and `geo` comes
-        # from the prelude — adopted by merge, idempotent, canonical,
-        # exactly what `odag prelude` does.
-        from ontodag.prelude import apply as apply_prelude
-        apply_prelude(dag)
+
+    def adopted():
         print("loop: adopted ontodag's prelude into the personal store "
               f"({personal.describe()}) so places hang under geo cells",
               file=_err())
-    dag.put(args.name, [f"geo({cell_for_coords(lat, lon, radius)})"])
-    address = " ".join(args.address).strip()
-    if address:
-        dag.nodes[args.name].metadata["address"] = address
+    Ontology(personal.dag).declare_place(args.name, cell_for_coords(lat, lon, radius),
+                                         address=" ".join(args.address).strip(), adopted=adopted)
     personal.save()
     return 0
 

@@ -270,3 +270,32 @@ def test_load_takes_typed_parents():
     assert dag.is_below("egg-white", "in(egg)")
     assert dag.is_below("crate", "mass(..5kg)")
     assert "payload" in {n.name for n in dag.get(["linear-dimension(mass)"])}
+
+
+def test_declare_place_is_the_write_loop_place_makes():
+    """`loop place` writes through `declare_place`: ontodag's prelude
+    adopted where `geo` is not yet a prefix head (said once, through
+    `adopted`), the place under its cell, the address on the node — the
+    same catalogue, root for root, as the command's own writes made it."""
+    from ontodag.prelude import apply as apply_prelude
+    from loopmarket.spacetime import cell_for_coords
+
+    def by_hand(dag, name, cell, address):
+        if not ("geo" in dag.nodes and "prefix-dimension" in dag.nodes
+                and dag.is_below("geo", "prefix-dimension")):
+            apply_prelude(dag)
+        dag.put(name, [f"geo({cell})"])
+        if address:
+            dag.nodes[name].metadata["address"] = address
+
+    home, shop = cell_for_coords(46.05, 14.50, 5_000), cell_for_coords(46.06, 14.51, 400)
+    old = Ontology.persistent(RecordStore(MemoryBytesStore()))
+    new = Ontology.persistent(RecordStore(MemoryBytesStore()))
+    said = []
+    for name, cell, address in (("home", home, ""), ("shop", shop, "Trubarjeva 3, ring twice")):
+        by_hand(old.dag, name, cell, address)
+        new.declare_place(name, cell, address=address, adopted=lambda: said.append(name))
+        assert new.commit() == old.commit()
+    assert said == ["home"]
+    assert new.dag.nodes["shop"].metadata["address"] == "Trubarjeva 3, ring twice"
+    assert new.dag.is_below("shop", f"geo({shop})")

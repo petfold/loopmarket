@@ -429,6 +429,21 @@ def test_place_under_a_pinned_rs_catalogue_gets_its_cell_edge(env, tmp_path,
     assert [p.name for p in shop.parents] == [f"geo({cell_for_coords(46.06, 14.51, 400)})"]
 
 
+def test_place_says_once_that_it_adopted_the_prelude(env):
+    """`place` adopts ontodag's prelude into a personal store that lacks it
+    (`Ontology.declare_place`) and says so once, before the place is
+    written: a place that cannot be filed still leaves the note."""
+    run = Runner()
+    code, _, err = run("place", "dimension", "46.05,14.50,5km")     # a cycle under its own cell
+    note = "adopted ontodag's prelude into the personal store"
+    assert code == 1 and err.index(note) < err.index("would create a cycle")
+    code, _, err = run("place", "home", "46.05,14.50,5km")
+    assert code == 0 and note not in err                              # adopted in this session already
+    run2 = Runner()
+    code, _, err = run2("place", "shop", "46.06,14.51,400m")
+    assert code == 0 and note not in err                              # the saved store has it
+
+
 def _od_with_prelude(path, extra_puts):
     """The prelude, `extra_puts`, then `geo`/`time` and any route heads
     marked as handover coordinates (catalogue vocabulary, not the CLI's)."""

@@ -188,8 +188,7 @@ class Ontology:
         declarations, before offers pin the root.
         """
         if any(base not in self.dag.nodes for base in roles.values()):
-            from ontodag.prelude import apply as apply_prelude
-            apply_prelude(self.dag)
+            self._adopt_prelude()
         for head, base in roles.items():
             if self._kind_of(base) is None:
                 raise ValueError(
@@ -219,8 +218,7 @@ class Ontology:
     def _mark(self, marker: str, heads: Iterable[str]) -> None:
         heads = list(heads)
         if any(head not in self.dag.nodes for head in heads):
-            from ontodag.prelude import apply as apply_prelude
-            apply_prelude(self.dag)             # `geo`/`time` are prelude heads
+            self._adopt_prelude()               # `geo`/`time` are prelude heads
         if marker not in self.dag.nodes:
             self.dag.put(marker, [])
         node = self.dag.nodes[marker]
@@ -251,8 +249,7 @@ class Ontology:
         if kind is None:
             if _dims.KIND_GRAPH not in self.dag.nodes:
                 if _dims.DIMENSION_ROOT not in self.dag.nodes:
-                    from ontodag.prelude import apply as apply_prelude
-                    apply_prelude(self.dag)
+                    self._adopt_prelude()
                 self.dag.put(_dims.KIND_GRAPH, [_dims.DIMENSION_ROOT])
             self.dag.put(head, [_dims.KIND_GRAPH])
 
@@ -271,8 +268,7 @@ class Ontology:
                 raise ValueError(f"{head!r} is a {kind} head, not an item head")
             if kind is None:
                 if _dims.DIMENSION_ROOT not in self.dag.nodes:
-                    from ontodag.prelude import apply as apply_prelude
-                    apply_prelude(self.dag)
+                    self._adopt_prelude()
                 if _dims.KIND_PREFIX not in self.dag.nodes:
                     self.dag.put(_dims.KIND_PREFIX, [_dims.DIMENSION_ROOT])
                 self.dag.put(head, [_dims.KIND_PREFIX])
@@ -332,8 +328,7 @@ class Ontology:
             if kind is None:            # `transport(...)` is a term of the graph kind
                 if _dims.KIND_GRAPH not in self.dag.nodes:
                     if _dims.DIMENSION_ROOT not in self.dag.nodes:
-                        from ontodag.prelude import apply as apply_prelude
-                        apply_prelude(self.dag)
+                        self._adopt_prelude()
                     self.dag.put(_dims.KIND_GRAPH, [_dims.DIMENSION_ROOT])
                 self.dag.put(category, [_dims.KIND_GRAPH])
             if OPERATOR not in self.dag.nodes:
@@ -342,6 +337,35 @@ class Ontology:
                 self.dag.add_edge(self.dag.nodes[OPERATOR], self.dag.nodes[category])
             self._mark(OPERATOR_INPUT, [inp])
             self._mark(OPERATOR_OUTPUT, [out])
+
+    def declare_place(self, name: str, cell: str, *, address: str = "", adopted=None) -> None:
+        """A place: `name` under the cell of the prelude's `geo` head it lies
+        in — `my_home` under `geo(u2e4x)`, the cell of a radius around a
+        point (`spacetime.cell_for_coords`). That edge is what lets ontodag
+        interpret the name: order `from(my_home)` by the graph, or give a
+        place only a personal store holds the cell it publishes as. Where
+        `geo` is not yet a prefix head here, ontodag's prelude is adopted
+        first, and `adopted()` is called to say so before the place is
+        written. `address` is settlement text kept on the node
+        (P1-spacetime-terms.md §4): never vocabulary, never in a record.
+        The write `loop place` makes; on a persistent catalogue it moves the
+        root."""
+        dag = self.dag
+        if not ("geo" in dag.nodes and _dims.KIND_PREFIX in dag.nodes
+                and dag.is_below("geo", _dims.KIND_PREFIX)):
+            self._adopt_prelude()
+            if adopted is not None:
+                adopted()
+        dag.put(name, [f"geo({cell})"])
+        if address:
+            dag.nodes[name].metadata["address"] = address
+
+    def _adopt_prelude(self) -> None:
+        """Merge ontodag's prelude in — idempotent and canonical, the step
+        `odag prelude` performs — for a declaration naming a prelude head
+        (`geo`, `time`, the kinds) the catalogue has not adopted."""
+        from ontodag.prelude import apply as apply_prelude
+        apply_prelude(self.dag)
 
     def operator_of(self, term: str) -> str | None:
         """The operator category `term` names — `transport(bicycle)` and
