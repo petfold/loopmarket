@@ -293,7 +293,12 @@ word.
   (G3).
 - **P3**, the guarantee fabric: escrow, cover, deductible, notices, cases,
   registers and the counterparty gate are built, with factbond as the
-  resolver. Whether P3 ran ahead of the README's gates is review item 17.
+  resolver. It went ahead of the README's gates on Peter's decisions from
+  2026-09-19; decided (review item 17), the gates are restated for what
+  they still guard: the record-format freeze gates a public launch, and
+  factbond's scored Phase-0 run gates selling insurance from a pool. The
+  README, ROADMAP and ARCHITECTURE say so once the decided items are
+  built; factbond's plans already do.
 - **P4**, privacy: staged, not started.
 - **Later**: price and capacity schedules inside one offer
   (`docs/plans/P2-loop-selection.md`, open problems).
@@ -314,10 +319,11 @@ with a `Reads` object and a `LegRecord` type, built first of these (item
 10); durations and relative times in ontodag's units, `min` and `wk`, a
 bare `m` or `w` refused with the fix named (item 11); v1/v2 offers
 retired once circulator's benchmark and the tests write v4+ (old records
-stay readable), and `MockClearing` renamed `BookClearing` (item 12). Of
-these only item 5 is built: Peter decides the remaining questions first,
-then everything decided is built. Open for Peter: item 17 (the build
-order against the README's gates).
+stay readable), and `MockClearing` renamed `BookClearing` (item 12); the
+phase gates restated for what they still guard (item 17, under "Roadmap
+(state)"). Every review item for loopmarket is decided; of them only
+item 5 is built, because Peter decides the remaining questions first and
+then everything decided is built.
 
 ## Conventions
 
