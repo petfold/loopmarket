@@ -78,7 +78,10 @@ documents and enter here only when their enforcing code and tests land.
   version bump (`"v"`, now 1–7), and `from_record` keeps reading old
   records: it dispatches on `"v"` and raises on an unknown one, and
   `to_record` re-encodes each offer in its own version, so old ids never
-  change (pinned by corpora, e.g. `tests/test_v6_record.py`).
+  change. The golden corpus pins the bytes of every offer version and of
+  the loop and fill records (`tests/fixtures/golden_records.txt`, read by
+  `tests/test_golden_records.py`); it is never regenerated to make a test
+  pass (`tests/fixtures/make_golden.py` says when it may be).
 - **U3 Clearing trusts no solver.** `BookClearing.submit` checks the
   proposal's ontology pin and register pins, re-derives every leg against
   the current book and its own ontology (`check_match`, or

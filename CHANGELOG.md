@@ -61,6 +61,33 @@ does anything different, and no record byte or id changes.
   adopted first where `geo` is not yet a prefix head (the one adoption
   every `declare_*` method shares). Same catalogue, same root.
 
+### Tests
+
+- **A golden corpus pins the bytes of every record format** (the
+  review's test suggestion 4, written before the change it guards, the
+  retirement of v1/v2 offers). `tests/fixtures/golden_records.txt` holds
+  105 records as loopmarket wrote them: offers of every version, v1 to
+  v7, under their ids; loop records of each shape a book holds (the
+  2026-08 loop record, whose legs name one `give`, and loop record v1
+  and v2); and the fills written with them, of the loop alone and with
+  quantities. `tests/test_golden_records.py` reads each back, recomputes
+  its id and re-encodes it to the same bytes; loop record v1 and v2 are
+  rebuilt through `proposal_from_record` and write the same fills, key
+  for key. Round trips could not catch an encoding that changed on both
+  sides at once; this does (a disc's radius written as a float, a v3
+  quantity spelled exactly, a loop record without rates, each fails it).
+  `tests/fixtures/make_golden.py` writes the file, and says it is never
+  regenerated to make a test pass, only with a deliberate change of the
+  format, the diff being the review. Each scenario was checked against
+  the code of its time, from git: the constructors of 2026-07-29 give the
+  same v1 ids, the clearing of 2026-09-07, 2026-09-14 and 2026-09-29
+  writes the same offers, loop records and fills byte for byte, and every
+  `schema.py` since 2026-07-29 re-encodes every record of the versions it
+  reads to the same bytes. Not in it, because nothing has read them
+  since: loop records of 2026-07-29 to 2026-08-21, whose legs named `ask`
+  and `bid`, and v5 offers of 2026-09-18, whose requirement was replaced
+  within v5 the next day.
+
 ## [0.14.5] — 2026-10-09
 
 Found in the 2026-10-09 review of ontodag and loopmarket (ontodag's
