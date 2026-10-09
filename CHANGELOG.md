@@ -61,6 +61,26 @@ does anything different, and no record byte or id changes.
   adopted first where `geo` is not yet a prefix head (the one adoption
   every `declare_*` method shares). Same catalogue, same root.
 
+### Tests
+
+- **Hostile records that are well formed** (`tests/test_hostile_records.py`,
+  the review's §7 suggestion 3): throwaway keys, valid signatures over the
+  wrong content, and payloads sealed for another party. A maker's genuine
+  signature replayed beside an offer forged in its name, a forgery signed
+  by the forger, an own offer carrying its maker's signature over another
+  offer, a contact card that is another key's card or a signature over an
+  offer, a door response for another offer or another challenge, an issued
+  statement re-keyed to another subject, a handoff sealed to someone else:
+  each reader refuses or ignores each one, with its reason. Four tests pin
+  what the readers get wrong, as strict expected failures with the reason:
+  a sealed notice or case record that does not open with my key, or whose
+  plaintext is not the record its kind names, stops `watch`, `cure`,
+  `answer` and `rule`; a notice or cure counts from whoever wrote it, and
+  `answer` seals the giver's answer to whoever a claim's plaintext names;
+  `watch` reports a case record from anyone; and a stranger whose address
+  sorts first displaces a party's notice, cure or case record in every
+  reader's fold.
+
 ### Removed
 
 - **Dead code** (the review's §3.2). Nothing calls any of it: not
