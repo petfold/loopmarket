@@ -25,15 +25,15 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "ontodag>=0.30.6",        # catalogue: subsumption, dimensions, is_below, role heads; prelude v4 (mass, not weight);
+    "ontodag>=0.30.6",        # catalogue: subsumption, dimensions, is_below, role heads
+                              # taking nodes, overlaps, get(items_only=) (issues #14/#15/#16,
+                              # 0.25.0); prelude v4 (mass, not weight); the CLI leans on
+                              # odag's store backends, prelude and surface;
                               # 0.30.1: a role head under geo (from/to) answers after a native load;
                               # 0.30.6: a graph-kind compound is stored as its parts, a redundant
                               # constraint dropped (no longer refused)
-
-                              # taking nodes, overlaps/meet, get(overlapping=, items_only=)
-                              # (issues #14/#15/#16, 0.25.0); the CLI
     "recordstore>=0.22.2",   # the book: canonical versioned KV, merge, snapshots,
-                             # diff/merge_delta (O(divergence) folds), prove/verify_proof,
+                             # diff/merge (O(divergence) folds), prove/verify_proof,
                              # extends/prove_extension (0.21.0: a register's revocations, R5);
                              # 0.22.1: diff and merge load ahead, so the aggregator's folds
                              # read a book in a few rounds per trie level, not one per node;
@@ -43,8 +43,8 @@ dependencies = [
 
 [project.optional-dependencies]
 # The Swarm deployment path: BeeBytesStore blobs + signed SwarmFeedPointer
-# head, both reached through recordstore so versions stay in step with it
-# (mirrors ontodag's own [swarm] extra). 0.21.1: BeeBytesStore keeps 32
+# head, both reached through recordstore so versions stay in step with
+# it. 0.21.1: BeeBytesStore keeps 32
 # reads in flight (was 16, a guess; measured against a Bee light node, reads
 # of chunks it must fetch scale about linearly to 32), so a follower
 # hydrating a book from the network reads about twice as fast. 0.22: Bee

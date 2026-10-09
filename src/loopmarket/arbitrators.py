@@ -19,8 +19,8 @@ can rule accredited under one of `roots` — and its *floors* all together:
   rulings within the look-back, *and* a record covering it — a resolver
   whose ledger starts inside the look-back has not shown a year unreversed,
   and a key that ruled, was reversed and came back under a new name would
-  otherwise pass (the tenure reading; `counterparty-gate.md` §7a records it
-  as the assistant's, for Peter's ruling). The record is the resolver
+  otherwise pass (the tenure reading, as ruled in `counterparty-gate.md`
+  §7a). The record is the resolver
   contract's, not its current adjudicator's: an owner swapping the key
   does not wipe it;
 - **issuance** (D8): not read yet, so an acceptance naming it admits nothing.

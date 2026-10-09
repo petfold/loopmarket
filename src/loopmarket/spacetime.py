@@ -81,8 +81,9 @@ def cell_for_coords(lat: float, lon: float, radius_m: float,
                     max_precision: int = 6) -> str:
     """The finest geohash cell that *contains* the whole radius around the
     point — the v3 spelling of a place: a bare `LAT,LON,R` at the prompt
-    becomes `where(cell)`, and the cell is what the offer says (the truth
-    since 2026-09-12, `docs/plans/P1-spacetime-terms.md` §4). Containing,
+    becomes the cell under the catalogue's handover geo head (`geo(cell)`),
+    and the cell is what the offer says (`docs/plans/P1-spacetime-terms.md`
+    §4). Containing,
     not centred: a point near a cell edge names the coarser cell that
     covers what the maker meant, so a want across the edge still meets it.
     The price is coarseness near edges — the exact covering is a region

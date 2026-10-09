@@ -467,9 +467,8 @@ class ChainClearing(MockClearing):
             return verdict
         # then the contract's own verifier on every leg, for free (eth_call):
         # a beat it would convict is never posted — the bond would be anyone's.
-        # Live 2026-09-18: a Swarm-addressed clearing book proves under BMT
-        # roots the sha256 verifier cannot check ("node hash mismatch"), so
-        # its honest beat was convictable; the BMT verifier is not built.
+        # This is what kept a Swarm-addressed book's honest beat off chain
+        # while the verifier read only sha256 roots; it reads both now.
         from .beat import OUT_OF_GAS
         for i in range(len(sub.legs)):
             reason = self.beat_client.verdict_of(sub, i)

@@ -83,7 +83,7 @@ CASE = "case/"         # case/<loop_id>/<offer_id>/<kind>/<to> -> a sealed case 
 
 
 class PartialLoopError(RuntimeError):
-    """A book holds a loop missing some of its fills (planned invariant U11).
+    """A book holds a loop missing some of its fills (invariant U11).
 
     Clearing is atomic per writer, so this can only arise from a merge in
     which two loops claimed one offer. There is no safe repair — evicting a
@@ -106,7 +106,7 @@ def or_set_resolver(key: str, base, ours, theirs):
     loop missing a leg, which nothing repairs. Until the deterministic
     loop-granularity resolver exists (registered open problem,
     docs/plans/P1-federated-book.md §3), `verify_loop_atomicity` checks the
-    merged book and fails loudly (planned invariant U11).
+    merged book and fails loudly (invariant U11).
     """
     if ours == theirs:
         return ours

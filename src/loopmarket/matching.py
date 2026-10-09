@@ -21,9 +21,10 @@ Conditions, in cheap-to-expensive order:
 6. quantity:   wanted quantity within given quantity (equal, unless
                divisible), identical units
 7. meaning:    the given conjunction satisfies the wanted one under the
-               pinned ontology — containment, term by term: what the thing
-               is and where and when it changes hands alike; the want is
-               the wider cone, the give the narrower (`Ontology.satisfies`)
+               pinned ontology, term by term (`Ontology.satisfies`): what
+               the thing is, the give within the want; where and when it
+               changes hands, one side within the other; an operator's
+               argument, the want within the give
 8. version:    pinned semantic ground must not move between the two sides:
                ontology roots must agree, registry/contract versions must
                not diverge on their major component (ontodag D10: minor
@@ -122,16 +123,15 @@ def meets(mine: Offer, other: Offer, ontology: Ontology, *, taken=None, whole=No
     nothing until the catalogue's default exists). A `resolvers`
     acceptance, on either side, is met when a resolver both sides admit
     exists (`arbitrators.resolver_of`: the give's `arbitrator`, then the
-    keys either side names; by key or by property, §7a). A credential or a required leg meets
-    nothing yet: the record carries them since R1 and the gate that checks
-    them is R4, so until then a requirement this build cannot check refuses
-    the leg (U7) rather than passing it unread.
+    keys either side names; by key or by property, §7a). A credential is
+    checked by the gate (R4, below); a want's required legs by the composed
+    leg that carries them (`check_composition` → `legs_faults`, D4), and
+    anywhere else they refuse the leg (U7).
 
     R4 (2026-09-29): `counterparty` credentials are checked by `gate` (a
     `gate.CounterpartyGate`: the statements presented, the registers at their
     pinned roots, the clock) — every entry met by a statement passing the
-    seven steps; no gate, no pass. `legs` still meets nothing (D4's
-    argument-only operators are Track O's)."""
+    seven steps; no gate, no pass."""
     req = mine.requires
     if req is None or req.empty:
         return True

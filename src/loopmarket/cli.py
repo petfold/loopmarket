@@ -10,13 +10,14 @@ rule printed in words. Judgement lives above it, never below it.
 Design rules this module obeys (cli.md, settled with Peter 2026-09-11/12):
 
 * **One grammar.** A token after the verb is a bare category, an ontodag
-  term `head(param)`, or one of exactly two loopmarket conventions: a bare
-  number *first* is the quantity, a bare number *last* is the price.
-  Nothing bare is reserved; there is no alias mechanism; `key=value` was
-  rejected as a second grammar.
-* **Names live in the catalogue.** A place is a node whose metadata carries
-  its disc; `place NAME LAT,LON,R` is the dated bridge until odag accepts
-  coordinates (cli.md §11.1). Private names are written to odag's *active*
+  term `head(param)`, or one of three loopmarket conventions: a bare
+  number *first* is the quantity, a bare number *last* is the price, and
+  `+` separates the parts of a composed want. Nothing else bare is
+  reserved; there is no alias mechanism; `key=value` was rejected as a
+  second grammar.
+* **Names live in the catalogue.** A place is a node under the geo cell its
+  radius fits in; `place NAME LAT,LON,R [ADDRESS]` is the bridge until odag
+  accepts coordinates (cli.md §11.1). Private names are written to odag's *active*
   store (the personal layer) and resolved through the composed view; only
   the `catalogue` store's root is pinned, so a private name never moves a
   root that offers pin.
@@ -35,9 +36,10 @@ Design rules this module obeys (cli.md, settled with Peter 2026-09-11/12):
 
 Lifted from `ontodag/__main__.py` (attribution: the settings table with its
 single precedence rule, the 0600 config writer, the stdin batch / REPL
-runner, the tty-versus-pipe rendering switch). The one private import is
-`_open_catalogue`, which uses odag's `Session` to open a store spec until
-ontodag ships a public opener (cli.md §11.3; dated note there).
+runner, the tty-versus-pipe rendering switch). Two places still reach into
+odag's CLI module: `_open_catalogue` (odag's `Session` opens a store spec)
+and `Session._open` (`_normalize_spec`), until ontodag ships a public
+opener (cli.md §11.3).
 """
 
 from __future__ import annotations
@@ -612,8 +614,8 @@ def parse_now(text: str) -> int:
 
 # The one head the CLI still interprets onto a field: `valid` is a property
 # of the record (while the offer stands), read by the book against the
-# clock, never by the catalogue against another offer. Since the v3 record
-# (2026-09-12) `when`/`where` are ordinary catalogue terms like any other.
+# clock, never by the catalogue against another offer. Where and when are
+# ordinary catalogue terms: a bare geo or time term, or a place node.
 _INTERPRETED_HEADS = ("valid",)
 
 
@@ -621,8 +623,9 @@ def _open_catalogue(spec: str | None):
     """An odag `Session` for a store spec (`.od` file, `rs:PATH`,
     `swarm:NAME`); `None` opens odag's active store.
 
-    The single private import from ontodag's CLI, isolated here on purpose
-    (cli.md §11.3, 2026-09-12): opening a catalogue from an odag store spec
+    Private use of ontodag's CLI, isolated here on purpose (cli.md §11.3;
+    `Session._open` also normalizes a spec through it): opening a catalogue
+    from an odag store spec
     should be a public ontodag call, and this function is deleted the day it
     is. Copying `_load_native` and the backends would drift; importing them
     keeps the two tools on one store layout. Bee settings loopmarket got as
@@ -880,8 +883,8 @@ Composed = namedtuple("Composed", "parts price valid", defaults=(None,))
 
 #: The part separator of a composed want (cli.md §13, confirmed by Peter
 #: 2026-09-12): the third loopmarket-only convention, want side only. A
-#: token, not a word — no category is shadowed, and `+2h` inside when(...)
-#: is a different token.
+#: token, not a word — no category is shadowed, and `+2h` inside a time
+#: spelling is a different token.
 PART_SEP = "+"
 
 
@@ -954,9 +957,9 @@ def parse_offer_tokens(tokens: list[str]) -> Parsed:
     """`[10kg] CATEGORY|TERM ... [PRICE]` → the pieces, nothing resolved.
 
     Every token that is neither convention is passed through as written:
-    a bare word is a category, `head(param)` is a term, and the three
-    interpreted heads are separated so the caller can map them onto the
-    offer's fields. Band spellings in quantity position are *accepted*
+    a bare word is a category, `head(param)` is a term, and the one
+    interpreted head (`valid`) is separated so the caller can map it onto
+    the offer's field. Band spellings in quantity position are *accepted*
     here and refused at publish (gate G6) — they are the grammar."""
     toks = _join_terms(list(tokens))
     if not toks:
@@ -3927,8 +3930,10 @@ def cmd_finalize(args, session, out):
     authority is the moment the deposits behind them are locked per fill;
     the loop record is found as `challenge` finds it, the reservation built
     by `escrow.reservations_for`, `claim` the period after the window in
-    which a claim may be opened (`escrow_claim`), the resolver my own key
-    until factbond's contract exists. A beat whose fills no longer fit what
+    which a claim may be opened (`escrow_claim`), the resolver the give's
+    arbitrator, else the `resolver` setting (factbond's `Assertions`), else
+    my own key, or, when either side constrains it, the first candidate both
+    accept. A beat whose fills no longer fit what
     the chain recorded since it was posted (another beat took the same
     offers first) is cancelled by the contract instead, its bond returned
     to the submitter — nothing is recorded and nothing reserved (exit 1)."""
@@ -4248,9 +4253,10 @@ def cmd_outcome(args, session, out):
 def cmd_clearing(args, session, out):
     """Run the clearing house locally: MockClearing over the fold, fills
     committed to my book. Named for what it does; `clear` means delete on
-    every terminal, and publishing is not clearing (Peter, 2026-09-12) —
-    it stays as a silent alias for one release. With peers, my book first absorbs the fold — a
-    clearing book legitimately contains what it cleared on (P1 §1)."""
+    every terminal, and publishing is not clearing (Peter, 2026-09-12);
+    `clear` is still accepted, silently. With peers, my book first absorbs
+    the fold — a clearing book legitimately contains what it cleared on
+    (P1 §1)."""
     now = session.now
     if _peer_specs():
         session.book.absorb(session.fold())
@@ -4698,7 +4704,7 @@ def build_parser():
         _add_output_flags(p)
         p.set_defaults(func=fn)
 
-    for name in ("clearing", "clear"):          # `clear`: alias, one release
+    for name in ("clearing", "clear"):          # `clear`: a silent alias
         p = sub.add_parser(name, add_help=False)
         p.set_defaults(func=cmd_clearing)
 

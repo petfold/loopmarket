@@ -18,9 +18,10 @@ Custody here, adjudication in factbond (§5e, Peter, 2026-09-19: "a
 ruling or a timeout"). The contract settles every undisputed case by
 itself — quiet after the window (`settle`, anyone), the wanter's
 countersignature, the giver's cancellation at the ladder's amount — and
-a contested claim is factbond's bonded assertion about (offer, loop): the
-resolver fixed at clearing calls `hold` and `resolve`, nothing more. Until
-factbond's contract exists the resolver is one key.
+a contested claim goes to the resolver fixed at clearing, which calls
+`hold` and `resolve`, nothing more: by default one arbitrator both sides
+accept, whose ruling is final (`case.py`), or factbond's `Assertions` for
+a bonded ladder.
 
 A held reservation is released only by a ruling or by both parties
 (2026-09-28, E1 of the development sequence of 2026-09-25): with factbond
@@ -94,7 +95,7 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
     taken / quantity (§3a rule 8) in smallest units, the leg's wanter (its
     maker, which must be a key address: the payout's destination), the
     resolver (the give's declared `arbitrator` when it is an address, else
-    `resolver`, the stand-in until factbond), the want's handover window
+    `resolver`, the clearing's own: factbond's `Assertions` or a key), the want's handover window
     (`span(text)` reads the first `time(...)` term of the want, else the
     window is `now`), the claim period, and the wanter's ladder converted
     at her acceptance price for the deposit's asset into that asset —

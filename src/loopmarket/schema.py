@@ -22,11 +22,12 @@ the logical id stays the key at the application layer.
 Time and place. The v1/v2 records carried them as fields — a `service`
 window and a `where` disc beside the concepts, matched by interval overlap
 and disc intersection here. The v3 record (2026-09-12, decided in
-`docs/plans/P1-spacetime-terms.md`) carries them *in the conjunction*, as
-terms of role heads the catalogue declares under its time and geo
-dimensions (`when(a..b)`, `where(cell)`, a route's `from(cell)`/`to(cell)`,
-a transport's `depart`/`arrive`), matched by containment like every term;
-cells and region nodes are the exact truth, and no v3 record holds a disc.
+`docs/plans/P1-spacetime-terms.md`) carries them *in the conjunction*:
+bare geo and time terms (`geo(cell)`, a place or region node,
+`time(a..b)`), and role heads only for two coordinates of one kind (a
+route's `from`/`to`, a transport's `depart`/`arrive`), matched when one
+side contains the other; cells and region nodes are the exact truth, and
+no v3 record holds a disc.
 `GeoDisc` and the haversine survive only to read and match v1/v2 records
 among themselves; nothing creates a new one. Only `valid` — a property of
 the record, not of the thing — stays a window, and since v3 it may be
@@ -49,8 +50,8 @@ from typing import Any
 # ------------------------------------------------------------------- numbers
 
 def q(x) -> Fraction:
-    """The exact value of a quantity, amount or rate (planned invariant U9,
-    riding the v4 record, 2026-09-14): an int or a `Fraction` as it is, a
+    """The exact value of a quantity, amount or rate (invariant U9, since
+    the v4 record): an int or a `Fraction` as it is, a
     string as the decimal or `n/d` it spells (`"10.5"`, `"21/2"` — the v4
     record's spelling), and a float as the shortest decimal that prints it
     (`99.99` is 9999/100, what the person meant, not the binary neighbour
@@ -442,7 +443,8 @@ class Bond:
 # what a maker may require of the other side of a leg beyond a deposit — a
 # credential, a composed leg, an acceptable resolver — and the one shape of
 # the statement that answers a credential. The record fixes the shapes; the
-# checks are R4's gate, and until it exists a requirement using them meets
+# checks are R4's gate (`gate.py`), `arbitrators.resolver_of` and
+# `matching.legs_faults`, and a requirement none of them checks meets
 # nothing (U7).
 
 STATEMENT_KINDS = ("attested", "self-bonded", "signed")   # "insured" after pooled cover (D4, D9)
@@ -575,9 +577,9 @@ class Requires:
     asset categories it takes as compensation, each with its own price per
     unit; `oracles` the witness types accepted (empty: any); `escrows` the
     escrow kinds accepted (empty: any). Matching refuses a leg that does
-    not meet the requirement, fail-closed like vocabulary (U7). Until the
-    escrow exists a counterparty's deposit is its declaration; the escrow
-    makes it true."""
+    not meet the requirement, fail-closed like vocabulary (U7). A deposit
+    naming an escrow counts only up to what that contract holds
+    (`meets(held=)`); one naming none is its declaration."""
 
     point: Fraction = Fraction(0)
     ladder: tuple = ()                  # ((lead_seconds, amount), ...), leads descending to 0
@@ -776,10 +778,10 @@ class Statement:
 class Offer:
     """One uniform offer. Exactly one side is the maker's personal token.
 
-    Fields `bond`, `oracle` and `arbitrator` are carried in the canonical
-    encoding from day one (they are part of the offer's identity and of what
-    a clearing layer will verify) but are not yet acted on by the mock
-    clearing — see ARCHITECTURE.md, roadmap P3.
+    Fields `bond`, `oracle` and `arbitrator` are part of the offer's
+    identity, and clearing acts on them: deposits through `matching.meets`,
+    witness types through `MockClearing.VERIFIABLE_ORACLES`, the arbitrator
+    as the leg's resolver.
     """
 
     maker: str                    # key/address; also the personal-token issuer
@@ -814,7 +816,7 @@ class Offer:
     underlying: str = ""
     exercise: TimeWindow | None = None
     # v3 (2026-09-12): `service`/`where` leave the record — spacetime lives
-    # in the conjunction as role terms — and `valid` may be open-ended.
+    # in the conjunction as bare geo/time terms — and `valid` may be open-ended.
     # v4 (2026-09-14): exact numbers as `n/d` strings (U9), `step` and
     # `min` on a thing in place of `divisible`, and a want may be `Parts`.
     # v5 (2026-09-18/19): `requires` — admissibility by declaration — and
@@ -880,7 +882,7 @@ class Offer:
         if self.v >= 3:
             if self.service is not None or self.where is not None:
                 raise ValueError(
-                    "a v3 offer carries no service/where fields: put when(...) "
+                    "a v3 offer carries no service/where fields: put time(...) "
                     "and place as bare terms in the conjunction, or pass v=2 "
                     "for the field form")
         else:

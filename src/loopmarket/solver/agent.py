@@ -16,8 +16,8 @@ clearing — proposals are re-derived there from the current book.
 
 This is a *baseline*: exact, deterministic, O(gives*wants) matching and
 O(V*E) cycle search. Competing agents are expected to beat it with motif
-libraries, planners over the idx/{c,t,g} prefixes, learned candidate
-generators — anything, as long as the loops they emit survive
+libraries, planners over ontodag's cones (`dimensions.DimensionIndex`),
+learned candidate generators — anything, as long as the loops they emit survive
 re-verification. The interface to beat is `step()`.
 
 The boundary is deliberate (owner doctrine, 2026-08-21): loopmarket
