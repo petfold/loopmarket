@@ -16,6 +16,11 @@ does anything different, and no record byte or id changes.
 
 ### Changed
 
+- **`MockClearing` is `BookClearing`** (the review's item 12, decided by
+  Peter 2026-10-10). The class clears the book in process, with the same
+  checklist the chain contract re-derives; it mocks nothing, and the old
+  name had readers looking for the real one. `MockClearing` stays an alias
+  of the same class for one release.
 - **The command line is a package by area.** `cli.py` (4,837 lines)
   became `loopmarket.cli` with one module per area: `settings`, `stores`
   (the session), `spellings`, `render`, `grammar`, `guarantees`,

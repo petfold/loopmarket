@@ -17,7 +17,7 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket.spacetime import cell_for_coords
 from loopmarket import (
-    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing,
+    BookClearing, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 from loopmarket import cli
@@ -109,7 +109,7 @@ def _api_triangle(nonces):
     reg = OfferRegistry(RecordStore(MemoryBytesStore()))
     reg.publish_many(offers)
     reg.commit()
-    agent = SolverAgent(reg, ont, MockClearing(reg, ont, clock=lambda: NOW))
+    agent = SolverAgent(reg, ont, BookClearing(reg, ont, clock=lambda: NOW))
     _, loops = agent.find_loops(now=NOW)
     assert len(loops) == 1
     return loops[0].loop_id
@@ -1235,7 +1235,7 @@ def test_the_escrow_acts_are_verbs(loop, monkeypatch):
     import os
     import solcx
     from web3 import EthereumTesterProvider, Web3
-    from loopmarket import MockClearing, SolverAgent, give as make_give, want as make_want
+    from loopmarket import BookClearing, SolverAgent, give as make_give, want as make_want
     from loopmarket.escrow import EscrowClient
     solcx.install_solc("0.8.24")
     contracts = os.path.join(os.path.dirname(__file__), "..", "contracts")
@@ -1271,7 +1271,7 @@ def test_the_escrow_acts_are_verbs(loop, monkeypatch):
     run.session.book.publish_many(others)
     run.session.book.commit()
     ont = run.session.catalogue
-    (r,) = SolverAgent(run.session.book, ont, clearing=MockClearing(run.session.book, ont, clock=lambda: NOW),
+    (r,) = SolverAgent(run.session.book, ont, clearing=BookClearing(run.session.book, ont, clock=lambda: NOW),
                        solver_id="t", min_surplus=0.0).step(now=NOW)
     assert r.accepted
     loop_id, oid = r.loop_id, bonded.offer_id

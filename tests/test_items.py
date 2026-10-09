@@ -12,7 +12,7 @@ import pytest
 from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
-from loopmarket import MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want
+from loopmarket import BookClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want
 from loopmarket.items import land_register_id, serial_id, tagged_id, term, vin_id, well_formed
 from loopmarket.matching import check_match
 
@@ -62,7 +62,7 @@ def _loop(book, seller, buyer, h, nonce, price=50, valid=V):
 
 def _step(book, now):
     cat = _cat()
-    return SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: now), solver_id="t").step(now=now)
+    return SolverAgent(book, cat, clearing=BookClearing(book, cat, clock=lambda: now), solver_id="t").step(now=now)
 
 
 def test_one_open_claim_per_maker_and_item():
@@ -112,7 +112,7 @@ def test_an_option_on_an_item_claims_it_until_the_window_ends():
                        give("holder", Thing(("lesson",), 1, "hour"), 5, **V, nonce=4),
                        want("seller", Thing(("lesson",), 1, "hour"), 80, **V, nonce=5)])
     book.commit()
-    (r,) = SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t").step(now=NOW)
+    (r,) = SolverAgent(book, cat, clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t").step(now=NOW)
     assert r.accepted
     assert book.item_claims(h, "seller") == [(r.loop_id, {"offer": p.offer_id, "until": NOW + 500})]
     again = give("seller", Thing(("car", term(h)), 1, "car"), 40, **V, nonce=6)

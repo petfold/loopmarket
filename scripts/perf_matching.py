@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 from recordstore import MemoryBytesStore, RecordStore  # noqa: E402
 
-from loopmarket import (GeoDisc, MockClearing, Ontology, OfferRegistry,  # noqa: E402
+from loopmarket import (GeoDisc, BookClearing, Ontology, OfferRegistry,  # noqa: E402
                         SolverAgent, Thing, TimeWindow, give, want)
 from loopmarket.dimensions import DimensionIndex, candidate_matches_indexed  # noqa: E402
 from loopmarket.matching import candidate_matches  # noqa: E402
@@ -85,7 +85,7 @@ def main():
         registry = OfferRegistry(RecordStore(MemoryBytesStore()))
         registry.publish_many(offers)
         registry.commit()
-        agent = SolverAgent(registry, ontology, MockClearing(registry, ontology))
+        agent = SolverAgent(registry, ontology, BookClearing(registry, ontology))
         timed(f"n={n:5}: SolverAgent.find_loops", lambda: agent.find_loops(now=NOW))
     timed("loop help (CLI start-up)", lambda: subprocess.run(
         [sys.executable, "-m", "loopmarket", "help"], capture_output=True))

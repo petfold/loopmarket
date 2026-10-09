@@ -10,7 +10,7 @@ import pytest
 from recordstore import MemoryBytesStore, MemoryPointer, RecordStore
 
 from loopmarket import (
-    GeoDisc, MockClearing, OfferRegistry, Ontology, PartialLoopError,
+    GeoDisc, BookClearing, OfferRegistry, Ontology, PartialLoopError,
     SolverAgent, Thing, TimeWindow, give, want,
 )
 from loopmarket.registry import LegRecord, or_set_resolver
@@ -40,7 +40,7 @@ def _cleared_root() -> str:
     registry.publish_many(OFFERS)
     registry.commit()
     agent = SolverAgent(
-        registry, ONT, MockClearing(registry, ONT, clock=lambda: NOW)
+        registry, ONT, BookClearing(registry, ONT, clock=lambda: NOW)
     )
     receipts = agent.step(now=NOW)
     assert len(receipts) == 1 and receipts[0].accepted
@@ -95,13 +95,13 @@ def test_clearing_refuses_withdrawn_legs():
     registry.publish_many(OFFERS)
     registry.commit()
     agent = SolverAgent(
-        registry, ONT, MockClearing(registry, ONT, clock=lambda: NOW))
+        registry, ONT, BookClearing(registry, ONT, clock=lambda: NOW))
     _, loops = agent.find_loops(now=NOW)
     assert len(loops) == 1
     # withdraw one leg after the solver snapshotted; clearing must refuse
     registry.withdraw(loops[0].offer_ids[0])
     from loopmarket import LoopProposal
-    receipt = MockClearing(registry, ONT, clock=lambda: NOW).submit(
+    receipt = BookClearing(registry, ONT, clock=lambda: NOW).submit(
         LoopProposal(loops[0], registry.store.root, "", "s", NOW))
     assert not receipt.accepted and "withdrawn" in receipt.reason
 

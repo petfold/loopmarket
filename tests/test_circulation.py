@@ -8,7 +8,7 @@ and refuses a tampered one."""
 from ontodag import OntoDAG
 
 from loopmarket import (
-    Circulation, ExchangeGraph, Leg, MockClearing, OfferRegistry, Ontology,
+    Circulation, ExchangeGraph, Leg, BookClearing, OfferRegistry, Ontology,
     SolverAgent, Thing, TimeWindow, check_composition, find_circulations, give, want,
 )
 from loopmarket.clearing import LoopProposal
@@ -139,7 +139,7 @@ def test_clearing_re_derives_a_composed_leg():
     legs = [Leg.from_match(m) for m in candidate_matches(offers, cat, now=NOW)] + \
         list(composed_legs(offers, cat, now=NOW))
     circ = find_circulations(legs)[0]
-    clearing = MockClearing(book, cat, clock=lambda: NOW)
+    clearing = BookClearing(book, cat, clock=lambda: NOW)
     # a tampered composed leg: the solver claims the courier moved the box
     # but names a courier who only runs elsewhere — refused on re-derivation
     elsewhere = give("courier", Thing(("transport", "from(u2e)", "to(u2e)")), 2, valid=TimeWindow(0))
@@ -187,7 +187,7 @@ def test_two_composed_legs_in_one_circulation():
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
     book.publish_many(offers); book.commit()
     agent = SolverAgent(registry=book, ontology=cat,
-                        clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+                        clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t")
     receipts = agent.step(now=NOW)
     assert [r.accepted for r in receipts] == [True], receipts
     rec = book.store.get(f"loop/{receipts[0].loop_id}")
@@ -232,7 +232,7 @@ def test_two_couriers_carry_one_packet():
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
     book.publish_many(offers); book.commit()
     agent = SolverAgent(registry=book, ontology=cat,
-                        clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+                        clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t")
     receipts = agent.step(now=NOW)
     assert [r.accepted for r in receipts] == [True], receipts
     rec = book.store.get(f"loop/{receipts[0].loop_id}")

@@ -11,7 +11,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    GeoDisc, MockClearing, Offer, OfferRegistry, Ontology, SolverAgent, Thing,
+    GeoDisc, BookClearing, Offer, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 from loopmarket.dimensions import candidate_matches_indexed
@@ -229,7 +229,7 @@ def test_the_v3_triangle_clears():
     registry.publish_many(offers)
     registry.commit()
     agent = SolverAgent(registry=registry, ontology=ont,
-                        clearing=MockClearing(registry, ont, clock=lambda: NOW),
+                        clearing=BookClearing(registry, ont, clock=lambda: NOW),
                         solver_id="t")
     receipts = agent.step()
     assert len(receipts) == 1 and receipts[0].accepted

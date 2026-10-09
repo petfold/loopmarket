@@ -17,7 +17,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
+    BookClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
 )
 
 
@@ -72,7 +72,7 @@ def _cleared_book(newer=False):
     ]
     book.publish_many(offers); book.commit()
     root = book.store.root
-    agent = SolverAgent(registry=book, ontology=cat, clearing=MockClearing(book, cat, clock=lambda: NOW),
+    agent = SolverAgent(registry=book, ontology=cat, clearing=BookClearing(book, cat, clock=lambda: NOW),
                         solver_id="t")
     # the proposal is what clearing accepted; verify it against the PRE-clearing root
     snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
@@ -203,7 +203,7 @@ def _cleared_book_v3():
     book.publish_many(offers); book.commit()
     root = book.store.root
     snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
-    agent = SolverAgent(registry=book, ontology=cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+    agent = SolverAgent(registry=book, ontology=cat, clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t")
     receipts = agent.step(now=NOW)
     assert receipts and receipts[0].accepted
     return snapshot, root, book.store.get(f"loop/{receipts[0].loop_id}"), pins
@@ -233,7 +233,7 @@ def _cleared_composed():
     book.publish_many(offers); book.commit()
     root = book.store.root
     snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
-    agent = SolverAgent(registry=book, ontology=cat, clearing=MockClearing(book, cat, clock=lambda: NOW),
+    agent = SolverAgent(registry=book, ontology=cat, clearing=BookClearing(book, cat, clock=lambda: NOW),
                         solver_id="t")
     receipts = agent.step(now=NOW)
     assert [r.accepted for r in receipts] == [True], receipts

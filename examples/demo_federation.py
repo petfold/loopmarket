@@ -36,7 +36,7 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
     q,
-    Aggregator, MockClearing, OfferRegistry, Ontology,
+    Aggregator, BookClearing, OfferRegistry, Ontology,
     SolverAgent, Thing, TimeWindow, audit_manifest, give, want,
 )
 from loopmarket.federation import CLEARING
@@ -291,7 +291,7 @@ print(f"honest aggregator A audits clean: {audit_manifest(m_a, BLOB_SPACE) == []
 
 censored_view = OfferRegistry(RecordStore.at(m_c.book_root, BLOB_SPACE))
 lost = SolverAgent(censored_view, catalogue,
-                   MockClearing(censored_view, catalogue), solver_id="trusting")
+                   BookClearing(censored_view, catalogue), solver_id="trusting")
 print(f"a solver trusting Cain's manifest finds "
       f"{len(lost.find_loops(now=now)[1])} loops (the triangle needs chen)")
 
@@ -328,7 +328,7 @@ base = committed(clearing)
 print(f"clearing based its own book on the fold — re-commit "
       f"reproduces the root: {base == m_a.book_root}")
 
-agent = SolverAgent(clearing, catalogue, MockClearing(clearing, catalogue),
+agent = SolverAgent(clearing, catalogue, BookClearing(clearing, catalogue),
                     solver_id="demo-solver")
 receipts = [r for r in agent.step(now=now) if r.accepted]
 loop_rec = clearing.store.get(f"loop/{receipts[0].loop_id}")
@@ -351,7 +351,7 @@ fills = list(follower.store.keys("fill/"))
 print(f"a follower, given only the manifest, reads the loop and "
       f"{len(fills)} atomic fills")
 second = SolverAgent(follower, catalogue,
-                     MockClearing(follower, catalogue), solver_id="second")
+                     BookClearing(follower, catalogue), solver_id="second")
 print(f"second solver pass over the cleared fold finds: "
       f"{len([r for r in second.step(now=now) if r.accepted])} loops\n")
 print("=== done ===\n")

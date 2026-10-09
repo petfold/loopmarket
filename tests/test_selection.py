@@ -16,7 +16,7 @@ from ontodag import OntoDAG
 
 from recordstore import MemoryBytesStore, RecordStore
 
-from loopmarket import ExchangeGraph, MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want
+from loopmarket import ExchangeGraph, BookClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want
 from loopmarket.graph import enumerate_cycles
 from loopmarket.matching import candidate_matches
 from loopmarket.selection import Item, greedy, item_of, objective, order_key, pack, weight
@@ -128,7 +128,7 @@ def test_the_best_rate_reduction_no_longer_loses_the_feasible_loop():
     assert len(old) == 1 and not old[0].per_node_ok                 # the cello cycle: infeasible
     cycles, complete = enumerate_cycles(matches)
     assert complete and len(cycles) == 1 and cycles[0].per_node_ok    # only the apple cycle is admissible
-    agent = SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t", min_surplus=0.0)
+    agent = SolverAgent(book, cat, clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t", min_surplus=0.0)
     receipts = agent.step(now=NOW)
     assert [r.accepted for r in receipts] == [True]
     assert book.is_filled(offers[2].offer_id) and not book.is_filled(offers[0].offer_id)
@@ -188,7 +188,7 @@ def test_two_wants_of_one_divisible_give_clear_in_one_step():
               want("b2", Thing(("apple",), 40, "kg"), 84, **V), give("b2", Thing(("repair",)), 80, **V),
               want("farm", Thing(("repair",)), 81, **V)]
     book.publish_many(offers); book.commit()
-    agent = SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t", min_surplus=0.0)
+    agent = SolverAgent(book, cat, clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t", min_surplus=0.0)
     receipts = agent.step(now=NOW)
     assert [r.accepted for r in receipts] == [True, True]
     assert book.available(offers[0].offer_id) == 20 and not book.is_filled(offers[0].offer_id)
@@ -197,7 +197,7 @@ def test_two_wants_of_one_divisible_give_clear_in_one_step():
     tight = OfferRegistry(RecordStore(MemoryBytesStore()))
     offers2 = [give("farm", Thing(("apple",), 50, "kg", step=5), 100, **V)] + offers[1:]
     tight.publish_many(offers2); tight.commit()
-    agent2 = SolverAgent(tight, cat, clearing=MockClearing(tight, cat, clock=lambda: NOW), solver_id="t", min_surplus=0.0)
+    agent2 = SolverAgent(tight, cat, clearing=BookClearing(tight, cat, clock=lambda: NOW), solver_id="t", min_surplus=0.0)
     receipts2 = agent2.step(now=NOW)
     assert len(receipts2) == 1 and receipts2[0].accepted
     assert tight.is_filled(offers2[1].offer_id) and not tight.is_filled(offers2[4].offer_id)   # b1's 19.5 % over b2's 6 %

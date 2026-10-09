@@ -10,7 +10,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    MockClearing, OfferRegistry, Ontology, PartialLoopError, SolverAgent, Thing,
+    BookClearing, OfferRegistry, Ontology, PartialLoopError, SolverAgent, Thing,
     TimeWindow, check_match, give, want,
 )
 
@@ -33,7 +33,7 @@ def test_two_loops_share_one_divisible_give():
              want("farm", Thing(("lesson",)), 85, nonce=1, **V)]
     book.publish_many([apples, *ring1]); book.commit()
     agent = SolverAgent(registry=book, ontology=cat,
-                        clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+                        clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t")
     receipts = agent.step(now=NOW)
     assert [r.accepted for r in receipts] == [True], receipts
     lid1 = receipts[0].loop_id
@@ -68,7 +68,7 @@ def test_dust_exhausts_a_stepped_give_and_the_floor_holds():
               give("b", Thing(("lesson",)), 70, **V), want("mill", Thing(("lesson",)), 75, **V)]
     book.publish_many(offers); book.commit()
     agent = SolverAgent(registry=book, ontology=cat,
-                        clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+                        clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t")
     assert [r.accepted for r in agent.step(now=NOW)] == [True]
     assert book.available(sacks.offer_id) == 25          # one sack left...
     assert book.is_filled(sacks.offer_id)                # ...below the 50 kg floor: dust

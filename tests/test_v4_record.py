@@ -10,7 +10,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Circulation, MockClearing, Offer, OfferRegistry, Ontology, Parts, SolverAgent,
+    Circulation, BookClearing, Offer, OfferRegistry, Ontology, Parts, SolverAgent,
     Thing, TimeWindow, check_match, check_parts, give, parts_legs, q, rat, want,
 )
 
@@ -113,7 +113,7 @@ def test_a_composed_want_clears_as_one_leg_with_quantities_in_the_fills():
     assert check_parts(evening, (offers[2], offers[1]), cat, now=NOW) is None   # order is the parts'
     book.publish_many(offers); book.commit()
     agent = SolverAgent(registry=book, ontology=cat,
-                        clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+                        clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t")
     receipts = agent.step(now=NOW)
     assert [r.accepted for r in receipts] == [True], receipts
     rec = book.store.get(f"loop/{receipts[0].loop_id}")

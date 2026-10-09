@@ -6,7 +6,7 @@ taken: the exact checks, the solver, the clearing."""
 import pytest
 from recordstore import MemoryBytesStore, RecordStore
 
-from loopmarket import MockClearing, OfferRegistry, Reads, SolverAgent, Thing, give, want
+from loopmarket import BookClearing, OfferRegistry, Reads, SolverAgent, Thing, give, want
 from loopmarket.matching import aggregate_legs, check_aggregate, check_match, meets
 from loopmarket.reads import NO_READS, reads_of
 from loopmarket.schema import Requires
@@ -69,12 +69,12 @@ def test_a_solver_and_a_clearing_take_their_authorities_by_either_spelling():
         for spelling in ("keywords", "reads"):
             cat, book, escrow_held = _market(held_qty)
             if spelling == "keywords":
-                clearing = MockClearing(book, cat, clock=lambda: NOW, escrow_held=escrow_held)
+                clearing = BookClearing(book, cat, clock=lambda: NOW, escrow_held=escrow_held)
                 agent = SolverAgent(registry=book, ontology=cat, clearing=clearing, solver_id="t",
                                     escrow_held=escrow_held)
             else:
                 reads = Reads(escrow_held=escrow_held)
-                clearing = MockClearing(book, cat, clock=lambda: NOW, reads=reads)
+                clearing = BookClearing(book, cat, clock=lambda: NOW, reads=reads)
                 agent = SolverAgent(registry=book, ontology=cat, clearing=clearing, solver_id="t", reads=reads)
             assert clearing.escrow_held is escrow_held and clearing.chain_fills is None
             assert agent.escrow_held is escrow_held and agent.reads.escrow_held is escrow_held
@@ -90,6 +90,15 @@ def test_a_solver_and_a_clearing_derive_the_per_pass_reads_themselves():
     cat, book, _ = _market(60)
     for given in (Reads(available={}), Reads(held={}), Reads(gate=object())):
         with pytest.raises(TypeError, match="derives"):
-            MockClearing(book, cat, reads=given)
+            BookClearing(book, cat, reads=given)
         with pytest.raises(TypeError, match="derives"):
             SolverAgent(book, cat, clearing=None, reads=given)
+
+
+def test_the_clearing_keeps_its_old_name_for_one_release():
+    """`MockClearing` was renamed `BookClearing` (review item 12); the old
+    name stays an alias of the same class for one release."""
+    import loopmarket
+    from loopmarket.clearing import BookClearing, MockClearing
+    assert MockClearing is BookClearing
+    assert loopmarket.MockClearing is loopmarket.BookClearing is BookClearing

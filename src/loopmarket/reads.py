@@ -21,7 +21,7 @@ loops all read the same few facts from outside the offers themselves:
 
 The last two are the authorities a solver or a clearing is given. Each
 pass derives the first three from them and from the snapshot it reads
-(`SolverAgent.find_loops`, `MockClearing.submit`), and the exact checks
+(`SolverAgent.find_loops`, `BookClearing.submit`), and the exact checks
 read those three. `Reads` carries all five as one value, so the command
 line, the solver, the clearing and the checks pass one object instead of
 threading five keyword parameters through some twenty signatures. The

@@ -11,7 +11,7 @@ from recordstore import MemoryBytesStore, RecordStore
 
 pytest.importorskip("coincurve", reason="the door's witnesses need the sig extra")
 
-from loopmarket import MockClearing, OfferRegistry, Ontology, Requires, SolverAgent, Thing, TimeWindow, give, want  # noqa: E402
+from loopmarket import BookClearing, OfferRegistry, Ontology, Requires, SolverAgent, Thing, TimeWindow, give, want  # noqa: E402
 from loopmarket.matching import check_match  # noqa: E402
 from loopmarket.sigs import maker_address  # noqa: E402
 from loopmarket.witness import (  # noqa: E402
@@ -68,7 +68,7 @@ def test_a_door_witness_clears_and_an_unrostered_type_is_refused_at_submit():
         book.publish_many([give("a", Thing(("repair",)), 10, **V, oracle=oracle), want("b", Thing(("repair",)), 20, **V),
                            give("b", Thing(("lesson",)), 10, **V), want("a", Thing(("lesson",)), 20, **V)])
         book.commit()
-        clearing = MockClearing(book, cat, clock=lambda: NOW)
+        clearing = BookClearing(book, cat, clock=lambda: NOW)
         receipts = SolverAgent(book, cat, clearing=clearing, solver_id="t").step(now=NOW)
         assert [r.accepted for r in receipts] == [accepted]
         if not accepted:

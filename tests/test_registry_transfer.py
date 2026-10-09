@@ -11,7 +11,7 @@ and `countersign` refuses before it."""
 from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
-from loopmarket import MockClearing, OfferRegistry, Ontology, Requires, SolverAgent, Thing, TimeWindow, give, want
+from loopmarket import BookClearing, OfferRegistry, Ontology, Requires, SolverAgent, Thing, TimeWindow, give, want
 from loopmarket.items import vin_id
 from loopmarket.matching import check_match
 from loopmarket.register import Register
@@ -63,7 +63,7 @@ def test_the_wanter_names_the_register_and_clearing_needs_an_item():
             want("seller", Thing(("lesson",), 1, "hour"), 60, **V, nonce=5)]
     book.publish_many([car, trusts, *back])
     book.commit()
-    (r,) = SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t").step(now=NOW)
+    (r,) = SolverAgent(book, cat, clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t").step(now=NOW)
     assert r.accepted
     # the same witness on a give that names no item: nothing a register could transfer
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
@@ -72,7 +72,7 @@ def test_the_wanter_names_the_register_and_clearing_needs_an_item():
                  requires=Requires(oracles=(f"registry-transfer({REG})",)))
     book.publish_many([itemless, wants, *back])
     book.commit()
-    receipts = SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t").step(now=NOW)
+    receipts = SolverAgent(book, cat, clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t").step(now=NOW)
     assert receipts and not receipts[0].accepted and "unverifiable oracle type" in receipts[0].reason
 
 

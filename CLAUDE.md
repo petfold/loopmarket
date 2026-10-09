@@ -79,7 +79,7 @@ documents and enter here only when their enforcing code and tests land.
   records: it dispatches on `"v"` and raises on an unknown one, and
   `to_record` re-encodes each offer in its own version, so old ids never
   change (pinned by corpora, e.g. `tests/test_v6_record.py`).
-- **U3 Clearing trusts no solver.** `MockClearing.submit` checks the
+- **U3 Clearing trusts no solver.** `BookClearing.submit` checks the
   proposal's ontology pin and register pins, re-derives every leg against
   the current book and its own ontology (`check_match`, or
   `check_composition` for a composed leg), re-checks balance (node
@@ -189,8 +189,8 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
 - `solver/agent.py`: `SolverAgent`: snapshot, match, candidates, select,
   propose. The baseline species and the beat's reserve bid; smarter
   species live outside this repo.
-- `clearing.py`: `LoopProposal`, `Receipt`, `MockClearing` (the production
-  verifier, despite its name), `ChainClearing` (`MockClearing` plus the
+- `clearing.py`: `LoopProposal`, `Receipt`, `BookClearing` (the production
+  verifier, despite its name), `ChainClearing` (`BookClearing` plus the
   beat; it asks the contract's verifier before paying the bond).
 - `registry.py`: the book and its keyspaces (`offer/`, `sig/`,
   `withdraw/`, `fill/`, `loop/`, `handoff/`, `cred/`, `option/`,
@@ -347,7 +347,7 @@ with a `Reads` object and a `LegRecord` type, built first of these (item
 10, built); durations and relative times in ontodag's units, `min` and
 `wk`, a bare `m` or `w` refused with the fix named (item 11); v1/v2
 offers retired once circulator's benchmark and the tests write v4+ (old
-records stay readable), and `MockClearing` renamed `BookClearing` (item
+records stay readable), and `BookClearing` renamed `BookClearing` (item
 12); the
 phase gates restated for what they still guard (item 17, under "Roadmap
 (state)"). Every review item for loopmarket is decided, and the decided

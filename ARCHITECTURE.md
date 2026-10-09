@@ -1,6 +1,6 @@
 # loopmarket — architecture
 
-> **Vocabulary note (2026-09-07).** The code now says **clearing** for the step this document calls "settlement": the atomic commit that turns a proposal into fixed obligations (`clearing.py`, `MockClearing`, invariant U3). **Settlement** is reserved for the makers delivering, which is P3's guarantee fabric. This document and `docs/plans/` were written before the rename and are left as they are; read "settlement" here as "clearing" unless the context is delivery, bonds or oracles.
+> **Vocabulary note (2026-09-07).** The code now says **clearing** for the step this document calls "settlement": the atomic commit that turns a proposal into fixed obligations (`clearing.py`, `BookClearing`, invariant U3). **Settlement** is reserved for the makers delivering, which is P3's guarantee fabric. This document and `docs/plans/` were written before the rename and are left as they are; read "settlement" here as "clearing" unless the context is delivery, bonds or oracles.
 
 
 A distributed offer registry and loop-finding system over the
@@ -622,7 +622,7 @@ what stays fixed: `P2-loop-selection.md` §11.
 
 `LoopProposal` = the loop + the pinned `book_root` and `ontology_root` (and,
 since 2026-09-29, the pinned `register_roots`) + the solver's identity.
-`MockClearing.submit` (the module was `settlement.py` and the class
+`BookClearing.submit` (the module was `settlement.py` and the class
 `MockSettlement` until the 2026-09-07 rename):
 
 0. the proposal's catalogue pin equals clearing's own, and every register

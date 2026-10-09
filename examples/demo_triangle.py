@@ -19,7 +19,7 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
     q,
-    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing,
+    BookClearing, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 
@@ -102,7 +102,7 @@ print(f"\nbook committed: root={root[:16]}…  ({len(offers)} offers)\n")
 agent = SolverAgent(
     registry=registry,
     ontology=ontology,
-    clearing=MockClearing(registry, ontology),
+    clearing=BookClearing(registry, ontology),
     solver_id="demo-solver",
 )
 

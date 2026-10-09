@@ -21,7 +21,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Acceptance, Bond, MockClearing, OfferRegistry, Offer, Ontology, Requires, SolverAgent, Thing, TimeWindow,
+    Acceptance, Bond, BookClearing, OfferRegistry, Offer, Ontology, Requires, SolverAgent, Thing, TimeWindow,
     give, want,
 )
 from loopmarket.beat import proposal_from_record, snapshot_of
@@ -94,7 +94,7 @@ def test_cover_is_reserved_for_the_covered_period_and_pays_a_ruled_claim(chain):
     t = _now(w3)
     cat, book, cover, hour = _market(escrow, factbond, insurer, [claimant, quiet], t)
     root = book.store.root
-    receipts = SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: t),
+    receipts = SolverAgent(book, cat, clearing=BookClearing(book, cat, clock=lambda: t),
                            solver_id="t").step(now=t)
     assert len(receipts) == 2 and all(r.accepted for r in receipts), [(r.accepted, r.reason) for r in receipts]
     reservations = []
@@ -221,7 +221,7 @@ def test_the_taxi_no_show_is_paid_once_the_drivers_deposit_first(chain):
     book.publish_many(offers)
     book.commit()
     root = book.store.root
-    agent = SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: t), solver_id="t")
+    agent = SolverAgent(book, cat, clearing=BookClearing(book, cat, clock=lambda: t), solver_id="t")
     receipts = []
     for _ in range(3):                      # a composed circulation per pass: step until the book is quiet
         receipts += [r for r in agent.step(now=t) if r.accepted]

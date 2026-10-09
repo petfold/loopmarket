@@ -7,7 +7,9 @@ chaining, the product, and the not-already-filled status — cheap, linear in
 the loop — before atomically marking every offer filled. Discovery is
 expensive and competitive; verification is cheap and neutral.
 
-`MockClearing` is the in-process stand-in: its "atomic stroke" is one
+`BookClearing` is the in-process clearing over the book (called
+`MockClearing` until 2026-10, a name it keeps for one release): its
+"atomic stroke" is one
 recordstore commit (all fills + the loop record land under a single new
 root, or none do). The on-chain path it stands in for (roadmap P2) keeps
 the same interface: a contract receives the loop plus *inclusion proofs*
@@ -126,7 +128,7 @@ class Clearing(Protocol):
     def submit(self, proposal: LoopProposal) -> Receipt: ...
 
 
-class MockClearing:
+class BookClearing:
     """In-process clearing over the shared registry."""
 
     #: Oracle types this clearing knows how to verify — the P3 refusal
@@ -434,7 +436,7 @@ class MockClearing:
         """The whole checklist, nothing committed: the verdict a proposal
         would get here. `ChainClearing` runs it before posting a beat; a
         challenger runs it against the beat's snapshot."""
-        dry = MockClearing(_Dry(self.registry), self.ontology, min_surplus=self.min_surplus,
+        dry = BookClearing(_Dry(self.registry), self.ontology, min_surplus=self.min_surplus,
                            require_per_node=self.require_per_node, clock=self.clock,
                            verifiable_oracles=self.verifiable_oracles, reads=self.reads,
                            register_at=self.register_at, span=self.span,
@@ -442,8 +444,13 @@ class MockClearing:
         return dry.submit(proposal)
 
 
-class ChainClearing(MockClearing):
-    """`MockClearing` whose accepted proposals are also posted as beats on
+#: The name this class had until 2026-10, kept for one release (review item
+#: 12, decided by Peter 2026-10-10): it clears a book, and mocks nothing.
+MockClearing = BookClearing
+
+
+class ChainClearing(BookClearing):
+    """`BookClearing` whose accepted proposals are also posted as beats on
     `BeatClearing` (P2, 2026-09-15). The book is the data — the loop record
     and the fills land in this clearing's own book exactly as before, after
     the full U3 re-derivation — and the chain holds the commitments and,
@@ -510,7 +517,7 @@ class ChainClearing(MockClearing):
 
 
 class _Dry:
-    """A registry that reads through and swallows writes: `MockClearing`'s
+    """A registry that reads through and swallows writes: `BookClearing`'s
     checklist run to the end without committing anything."""
 
     def __init__(self, registry):

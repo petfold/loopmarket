@@ -10,7 +10,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Circulation, Leg, MockClearing, OfferRegistry, Ontology, SolverAgent, Thing,
+    Circulation, Leg, BookClearing, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, aggregate_legs, check_aggregate, give, want,
 )
 from loopmarket.clearing import LoopProposal
@@ -53,7 +53,7 @@ def test_six_lifters_from_three_gives():
     assert check_aggregate(piano, gives[:2], (3, 3), cat, now=NOW) is None       # a has two
     book.publish_many(offers); book.commit()
     agent = SolverAgent(registry=book, ontology=cat,
-                        clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+                        clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t")
     receipts = agent.step(now=NOW)
     assert [r.accepted for r in receipts] == [True], receipts
     lid = receipts[0].loop_id
@@ -74,7 +74,7 @@ def test_six_lifters_from_three_gives():
     # clearing refuses a tampered split
     circ = Circulation(tuple(Leg(l.want, l.gives, tuple(x + 1 for x in l.quantities)) if l.quantities else l
                              for l in _legs_of(book, rec)))                 # shares that do not add up
-    receipt = MockClearing(book, cat, clock=lambda: NOW).submit(
+    receipt = BookClearing(book, cat, clock=lambda: NOW).submit(
         LoopProposal(circ, book.store.root, "", "t", NOW))
     assert not receipt.accepted
 

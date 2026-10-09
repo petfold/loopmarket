@@ -18,7 +18,7 @@ import time
 import unittest
 
 from loopmarket import (
-    MockClearing, Ontology, SolverAgent, Thing, TimeWindow,
+    BookClearing, Ontology, SolverAgent, Thing, TimeWindow,
     give, want,
 )
 from loopmarket.registry import swarm_offer_book
@@ -92,7 +92,7 @@ class TestTriangleOnLiveSwarmBook(unittest.TestCase):
         self.assertTrue(book_root)
 
         agent = SolverAgent(registry=registry, ontology=catalogue,
-                            clearing=MockClearing(registry, catalogue),
+                            clearing=BookClearing(registry, catalogue),
                             solver_id="live-solver")
         receipts = agent.step()
         cleared = [r for r in receipts if r.accepted]
@@ -111,7 +111,7 @@ class TestTriangleOnLiveSwarmBook(unittest.TestCase):
 
         # And the cleared book yields nothing on a second pass.
         second = SolverAgent(registry=again, ontology=catalogue,
-                             clearing=MockClearing(again, catalogue),
+                             clearing=BookClearing(again, catalogue),
                              solver_id="second-solver")
         self.assertEqual([r for r in second.step() if r.accepted], [])
 

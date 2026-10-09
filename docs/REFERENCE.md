@@ -499,7 +499,9 @@ node `potentials`. A simple cycle's record is byte-identical to before.
 ### `Clearing` (Protocol)
 `submit(proposal) -> Receipt`.
 
-### `MockClearing(registry, ontology, *, min_surplus=0.0, require_per_node=True, clock=time.time, verifiable_oracles=VERIFIABLE_ORACLES, chain_fills=None, escrow_held=None, register_at=None, span=None, register_latest=None, resolver_profile=None)`
+### `BookClearing(registry, ontology, *, min_surplus=0.0, require_per_node=True, clock=time.time, verifiable_oracles=VERIFIABLE_ORACLES, chain_fills=None, escrow_held=None, register_at=None, span=None, register_latest=None, resolver_profile=None)`
+
+Called `MockClearing` until 2026-10; that name stays an alias of this class for one release (review item 12).
 `VERIFIABLE_ORACLES = frozenset({"countersign", "possession",
 "photo-match"})` — the countersign and the door's two witness types
 (`witness.py`). `chain_fills(offer_id)` is what the chain has recorded as
@@ -536,7 +538,7 @@ keeps this shape):
 challenger uses.
 
 ### `ChainClearing(registry, ontology, *, beat_client, snapshot_of=None, **kw)`
-`MockClearing`'s checklist, then the beat: each accepted loop is asked of
+`BookClearing`'s checklist, then the beat: each accepted loop is asked of
 the contract's verifier (`beat.BeatClient.verdict`) and only then posted
 as one optimistic beat on `BeatClearing` with its bond; `chain_fills`
 defaults to the contract's `filled`. The receipt's reason names the beat
@@ -553,7 +555,7 @@ defaults to the contract's `filled`. The receipt's reason names the beat
 | `find_evidence(state, books, *, ontology=None, register_at=None, span=None)` | the `loop/` record behind a beat whose rebuilt submission hashes to its commitments |
 | `BeatClient(rpc_url, address, *, key=None, client=None)` | `.bond()`, `.submit(sub) -> (beat, receipt)`, `.challenge(beat, index, sub) -> reason`, `.finalize(beat)`, `.filled(offer_id) -> Fraction`, `.beat(beat) -> dict`, `.pending_holds/pending_claims(beat)`, `.held_against(offer_id, taker, at)`, `.item_claim(item, maker)`, `.verdict_of(sub, index, ...)`; web3 lazy (`chain` extra) |
 | `abi()` | the compiled `BeatClearing` (ABI, bytecode) from `loopmarket/contracts/BeatClearing.json` (inside the package); `LegVerifier.json` and, since 2026-09-29, `StatementVerifier.json` beside it, all three deployed by `deploy(...)` |
-| `clearing.ChainClearing(registry, ontology, *, beat_client, ...)` | `MockClearing`'s checklist, then the beat posted; the receipt's `reason` is `beat N` |
+| `clearing.ChainClearing(registry, ontology, *, beat_client, ...)` | `BookClearing`'s checklist, then the beat posted; the receipt's `reason` is `beat N` |
 
 ## 8c. `loopmarket.auction` — the sealed-proposal beat (P2, 2026-09-18)
 
@@ -1104,7 +1106,7 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `matches` | every feasible handoff in the fold (exit 1: none) |
 | | `status` | book and catalogue specs and roots, counts, settings in force |
 | solver | `loops` | profitable loops on a pinned snapshot; prints, never clears (exit 1: none) |
-| clearing | `clearing` | `MockClearing` over the fold; with `peers`, my book first absorbs the fold; fills committed to my book (exit 1: nothing cleared). `clear` is an alias |
+| clearing | `clearing` | `BookClearing` over the fold; with `peers`, my book first absorbs the fold; fills committed to my book (exit 1: nothing cleared). `clear` is an alias |
 | plumbing | `set [KEY [VALUE]]` | list / show / durably change a setting; unknown keys are errors; values validated at set time |
 | | `export` | every offer of my book as JSON lines of canonical records |
 | | `import [FILE]` | publish records from FILE or stdin; ids survive |

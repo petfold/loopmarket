@@ -12,7 +12,7 @@ from ontodag import OntoDAG
 from recordstore import DirBytesStore, MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
+    BookClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
 )
 from loopmarket.beat import BeatClient, submission
 from loopmarket.clearing import ChainClearing
@@ -214,7 +214,7 @@ def test_a_semantic_fault_is_reported_as_the_arbiters_and_nothing_is_sent(chain)
     from loopmarket.matching import Leg
     circ = Circulation((Leg(offers[1], (offers[0],)), Leg(offers[3], (offers[2],))))
     proposal = LoopProposal(circ, root, cat.root, "forger", NOW)
-    assert MockClearing(book, cat, clock=lambda: NOW).rehearse(proposal).reason.startswith("leg fails")
+    assert BookClearing(book, cat, clock=lambda: NOW).rehearse(proposal).reason.startswith("leg fails")
     client = BeatClient("", address, key=key, client=w3)
     beat, _ = client.submit(submission(proposal, snapshot))
     book.mark_filled(proposal.fills(), circ.loop_id, proposal.to_record()); book.commit()

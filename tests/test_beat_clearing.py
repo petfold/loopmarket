@@ -16,7 +16,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
+    BookClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
 )
 
 
@@ -88,7 +88,7 @@ def _cleared():
     book.publish_many(offers); book.commit()
     root = book.store.root
     snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
-    agent = SolverAgent(registry=book, ontology=cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+    agent = SolverAgent(registry=book, ontology=cat, clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t")
     receipts = agent.step(now=NOW)
     assert receipts and receipts[0].accepted
     return snapshot, root, book.store.get(f"loop/{receipts[0].loop_id}"), offers
@@ -262,7 +262,7 @@ def test_a_give_is_never_recorded_past_its_quantity(chain):
     for keep in ({0, 1, 2, 3}, {0, 4, 5, 6}):
         solo = OfferRegistry(RecordStore(MemoryBytesStore()))
         solo.publish_many([o for i, o in enumerate(offers) if i in keep]); solo.commit()
-        agent = SolverAgent(registry=solo, ontology=cat, clearing=MockClearing(solo, cat, clock=lambda: NOW), solver_id="t")
+        agent = SolverAgent(registry=solo, ontology=cat, clearing=BookClearing(solo, cat, clock=lambda: NOW), solver_id="t")
         receipts = agent.step(now=NOW)
         assert receipts and receipts[0].accepted
         rec = solo.store.get(f"loop/{receipts[0].loop_id}")
@@ -344,7 +344,7 @@ def test_a_give_used_up_before_the_redeploy_convicts_on_challenge(compiled):
     book.publish_many(offers); book.commit()
     root = book.store.root
     snapshot = OfferRegistry(RecordStore.at(root, book.store.blobs))
-    agent = SolverAgent(registry=book, ontology=cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+    agent = SolverAgent(registry=book, ontology=cat, clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t")
     receipts = agent.step(now=NOW)
     rec = book.store.get(f"loop/{receipts[0].loop_id}")
     legs, hashes, fills, makers, potentials = _legs(snapshot, rec)

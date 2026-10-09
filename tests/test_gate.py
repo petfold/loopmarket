@@ -18,7 +18,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Accept, Acceptance, Bond, Credential, MockClearing, OfferRegistry, Ontology, Requires, SolverAgent,
+    Accept, Acceptance, Bond, Credential, BookClearing, OfferRegistry, Ontology, Requires, SolverAgent,
     Statement, Thing, TimeWindow, give, want,
 )
 from loopmarket.clearing import LoopProposal
@@ -92,7 +92,7 @@ class World:
         return self.gate(**kw).faults(self.patient, self.dentist, _cat(), window=WINDOW, taken=1, whole=10)
 
     def clearing(self, held=None):
-        return MockClearing(self.book, _cat(), clock=lambda: NOW, span=SPANS.get,
+        return BookClearing(self.book, _cat(), clock=lambda: NOW, span=SPANS.get,
                             escrow_held=held, register_at=lambda rid, root: Register(RecordStore.at(root, self.blobs)))
 
     def proposal(self, roots=None):
@@ -207,7 +207,7 @@ def test_a_stale_pin_cannot_hide_a_revocation_and_a_root_cannot_drop_one():
                                  latest={ATTESTER: later.attester}.get)
     assert gate.faults(later.patient, later.dentist, _cat(), window=WINDOW, taken=1, whole=10) == []
     # clearing reads the feed too: the stale proposal is refused (U3)
-    clearing = MockClearing(w.book, _cat(), clock=lambda: NOW, span=SPANS.get,
+    clearing = BookClearing(w.book, _cat(), clock=lambda: NOW, span=SPANS.get,
                             register_at=lambda rid, root: Register(RecordStore.at(root, w.blobs)),
                             register_latest=newest)
     receipt = clearing.rehearse(w.proposal(roots=tuple(sorted((r, reg.root) for r, reg in pinned.items()))))

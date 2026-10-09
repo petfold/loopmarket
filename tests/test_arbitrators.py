@@ -19,7 +19,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Accept, Acceptance, Bond, MockClearing, OfferRegistry, Ontology, Requires, SolverAgent, Statement,
+    Accept, Acceptance, Bond, BookClearing, OfferRegistry, Ontology, Requires, SolverAgent, Statement,
     Thing, TimeWindow, give, want,
 )
 from loopmarket.arbitrators import Profile, accept_faults, admits, resolver_of
@@ -93,7 +93,7 @@ class World:
                              requirer=self.wants_ride, ontology=_cat(), gate=self.gate(**kw))
 
     def clearing(self):
-        return MockClearing(self.book, _cat(), clock=lambda: NOW,
+        return BookClearing(self.book, _cat(), clock=lambda: NOW,
                             register_at=lambda rid, root: Register(RecordStore.at(root, self.blobs)),
                             register_latest=self.registers.get, resolver_profile=self.profiles.get)
 

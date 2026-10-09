@@ -52,7 +52,7 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 
 from .beat import proposal_from_record
-from .clearing import LoopProposal, MockClearing
+from .clearing import LoopProposal, BookClearing
 from .reads import Reads, reads_of
 from .registry import OfferRegistry
 from .selection import Item, disjoint_capacity, item_of, pack
@@ -240,7 +240,7 @@ def outcome(beat: int, revealed, snapshot: OfferRegistry, ontology, *, now: int,
     is its older spelling), add the baseline's loops as the reserve bid,
     filter, select."""
     root = snapshot.store.root
-    clearing = MockClearing(snapshot, ontology, min_surplus=min_surplus, clock=lambda: now,
+    clearing = BookClearing(snapshot, ontology, min_surplus=min_surplus, clock=lambda: now,
                             reads=reads_of(reads, chain_fills=chain_fills))
     candidates, rejected = [], {}
     for solver, data in sorted(revealed, key=lambda r: r[0].lower()):

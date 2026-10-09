@@ -780,7 +780,7 @@ class Offer:
 
     Fields `bond`, `oracle` and `arbitrator` are part of the offer's
     identity, and clearing acts on them: deposits through `matching.meets`,
-    witness types through `MockClearing.VERIFIABLE_ORACLES`, the arbitrator
+    witness types through `BookClearing.VERIFIABLE_ORACLES`, the arbitrator
     as the leg's resolver.
     """
 

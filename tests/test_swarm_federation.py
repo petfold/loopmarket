@@ -56,7 +56,7 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
         from recordstore import BeeBytesStore, RecordStore, swarm_store
 
         from loopmarket import (
-            Aggregator, MockClearing, OfferRegistry, Ontology,
+            Aggregator, BookClearing, OfferRegistry, Ontology,
             SolverAgent, Thing, TimeWindow, give, want, maker_address,
         )
         from loopmarket.federation import CLEARING
@@ -138,7 +138,7 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
         self.assertEqual(clearing.commit(), m1.book_root)
 
         agent = SolverAgent(clearing, catalogue,
-                            MockClearing(clearing, catalogue),
+                            BookClearing(clearing, catalogue),
                             solver_id="fed-live-solver")
         cleared = [r for r in agent.step() if r.accepted]
         self.assertEqual(len(cleared), 1, cleared)
@@ -194,7 +194,7 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
 
         # and a second solver pass over the followed fold clears nothing
         second = SolverAgent(follower, catalogue,
-                             MockClearing(follower, catalogue),
+                             BookClearing(follower, catalogue),
                              solver_id="second")
         self.assertEqual([r for r in second.step() if r.accepted], [])
 

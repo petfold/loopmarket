@@ -496,12 +496,12 @@ nothing cleared.
 *The same in Python:*
 
 ```python
-from loopmarket import MockClearing, LoopProposal
+from loopmarket import BookClearing, LoopProposal
 
 for o in (grow, wheels, fix, learn):
     registry.publish(o)
 registry.commit()
-clearing = MockClearing(registry, catalogue, clock=lambda: NOW)
+clearing = BookClearing(registry, catalogue, clock=lambda: NOW)
 proposal = LoopProposal(loop, book_root=registry.store.root,
                         ontology_root=catalogue.root, solver="me", found_at=NOW)
 receipt = clearing.submit(proposal)
@@ -1088,7 +1088,7 @@ clear = OfferRegistry(RecordStore(blobs))
 clear.absorb(folded)
 assert clear.commit() == manifest.book_root      # clone-verified
 
-agent = SolverAgent(clear, catalogue, MockClearing(clear, catalogue, clock=lambda: NOW))
+agent = SolverAgent(clear, catalogue, BookClearing(clear, catalogue, clock=lambda: NOW))
 agent.step(now=NOW)                               # clears the triangle
 
 from loopmarket.federation import CLEARING

@@ -34,7 +34,7 @@ from .matching import Leg, Match, aggregate_legs, candidate_matches, check_aggre
 from .sigs import maker_address, recover_maker, sign_offer, verify_offer_sig
 from .dimensions import DimensionIndex, candidate_matches_indexed
 from .graph import Circulation, ExchangeGraph, Loop, find_circulations
-from .clearing import LoopProposal, MockClearing, Receipt, Clearing
+from .clearing import LoopProposal, BookClearing, MockClearing, Receipt, Clearing
 from .solver.agent import SolverAgent
 
 __version__ = "0.14.5"
@@ -56,5 +56,5 @@ __all__ = [
     "maker_address", "recover_maker", "sign_offer", "verify_offer_sig",
     "DimensionIndex", "candidate_matches_indexed", "ExchangeGraph", "Loop",
     "Circulation", "find_circulations", "Leg", "check_composition",
-    "LoopProposal", "MockClearing", "Receipt", "Clearing", "SolverAgent",
+    "LoopProposal", "BookClearing", "MockClearing", "Receipt", "Clearing", "SolverAgent",
 ]

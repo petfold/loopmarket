@@ -16,7 +16,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Acceptance, Bond, MockClearing, Offer, OfferRegistry, Ontology, Requires, SolverAgent, Thing,
+    Acceptance, Bond, BookClearing, Offer, OfferRegistry, Ontology, Requires, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 from loopmarket.clearing import LoopProposal
@@ -133,11 +133,11 @@ def test_the_solver_never_proposes_an_inadmissible_loop():
               want("covered", Thing(("lesson",)), 13, **V, v=5)]
     book.publish_many(offers); book.commit()
     assert not any(m.give.maker == "cheap" and m.want.maker == "b" for m in candidate_matches(offers, cat, now=NOW))
-    agent = SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t", min_surplus=0.0)
+    agent = SolverAgent(book, cat, clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t", min_surplus=0.0)
     assert [r.accepted for r in agent.step(now=NOW)] == [True]
     assert book.is_filled(offers[2].offer_id) and not book.is_filled(offers[1].offer_id)
     forged = Loop((Match(give=offers[1], want=offers[0]), Match(give=offers[3], want=offers[4])))
-    verdict = MockClearing(book, cat, clock=lambda: NOW).rehearse(LoopProposal(forged, book.store.root, cat.root, "t", NOW))
+    verdict = BookClearing(book, cat, clock=lambda: NOW).rehearse(LoopProposal(forged, book.store.root, cat.root, "t", NOW))
     assert not verdict.accepted
 
 
@@ -164,7 +164,7 @@ def test_the_chain_is_the_authority_on_a_deposit_when_an_escrow_is_consulted():
         driver_wants = want("d1", Thing(("apple",), 1), 46, **V)   # covers what d1 gives (per node)
         amara_gives = give("amara", Thing(("apple",), 1), 28, **V)
         book.publish_many([amara, rich, driver_wants, amara_gives]); book.commit()
-        clearing = MockClearing(book, cat, clock=lambda: NOW, escrow_held=lambda oid: held_qty if oid == rich.offer_id else 0)
+        clearing = BookClearing(book, cat, clock=lambda: NOW, escrow_held=lambda oid: held_qty if oid == rich.offer_id else 0)
         agent = SolverAgent(registry=book, ontology=cat, clearing=clearing, solver_id="t",
                             escrow_held=clearing.escrow_held)
         receipts = agent.step(now=NOW)

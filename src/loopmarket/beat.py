@@ -21,7 +21,7 @@ beat from the chain (pins, the committed hashes, the pending fills), finds
 the `loop/` record whose rebuilt submission hashes to exactly those
 commitments — in the submitter's announced clearing book, under the beat's
 book root — rebuilds the proposal (`proposal_from_record`), re-derives
-every leg off chain with the same `MockClearing` checklist that cleared it
+every leg off chain with the same `BookClearing` checklist that cleared it
 (U3), asks the contract's own verifier for its verdict on each leg through
 `eth_call` sent as the contract itself (free, `BeatClient.verdict`), and
 sends the challenge only where the contract would convict. A leg the
@@ -49,7 +49,7 @@ import json
 from dataclasses import dataclass
 from fractions import Fraction
 
-from .clearing import LoopProposal, MockClearing
+from .clearing import LoopProposal, BookClearing
 from .graph import Circulation
 from .matching import Leg
 from .reads import Reads
@@ -471,7 +471,7 @@ def challenge_beat(client: "BeatClient", beat: int, books, ontology, *, now: int
         if not offer.composed:
             left = min(left, q(offer.thing.qty) - client.filled(oid))
         available[oid] = left
-    mock = MockClearing(ev.snapshot, ontology, clock=lambda: now, register_at=register_at, span=span)
+    mock = BookClearing(ev.snapshot, ontology, clock=lambda: now, register_at=register_at, span=span)
     overall = mock.rehearse(proposal)
     # each leg re-derived under the gate over the registers the beat pins,
     # as clearing derived it (a credential leg meets nothing without it, U7)

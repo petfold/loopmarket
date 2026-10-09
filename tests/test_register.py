@@ -11,7 +11,7 @@ from ontodag import OntoDAG
 from recordstore import ABSENT, MemoryBytesStore, RecordStore, verify_proof
 
 from loopmarket import (
-    Aggregator, Credential, MockClearing, OfferRegistry, Ontology, Requires, Thing, TimeWindow, give, want,
+    Aggregator, Credential, BookClearing, OfferRegistry, Ontology, Requires, Thing, TimeWindow, give, want,
 )
 from loopmarket.announce import REGISTER, open_announcements
 from loopmarket.beat import proposal_from_record
@@ -97,7 +97,7 @@ def _two_leg_book():
 def test_a_proposal_missing_a_named_registers_root_is_refused():
     cat, book, offers, loop = _two_leg_book()
     assert named_registers(offers) == {ROOT}
-    clearing = MockClearing(book, cat, clock=lambda: NOW)
+    clearing = BookClearing(book, cat, clock=lambda: NOW)
     bare = LoopProposal(loop, book.store.root, cat.root, "t", NOW)
     assert clearing.rehearse(bare).reason == f"unpinned register: {ROOT}"
     empty = LoopProposal(loop, book.store.root, cat.root, "t", NOW, ((ROOT, ""),))

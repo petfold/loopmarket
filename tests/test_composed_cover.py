@@ -13,7 +13,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Accept, MockClearing, OfferRegistry, Ontology, RequiredLeg, Requires, SolverAgent, Thing, TimeWindow, give,
+    Accept, BookClearing, OfferRegistry, Ontology, RequiredLeg, Requires, SolverAgent, Thing, TimeWindow, give,
     want,
 )
 from loopmarket.escrow import cover_predicate
@@ -83,7 +83,7 @@ def test_the_solver_composes_the_legs_and_the_circulation_clears():
     book.commit()
     legs = list(composed_legs(book.offers(), cat, now=NOW))
     assert any([g.maker for g in leg.gives] == [SELLER, INSPECTOR, INSURER] for leg in legs)
-    receipts = SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t").step(now=NOW)
+    receipts = SolverAgent(book, cat, clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t").step(now=NOW)
     assert [r.accepted for r in receipts] == [True]
     for key in ("want", "car", "inspect", "insure"):
         assert book.is_filled(o[key].offer_id)

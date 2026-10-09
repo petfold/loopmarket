@@ -10,7 +10,7 @@ import pytest
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Aggregator, GeoDisc, MockClearing, OfferRegistry, Ontology,
+    Aggregator, GeoDisc, BookClearing, OfferRegistry, Ontology,
     SolverAgent, Thing, TimeWindow, give, want,
 )
 from loopmarket.federation import CLEARING
@@ -98,7 +98,7 @@ def test_convergence_gate():
     assert clearing_reg.commit() == m_a.book_root
     agent = SolverAgent(
         clearing_reg, ONT,
-        MockClearing(clearing_reg, ONT, clock=lambda: NOW),
+        BookClearing(clearing_reg, ONT, clock=lambda: NOW),
         solver_id="fed-solver",
     )
     receipts = agent.step(now=NOW)
@@ -118,7 +118,7 @@ def test_convergence_gate():
 
     # a second solver pass over the new fold clears nothing
     reg2 = OfferRegistry(RecordStore(blobs, root=m_a2.book_root))
-    agent2 = SolverAgent(reg2, ONT, MockClearing(reg2, ONT, clock=lambda: NOW))
+    agent2 = SolverAgent(reg2, ONT, BookClearing(reg2, ONT, clock=lambda: NOW))
     assert agent2.step(now=NOW) == []
 
 
@@ -132,7 +132,7 @@ def test_follower_reconstructs_from_roots_alone():
     m1 = agg.fold()
     clearing_reg = OfferRegistry(RecordStore(blobs, root=m1.book_root))
     agent = SolverAgent(clearing_reg, ONT,
-                        MockClearing(clearing_reg, ONT, clock=lambda: NOW))
+                        BookClearing(clearing_reg, ONT, clock=lambda: NOW))
     receipts = agent.step(now=NOW)
     agg.announce("clearing-0", clearing_reg.store, role=CLEARING)
     manifest = agg.fold()
@@ -347,7 +347,7 @@ def test_a_hostile_book_cannot_stop_the_fold():
 def _cleared(blobs, base_root, solver_id):
     """A clearing book: one solver clears the fold at `base_root`."""
     reg = OfferRegistry(RecordStore(blobs, root=base_root))
-    agent = SolverAgent(reg, ONT, MockClearing(reg, ONT, clock=lambda: NOW),
+    agent = SolverAgent(reg, ONT, BookClearing(reg, ONT, clock=lambda: NOW),
                         solver_id=solver_id)
     receipts = agent.step(now=NOW)
     assert len(receipts) == 1 and receipts[0].accepted

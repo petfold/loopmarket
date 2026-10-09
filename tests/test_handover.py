@@ -13,7 +13,7 @@ same day the example was put through)."""
 from ontodag import OntoDAG
 
 from loopmarket import (
-    MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow,
+    BookClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow,
     give, want,
 )
 from loopmarket.matching import check_match
@@ -94,7 +94,7 @@ def test_the_shop_plus_courier_leg_clears_as_a_circulation():
     ])
     book.commit()
     agent = SolverAgent(registry=book, ontology=cat,
-                        clearing=MockClearing(book, cat, clock=lambda: NOW),
+                        clearing=BookClearing(book, cat, clock=lambda: NOW),
                         solver_id="t")
     receipts = agent.step()
     assert len(receipts) == 1 and receipts[0].accepted, receipts
@@ -124,5 +124,5 @@ def test_without_the_courier_nothing_clears():
     ])
     book.commit()
     agent = SolverAgent(registry=book, ontology=cat,
-                        clearing=MockClearing(book, cat, clock=lambda: NOW), solver_id="t")
+                        clearing=BookClearing(book, cat, clock=lambda: NOW), solver_id="t")
     assert agent.step() == []                        # the box stays at the shop

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 
-from ..clearing import MockClearing
+from ..clearing import BookClearing
 from ..reads import Reads
 from ..registry import LegRecord
 from ..schema import q
@@ -199,7 +199,7 @@ def cmd_outcome(args, session, out):
 
 
 def cmd_clearing(args, session, out):
-    """Run the clearing house locally: MockClearing over the fold, fills
+    """Run the clearing house locally: BookClearing over the fold, fills
     committed to my book. Named for what it does; `clear` means delete on
     every terminal, and publishing is not clearing (Peter, 2026-09-12);
     `clear` is still accepted, silently. With peers, my book first absorbs
@@ -213,7 +213,7 @@ def cmd_clearing(args, session, out):
     book = session.book
     ontology = session.catalogue
     agent = SolverAgent(book, ontology,
-                        MockClearing(book, ontology, clock=lambda: now, **_clearing_reads(session)),
+                        BookClearing(book, ontology, clock=lambda: now, **_clearing_reads(session)),
                         solver_id="loop-cli", min_surplus=0.0, span=_calendar_span, **_gate_reads(session))
     receipts = agent.step(now=now)
     cleared = 0

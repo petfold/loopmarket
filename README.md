@@ -47,7 +47,7 @@ Python:
 
 ```python
 from recordstore import MemoryBytesStore, RecordStore
-from loopmarket import (Ontology, OfferRegistry, MockClearing,
+from loopmarket import (Ontology, OfferRegistry, BookClearing,
                         SolverAgent, Thing, give, want, ...)
 
 ontology = Ontology().load({"produce": [], "vegetable-box": ["produce"], ...})
@@ -55,7 +55,7 @@ registry = OfferRegistry(RecordStore(MemoryBytesStore()))
 registry.publish_many([...])          # gives and wants, one uniform form
 registry.commit()
 
-agent = SolverAgent(registry, ontology, MockClearing(registry, ontology))
+agent = SolverAgent(registry, ontology, BookClearing(registry, ontology))
 agent.step()                          # snapshot → match → candidates → select → propose; clearing re-verifies
 ```
 
@@ -63,7 +63,7 @@ agent.step()                          # snapshot → match → candidates → se
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 337 tests (three need a live Bee node, sixty the evm extra, one swarmfs — skipped per test without them)
+python3 -m pytest tests/ -v           # 338 tests (three need a live Bee node, sixty the evm extra, one swarmfs — skipped per test without them)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower

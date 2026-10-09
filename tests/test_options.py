@@ -13,7 +13,7 @@ import pytest
 from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
-from loopmarket import MockClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want
+from loopmarket import BookClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want
 from loopmarket.gate import CounterpartyGate
 from loopmarket.matching import check_match
 
@@ -70,7 +70,7 @@ class Market:
 
     def step(self, now):
         cat = _cat()
-        return SolverAgent(self.book, cat, clearing=MockClearing(self.book, cat, clock=lambda: now),
+        return SolverAgent(self.book, cat, clearing=BookClearing(self.book, cat, clock=lambda: now),
                            solver_id="t").step(now=now)
 
     def exercise_offers(self, qty=1, unit="lease", nonce=10, maker=H, price=150):
@@ -179,7 +179,7 @@ def test_several_options_are_exercised_together_as_one_composed_want():
     book.commit()
 
     def step(now):
-        return SolverAgent(book, cat, clearing=MockClearing(book, cat, clock=lambda: now),
+        return SolverAgent(book, cat, clearing=BookClearing(book, cat, clock=lambda: now),
                            solver_id="t").step(now=now)
 
     options = step(NOW)
