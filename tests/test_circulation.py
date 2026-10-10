@@ -90,6 +90,25 @@ def test_check_composition_moves_the_thing_along_the_operator():
     assert [leg.key for leg in composed_legs([box, run, at_door], cat, now=NOW)] == [leg.key]
 
 
+def test_a_thing_that_describes_nothing_composes_into_nothing():
+    """A box at two places that share no point describes nothing: ontodag
+    refuses to file it, and `check_match` matches it against nothing.
+    Moved by two couriers, each picking it up at one of the two places, it
+    lost both and composed into a leg all the same; the composition now
+    asks of the thing what every other check asks of a give."""
+    cat = city()
+    nowhere = give("grocer", Thing(("vegetable-box", "geo(sp3e)", "geo(sp3g)")), 5, **V)
+    east = give("c1", Thing(("transport", "from(sp3e)", "to(door)")), 2, **V)
+    west = give("c2", Thing(("transport", "from(sp3g)", "to(door)")), 2, **V)
+    at_door = want("buyer", Thing(("vegetable-box", "door")), 8, **V)
+    assert not cat.consistent(nowhere.thing.concepts)
+    assert check_composition(at_door, (nowhere, east, west), cat, now=NOW) is None
+    assert list(composed_legs([nowhere, east, west, at_door], cat, now=NOW)) == []
+    somewhere = give("grocer", Thing(("vegetable-box", "geo(sp3e)")), 5, **V)
+    assert cat.consistent(somewhere.thing.concepts)
+    assert check_composition(at_door, (somewhere, east), cat, now=NOW) is not None
+
+
 def test_the_hunt_finds_the_composed_circulation_deterministically():
     cat = city()
     offers = delivery_book()

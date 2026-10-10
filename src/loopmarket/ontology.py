@@ -576,7 +576,7 @@ class Ontology:
         where and when it changes hands).
         """
         offered, wanted = list(offered), list(wanted)
-        if not self._consistent(offered) or not self._consistent(wanted):
+        if not self.consistent(offered) or not self.consistent(wanted):
             return False                # a conjunction that describes nothing
         classes = {o: self.handover_class(o) for o in offered}
         ops_o = {o: h for o in offered if (h := self.operator_of(o))}
@@ -620,15 +620,16 @@ class Ontology:
         return all(any(self.covers(c, d) for d in concepts)
                    for t in operator_terms for c in self.argument(t))
 
-    def _consistent(self, concepts) -> bool:
+    def consistent(self, concepts: Iterable[str]) -> bool:
         """Can the conjunction be held at all? Two coordinates of one head
         that provably share no point — `from(u2e4)` and `from(u2e5)`, a
         place under `u2e4x` and the cell `u2f` — describe nothing: ontodag
         refuses to file such an item, so the index never holds it, and the
-        exact check agrees by matching it against nothing (recall-exactness
-        both ways). Same-head descriptive terms likewise. Decided by
-        ontodag's pairwise `overlaps` (terms or nodes either side); a pair
-        it cannot compare fails closed."""
+        exact checks agree by matching it against nothing (recall-exactness
+        both ways): `satisfies` asks it of both sides, `check_composition`
+        of the thing it moves. Same-head descriptive terms likewise.
+        Decided by ontodag's pairwise `overlaps` (terms or nodes either
+        side); a pair it cannot compare fails closed."""
         by_class: dict[str, list[str]] = {}
         for c in concepts:
             cls = self.handover_class(c)

@@ -409,8 +409,10 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology, *
     does not; `Ontology.accepts`). Each operator's input must be comparable
     with the thing's coordinate as it stands (one contains the other, the
     handover rule), and its output replaces that coordinate; the thing so
-    moved must then satisfy the want like any give. Every give passes
-    `check_match`'s gates against the want (an operator without the
+    moved must then satisfy the want like any give. A thing that describes
+    nothing (two places that share no point) composes into nothing, though
+    moving it may leave neither place in what is checked last. Every give
+    passes `check_match`'s gates against the want (an operator without the
     quantity gate: it moves a lot rather than being one). Clearing re-runs
     this; nothing is trusted (U3)."""
     reads = reads_of(reads, available=available, held=held, gate=gate)
@@ -419,6 +421,8 @@ def check_composition(want: Offer, gives: Iterable[Offer], ontology: Ontology, *
         return None
     thing, operators = gives[0], gives[1:]
     if not _gates(thing, want, ontology, now=now, reads=reads, legs_checked=True):
+        return None
+    if not ontology.consistent(thing.thing.concepts):
         return None
     derived = list(thing.thing.concepts)
     for op in operators:

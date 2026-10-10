@@ -221,6 +221,7 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 | `.known(concept)` | vocabulary membership: a node, or a parametric term of a declared head the DAG can order — incl. a role term naming a place, region or floor node (ontodag #15); a name outside the head's dimension fails closed |
 | `.covers(wanted, offered)` | `offered` fits within `wanted` (equal or descendant); **False for unknown names** (U7) |
 | `.satisfies(offered, wanted)` | every wanted term answered: a category or descriptive term by an offered concept that fits within it (the want is the wider cone); a **handover coordinate** — a bare geo/time term or a term of a role under a marked dimension — by an offered coordinate of the same head that fits within it *or contains it*; an **operator term** (`transport(bicycle)`, a category under `operator`) by an offered operator term whose category fits within it and whose argument — the operator's own want — contains the wanted argument constraint by constraint (`bicycle ⊑ small-item`; an offered constraint the want does not answer refuses); an operator term whose argument the catalogue cannot read (`transport(unicorn)`) is met by nothing and meets nothing (U7); a head the want does not name constrains nothing; a conjunction with provably disjoint same-head terms describes nothing, on either side |
+| `.consistent(concepts)` | can the conjunction be held at all: `False` when two coordinates of one head, or two same-head descriptive terms, provably share no point (ontodag's `overlaps`; a pair it cannot compare fails closed) — such a conjunction describes nothing, ontodag refuses to file it, and `satisfies` and `check_composition` (of the thing it moves) match it against nothing |
 | `.declare_roles({head: base})` | seed convenience: put each head under its base dimension head — a role of that dimension, whose parameters may name its nodes (ontodag #15); a catalogue write. |
 | `.declare_handover(heads)` | mark base dimension heads (`geo`, `time`) as handover coordinates under the `handover` marker; roles under them inherit it; prelude adopted on demand |
 | `.declare_descriptive(heads)` | opt a geo/time head out (`made_in`, `made`) under the `descriptive` marker: its terms describe the thing and match one-way |
@@ -427,7 +428,7 @@ replaces it; the thing so moved must satisfy the want; every give passes
 gate). An argument-only operator (`insure(...)`, `inspect(...)`, declared
 by `Ontology.declare_argument_operator`) attaches to the thing when its
 argument accepts it and moves nothing; a want's `requires.legs` are
-checked here (`legs_faults`). Re-run by clearing (U3).
+checked here (`legs_faults`). A thing that describes nothing (`Ontology.consistent`) composes into nothing, though the moves may leave neither of its places in the moved thing. Re-run by clearing (U3).
 
 ### `composed_legs(offers, ontology, *, now, max_hops=2, available=None, held=None, gate=None) -> Iterator[Leg]`
 Baseline composition search: every want × thing give that does not already

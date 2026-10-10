@@ -156,6 +156,14 @@ where a chain is set (below); none changes a record byte or an id.
   index never gave such a want a candidate; the difference turned up while
   checking that the index finds what the give × want product finds (the
   review's item 2).
+- **A thing that describes nothing composed into a leg.** A give at two
+  places that share no point (`geo(sp3e) geo(sp3g)`) satisfies nothing,
+  and ontodag refuses to file it; but moved by two couriers, each picking
+  it up at one of the two places, it lost both, and `check_composition`
+  passed the leg, because it checked only the moved thing. It now asks of
+  the thing what every other check asks of a give:
+  `Ontology.consistent(concepts)`, public now (it was the private
+  `_consistent` behind `satisfies`).
 
 ## [0.14.5] — 2026-10-09
 
