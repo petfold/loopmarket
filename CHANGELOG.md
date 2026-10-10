@@ -25,6 +25,17 @@ solver apart from the rest of loopmarket.
 
 ### Changed
 
+- **The index files an older offer's bare cell under its current spelling
+  when ontodag writes cells by their own name** (ontodag 0.31, its review
+  question 14: in a role of geo a cell is `from(geo(u2e4x))` and a bare
+  word a place). Such an offer keeps its spelling and id; ontodag 0.31
+  refuses to file a bare cell as a new name, so without this the index,
+  now the one engine, would leave the offer out and nothing would match
+  it. New: `Ontology.is_geo_role`, `cell_term`, `current_spelling`;
+  `bare` reads both spellings. Under ontodag 0.30 nothing is respelled.
+  Ready on main so that ontodag 0.31's release gate, which runs this
+  suite against the candidate, finds those offers.
+
 - **One matching engine: ontodag's index** (the review's item 2, decided
   by Peter 2026-10-10, option A). `candidate_matches`, `aggregate_legs`,
   `parts_legs` and `composed_legs` no longer try every give against every

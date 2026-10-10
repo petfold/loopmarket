@@ -416,7 +416,9 @@ class Ontology:
 
     def bare(self, term: str) -> str:
         """A role term respelled as the bare coordinate it denotes:
-        `from(my_home)` → `my_home` (a node), `to(u2e4)` → `geo(u2e4)`."""
+        `from(my_home)` → `my_home` (a node), `to(u2e4)` → `geo(u2e4)`, and
+        `to(geo(u2e4))`, a cell written by its own name (ontodag 0.31), the
+        same."""
         split = _dims.split_term(term)
         if split is None:
             return term
@@ -424,7 +426,39 @@ class Ontology:
         base = self.base_head(head)
         if base is None or base == head or param in self.dag.nodes:
             return param if param in self.dag.nodes else term
+        inner = _dims.split_term(param)
+        if inner is not None and inner[0] == base:
+            return param
         return f"{base}({param})"
+
+    def is_geo_role(self, head: str) -> bool:
+        """Is `head` a role of `geo` (`from`, `to`, `where`) under an
+        ontodag that writes a cell in such a role by its own name,
+        `from(geo(u2e4x))`, and reads a bare word there as a place (0.31,
+        its review question 14)? Under an older ontodag, never: it writes
+        cells bare, and nothing here respells them."""
+        geo = getattr(_dims, "GEO_HEAD", None)
+        return geo is not None and head != geo and self.base_head(head) == geo
+
+    def cell_term(self, head: str, cell: str) -> str:
+        """`head`'s term for the geo cell `cell`: `from(geo(u2e4x))` in a
+        role of geo (ontodag 0.31), else `head(cell)`."""
+        if self.is_geo_role(head):
+            return f"{head}({_dims.GEO_HEAD}({cell}))"
+        return f"{head}({cell})"
+
+    def current_spelling(self, term: str) -> str:
+        """`term` as the installed ontodag writes it. An offer made before
+        ontodag 0.31 may spell a cell in a role of geo as a bare word
+        (`from(sp3)`), which its id hashes and which still means the cell,
+        but which 0.31 refuses to file as a new name; the index files
+        `from(geo(sp3))` instead, so the offer is still found. Any other
+        term, and any term under an older ontodag, is returned as it is."""
+        split = _dims.split_term(term)
+        if split is None or "(" in split[1] or split[1] in self.dag.nodes \
+                or not self.is_geo_role(split[0]):
+            return term
+        return self.cell_term(split[0], split[1])
 
     def handover_heads(self) -> set[str]:
         """The base heads directly under the `handover` marker."""

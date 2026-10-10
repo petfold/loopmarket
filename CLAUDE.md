@@ -380,8 +380,12 @@ offers retired after circulator's benchmark and the tests moved to v4+
 (old records stay readable, pinned by the golden corpus), and
 `MockClearing` renamed `BookClearing` (item 12, built); the
 phase gates restated for what they still guard (item 17, under "Roadmap
-(state)"). Every review item for loopmarket is decided, and the decided
-items are being built: items 5, 10, 11, 4, 9, 12, 17 and 2 so far. Of the
+(state)"). Every review item for loopmarket is decided and built
+(items 5, 10, 11, 4, 9, 12, 17 and 2); what needs ontodag 0.31 (the CLI
+writing a cell in a role of geo by its own name, ontodag's public layer
+for the catalogue and the config) waits on the branch `ontodag-0.31`,
+while the index's respelling of older offers' bare cells is on main,
+version tolerant, so ontodag 0.31's release gate finds them. Of the
 tests the review suggested (§7, question 23), loopmarket's half of
 suggestions 3, 4 and 9 is built: the golden corpus of record bytes
 (`tests/test_golden_records.py`), well-formed hostile records
@@ -390,7 +394,8 @@ aggregated legs (`tests/test_watch.py`) and the examples
 (`tests/test_examples.py`). Two strict expected failures there pin open
 faults: a stranger whose address sorts first displaces a party's notice,
 cure or case record in every reader's fold, and `watch` reports a case
-record from anyone.
+record from anyone; the first is ontodag's question 26, and rival clearing
+books under a chain question 25, both put to Peter.
 
 ## Conventions
 

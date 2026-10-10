@@ -139,3 +139,59 @@ than the indexed generator with the same matches (§6).
 - **Vocabulary (2026-09-07): loop, cycle, circulation.** A *loop* is any cleared circulation — the essay's word and the name in code (`Loop`, `LoopProposal`, `loop/`, `loop_id`). A *cycle* (or simple loop) is the strict circle, which is all the P0 solver can find and all today's `Loop` can hold; use it wherever the reasoning depends on going round (products around it, negative cycles, cycle packing). *Circulation* is the technical term when the flow theory is invoked (`docs/plans/P2-loop-selection.md` §11). Audit of the corpus done 2026-09-07; new text follows the rule.
 - **Vocabulary (2026-10-01): arbitrator, resolver, adjudicator.** An *arbitrator* decides a claim in the default form — chosen by the parties, its award final (the offer's `arbitrator` field, `loop arbitrators`); the *resolver* is the escrow's word for whichever address may `hold` and `resolve` a reservation (an arbitrator's key or a contract); *adjudicator* and *arbiter* name factbond's ladder rungs only. A *contact card* (`key/<address>`, `loop contact-card`) carries nothing but a key's public key, signed.
 - **Vocabulary (renamed 2026-09-07): clearing ≠ settlement.** *Clearing* is the atomic commit that turns a solver's proposal into fixed obligations (`clearing.py`, `MockClearing`, U3). *Settlement* is the makers actually delivering — P3's oracles, bonds and factbond. *Commit* is only the recordstore/chain write. The `loopmarket.settlement` import alias, kept one release, was removed 2026-09-14. `P2-clearing-pricing.md` (ex `P2-settlement-pricing.md`) follows the rename in full; the rest of the plan corpus under `docs/plans/` and `ARCHITECTURE.md` predate it and still say "settlement" for the clearing step — read them with that mapping, and use the new words in anything you write. factbond and ontodag's docs were updated the same day.
+
+## 2026-10-10: the review's loopmarket items built, Peter away
+
+Peter decided ontodag's review questions 11 to 23 on 2026-10-09/10;
+loopmarket's share (items 2, 4, 9, 10, 11, 12, 17 and its half of the
+suggested tests) was built that night by agents in worktrees, each branch
+verified by a full `CI=1` suite on this machine and merged here. What each
+change does is in CHANGELOG [Unreleased]; why, in ontodag's
+`docs/plans/REVIEW_2026-10.md` §8.
+
+**Order and merges.** The CLI split (item 10) went first, as decided, and
+`MockClearing` became `BookClearing` right after it (alias kept for
+circulator). Three branches then ran in parallel from that point: items
+11, 4 and 9; the golden corpus and the v1/v2 retirement (item 12, with
+circulator's benchmark moved to v4 offers on its own main first); and the
+hostile-record and `watch` tests, the examples in CI, the dead code and
+the gates (item 17). Item 2 (one engine) started once items 4, 9 and 11
+were in. Merging them surfaced what no branch saw alone: item 9's new
+federation tests built v2 offers the retirement refuses, and the dead-code
+commit dropped the `datetime` import the retirement's teaching error had
+started to use (git merged it cleanly; pyflakes caught it).
+
+**Found and fixed here, beyond the items.**
+- The fold merged each maker book into the growing union, and a merge
+  with no common base costs about the size of both sides: N books cost N²
+  (400 books 10.8 s, the time per book doubling with N). Rounds of pairs,
+  earlier books on the left, keep the root and cost N log N (0.84 s).
+- An option on a retired v1/v2 offer still cleared, writing a hold no
+  exercise could take; the gate refuses it.
+- Matching on `time(...)` and `geo(...)` terms (circulator's books after
+  the retirement) was 30 times slower than on the old fields, nearly all
+  in ontodag re-parsing typed values and re-canonicalizing `is_below`'s
+  arguments; ontodag main now caches both (19.6 s → 5.4 s at 400 offers),
+  and its `deepcopy`, most of the index's build, copies counts instead of
+  recounting (92 → 30 ms for the core pack).
+
+**Measured (G3, item 2).** The table is in
+`docs/plans/ontodag-coupling.md` §5: at 200 offers a side the index
+matches in a tenth of the product's time on both catalogues; below about
+40 a side on the core pack the product was faster, by about 85 ms a step,
+mostly the catalogue copy (since reduced upstream).
+
+**Put to Peter.** Rival clearing books under a chain (ontodag's question
+25) and a stranger displacing a party's notice, cure or case record in the
+fold (question 26, pinned by a strict expected failure). Also open, from
+the agents' reports: `watch` reports case records from anyone; handoffs on
+multi-give legs reach only the first give; handoffs sealed under the wrong
+sender name when makers share one home; a self-bonded statement may use
+another maker's deposit; the ask/bid synonyms, unused but promised.
+
+**Waiting on ontodag 0.31**, on branch `ontodag-0.31`: the CLI writing a
+cell in a role of geo by its own name and refusing a bare word that is no
+place, and the catalogue and config through ontodag's public layer. The
+index's respelling of older offers' bare cells is on main, version
+tolerant, so ontodag 0.31's release gate (which runs this main) finds
+those offers.
