@@ -38,9 +38,10 @@ def _chain_fills(session):
 
 def _reads(session) -> Reads:
     """What the hunt reads beyond the book, where this session names it:
-    the clearing contract's fills and the escrow's holdings (`Reads`, each
-    None when its contract is not set)."""
-    return Reads(chain_fills=_chain_fills(session), escrow_held=_escrow_held(session))
+    the clearing contract's fills and the escrow's holdings and free shares
+    (`Reads`, each None when its contract is not set)."""
+    return Reads(chain_fills=_chain_fills(session), escrow_held=_escrow_held(session),
+                 escrow_free=_escrow_free(session))
 
 
 def _escrow_client(session):
@@ -141,6 +142,16 @@ def _escrow_held(session):
         return None
     from ..escrow import held_units
     return held_units(_escrow_client(session))
+
+
+def _escrow_free(session):
+    """`EscrowClient.free` in asset units when an escrow contract is set:
+    what of a deposit no reservation holds, all a statement's floor may
+    count (question 27); else None."""
+    if not (_configured("escrow") or "").startswith("chain:"):
+        return None
+    from ..escrow import free_units
+    return free_units(_escrow_client(session))
 
 
 _MEMORY_SEALED = None

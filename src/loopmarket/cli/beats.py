@@ -18,7 +18,8 @@ from .spellings import _calendar_span, _seconds_or_zero, duration_s
 def cmd_finalize(args, session, out):
     """Record a beat's fills on chain once its challenge window has closed
     — and, with an escrow set, reserve on it the share of every deposit the
-    loop's legs rely on (2026-09-19): the fills becoming the chain's
+    loop's legs rely on (2026-09-19), and the floor of every statement a
+    leg relies on, on the deposit backing it (question 27): the fills becoming the chain's
     authority is the moment the deposits behind them are locked per fill;
     the loop record is found as `challenge` finds it, the reservation built
     by `escrow.reservations_for`, `claim` the period after the window in
@@ -72,8 +73,10 @@ def cmd_finalize(args, session, out):
                            claim_only=r["claim_only"], min_challenge=r["min_challenge"],
                            deductible=r["deductible"], covers=r["covers"],
                            min_ruling=r["min_ruling"])
+            floor = f" (the floor of statement {r['statement'][:12]}, slot {r['loop_id'][:16]}…)" \
+                if r.get("statement") else ""
             print(f"reserved {_num(Fraction(r['amount'], 10 ** 18))} behind {r['offer_id'][:16]}… "
-                  f"for {r['wanter']}", file=out)
+                  f"for {r['wanter']}{floor}", file=out)
         except Exception as exc:  # noqa: BLE001 — a reservation the contract refuses is reported, not fatal
             print(f"loop: {r['offer_id'][:16]}…: not reserved: {exc}", file=_err())
     if not reservations:

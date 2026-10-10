@@ -53,8 +53,9 @@ class CounterpartyGate:
     about a key (`statements(subject)`), the registers at their pinned roots
     (`registers`: id -> `Register`), the clock, how to read a handover
     window from a `time(...)` term's text (`span`), the offers a statement's
-    deposit may name (`offer(id)`), and what the escrow holds behind a
-    deposit (`held`: offer id -> quantity in the asset's unit)."""
+    deposit may name (`offer(id)`), what the escrow holds behind a deposit
+    (`held`: offer id -> quantity in the asset's unit) and what of it no
+    reservation holds (`free`, likewise: step 6 counts only that)."""
 
     statements: Callable[[str], Iterable[Statement]]
     registers: Mapping[str, object]
@@ -76,10 +77,13 @@ class CounterpartyGate:
     # arbitrators by property (§7a): a resolver address -> its chain record
     # (`arbitrators.Profile`: who rules, what a reversal forfeits, reversals)
     profile: Callable[[str], object | None] | None = None
+    # what of a deposit no reservation holds (question 27): held, less every
+    # fill's share and every floor already reserved on it
+    free: Mapping[str, Fraction] | None = None
 
     @classmethod
     def over(cls, book, registers: Mapping[str, object], *, now: int, span=None, held=None,
-             capacity=None, latest=None, profile=None) -> "CounterpartyGate":
+             capacity=None, latest=None, profile=None, free=None) -> "CounterpartyGate":
         """The gate over an offer book's presented statements, offers and
         holds; `capacity` (offer id -> what is left) defaults to the book's."""
         def statements(subject: str):
@@ -98,7 +102,8 @@ class CounterpartyGate:
                 return None
         return cls(statements, dict(registers), int(now), span, offer, held,
                    lambda oid, holder: book.held_by(oid, holder, now), capacity or left, book.is_withdrawn,
-                   lambda h, maker, oid: book.item_claimed(h, maker, now, offer_id=oid), latest, profile)
+                   lambda h, maker, oid: book.item_claimed(h, maker, now, offer_id=oid), latest, profile,
+                   free)
 
     # -- items ---------------------------------------------------------------------
 
@@ -327,22 +332,57 @@ class CounterpartyGate:
 
     def _deposit_faults(self, entry: Credential, s: Statement, requirer: Offer, counterparty: Offer,
                         ontology: Ontology, *, taken=None, whole=None) -> list[str]:
+        """Step 6. The deposit is a bond in the escrow the statement names,
+        put up by whoever stands behind the statement, its subject or its
+        issuer (question 27, decided by Peter 2026-10-10: a practice backs
+        what it attests about its dentists; nobody borrows another maker's
+        deposit, which a self-bonded statement naming the deposit of a real
+        dentist did); and what of it is free, after this fill's own share,
+        covers the floor, priced at the requirer's acceptance."""
         oid, escrow = s.deposit
         backing = self.offer(oid)
         bond = backing.bond if backing is not None and backing.v >= 5 else None
         if bond is None or bond.escrow.lower() != escrow.lower():
             return [f"6 the deposit {oid[:12]} is not a bond held by {escrow}"]
+        if backing.maker.lower() not in (s.subject.lower(), s.issuer.lower()):
+            return [f"6 the deposit {oid[:12]} is {backing.maker}'s, not the statement's subject's or issuer's"]
         qty = q(bond.asset.qty)
         if self.held is not None and bond.escrow:
             qty = min(qty, q(self.held.get(oid, 0)))
+        if self.free is not None and bond.escrow:
+            qty = min(qty, q(self.free.get(oid, 0)))             # what no reservation holds
         if oid == counterparty.offer_id and taken is not None and q(whole or 0) > 0:
             qty -= bond.reserved(taken, whole)                   # after this fill's own reservation
         qty -= bond.deductible                                   # v7: what a claim on it cannot take
-        req = requirer.requires
-        for acc in req.accepts:
+        priced = self._floor_price(entry, bond, requirer, ontology)
+        if priced is None:
+            return [f"6 no acceptance of {' '.join(bond.asset.concepts)} {bond.asset.unit} to price the floor"]
+        unit, need = priced
+        if qty >= need:
+            return []
+        return [f"6 {qty} {unit} free of the deposit, less than {need} for the floor {entry.min_bond}"]
+
+    @staticmethod
+    def _floor_price(entry: Credential, bond, requirer: Offer, ontology: Ontology):
+        """(unit, quantity): the floor `entry` asks, in the deposit's asset at
+        the first of the requirer's acceptances that takes it; None when
+        none does."""
+        for acc in requirer.requires.accepts:
             if acc.unit == bond.asset.unit and ontology.satisfies(bond.asset.concepts, acc.concepts):
-                need = entry.min_bond / acc.price
-                if qty >= need:
-                    return []
-                return [f"6 {qty} {acc.unit} free of the deposit, less than {need} for the floor {entry.min_bond}"]
-        return [f"6 no acceptance of {' '.join(bond.asset.concepts)} {bond.asset.unit} to price the floor"]
+                return acc.unit, entry.min_bond / acc.price
+        return None
+
+    def floor(self, entry: Credential, s: Statement, requirer: Offer, ontology: Ontology):
+        """What a leg relying on `s` for `entry` reserves (D1): (the deposit's
+        offer, the floor in its asset's unit), or None when the statement
+        names no deposit, the entry no floor, or nothing prices it. The
+        clearing reserves it on the escrow per relying leg
+        (`escrow.reservations_for`), so a refutation claims something."""
+        if s.deposit is None or not entry.min_bond:
+            return None
+        backing = self.offer(s.deposit[0])
+        bond = backing.bond if backing is not None and backing.v >= 5 else None
+        if bond is None:
+            return None
+        priced = self._floor_price(entry, bond, requirer, ontology)
+        return None if priced is None else (backing, priced[1])

@@ -220,11 +220,16 @@ accredit/<issuer>/<C>   -> by whom, since, until, scheme  (who may issue what, a
 4. freshness of every pinned register root on the path (§5);
 5. validity (`as_of`, `until`) through the leg's **handover window** — a
    licence expiring before the appointment meets nothing;
-6. when the statement names a `deposit` (D1): the deposit's free capacity
-   after this fill's reservation is at least the entry's `min_bond` (the
-   existing `meets(held=)` check, the chain as the authority); the fill
-   then reserves that floor for the leg's claim period, and a refutation is
-   a claim on that reservation;
+6. when the statement names a `deposit` (D1): the deposit is put up by
+   whoever stands behind the statement, its subject or its issuer (a
+   practice for what it attests; question 27, decided by Peter
+   2026-10-10, built: a self-bonded statement once passed every step
+   naming another maker's deposit), and its free capacity — what no
+   reservation holds, after this fill's own — is at least the entry's
+   `min_bond` (the chain as the authority); at finalize the clearing
+   reserves that floor on the deposit for the leg's claim period, for the
+   relying party, under a slot of its own (`escrow.statement_slot`), and a
+   refutation is a claim on that reservation;
 7. no `suspended/<statement id>` record under the issuer's pinned root
    (plan D2: a self-knowable claim whose evidence was not produced in time
    is suspended until ruled).

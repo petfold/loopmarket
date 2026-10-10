@@ -325,7 +325,8 @@ word.
 5. **Guarantees.** A maker's requirements (a neutral point, a ladder,
    accepted assets, witness types, escrow kinds, credentials) are enforced
    off chain and on; deposits are held by `LoopEscrow` and reserved per
-   fill at `finalize`; a contested claim goes to the resolver fixed at
+   fill at `finalize`, and a relied-on statement's floor on the deposit of
+   its subject or issuer per relying leg (question 27); a contested claim goes to the resolver fixed at
    clearing (factbond). Not built: `BeatClearing` reserving from the escrow
    itself, and a ruling that states an amount (factbond's to decide). The
    P3 mechanism design is factbond's (`docs/INTEGRATION.md` there).
@@ -399,7 +400,12 @@ built, each is kept under its writer's own key
 `case/<loop>/<offer>/<kind>/<to>/<writer>`), the fold admits one only
 under its writer's key, readers ask for the party's, and the old keys are
 not read. One strict expected failure there still pins an open fault:
-`watch` reports a case record from anyone. Rival clearing books under a
+`watch` reports a case record from anyone. The same tests found that a
+self-bonded statement passed every gate step naming another maker's
+deposit: decided as question 27 and built, step 6 takes a deposit only
+from the statement's subject or issuer and counts only what the escrow
+has free, and the clearing reserves each relied-on statement's floor per
+relying leg (`escrow.statement_slot`). Rival clearing books under a
 chain are question 25 (decided A, not built yet).
 
 ## Conventions

@@ -104,10 +104,12 @@ class SolverAgent:
     resolver_profile: object = None
     #: What the hunt reads beyond the snapshot (`reads.Reads`): the chain's
     #: fills (offer id -> quantity `BeatClearing.filled` has recorded as
-    #: taken: a spent offer is not hunted through) and the escrow's holdings
+    #: taken: a spent offer is not hunted through), the escrow's holdings
     #: (offer id -> what it holds behind the offer, in the asset's unit: a
-    #: deposit naming an escrow counts only up to what is held). Each pass
-    #: derives `available`, `held` and the gate from them and its snapshot.
+    #: deposit naming an escrow counts only up to what is held) and what of
+    #: them is free (a statement's floor counts only that). Each pass
+    #: derives `available`, `held`, `free` and the gate from them and its
+    #: snapshot.
     reads: Reads = NO_READS
 
     def __post_init__(self) -> None:
@@ -131,7 +133,7 @@ class SolverAgent:
         divisible give shared up to its remainder — exactly while the
         candidates are few, greedily beyond, in §8's total order (U6)."""
         now = int(_time.time()) if now is None else now
-        chain_fills, escrow_held = self.reads.chain_fills, self.reads.escrow_held
+        chain_fills, escrow_held, escrow_free = self.reads.chain_fills, self.reads.escrow_held, self.reads.escrow_free
         root, book = self.registry.snapshot()
         offers = list(book.offers(now=now))
         available = book.availability(offers, now)  # partial fills leave remainders, holds keep theirs
@@ -149,12 +151,14 @@ class SolverAgent:
                         continue                   # spent; a held offer stays for its holder
                 kept.append(o)
             offers = kept
-        held = None
+        held = free = None
+        bonded = [o.offer_id for o in offers if o.v >= 5 and o.bond is not None and o.bond.escrow]
         if escrow_held is not None:
-            held = {o.offer_id: q(escrow_held(o.offer_id)) for o in offers
-                    if o.v >= 5 and o.bond is not None and o.bond.escrow}
-        gate = self.gate(book, now=now, held=held)
-        reads = self.reads.replace(available=available, held=held, gate=gate)
+            held = {oid: q(escrow_held(oid)) for oid in bonded}
+        if escrow_free is not None:
+            free = {oid: q(escrow_free(oid)) for oid in bonded}
+        gate = self.gate(book, now=now, held=held, free=free)
+        reads = self.reads.replace(available=available, held=held, gate=gate, free=free)
         # one index for the pass: every search below asks it for the gives
         # inside a want's cones instead of trying every give (review item 2)
         index = DimensionIndex(self.ontology)
@@ -196,11 +200,11 @@ class SolverAgent:
         )
         return root, loops
 
-    def gate(self, book, *, now: int, held=None) -> CounterpartyGate:
+    def gate(self, book, *, now: int, held=None, free=None) -> CounterpartyGate:
         """The counterparty gate over the snapshot: its presented statements,
-        this solver's registers, the clock."""
+        this solver's registers, the clock, the escrow's holdings."""
         return CounterpartyGate.over(book, self.registers, now=now, span=self.span, held=held,
-                                     latest=self.register_latest, profile=self.resolver_profile)
+                                     latest=self.register_latest, profile=self.resolver_profile, free=free)
 
     @property
     def register_roots(self) -> tuple:

@@ -25,6 +25,25 @@ solver apart from the rest of loopmarket.
 
 ### Changed
 
+- **A statement's deposit is its backer's, and its floor is reserved per
+  relying leg** (ontodag's review item 24, question 27, decided by Peter
+  2026-10-10: A; D1). The gate's step 6 checked that a statement's
+  deposit was a bond in the escrow with enough free, never whose it was,
+  so Mallory's self-bonded "I am a dentist" naming a real dentist's
+  deposit passed every step; and at finalize the clearing reserved only
+  each give's own share, so a statement's floor was checked and never
+  locked, and one deposit could be counted by any number of legs. Now
+  step 6 refuses a deposit whose maker is neither the statement's
+  subject nor its issuer (a practice backs what it attests about its
+  dentists; a dentist backs an attestation about himself), counts only
+  what the escrow has free (`Reads.escrow_free`, `escrow.free_units`;
+  the solver, the clearing and the command line read it), and
+  `reservations_for` reserves each relied-on statement's floor on its
+  deposit for the relying party, with the leg's resolver, window and
+  claim period, under `escrow.statement_slot` (the escrow keeps one
+  reservation per offer and loop). `CounterpartyGate.floor` names what a
+  leg reserves. No record format or contract changes: the on-chain
+  verifier leaves a statement's deposit to the semantic half, as before.
 - **A notice, a cure and a case record are kept under their writer's own
   key** (ontodag's review item 23, question 26, decided by Peter
   2026-10-10: one key per writer, a clean break):

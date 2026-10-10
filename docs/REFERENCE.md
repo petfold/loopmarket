@@ -474,10 +474,10 @@ catalogue has no `inspect`.
 
 | name | meaning |
 |---|---|
-| `Reads(available=None, held=None, gate=None, chain_fills=None, escrow_held=None)` | frozen; what fills have left of an offer (`OfferRegistry.availability`), what the escrow holds behind a deposit, the counterparty gate (§8f), the chain's fills (`BeatClient.filled`) and the escrow's holdings asked one offer at a time (`escrow.held_units`); an absent field asks nothing beyond the book. `.replace(**changes)` |
+| `Reads(available=None, held=None, gate=None, chain_fills=None, escrow_held=None, free=None, escrow_free=None)` | frozen; what fills have left of an offer (`OfferRegistry.availability`), what the escrow holds behind a deposit, the counterparty gate (§8f), the chain's fills (`BeatClient.filled`), the escrow's holdings asked one offer at a time (`escrow.held_units`), and what of a deposit no reservation holds, per pass (`free`) and asked one offer at a time (`escrow_free`, `escrow.free_units`): a statement's floor counts only that (question 27); an absent field asks nothing beyond the book. `.replace(**changes)` |
 | `NO_READS` | `Reads()`: the checks see the offers and the catalogue alone |
-| `reads_of(reads=None, *, available=None, held=None, gate=None, chain_fills=None, escrow_held=None) -> Reads` | `reads` with the reads passed as keywords folded in, the spelling every public check also takes; a read given both ways is a `TypeError` unless it is the same object |
-| `authorities(reads=None, *, chain_fills=None, escrow_held=None, taker) -> Reads` | the reads a solver or a clearing is constructed with: the chain's fills and the escrow's holdings, by either spelling; `available`, `held` and a gate, which each pass derives from its snapshot, are refused with a `TypeError` naming `taker` |
+| `reads_of(reads=None, *, available=None, held=None, gate=None, chain_fills=None, escrow_held=None, escrow_free=None) -> Reads` | `reads` with the reads passed as keywords folded in, the spelling every public check also takes; a read given both ways is a `TypeError` unless it is the same object |
+| `authorities(reads=None, *, chain_fills=None, escrow_held=None, taker, escrow_free=None) -> Reads` | the reads a solver or a clearing is constructed with: the chain's fills and the escrow's holdings and free shares, by either spelling; `available`, `held`, `free` and a gate, which each pass derives from its snapshot, are refused with a `TypeError` naming `taker` |
 
 ## 6. `loopmarket.dimensions` — the candidate engine
 
@@ -576,14 +576,16 @@ node `potentials`. A simple cycle's record is byte-identical to before.
 ### `Clearing` (Protocol)
 `submit(proposal) -> Receipt`.
 
-### `BookClearing(registry, ontology, *, min_surplus=0.0, require_per_node=True, clock=time.time, verifiable_oracles=VERIFIABLE_ORACLES, chain_fills=None, escrow_held=None, register_at=None, span=None, register_latest=None, resolver_profile=None)`
+### `BookClearing(registry, ontology, *, min_surplus=0.0, require_per_node=True, clock=time.time, verifiable_oracles=VERIFIABLE_ORACLES, chain_fills=None, escrow_held=None, register_at=None, span=None, register_latest=None, resolver_profile=None, reads=None, escrow_free=None)`
 
 Called `MockClearing` until 2026-10; that name stays an alias of this class for one release (review item 12).
 `VERIFIABLE_ORACLES = frozenset({"countersign", "possession",
 "photo-match"})` — the countersign and the door's two witness types
 (`witness.py`). `chain_fills(offer_id)` is what the chain has recorded as
 taken (`BeatClearing.filled`: the chain is the fill authority), and
-`escrow_held(offer_ids)` what the escrow holds behind each deposit;
+`escrow_held(offer_ids)` what the escrow holds behind each deposit
+(`escrow_free`, what of it no reservation holds, is what a statement's
+floor counts);
 `register_at(register_id, root)` opens a pinned register, `register_latest`
 its newest root (R5), `span` reads a `time(...)` term's window and
 `resolver_profile(key)` a resolver's chain record — together the
@@ -675,7 +677,9 @@ defaults to the contract's `filled`. The receipt's reason names the beat
 | `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder=(), claim_only=False, min_challenge=0, min_ruling=0, deductible=0)`, `.cancel`, `.countersign`, `.cover_of(offer_id, loop_id)` (what a cover covers, what a reservation paid its wanter), `.settle(offer_id, loop_id, to_wanter=None)` (no split: the quiet path after the claim period; a split: this party's signature, the second pays it out), `.assign(offer_id, loop_id, to)` (the wanter's), `.extend_claim(offer_id, loop_id, seconds)` (the giver's), `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.collect(token=None)` (a refused payout credited to `owed`), `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.owed(to, token=None)`, `.subject(offer_id, loop_id)` (the reservation's key, factbond's subject), `.deposit_of`, `.events(name, from_block=0)` (the contract's `Reserved`, `Settled`, `Deposited`, … log, what `reputation.view` reads); web3 lazy (`chain` extra) |
 | `to_wei(qty, decimals=18)` / `floor_wei` | an exact quantity as the asset's smallest unit — refused when not representable (U9) / rounded down (the ladder) |
 | `held_units(client)` | offer id → what the escrow holds, in the asset's unit: the `escrow_held` the agent and the clearing take |
-| `reservations_for(proposal, *, escrow, resolver, claim_seconds, now, span=None, decimals=18, claim_only=None, min_challenge=0, min_ruling=0)` | pure: one reservation per give whose bond names `escrow` — the share in smallest units, the wanter's key, the give's `arbitrator` or `resolver` (never a party, and one the want's `resolvers` admit), the want's `time(...)` term as the window (through `span`), the claim period per leg (the want's `claim_period`, else `claim_seconds`, never past the give's `claim_max`), the ladder converted at the wanter's acceptance price; `claim_only` for cover (`cover_predicate`) |
+| `free_units(client)` | offer id → what of it no reservation holds, in the asset's unit: the `escrow_free` a statement's floor is counted against |
+| `statement_slot(loop_id, requirer_id, statement_id)` | the escrow key's second half for a statement's floor: one per loop, relying offer and statement (the escrow keeps one reservation per offer and loop), 64 hex digits |
+| `reservations_for(proposal, *, escrow, resolver, claim_seconds, now, span=None, decimals=18, claim_only=None, min_challenge=0, min_ruling=0, gate=None, ontology=None)` | pure: one reservation per give whose bond names `escrow` — the share in smallest units, the wanter's key, the give's `arbitrator` or `resolver` (never a party, and one the want's `resolvers` admit), the want's `time(...)` term as the window (through `span`), the claim period per leg (the want's `claim_period`, else `claim_seconds`, never past the give's `claim_max`), the ladder converted at the wanter's acceptance price; `claim_only` for cover (`cover_predicate`). And one per statement a leg relies on for an entry with a `min_bond`, when the deposit backing it is in `escrow` (D1, question 27): the floor in the deposit's asset, for the requirer, with the leg's resolver (never the deposit's maker), window and claim period, at (deposit, `statement_slot`), naming `statement` and `relied_in`; the gate chooses the statement, so without `gate` and `ontology` such a leg raises |
 | `cover_predicate(ontology, head="insure")` | recognises a give of cover: an `insure(...)` term, whose reservation is never countersigned |
 | `abi()` | the compiled `LoopEscrow` from `loopmarket/contracts/LoopEscrow.json` |
 
@@ -696,10 +700,10 @@ earlier `0x7bee…c55F`, `0x299C…69Bf`, `0xA49C…D936` and `0x3936…F3f2` ke
 
 ### `CounterpartyGate(statements, registers, now, span, offer, held, held_by, capacity, withdrawn, item_claimed, latest, profile)`
 
-Built with `CounterpartyGate.over(book, registers, *, now, span=None, held=None, capacity=None, latest=None, profile=None)`:
+Built with `CounterpartyGate.over(book, registers, *, now, span=None, held=None, capacity=None, latest=None, profile=None, free=None)`:
 the statements presented in `book`'s `cred/`, `registers` (register id →
 `Register` at its pinned root), the clock, a `time(...)` span reader, the
-escrow's holdings, — R5 — `latest(register id)`, the register at its
+escrow's holdings and what of them is free, — R5 — `latest(register id)`, the register at its
 feed's newest root, and `profile(key)`, a resolver's chain record
 (`arbitrators.chain_profile`). `meets`, every `check_*` and candidate
 generator take `gate=`; no gate, no pass (U7).
@@ -708,7 +712,8 @@ generator take `gate=`; no gate, no pass (U7).
 |---|---|
 | `.faults(requirer, counterparty, ontology, *, window, taken=None, whole=None) -> [str]` | every failing step of `requirer`'s credential entries against `counterparty`'s statements, one line per entry, the closest statement's steps listed (plan E4); `[]` when every entry is met |
 | `.chosen(entry, requirer, counterparty, ontology, *, window, ...) -> Statement | None` | the statement that meets `entry` — what a beat's leg carries on chain (R3b) |
-| `.statement_faults(entry, statement, ...)` | the seven steps: 1 category and kind; 2 a path of accreditations to a named trust root, every register on it pinned; 3 not revoked (and a status); 4 every register fresh — its heartbeat within `max_root_age`, its root extending its predecessor on `revoked/`, and no newer root published by the clock that revokes, suspends or drops a revocation (R5); 5 valid through the window; 6 a deposit's free share covering `min_bond`; 7 not suspended |
+| `.floor(entry, statement, requirer, ontology) -> (Offer, Fraction) | None` | the deposit backing the statement and the floor `entry` asks of it, in its asset at the requirer's acceptance: what a leg relying on it reserves (`escrow.reservations_for`) |
+| `.statement_faults(entry, statement, ...)` | the seven steps: 1 category and kind; 2 a path of accreditations to a named trust root, every register on it pinned; 3 not revoked (and a status); 4 every register fresh — its heartbeat within `max_root_age`, its root extending its predecessor on `revoked/`, and no newer root published by the clock that revokes, suspends or drops a revocation (R5); 5 valid through the window; 6 a deposit put up by the statement's subject or issuer, its free share (after this fill's own and every reservation already made) covering `min_bond`; 7 not suspended |
 | `.option_fault(option) -> str` | why an option cannot clear now: its underlying present, a give by the same maker, not withdrawn, not a retired v1/v2 offer, valid through the window, in its unit, with the option's quantity free (C2) |
 | `.item_fault(give) -> str` | why a give naming `item(h)` cannot clear: its maker holds an active claim on h through another offer (I2) |
 | `.window(want) -> (start, end)` | the handover window: the want's first `time(...)` term through `span`, else the clock's instant |

@@ -82,6 +82,24 @@ def held_units(client: "EscrowClient", decimals: int = 18):
     return lambda offer_id: Fraction(client.held(offer_id), 10 ** decimals)
 
 
+def free_units(client: "EscrowClient", decimals: int = 18):
+    """offer id -> what of its deposit no reservation holds, in the asset's
+    unit: the `escrow_free` a statement's floor is counted against
+    (question 27), so a floor reserved for one leg is not counted again."""
+    return lambda offer_id: Fraction(client.free(offer_id), 10 ** decimals)
+
+
+def statement_slot(loop_id: str, requirer_id: str, statement_id: str) -> str:
+    """The escrow key's second half for a statement's floor (question 27):
+    the escrow keeps one reservation per (offer, loop), and a deposit can
+    back its own give's fill and the statements several legs rely on, so a
+    floor is reserved under (deposit, slot), one slot per loop, relying
+    offer and statement. 64 hex digits, never a loop id."""
+    import hashlib
+    return hashlib.sha256(b"statement-floor" + bytes.fromhex(loop_id) + bytes.fromhex(requirer_id)
+                          + bytes.fromhex(statement_id)).hexdigest()
+
+
 def is_address(text: str) -> bool:
     return isinstance(text, str) and len(text) == 42 and text.startswith("0x") \
         and all(c in "0123456789abcdefABCDEF" for c in text[2:])
@@ -124,9 +142,22 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
     in smallest units. C5 stage 2 (D-2): a cover composed with a bonded
     thing in one leg **covers** that thing's reservation — `covers`, its key
     on the escrow — so the insured assigns her claim there to the insurer
-    before the cover pays, and the cover nets whatever it already paid her."""
+    before the cover pays, and the cover nets whatever it already paid her.
+
+    D1, built for question 27 (decided by Peter 2026-10-10): a statement a
+    leg relies on for a credential entry with a floor (`min_bond`) has its
+    floor reserved on the deposit backing it, when that deposit is in this
+    escrow — the give's own or its subject's or issuer's other offer — for
+    the relying offer's maker (the requirer: the wanter, or a giver who
+    requires a credential of the wanter), with the leg's resolver, window
+    and claim period, under `statement_slot` as its loop, no ladder, and
+    `statement` and `relied_in` naming the statement and the loop. The
+    gate chooses the statement (`CounterpartyGate.chosen`), so without a
+    gate a floor cannot be reserved and the call raises. A statement two
+    of a leg's entries rely on reserves the larger floor once."""
     out = []
     escrow = escrow.lower()
+    floors: dict[tuple[str, str], dict] = {}
     for leg in proposal.circulation.legs:
         want = leg.want
         window = _period(_concepts(want), span, nested=False) or (now, now)
@@ -144,30 +175,13 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
             amount = to_wei(share, decimals)
             deductible = to_wei(bond.deductible_share(leg.taken(i), give.thing.qty), decimals) \
                 if give.v >= 7 else 0
-            from .arbitrators import constrained, resolver_of
-            chosen = give.arbitrator if is_address(give.arbitrator) else resolver
-            parties = (want.maker, give.maker)
-            if chosen.lower() in {p.lower() for p in parties}:
-                raise ValueError(f"the resolver {chosen} is a party to the leg on {give.offer_id[:12]} (C4)")
-            if constrained(want, give):
-                # §7a: the first candidate both sides admit, read now — the
-                # same order the gate chose in, the clearing's own last
-                picked = resolver_of(want, give, default=resolver, gate=gate, ontology=ontology,
-                                     window=window)
-                if picked is None:
-                    raise ValueError(f"no resolver {want.maker} and {give.maker} both accept "
-                                     f"(the give's {chosen} is not one)")
-                chosen = picked
+            chosen = _leg_resolver(want, give, resolver, gate=gate, ontology=ontology, window=window)
             cover = bool(claim_only(give)) if claim_only else False
             covered = None
             if cover:
                 covered = _period(_concepts(want), span, nested=True) \
                     or _period(give.thing.concepts, span, nested=True)
-            claim = int(claim_seconds)
-            if want.v >= 6 and want.requires is not None and want.requires.claim_period:
-                claim = want.requires.claim_period
-            if give.v >= 6 and give.claim_max:
-                claim = min(claim, give.claim_max)
+            claim = _leg_claim(want, give, claim_seconds)
             ladder = []
             req = want.requires
             if req is not None and req.ladder:
@@ -187,7 +201,77 @@ def reservations_for(proposal, *, escrow: str, resolver: str, claim_seconds: int
                         "claim_only": cover, "deductible": deductible,
                         "covers": covered_key if cover else "",
                         "min_challenge": int(min_challenge), "min_ruling": int(min_ruling)})
-    return out
+        loop_id = proposal.circulation.loop_id
+        for i, give in enumerate(leg.gives):
+            for mine, other, of_give in ((want, give, True), (give, want, False)):
+                entries = mine.requires.counterparty if mine.v >= 6 and mine.requires is not None else ()
+                floored = [e for e in entries if e.min_bond]
+                if not floored:
+                    continue
+                if gate is None or ontology is None:
+                    raise ValueError("a credential requirement needs the gate to choose its statements")
+                taken = q(want.thing.qty) if of_give and not want.composed else None
+                whole = q(give.thing.qty) if of_give else None
+                for entry in floored:
+                    s = gate.chosen(entry, mine, other, ontology, window=gate.window(want), taken=taken,
+                                    whole=whole)
+                    if s is None:
+                        raise ValueError(f"no statement of {other.maker} meets {entry.category}")
+                    found = gate.floor(entry, s, mine, ontology)
+                    if found is None or found[0].bond.escrow.lower() != escrow:
+                        continue
+                    backing, qty = found
+                    if not is_address(mine.maker):
+                        raise ValueError(f"{mine.maker!r} is not a key address: the payout has no destination")
+                    chosen = _leg_resolver(want, give, resolver, gate=gate, ontology=ontology, window=window)
+                    if chosen.lower() == backing.maker.lower():
+                        raise ValueError(f"the resolver {chosen} backs the statement {s.statement_id[:12]} "
+                                         f"it would judge (C4)")
+                    slot = statement_slot(loop_id, mine.offer_id, s.statement_id)
+                    amount = to_wei(qty, decimals)
+                    if (backing.offer_id, slot) in floors and floors[(backing.offer_id, slot)]["amount"] >= amount:
+                        continue
+                    floors[(backing.offer_id, slot)] = {
+                        "offer_id": backing.offer_id, "loop_id": slot, "wanter": mine.maker,
+                        "resolver": chosen, "amount": amount, "window": tuple(int(x) for x in window),
+                        "claim_seconds": _leg_claim(want, give, claim_seconds), "ladder": [],
+                        "claim_only": False, "deductible": 0, "covers": "",
+                        "min_challenge": int(min_challenge), "min_ruling": int(min_ruling),
+                        "statement": s.statement_id, "relied_in": loop_id}
+    return out + [floors[k] for k in sorted(floors)]
+
+
+def _leg_resolver(want, give, resolver: str, *, gate=None, ontology=None, window=None) -> str:
+    """Who may hold and resolve a reservation on `give`'s leg: the give's
+    declared arbitrator when it is an address, else `resolver`, the
+    clearing's own; never a party to the leg (C4), and, when either side
+    constrains it, the first candidate both admit (§7a)."""
+    from .arbitrators import constrained, resolver_of
+    chosen = give.arbitrator if is_address(give.arbitrator) else resolver
+    parties = (want.maker, give.maker)
+    if chosen.lower() in {p.lower() for p in parties}:
+        raise ValueError(f"the resolver {chosen} is a party to the leg on {give.offer_id[:12]} (C4)")
+    if constrained(want, give):
+        # §7a: the first candidate both sides admit, read now — the
+        # same order the gate chose in, the clearing's own last
+        picked = resolver_of(want, give, default=resolver, gate=gate, ontology=ontology,
+                             window=window)
+        if picked is None:
+            raise ValueError(f"no resolver {want.maker} and {give.maker} both accept "
+                             f"(the give's {chosen} is not one)")
+        chosen = picked
+    return chosen
+
+
+def _leg_claim(want, give, claim_seconds: int) -> int:
+    """A leg's claim period (E2): the want's when it asks one, else
+    `claim_seconds`, never longer than the give's declared `claim_max`."""
+    claim = int(claim_seconds)
+    if want.v >= 6 and want.requires is not None and want.requires.claim_period:
+        claim = want.requires.claim_period
+    if give.v >= 6 and give.claim_max:
+        claim = min(claim, give.claim_max)
+    return claim
 
 
 def reservation_key(offer_id: str, loop_id: str) -> str:

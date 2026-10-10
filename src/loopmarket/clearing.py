@@ -147,7 +147,7 @@ class BookClearing:
                  min_surplus: float = 0.0, require_per_node: bool = True,
                  clock=_time.time, verifiable_oracles=VERIFIABLE_ORACLES,
                  chain_fills=None, escrow_held=None, register_at=None, span=None, register_latest=None,
-                 resolver_profile=None, reads: Reads | None = None):
+                 resolver_profile=None, reads: Reads | None = None, escrow_free=None):
         self.registry = registry
         self.ontology = ontology
         self.min_surplus = min_surplus
@@ -167,10 +167,11 @@ class BookClearing:
         #: (`EscrowClient.held` scaled): with it, a deposit that names an
         #: escrow counts only up to what is held (`matching.meets`,
         #: 2026-09-19) — the chain is the authority on the deposit as on the
-        #: fills. Each `submit` derives `available`, `held` and the gate
-        #: from these and the book.
+        #: fills. `escrow_free`, what of it no reservation holds, is what a
+        #: statement's floor counts (question 27). Each `submit` derives
+        #: `available`, `held`, `free` and the gate from these and the book.
         self.reads = authorities(reads, chain_fills=chain_fills, escrow_held=escrow_held,
-                                 taker="a clearing")
+                                 escrow_free=escrow_free, taker="a clearing")
         #: (register id, root) -> the `Register` read at that root, or None
         #: (R4, 2026-09-29): the counterparty gate re-reads every register
         #: the proposal pinned, here, never the solver's copy (U3); without
@@ -207,8 +208,9 @@ class BookClearing:
             for rid, root in register_roots:
                 if root:
                     registers[rid] = self.register_at(rid, root)
-        escrow_held = self.reads.escrow_held
+        escrow_held, escrow_free = self.reads.escrow_held, self.reads.escrow_free
         held = None if escrow_held is None else _Held(escrow_held)
+        free = None if escrow_free is None else _Held(escrow_free)
 
         def capacity(oid: str):
             try:
@@ -217,7 +219,7 @@ class BookClearing:
                 return None
         return CounterpartyGate.over(self.registry, registers, now=now, span=self.span, held=held,
                                      capacity=capacity, latest=self.register_latest,
-                                     profile=self.resolver_profile)
+                                     profile=self.resolver_profile, free=free)
 
     def deposits(self, offer_ids) -> dict | None:
         """What the escrow holds behind each offer, or None when no escrow
@@ -585,7 +587,7 @@ class ChainClearing(BookClearing):
             gate = self.gate(proposal.register_roots, now=now)
             gate = CounterpartyGate.over(snapshot, gate.registers, now=now, span=self.span,
                                          held=gate.held, capacity=gate.capacity, latest=gate.latest,
-                                         profile=gate.profile)
+                                         profile=gate.profile, free=gate.free)
             sub = submission(proposal, snapshot, records=records, gate=gate, ontology=self.ontology)
         except Exception as exc:  # noqa: BLE001 — the proposal's evidence cannot be built
             return Receipt(False, lid, f"beat: {exc}")
@@ -637,8 +639,9 @@ class _Dry:
 
 
 class _Held:
-    """The escrow's holdings as the mapping the gate reads, asked lazily
-    (a statement's deposit may be any offer in the book)."""
+    """The escrow's holdings, or what of them is free, as the mapping the
+    gate reads, asked lazily (a statement's deposit may be any offer in the
+    book)."""
 
     def __init__(self, escrow_held) -> None:
         self._held = escrow_held

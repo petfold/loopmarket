@@ -13,7 +13,7 @@ from ..registry import LegRecord
 from ..schema import q
 from ..solver import SolverAgent, baseline_proposals
 from . import clients
-from .clients import _chain_fills, _clearing_reads, _escrow_held, _gate_reads, _reads, _sealed_client
+from .clients import _chain_fills, _clearing_reads, _escrow_free, _escrow_held, _gate_reads, _reads, _sealed_client
 from .render import _leg_line, _print_loop
 from .settings import _configured, _err, _home_dir, _peer_specs, _read_json, _write_json
 from .spellings import _calendar_span
@@ -46,7 +46,7 @@ def cmd_propose(args, session, out):
         session.book.commit()
     book, ontology = session.book, session.catalogue
     client = clients._beat_client(session)
-    reads = Reads(chain_fills=client.filled, escrow_held=_escrow_held(session))
+    reads = Reads(chain_fills=client.filled, escrow_held=_escrow_held(session), escrow_free=_escrow_free(session))
     agent = SolverAgent(book, ontology,
                         ChainClearing(book, ontology, beat_client=client, clock=lambda: now,
                                       reads=reads, **_clearing_reads(session)),
