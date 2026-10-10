@@ -63,8 +63,11 @@ def _maker_books(blobs):
     return books
 
 
-def _aggregator(blobs, aggregator_id, books, order):
-    agg = Aggregator(lambda: RecordStore(blobs), aggregator_id=aggregator_id)
+def _aggregator(blobs, aggregator_id, books, order, ontology=ONT):
+    """Every reader's fold re-checks a clearing book's loops under its
+    catalogue (review item 9), so the aggregator is given the one the
+    offers are matched under."""
+    agg = Aggregator(lambda: RecordStore(blobs), aggregator_id=aggregator_id, ontology=ontology)
     for owner in order:
         agg.announce(owner, books[owner].store)
     return agg
@@ -335,7 +338,7 @@ def test_a_hostile_book_cannot_stop_the_fold():
     manifest = agg.fold()
     rejected = {k for k, _ in RecordStore.at(manifest.provenance_root, blobs).items()
                 if k.startswith("reject/")}
-    assert "reject/fake-clearing/*" in rejected
+    assert f"reject/fake-clearing/loop/{'cd' * 32}" in rejected
     assert any(k.startswith("reject/mallory/offer/") for k in rejected)
     folded = OfferRegistry(RecordStore.at(manifest.book_root, blobs))
     makers = {o.maker for o in folded.offers(now=NOW)}
@@ -372,36 +375,159 @@ def test_owner_names_cannot_decide_admission(hostile):
     manifest = agg.fold()
     rejected = {k for k, _ in RecordStore.at(manifest.provenance_root, blobs).items()
                 if k.startswith("reject/")}
-    assert rejected == {f"reject/{hostile}/*"}
+    assert rejected == {f"reject/{hostile}/loop/{'cd' * 32}"}
     folded = OfferRegistry(RecordStore.at(manifest.book_root, blobs))
     assert list(folded.offers(now=NOW)) == []   # the honest loop filled all
 
 
-@pytest.mark.parametrize("rival", ["00" * 32, "ff" * 32])
-def test_two_whole_books_claiming_one_offer_fail_loudly(rival):
-    """Two books, each whole on its own, clear the same offers in different
-    loops (two clearers solving one fold give one loop id, so the rival is
-    written by hand). Neither is rejected, and the merged book fails U11:
-    the open problem of P1-federated-book.md §3. Admitting whichever owner
-    sorts first would settle races by name, and an owner id can be chosen
-    to win them."""
+def _dana(blobs):
+    """A fourth maker who trades with bruno alone: her repair for his box."""
+    dana = OfferRegistry(RecordStore(blobs))
+    dana.publish_many([give("dana", Thing(("bicycle-repair",), unit="course"), 40, nonce=7, where=FARM, **W),
+                       want("dana", Thing(("vegetable-box",), unit="course"), 60, nonce=8, where=FARM, **W)])
+    dana.commit()
+    return dana
+
+
+@pytest.mark.parametrize("rival", ["0-rival", "zz-rival"])
+def test_two_valid_books_claiming_one_offer_fail_loudly(rival):
+    """Two clearing books each hold a valid loop over bruno's offers: the
+    triangle, and a loop of two between bruno and dana. Each passes the
+    re-check and is whole on its own, and the merged book fails U11: the
+    open problem of P1-federated-book.md §3, which review item 9 leaves open
+    for a fold without a chain. Admitting whichever owner sorts first would
+    settle races by name, and an owner id can be chosen to win them."""
     from loopmarket import PartialLoopError
     blobs = MemoryBytesStore()
-    books = _maker_books(blobs)
-    m1 = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"]).fold()
-    honest = _cleared(blobs, m1.book_root, "fed-solver")
-    rival_book = RecordStore(blobs)
-    for key, rec in honest.store.items():
-        if key.startswith("loop/"):
-            rival_book.put("loop/" + rival, rec)
-        elif key.startswith("fill/"):
-            rival_book.put(key, {**rec, "loop": rival})
-    rival_book.commit()
-    agg = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"])
-    agg.announce("clearing-0", honest.store, role=CLEARING)
-    agg.announce("0-rival", rival_book, role=CLEARING)
+    books = {**_maker_books(blobs), "dana": _dana(blobs)}
+    triangle = _cleared(blobs, _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"]).fold().book_root,
+                        "fed-solver")
+    pair = _cleared(blobs, _aggregator(blobs, "agg", books, ["bruno", "dana"]).fold().book_root, "other-solver")
+    agg = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen", "dana"])
+    agg.announce("clearing-0", triangle.store, role=CLEARING)
+    agg.announce(rival, pair.store, role=CLEARING)
     with pytest.raises(PartialLoopError):
         agg.fold()
+
+
+# --------------------------------------------------------------------------- #
+# Review item 9 (decided by Peter 2026-10-10): every reader's fold re-checks
+# each loop of a clearing book against the maker books, as clearing checks it
+# --------------------------------------------------------------------------- #
+
+def _open(manifest, blobs):
+    return OfferRegistry(RecordStore.at(manifest.book_root, blobs))
+
+
+def _rejections(manifest, blobs):
+    return {k[len("reject/"):]: v["reason"]
+            for k, v in RecordStore.at(manifest.provenance_root, blobs).items("reject/")}
+
+
+def _hand_written(blobs, legs, loop_id="ab" * 32):
+    """A clearing book as anyone may announce one: a loop record and the
+    fills it claims, written by hand, no clearing asked."""
+    book = OfferRegistry(RecordStore(blobs))
+    record = {"v": 1, "loop_id": loop_id, "solver": "mallory", "found_at": NOW, "book_root": "",
+              "ontology_root": "", "surplus": "1/10", "nodes": sorted({w.maker for _, w in legs}),
+              "legs": [{"give": g.offer_id, "gives": [g.offer_id], "taken": ["1"], "want": w.offer_id}
+                       for g, w in legs],
+              "potentials": {}}
+    fills = {}
+    for g, w in legs:
+        fills[w.offer_id] = {"loop": loop_id, "gives": [{"offer": g.offer_id, "qty": "1"}]}
+        fills[g.offer_id] = {"loop": loop_id, "qty": "1"}
+    book.mark_filled(fills, loop_id, record)
+    book.store.commit()
+    return book
+
+
+def test_an_invented_loop_is_rejected_with_its_reason_and_hides_nothing():
+    """The case measured before deciding: on the three maker books, a
+    clearing book anyone announced with one invented loop, amara's piano
+    lesson filling bruno's bicycle-repair want (which `check_match`
+    refuses), took every reader's open offers from six to four. The fold
+    re-derives the leg as clearing would, rejects the loop with its reason,
+    and the six stay open."""
+    blobs = MemoryBytesStore()
+    books = _maker_books(blobs)
+    makers = ["amara", "bruno", "chen"]
+    offers = {(o.maker, o.kind): o for o in _open(_aggregator(blobs, "agg", books, makers).fold(), blobs).offers(now=NOW)}
+    fake = _hand_written(blobs, [(offers[("amara", "give")], offers[("bruno", "want")])])
+    agg = _aggregator(blobs, "agg", books, makers)
+    agg.announce("mallory", fake.store, role=CLEARING)
+    manifest = agg.fold()
+    assert len(list(_open(manifest, blobs).offers(now=NOW))) == 6
+    reasons = _rejections(manifest, blobs)
+    assert list(reasons) == [f"mallory/loop/{'ab' * 32}"]
+    assert reasons[f"mallory/loop/{'ab' * 32}"].startswith("leg fails re-verification")
+
+
+def test_a_valid_loop_is_admitted_and_its_fills_must_be_the_loops():
+    """The honest clearing passes the re-check and fills its six offers. A
+    clearing book that writes more than its loop takes, here a fill on an
+    offer the loop never touched, holds a loop whose fills are not the ones
+    clearing it writes: rejected with its reason, so it hides nothing."""
+    blobs = MemoryBytesStore()
+    books = _maker_books(blobs)
+    extra = give("dana", Thing(("vegetable-box",), unit="course"), 40, nonce=7, where=FARM, **W)
+    books["dana"] = OfferRegistry(RecordStore(blobs))
+    books["dana"].publish(extra)
+    books["dana"].commit()
+    order = ["amara", "bruno", "chen", "dana"]
+    honest = _cleared(blobs, _aggregator(blobs, "agg", books, order).fold().book_root, "fed-solver")
+    agg = _aggregator(blobs, "agg", books, order)
+    agg.announce("clearing-0", honest.store, role=CLEARING)
+    manifest = agg.fold()
+    assert _rejections(manifest, blobs) == {}
+    assert [o.offer_id for o in _open(manifest, blobs).offers(now=NOW)] == [extra.offer_id]
+    lid = next(iter(honest.store.keys("loop/")))[len("loop/"):]
+    honest.store.put(f"fill/{extra.offer_id}", {"loop": lid, "qty": "1"})
+    honest.commit()
+    manifest = agg.fold()
+    reasons = _rejections(manifest, blobs)
+    assert list(reasons) == [f"clearing-0/loop/{lid}"] and "fill" in reasons[f"clearing-0/loop/{lid}"]
+    assert len(list(_open(manifest, blobs).offers(now=NOW))) == 7
+
+
+def test_a_loop_of_the_2026_08_shape_is_admitted_and_an_orphan_record_is_not():
+    """A clearing book written before the v4 fills (2026-08: a leg names
+    one give, a fill only its loop) is re-checked like any other, its fills
+    the ones that shape wrote. A record naming a loop the book does not
+    hold is rejected on its own, and the book's loop still stands."""
+    blobs = MemoryBytesStore()
+    books = _maker_books(blobs)
+    makers = ["amara", "bruno", "chen"]
+    honest = _cleared(blobs, _aggregator(blobs, "agg", books, makers).fold().book_root, "fed-solver")
+    _key, rec = next(iter(honest.store.items("loop/")))
+    legs = [{"give": leg["give"], "want": leg["want"], "rate": leg["rate"]} for leg in rec["legs"]]
+    old = OfferRegistry(RecordStore(blobs))
+    old.mark_filled([oid for leg in legs for oid in (leg["give"], leg["want"])], rec["loop_id"],
+                    {**{k: v for k, v in rec.items() if k not in ("legs", "potentials")}, "legs": legs})
+    old.store.put(f"item/{'ee' * 32}/amara/{'99' * 32}", {"offer": legs[0]["give"], "until": NOW + 1})
+    old.store.commit()                          # as written, unchecked: anyone may announce a book
+    agg = _aggregator(blobs, "agg", books, makers)
+    agg.announce("clearing-0", old.store, role=CLEARING)
+    manifest = agg.fold()
+    assert _rejections(manifest, blobs) == {
+        f"clearing-0/item/{'ee' * 32}/amara/{'99' * 32}": "names a loop this book does not hold"}
+    assert list(_open(manifest, blobs).offers(now=NOW)) == []
+
+
+def test_a_fold_without_a_catalogue_admits_no_loop():
+    """A loop is re-checked under a catalogue, so a fold given none admits
+    no clearing book's loop (U7, fail closed): the offers stay open, and
+    each rejection says why."""
+    blobs = MemoryBytesStore()
+    books = _maker_books(blobs)
+    makers = ["amara", "bruno", "chen"]
+    honest = _cleared(blobs, _aggregator(blobs, "agg", books, makers).fold().book_root, "fed-solver")
+    agg = _aggregator(blobs, "agg", books, makers, ontology=None)
+    agg.announce("clearing-0", honest.store, role=CLEARING)
+    manifest = agg.fold()
+    assert len(list(_open(manifest, blobs).offers(now=NOW))) == 6
+    reasons = _rejections(manifest, blobs)
+    assert len(reasons) == 1 and all("catalogue" in r for r in reasons.values())
 
 
 def test_a_bad_number_rejects_its_record_not_the_book():

@@ -63,7 +63,7 @@ agent.step()                          # snapshot → match → candidates → se
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 345 tests (three need a live Bee node, sixty the evm extra, one swarmfs — skipped per test without them)
+python3 -m pytest tests/ -v           # 352 tests (three need a live Bee node, sixty the evm extra, one swarmfs — skipped per test without them)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower

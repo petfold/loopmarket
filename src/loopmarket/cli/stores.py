@@ -106,6 +106,8 @@ class Session:
         self._book = None
         self._personal = None
         self._catalogue = None
+        #: (owner, key, reason) for everything the last fold rejected
+        self.rejections: list[tuple[str, str, str]] = []
 
     # -- the book ---------------------------------------------------------------
 
@@ -125,21 +127,36 @@ class Session:
         owner may not make is refused with an attributed rejection. This
         is the solver-self-fold: no aggregator's manifest is trusted, the
         fold is recomputed from the announced set and the makers' own
-        books. `peers` are books you trust by spec, without an owner: a
-        plain OR-set union (`absorb`) — the shared dev/demo shape. Then the
-        U11 check."""
+        books. Every loop of an announced clearing book is re-checked
+        against the maker books under this session's catalogue and gate,
+        as clearing checks it, and admitted only if it holds (review item
+        9); what the fold rejected, and why, is kept in `rejections`
+        (`loop fold` prints it). `peers` are books you trust by spec,
+        without an owner: a plain OR-set union (`absorb`) — the shared
+        dev/demo shape. Then the U11 check.
+
+        Where a clearing contract is set (`beat`), the registry returned
+        counts an offer filled only by what its finalized beats recorded
+        (`OfferRegistry(chain_fills=...)`, review item 9): book fills hide
+        nothing there."""
         specs, registry = _peer_specs(), _configured("registry")
+        self.rejections = []
         if not specs and not registry:
-            return self.book
+            return self._read_by_chain(self.book)
         from recordstore import MemoryBytesStore, RecordStore
 
         folded = OfferRegistry(RecordStore(_fold_blobs(self.book)))
         folded.absorb(self.book)
         if registry:
-            from ..federation import Aggregator
+            from ..federation import CLEARING, Aggregator
             blobs = MemoryBytesStore()
-            agg = Aggregator(lambda: RecordStore(blobs), aggregator_id="loop-cli")
-            for ann in self.announcements.announced():
+            announced = list(self.announcements.announced())
+            # the catalogue is opened only when there are loops to re-check
+            clearing = any(ann.role == CLEARING for ann in announced)
+            agg = Aggregator(lambda: RecordStore(blobs), aggregator_id="loop-cli",
+                             ontology=self.catalogue if clearing else None,
+                             **(self._gate_reads() if clearing else {}))
+            for ann in announced:
                 try:
                     peer = _open_book(ann.spec())
                 except Exception as exc:                # the maker's postage, not our omission
@@ -155,11 +172,34 @@ class Session:
             manifest = agg.fold()
             if manifest.book_root:
                 folded.absorb(OfferRegistry(RecordStore.at(manifest.book_root, blobs)))
+            if manifest.provenance_root:
+                self.rejections = [(rec.get("owner", ""), key[len("reject/"):].partition("/")[2],
+                                    rec.get("reason", ""))
+                                   for key, rec in RecordStore.at(manifest.provenance_root, blobs).items("reject/")]
         for spec in specs:
             folded.absorb(_open_book(spec))
         folded.commit()
         folded.verify_loop_atomicity()
-        return folded
+        return self._read_by_chain(folded)
+
+    def _read_by_chain(self, registry: OfferRegistry) -> OfferRegistry:
+        """`registry` read with the clearing contract's fills as the fill
+        authority when one is set (review item 9), else as it is. A view to
+        read: writes go to `book`, whose clearing must keep refusing what
+        it has filled itself."""
+        from . import clients
+        fills = clients._chain_fills(self)
+        return registry if fills is None else OfferRegistry(registry.store, chain_fills=fills)
+
+    def _gate_reads(self) -> dict:
+        """The counterparty gate's reads for the fold's re-check, as a
+        clearing takes them (`clients._clearing_reads`), each opened only
+        when a loop asks for it: most folds re-check no credential."""
+        from . import clients
+        from .spellings import _calendar_span
+        return {"register_at": lambda rid, root: clients._register_at(self)(rid, root),
+                "register_latest": lambda rid: clients._registers(self).get(rid),
+                "resolver_profile": clients._resolver_profiles(self), "span": _calendar_span}
 
     @property
     def announcements(self):

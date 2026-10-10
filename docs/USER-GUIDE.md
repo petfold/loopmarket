@@ -996,7 +996,7 @@ authority:
 ```python
 from loopmarket import Aggregator
 
-agg = Aggregator(lambda: RecordStore(blobs), aggregator_id="agg-0")
+agg = Aggregator(lambda: RecordStore(blobs), aggregator_id="agg-0", ontology=catalogue)
 agg.announce("amara", amara_book.store)
 agg.announce("bruno", bruno_book.store)
 agg.announce("chen",  chen_book.store)
@@ -1007,7 +1007,10 @@ manifest.provenance_root    # who said what, and what was rejected and why
 manifest.announcement_root  # commitment to the exact input set folded
 ```
 
-The fold is **pure**: any aggregator that saw the same inputs produces
+The catalogue is the one the offers match under: every loop a clearing
+book announces is re-checked under it before its fills enter the fold
+(§8.5), and an aggregator given none admits no loop. The fold is
+**pure**: any aggregator that saw the same inputs and catalogue produces
 byte-identical roots, in any order. That's the neutrality mechanism:
 omission (including "pay me to be listed") is a provable act, not a
 suspicion. Anyone can be an aggregator; aggregators
@@ -1047,8 +1050,9 @@ Announced books are sanitized per record before entering the fold,
 fail-closed: an offer's content address is re-derived; an offer whose
 maker isn't the book's owner needs a valid detached signature or dies;
 tombstones are admitted only from the book that owns the offer;
-`fill/`/`loop/` keys are believed only from clearing-role books. Try
-the forgery yourself:
+`fill/`/`loop/` keys come only from clearing-role books, and each loop
+there is re-checked against the maker books before its fills are
+believed (§8.5). Try the forgery yourself:
 
 ```python
 mallory = OfferRegistry(RecordStore(blobs))
@@ -1106,6 +1110,23 @@ from loopmarket.federation import CLEARING
 agg.announce("clearing-0", clear.store, role=CLEARING)
 final = agg.fold()                                # fills fold back in
 ```
+
+Anyone may announce a clearing book, so a fill is not believed on its
+word (review item 9). Every fold re-derives each loop against the maker
+books the way clearing checks it — every leg fits, within the give's
+quantity, the legs balance — at the loop's own time, and admits its fills
+only if they are exactly the ones clearing it writes. A book that claims
+amara's piano lesson filled bruno's bicycle-repair want hides nothing: the
+fold rejects the loop, with clearing's own reason,
+
+```python
+# reject/<owner>/loop/<loop id> -> {"reason": "leg fails re-verification: …"}
+```
+
+and `loop fold` prints the rejections on stderr. Two books that each hold
+a *valid* loop over one offer still make the fold fail (U11): which
+clearing wins is an open problem without a chain, and with one the chain
+decides what is filled (§11.1).
 
 A **follower** needs nothing but the manifest and the blob space to read
 the cleared world — the cleared loop, every fill, and a book on which a
@@ -1369,7 +1390,12 @@ $ loop commit; loop reveal; loop outcome   # the sealed beat: seal my loops, ope
 
 The chain is the authority on what is filled and on what is held: a
 fold that never saw a clearing's fills still proposes nothing through a
-spent offer, and a bond counts only as far as the escrow holds it. Since
+spent offer, and a bond counts only as far as the escrow holds it. With
+`beat` set, a fill in a book hides nothing either: `offers`, `show`,
+`mine`, `matches` and `loops` count an offer filled only once a finalized
+beat recorded it (review item 9), and until then a loop some clearing
+book holds over it is a proposal — the contract settles a race, cancelling
+the beat that would overfill. Since
 2026-09-29 it is the authority on holds and item claims too (§7.3, §7.4),
 and it checks a leg's statements against the register roots the beat pins
 (§7.5); the leg verification is two contracts deployed beside

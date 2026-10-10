@@ -23,8 +23,11 @@ def cmd_loops(args, session, out):
     """Find on a pinned snapshot, print, never clear. Exit 1 when nothing
     is profitable, so `loop loops && loop clear` reads naturally."""
     fold = session.fold()
+    reads = _reads(session)
+    if fold.chain_fills is not None:                   # the fold's reader, each offer asked once
+        reads = reads.replace(chain_fills=fold.chain_fills)
     agent = SolverAgent(fold, session.catalogue, clearing=None, solver_id="loop-cli", min_surplus=0.0,
-                        reads=_reads(session), span=_calendar_span, **_gate_reads(session))
+                        reads=reads, span=_calendar_span, **_gate_reads(session))
     root, loops = agent.find_loops(now=session.now)
     for loop in loops:
         _print_loop(loop, fold, out)

@@ -13,8 +13,9 @@ The 2026-10 review's item 10 (ontodag's `docs/plans/REVIEW_2026-10.md`
 §8): the command line split by area, with a `Reads` object and a
 `LegRecord` type. On every record the code writes, no command prints or
 does anything different, and no record byte or id changes. Item 11
-changes how `loop` reads and prints durations, and item 4 what matching
-and clearing admit (below); neither changes a record byte or an id.
+changes how `loop` reads and prints durations, item 4 what matching and
+clearing admit, and item 9 what a fold admits and what counts as filled
+where a chain is set (below); none changes a record byte or an id.
 
 ### Changed
 
@@ -52,6 +53,50 @@ and clearing admit (below); neither changes a record byte or an id.
   upgrade, so a major needs announcing. `matching.major(version)` is the
   one parser of a major (the beat's pins use it too), and
   `matching.installed_versions()` reads the installed pair.
+- **Every reader's fold re-checks each loop of a clearing book** (the
+  review's item 9, decided by Peter 2026-10-10). Anyone may announce a
+  clearing book, and the fold admitted its loops and fills on its word:
+  measured before deciding, one invented loop (amara's piano lesson
+  filling bruno's bicycle-repair want, which `check_match` refuses) took
+  every reader's open offers from six to four, at no cost to the
+  announcer. `Aggregator(..., ontology=...)` now re-derives each loop
+  against the maker books with the clearing checklist's own steps
+  (`BookClearing.recheck`: every offer it names in a maker book, every leg
+  through `verify_leg`, a circulation whose id is the record's,
+  independence, `balance_fault`), at the loop record's own time, and
+  requires its `fill/` and `option/` records to be exactly the ones
+  clearing it writes. A loop that fails is rejected with its reason
+  (`reject/<owner>/loop/<loop id>`), its fills, holds, exercises and item
+  claims with it; a record naming a loop the book does not hold is
+  rejected on its own; what is left must still be whole against the
+  makers (U11). An aggregator given no catalogue admits no loop. Every
+  `loop` session's fold re-checks under its catalogue and gate reads, and
+  `loop fold` prints what it rejected and why on stderr. Measured on
+  three-leg loops: 2.4–2.5 ms a loop from 100 to 800 loops (books of 600
+  to 4,800 offers), linear in the loops checked; a fold of 600 maker books
+  and one clearing book of 200 loops took 26.4 s against 25.9 s before,
+  the rest being the fold's own cost. Left open, as decided: without a
+  chain, two books each holding a valid loop over one offer still make
+  the fold fail (`P1-federated-book.md` §3).
+- **Where a clearing contract is set, only its finalized fills count**
+  (item 9). `OfferRegistry(store, chain_fills=...)` makes what finalized
+  beats recorded (`BeatClient.filled`) the fill authority: `taken`,
+  `is_filled`, `available` and `offers()` read it, each offer asked once,
+  and the book's `fill/` records hide nothing; the contract settles
+  races, cancelling the beat that would overfill. With `beat` set, `loop`
+  reads every fold that way: `offers`, `show`, `mine`, `matches` and
+  `loops` show an offer a clearing book filled as open until a finalized
+  beat records it. A clearing's own book keeps the book's fills, since it
+  must refuse what it filled itself. `registry.taken_on_chain(offer,
+  chain_fills)` is now the one reading of the chain's fills, for the
+  book, the solver, the clearing and the challenger: a want is filled
+  whole, so anything recorded against it takes all of it. Before, a
+  chain-filled divisible want of more than one unit (the chain records
+  1/1 against a want) still looked open to the solver's hunt and to the
+  clearing's step 1.
+- `BookClearing.balance_fault(loop)` is the checklist's step 3, and
+  `clearing.option_holds(loop, loop_id)` the holds a loop's option legs
+  write; `submit`, `hold_records` and the fold's re-check share them.
 - **`MockClearing` is `BookClearing`** (the review's item 12, decided by
   Peter 2026-10-10). The class clears the book in process, with the same
   checklist the chain contract re-derives; it mocks nothing, and the old

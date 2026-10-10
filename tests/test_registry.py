@@ -209,3 +209,43 @@ def test_the_book_reads_a_loops_legs():
     book.mark_filled(("o1", "o2"), "L1", {"legs": [{"give": "o1", "gives": ["o1"], "want": "o2"}]})
     assert [(leg.gives, leg.want) for leg in book.loop_legs("L1")] == [(("o1",), "o2")]
     assert book.loop_legs("L2") == ()
+
+
+def test_where_a_chain_is_configured_only_its_fills_count():
+    """Review item 9 (decided by Peter 2026-10-10): where a chain is
+    configured an offer counts as filled only by what finalized beats
+    recorded (`chain_fills`, `BeatClient.filled`), so the book's `fill/`
+    records hide nothing: anyone may announce a clearing book, and the
+    contract cancels a beat that would overfill. A want is filled whole —
+    the chain records 1/1 against it, whatever its quantity. The authority
+    rides into a snapshot, the hunt reads it too, and each offer's fill is
+    read from the chain once."""
+    from fractions import Fraction
+    registry = OfferRegistry(RecordStore(MemoryBytesStore()))
+    registry.publish_many(OFFERS)
+    ten = give("d", Thing(("g1",), 10, "kg", divisible=True), 30, nonce=7, **W)
+    wants_ten = want("e", Thing(("g2",), 10, "kg", divisible=True), 31, nonce=8, **W)
+    registry.publish_many([ten, wants_ten])
+    registry.commit()
+    receipts = SolverAgent(registry, ONT, BookClearing(registry, ONT, clock=lambda: NOW)).step(now=NOW)
+    assert len(receipts) == 1 and receipts[0].accepted
+    assert {o.maker for o in registry.offers(now=NOW)} == {"d", "e"}      # the book's fills hide the loop
+    recorded, asked = {}, []
+
+    def chain(offer_id):
+        asked.append(offer_id)
+        return recorded.get(offer_id, Fraction(0))
+    nothing_final = OfferRegistry(registry.store, chain_fills=chain)
+    assert len(list(nothing_final.offers(now=NOW))) == 8                    # nothing finalized: all open
+    assert len(SolverAgent(nothing_final, ONT, None).find_loops(now=NOW)[1]) == 1
+    recorded.update({ten.offer_id: Fraction(4), wants_ten.offer_id: Fraction(1),
+                     **{o.offer_id: Fraction(1) for o in OFFERS}})
+    asked.clear()
+    on_chain = OfferRegistry(registry.store, chain_fills=chain)
+    assert [o.offer_id for o in on_chain.offers(now=NOW)] == [ten.offer_id]
+    assert on_chain.available(ten.offer_id) == 6 and not on_chain.is_filled(ten.offer_id)
+    assert on_chain.is_filled(wants_ten.offer_id) and on_chain.taken(wants_ten.offer_id) == 10
+    _root, frozen = on_chain.snapshot()
+    assert frozen.available(ten.offer_id) == 6 and frozen.is_filled(wants_ten.offer_id)
+    assert SolverAgent(on_chain, ONT, None).find_loops(now=NOW)[1] == []
+    assert sorted(asked) == sorted(set(asked))                              # each offer asked once

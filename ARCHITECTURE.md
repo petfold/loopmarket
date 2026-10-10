@@ -437,7 +437,20 @@ tombstones, the aggregator fold with the U8 admission rules and a U11
 check inside every fold, and the manifest (three roots since 2026-09-12) are code
 (`federation.py`), with memory-backed convergence, follower and
 withdrawal gate tests green; the feed, announcement and durability
-halves remain the live-Bee work.
+halves remain the live-Bee work. **The fold re-checks loops (review item
+9, decided by Peter 2026-10-10).** Anyone may announce a clearing book,
+and its fills used to hide offers from every reader on its word alone:
+one invented loop took the fixture's open offers from six to four at no
+cost to the announcer. Every fold now re-derives each loop of a clearing
+book against the maker books with the clearing checklist's own steps
+(`BookClearing.recheck`), at the loop record's own time so every reader
+reaches the same answer, and admits its fills only if they are exactly
+the ones clearing it writes; a failure is an attributed rejection with
+its reason. Where a chain is configured the chain decides what is filled
+(`OfferRegistry(chain_fills=)`): a book fill hides nothing, and the
+contract settles races by cancelling the beat that would overfill. Left
+open, as decided: without a chain, two books each holding a valid loop
+over one offer still make the fold fail (U11's open resolver).
 
 Postage-stamp economics went from "deliberately not modelled" to a decided
 frame (2026-08-07): the stamp is the offer's rent — validity windows must

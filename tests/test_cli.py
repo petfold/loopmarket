@@ -1050,6 +1050,73 @@ def test_announced_books_are_the_read_path(env, tmp_path, monkeypatch):
     assert len(run.ok("offers", "--raw").splitlines()) == 6      # mallory's forged amara offer is not in
 
 
+def test_the_fold_rejects_an_invented_loop_and_says_why(env, tmp_path, monkeypatch):
+    """Review item 9 (decided by Peter 2026-10-10): every session's fold
+    re-checks each loop of an announced clearing book against the maker
+    books, under its own catalogue, as clearing would. A clearing book
+    anyone announces with an invented loop — amara's piano lesson filling
+    bruno's bicycle-repair want — hides nothing, and `loop fold` says what
+    it rejected and why."""
+    registry = f"file:{tmp_path / 'registry'}"
+    monkeypatch.setenv("LOOP_REGISTRY", registry)
+    monkeypatch.setenv("LOOP_CATALOGUE", TRIANGLE_OD)
+    ids = {}
+    for maker, lines in (("amara", (("give", "piano-lesson", "100"), ("want", "produce", "local", "weekly", "104"))),
+                         ("bruno", (("give", "vegetable-box", "50"), ("want", "bicycle-repair", "52"))),
+                         ("chen", (("give", "bicycle-repair", "80"), ("want", "music-lesson", "83")))):
+        monkeypatch.setenv("LOOP_MAKER", maker)
+        monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / maker}")
+        run = Runner()
+        for line in lines:
+            ids[(maker, line[0])] = run.ok(*line).strip().splitlines()[-1]
+        run.ok("announce")
+    from loopmarket.announce import open_announcements
+    piano, wanted, lid = ids[("amara", "give")], ids[("bruno", "want")], "ab" * 32
+    fake = cli._open_book(f"rs:{tmp_path / 'mallory'}")
+    fake.mark_filled({wanted: {"loop": lid, "gives": [{"offer": piano, "qty": "1"}]},
+                      piano: {"loop": lid, "qty": "1"}}, lid,
+                     {"v": 1, "loop_id": lid, "found_at": NOW,
+                      "legs": [{"give": piano, "gives": [piano], "taken": ["1"], "want": wanted}]})
+    fake.commit()
+    open_announcements(registry).announce(f"rs:{tmp_path / 'mallory'}", "clearing", owner="mallory")
+    run = Runner()
+    assert len(run.ok("offers", "--raw").splitlines()) == 6          # it hides nothing
+    code, out, err = run("fold")
+    assert code == 0 and f"rejected mallory loop/{lid}: leg fails re-verification" in err
+    assert "surplus" in run.ok("loops")                               # the real loop is still there
+
+
+def test_where_a_clearing_contract_is_set_book_fills_hide_nothing(loop, monkeypatch):
+    """Review item 9: with a clearing contract set, an offer counts as
+    filled only by what its finalized beats recorded, so a fill in a book
+    — which any clearing book can write — hides nothing from `offers`,
+    `show`, `mine` or the hunt; what the chain recorded does."""
+    run = loop
+    for maker, line in (("amara", ("give", "piano-lesson", "home", "100")),
+                        ("amara", ("want", "produce", "local", "weekly", "home", "104")),
+                        ("bruno", ("give", "vegetable-box", "home", "50")),
+                        ("bruno", ("want", "bicycle-repair", "home", "52")),
+                        ("chen", ("give", "bicycle-repair", "home", "80")),
+                        ("chen", ("want", "music-lesson", "home", "83"))):
+        monkeypatch.setenv("LOOP_MAKER", maker)
+        run.ok(*line)
+    assert "cleared" in run.ok("clearing")
+    assert run.ok("offers", "--raw") == ""                            # no chain: the book's fills decide
+    recorded = {}
+    monkeypatch.setattr(cli.clients, "_chain_fills", lambda session: lambda oid: recorded.get(oid, 0))
+    rows = run.ok("offers", "--raw").splitlines()
+    assert len(rows) == 6 and all(r.endswith("\topen") for r in rows)
+    assert "surplus" in run.ok("loops")
+    piano = next(o for o in run.session.book.offers(include_filled=True)
+                 if o.kind == "give" and o.maker == "amara")
+    recorded[piano.offer_id] = 1
+    assert len(run.ok("offers", "--raw").splitlines()) == 5
+    assert "state    filled" in run.ok("show", piano.offer_id[:12])
+    monkeypatch.setenv("LOOP_MAKER", "amara")
+    states = {r.split("\t")[1]: r.split("\t")[-1] for r in run.ok("mine", "--raw").splitlines()}
+    assert states == {"give": "filled", "want": "open"}
+
+
 def test_a_fold_is_computed_under_the_books_addressing(env, tmp_path, monkeypatch):
     """A Swarm-addressed book folds under Swarm addressing, so the fold's
     root is the book's own once it absorbs the fold — the root a sealed

@@ -53,7 +53,7 @@ from .clearing import LoopProposal, BookClearing
 from .graph import Circulation
 from .matching import Leg, major
 from .reads import Reads
-from .registry import LegRecord, OfferRegistry
+from .registry import LegRecord, OfferRegistry, taken_on_chain
 from .schema import q
 
 OFFER_PROOF_TYPE = "(bytes32,bytes,bytes[])"
@@ -471,7 +471,7 @@ def challenge_beat(client: "BeatClient", beat: int, books, ontology, *, now: int
         offer = ev.snapshot.get(oid)
         left = ev.snapshot.available(oid)
         if not offer.composed:
-            left = min(left, q(offer.thing.qty) - client.filled(oid))
+            left = min(left, q(offer.thing.qty) - taken_on_chain(offer, client.filled))
         available[oid] = left
     mock = BookClearing(ev.snapshot, ontology, clock=lambda: now, register_at=register_at, span=span)
     overall = mock.rehearse(proposal)

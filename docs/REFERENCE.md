@@ -244,7 +244,23 @@ Key prefixes (module constants): `OFFER="offer/"`, `SIG="sig/"`,
 `HANDOFF`, `CRED`, `NOTICE`, `CURE`, `OPTION`, `EXERCISE`, `ITEM`, `KEY`,
 `CASE` (§12).
 
-### `OfferRegistry(store)`
+### `OfferRegistry(store, *, chain_fills=None)`
+
+`chain_fills`, where a chain is configured, is the fill authority (review
+item 9, decided by Peter 2026-10-10): offer id → what finalized beats
+recorded as taken (`BeatClient.filled`). With it, `taken`, `is_filled`,
+`available`, `availability` and `offers()` read the chain, and the
+book's `fill/` records hide nothing — anyone may announce a clearing
+book, while the contract records a fill only for a beat that survived its
+window and cancels a beat that would overfill. Each offer is asked once
+per registry, and a snapshot keeps the authority. The records stay the
+book's account of which loop took what (`loop_of`, `loops_of`, U11).
+Give it to a registry that is read, never to the book a clearing writes:
+a clearing must refuse what its own book filled. `taken_on_chain(offer,
+chain_fills)` is the one reading of the chain's fills, for this registry,
+the solver, the clearing and the challenger: a give's quantity taken, and
+a want filled whole (the chain records 1/1 against a want, whatever its
+quantity).
 
 Writing:
 
@@ -556,7 +572,18 @@ keeps this shape):
    new root
 
 `.rehearse(proposal)` runs the checklist without committing — what the
-challenger uses.
+challenger uses. `.balance_fault(loop)` is step 3 on its own.
+`.recheck(record, written=None, *, loop_id=None) -> reason | None`
+re-derives a cleared loop from its `loop/` record against this clearing's
+book with the same steps — every offer present, each leg's `verify_leg`,
+the circulation and its id, independence, `balance_fault` — at the
+record's `found_at`, and checks `written` (the `fill/` and `option/`
+records a book holds naming the loop) against what clearing it writes:
+what every reader's fold asks of a clearing book's loops (§11, review item
+9). Not asked there, because none is a fact about the loop: the catalogue
+pin, other loops' fills, a withdrawal after clearing, the chain, and the
+oracle types one clearing verifies. `clearing.option_holds(loop,
+loop_id)` is the `option/` records a loop's option legs write.
 
 ### `ChainClearing(registry, ontology, *, beat_client, snapshot_of=None, **kw)`
 `BookClearing`'s checklist, then the beat: each accepted loop is asked of
@@ -786,16 +813,20 @@ What an aggregator publishes. `book_root` is the pure fold;
 input-set commitment (completeness handle, threat T14). No derived root
 since 2026-09-12 (the `idx/` index it named is gone).
 
-### `Aggregator(store_factory, *, aggregator_id="agg-0")`
+### `Aggregator(store_factory, *, aggregator_id="agg-0", ontology=None, register_at=None, span=None, register_latest=None, resolver_profile=None)`
 `store_factory() -> store` must return fresh writable stores over the
 **shared blob space** (all books one blob space — Swarm's, or one
-`MemoryBytesStore`).
+`MemoryBytesStore`). `ontology` is the catalogue a clearing book's loops
+are re-checked under (review item 9); without one no loop is admitted.
+The other four are the counterparty gate's reads, as `BookClearing` takes
+them, for loops whose legs require credentials or accept resolvers by
+property.
 
 | member | meaning |
 |---|---|
 | `.announce(owner, store, *, role=MAKER)` | register "owner's book is store"; one per owner; re-announce replaces; `ValueError` on unknown role |
 | `.retract(owner)` | admission-by-reference's teeth: stop folding an owner |
-| `.fold() -> Manifest` | sanitize every announced book, merge under `or_set_resolver`, U11-check, commit all three roots. Deterministic in the announced (owner, root) set: same inputs ⇒ byte-identical manifest, any order |
+| `.fold() -> Manifest` | sanitize every announced book, re-check every loop of a clearing book against the maker books, merge under `or_set_resolver`, U11-check, commit all three roots. Deterministic in the announced (owner, root) set and the catalogue: same inputs ⇒ byte-identical manifest, any order |
 
 Admission rules per record (fail closed; every rejection is an
 attributed `reject/` record):
@@ -812,6 +843,24 @@ attributed `reject/` record):
 | `key/` | only the owner's own contact card, recovering to the owner | silently skipped |
 | anything else | rejected ("unknown keyspace") | silently skipped |
 
+**A clearing book's loops** (review item 9, decided by Peter 2026-10-10):
+each `loop/` record is re-derived against the maker books folded so far
+by `BookClearing.recheck` — every offer it names in a maker book, every
+leg through `verify_leg` (so it fits, within the give's quantity, each
+side's requirement met, registers read at the roots the record pins),
+the legs a circulation whose id is the record's and its key's, no
+inspector party to what it inspects, `balance_fault` — at the record's
+own time (`found_at`), so every reader reaches the same answer whenever it
+folds; and the book's `fill/` and `option/` records naming the loop must
+be exactly the ones clearing it writes (`LoopProposal.fills`,
+`clearing.option_holds`). A loop that fails is rejected with its reason,
+`reject/<owner>/loop/<loop id>`, and its fills, holds, exercises and item
+claims go with it; a record naming a loop the book does not hold is
+rejected on its own ("names a loop this book does not hold"). What is
+left must be whole (U11) against the makers alone, or the book is
+rejected whole. Two books each holding a valid loop over one offer still
+fail U11 loudly (P1-federated-book.md §3, left open).
+
 ### `Omission(owner, key, announced_root, proof)` — frozen
 One record an announced maker book holds at `announced_root` that is
 absent from `book_root` and has no `reject/` in `provenance_root`.
@@ -827,7 +876,8 @@ under `book_root`) over `offer/` and `withdraw/` keys of every
 channel and absent from the manifest's announcement set is an omitted
 book too (`announce/<owner>`, proven absent under `announcement_root`).
 Empty for an honest fold. Not audited: `sig/` (dropped-without-rejection
-by design) and clearing books (U11 covers them).
+by design) and clearing books (every fold re-checks their loops and U11
+covers what it admits).
 
 ## 11b. `loopmarket.announce` — the announcement channel (2026-09-14)
 
@@ -1160,7 +1210,7 @@ it is set. Radii: `5km`, `500m`, bare metres.
 | | `arbitrators [--trust KEYS]` | a personal view, never a gate: the arbitrators named on escrow reservations where I or a maker I trust was a party, their rulings, who among us lost under one and chose it again with an offer posted after the loss, and the accreditation each presents |
 | | `notice OFFER --cure DURATION [--fact STATEMENT]` | as the wanter of a cleared leg: factbond's `Notice` to the giver, sealed to its key beside a commitment, in my book; the opening kept locally for a claim |
 | | `cure OFFER [--evidence REF]` | as the giver: answer a notice on my give, sealed back to the claimant |
-| discovery | `announce [--role maker\|clearing\|register]` / `announced` / `fold` | say "my book is here" on `registry` (role `maker` by default; a clearing book says `clearing`, a register `register`); the standing set; fold the announced books myself |
+| discovery | `announce [--role maker\|clearing\|register]` / `announced` / `fold` | say "my book is here" on `registry` (role `maker` by default; a clearing book says `clearing`, a register `register`); the standing set; fold the announced books myself, print the root, and on stderr what the fold rejected and why (a loop of a clearing book that fails the re-check among them) |
 
 The escrow verbs name a reservation by its offer's id prefix and, when the
 book knows more than one loop that took from it, `--loop LOOP` (a prefix,
@@ -1208,7 +1258,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `render`, `limit` | `LOOP_RENDER`, `LOOP_LIMIT` | `auto` | as odag: tables and 50 rows at a terminal, raw and unlimited in a pipe |
 | `bee_api`, `bee_batch`, `bee_signer` | `BEE_*` | inherited from odag | the Bee node; `bee_signer` is secret |
 | `registry` | `LOOP_REGISTRY` | none | the announcement channel: `chain:RPC@CONTRACT` (LoopBookRegistry), `file:PATH`, `memory:`; comma-separated are one channel |
-| `beat` | `LOOP_BEAT` | none | the clearing contract `chain:RPC@CONTRACT` (BeatClearing): `propose`, `beats`, `challenge`, `finalize` |
+| `beat` | `LOOP_BEAT` | none | the clearing contract `chain:RPC@CONTRACT` (BeatClearing): `propose`, `beats`, `challenge`, `finalize`; where set, its finalized fills are the fill authority for every read of the fold (`offers`, `show`, `mine`, `matches`, `loops`): a fill in a book hides nothing (review item 9) |
 | `auction` | `LOOP_AUCTION` | none | the sealed-proposal beat `chain:RPC@CONTRACT` (SealedBeat) or `memory:`: `commit`, `reveal`, `outcome`, `sealed` |
 | `escrow` | `LOOP_ESCROW` | none | the escrow contract `chain:RPC@CONTRACT` (LoopEscrow); the record names the address; `deposit` funds, `finalize` reserves |
 | `resolver` | `LOOP_RESOLVER` | none | who resolves a contested claim on the deposits `finalize` reserves (factbond's `Assertions`; a give's `arbitrator` wins; empty: my key) |

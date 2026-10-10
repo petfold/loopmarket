@@ -6,14 +6,18 @@ publishes `offer/`, `sig/` and `withdraw/` keys under their own feed and
 signer, clearing publishes `fill/` and `loop/` under its own — and
 conflicts exist only at the fold. An **aggregator** folds announced books
 with three-way merge under the loop-aware resolver, applies the U8 fold
-rules per offer, records its decisions as attributed provenance, and
-publishes the **manifest tuple**
+rules per offer, re-checks every loop a clearing book holds against the
+maker books the way clearing checks it (review item 9: anyone may
+announce a clearing book, so its fills are not believed on its word),
+records its decisions as attributed provenance, and publishes the
+**manifest tuple**
 `{book_root, provenance_root, announcement_root}`
 (docs/plans/P1-federated-book.md §2).
 
 The fold is *pure*: deterministic admission rules plus commutative merge
-mean aggregators that saw the same inputs produce byte-identical
-`book_root`s in any fold order — divergence between manifests is evidence,
+mean aggregators that saw the same inputs — the catalogue loops are
+re-checked under among them — produce byte-identical `book_root`s in any
+fold order — divergence between manifests is evidence,
 not opinion, and omission is provable against `announcement_root` and the
 announcement ground truth (threat register T14). Aggregators charge for
 serving, never inclusion; an aggregator that folds selectively is a
@@ -88,10 +92,21 @@ class Aggregator:
     a flooder — there is no store-side rate limiting to game (P1 §8).
     """
 
-    def __init__(self, store_factory, *, aggregator_id: str = "agg-0"):
+    def __init__(self, store_factory, *, aggregator_id: str = "agg-0", ontology=None,
+                 register_at=None, span=None, register_latest=None, resolver_profile=None):
+        """`ontology` is the catalogue every clearing book's loops are
+        re-checked under (review item 9): without one no loop can be, and
+        none is admitted. `register_at`, `span`, `register_latest` and
+        `resolver_profile` are the counterparty gate's reads, as
+        `BookClearing` takes them, for loops whose legs require credentials
+        or accept resolvers by property; without them such a requirement
+        fails closed here as it would at clearing (U7)."""
         self._new_store = store_factory
         self.id = aggregator_id
         self._announced: dict[str, tuple[str, object]] = {}
+        self.ontology = ontology
+        self._gate_reads = dict(register_at=register_at, span=span, register_latest=register_latest,
+                                resolver_profile=resolver_profile)
 
     # -- inputs ----------------------------------------------------------------
 
@@ -179,15 +194,19 @@ class Aggregator:
             return staged_root if base is None else store_type.merge(
                 blobs, None, base, staged_root, resolver=or_set_resolver)
 
-        # The maker books first. A clearing book is then admitted only if
-        # its loops are whole (U11) against the makers alone; one that is
-        # not is rejected with its reason, where it used to abort the fold
-        # for every reader (an announced "clearing" book with a loop and no
-        # fills did, 2026-10-09). Each book is tested on its own, so which
-        # other books were announced, and how their owners sort, cannot
-        # decide whether it is admitted. Two books that are each whole but
-        # claim one offer still fail U11 below, loudly: choosing between
-        # them is the loop-granularity resolver's open problem
+        # The maker books first. Each loop of a clearing book is then
+        # re-checked against them the way clearing checks it, and admitted
+        # with its fills only if it holds (review item 9): anyone may
+        # announce a clearing book, and its fills used to hide offers from
+        # every reader on its word alone. What is left of the book is then
+        # admitted only if its loops are whole (U11) against the makers
+        # alone; one that is not is rejected with its reason, where it used
+        # to abort the fold for every reader (an announced "clearing" book
+        # with a loop and no fills did, 2026-10-09). Each book is tested on
+        # its own, so which other books were announced, and how their owners
+        # sort, cannot decide whether it is admitted. Two books that are each
+        # whole but claim one offer still fail U11 below, loudly: choosing
+        # between them is the loop-granularity resolver's open problem
         # (P1-federated-book.md §3), not a rule for the fold to invent.
         makers_root = None
         for role, _owner, staged_root in staged_roots:
@@ -196,6 +215,9 @@ class Aggregator:
         book_root = makers_root
         for role, owner, staged_root in staged_roots:
             if role != CLEARING:
+                continue
+            staged_root = self._recheck(owner, staged_root, makers_root, blobs, store_type, provenance)
+            if not staged_root:
                 continue
             alone = merged(makers_root, staged_root)
             try:
@@ -220,6 +242,55 @@ class Aggregator:
         )
 
     # -- admission (the U8 fold rules) -------------------------------------------
+
+    def _recheck(self, owner: str, staged_root: str, makers_root: str | None, blobs, store_type,
+                 provenance) -> str:
+        """A clearing book's staged speech less every loop that fails the
+        re-check, with the loop's fills, holds, exercises and item claims
+        (review item 9, decided by Peter 2026-10-10). Each loop is
+        re-derived against the maker books folded so far by
+        `BookClearing.recheck` — the clearing checklist's own steps, at the
+        loop record's time — and its fills and holds must be exactly the
+        ones clearing it writes. A failure is an attributed rejection with
+        its reason, `reject/<owner>/loop/<loop id>`; a record naming a loop
+        the book does not hold is rejected on its own. Returns the root of
+        what is left ('' when nothing is)."""
+        records = dict(store_type.at(staged_root, blobs).items())
+        loops = {key[len(LOOP):]: rec for key, rec in records.items() if key.startswith(LOOP)}
+        named = {key: _loops_named(key, rec) for key, rec in records.items() if not key.startswith(LOOP)}
+        written: dict[str, dict] = {}       # loop id -> its fills and holds, one pass over the book
+        for key, lids in named.items():
+            if key.startswith((FILL, OPTION)):
+                for lid in lids:
+                    written.setdefault(lid, {})[key] = records[key]
+        checker = None
+        if self.ontology is not None and makers_root:
+            from .clearing import BookClearing
+            checker = BookClearing(OfferRegistry(store_type.at(makers_root, blobs)), self.ontology,
+                                   **self._gate_reads)
+        admitted = set()
+        for lid in sorted(loops):
+            if checker is None:
+                reason = ("no catalogue to re-check its loops under" if self.ontology is None
+                          else "no maker book is folded: its offers are unknown")
+            else:
+                try:
+                    reason = checker.recheck(loops[lid], written.get(lid, {}), loop_id=lid)
+                except Exception as exc:   # noqa: BLE001 — hostile input fails closed
+                    reason = f"unreadable loop record ({type(exc).__name__})"
+            if reason:
+                provenance.put(f"reject/{owner}/loop/{lid}", {"owner": owner, "reason": reason})
+            else:
+                admitted.add(lid)
+        staged = self._new_store()
+        for key in sorted(records):
+            lids = (key[len(LOOP):],) if key.startswith(LOOP) else named[key]
+            if all(lid in admitted for lid in lids):
+                staged.put(key, records[key])
+            elif not all(lid in loops for lid in lids):
+                provenance.put(f"reject/{owner}/{key}",
+                               {"owner": owner, "reason": "names a loop this book does not hold"})
+        return staged.commit() or ""
 
     def _sanitize(self, owner: str, role: str, root: str, source,
                   provenance) -> object:
@@ -400,6 +471,27 @@ class Aggregator:
             return False
 
 
+def _loops_named(key: str, rec) -> tuple[str, ...]:
+    """The loops a clearing record speaks for: a fill's (a part's by its
+    key, a whole fill's by its record), a hold's, an item claim's, and
+    both of an exercise's (the option's loop and its own)."""
+    if key.startswith(FILL):
+        _oid, _, lid = key[len(FILL):].partition("/")
+        if lid:
+            return (lid,)
+        loop = rec.get("loop") if isinstance(rec, dict) else None
+        return (loop if isinstance(loop, str) else "",)
+    if key.startswith(OPTION):
+        return (key[len(OPTION):].partition("/")[2],)
+    if key.startswith(EXERCISE):
+        _oid, _, rest = key[len(EXERCISE):].partition("/")
+        option, _, lid = rest.partition("/")
+        return (option, lid)
+    if key.startswith(ITEM):
+        return (key.rsplit("/", 1)[-1],)
+    return ("",)
+
+
 # -- the cross-audit (T14) -----------------------------------------------------
 
 @dataclass(frozen=True, slots=True)
@@ -444,8 +536,8 @@ def audit_manifest(manifest: Manifest, blobs, *,
 
     Not audited: `sig/` (an own-maker signature that fails to verify is
     dropped without a rejection by design — feed ownership already
-    authenticates the offer) and clearing books (their fills and loops
-    are checked by U11 at every fold instead).
+    authenticates the offer) and clearing books (every fold re-checks
+    their loops, and U11 checks what it admits).
     """
     announced = store_type.at(manifest.announcement_root, blobs) \
         if manifest.announcement_root else None

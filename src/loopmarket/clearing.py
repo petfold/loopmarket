@@ -31,10 +31,11 @@ from .graph import Circulation, Loop
 from fractions import Fraction
 
 from .schema import q, rat
-from .matching import check_aggregate, check_composition, check_match, check_parts, version_fault
+from .matching import (check_aggregate, check_composition, check_match, check_parts, independence_faults,
+                       version_fault)
 from .ontology import Ontology
 from .reads import Reads, authorities, reads_of
-from .registry import OfferRegistry
+from .registry import FILL, OFFER, LegRecord, OfferRegistry, taken_on_chain
 from .register import named_registers
 from .gate import CounterpartyGate
 from . import items
@@ -237,7 +238,7 @@ class BookClearing:
             left = self.registry.available(oid)
             if chain_fills is not None:
                 offer = self.registry.get(oid)
-                on_chain = q(chain_fills(oid))
+                on_chain = taken_on_chain(offer, chain_fills)   # a want filled whole
                 if offer.composed:
                     left = Fraction(0) if on_chain > 0 else left
                 else:
@@ -252,7 +253,7 @@ class BookClearing:
         chain_fills = self.reads.chain_fills
         if chain_fills is None:
             return False
-        on_chain = q(chain_fills(offer.offer_id))
+        on_chain = taken_on_chain(offer, chain_fills)
         if offer.composed:
             return on_chain > 0
         return offer.thing.exhausted(q(offer.thing.qty) - on_chain)
@@ -330,20 +331,15 @@ class BookClearing:
 
         #    and across legs: an inspector is no party to the item it
         #    inspects anywhere in the loop (E2)
-        from .matching import independence_faults
         faults = independence_faults(loop.legs, self.ontology)
         if faults:
             return reject(faults[0])
 
         # 3. the arithmetic: potentials exist (a simple cycle: product > 1)
         #    with the required uniform gain, and the indivisible gate
-        if not loop.feasible:
-            return reject("no node potentials: the legs do not balance")
-        if loop.surplus < self.min_surplus:
-            return reject(f"surplus {float(loop.surplus):.4f} below minimum")
-        if self.require_per_node and not loop.all_divisible \
-                and not loop.per_node_ok:
-            return reject("indivisible legs without per-node surplus")
+        reason = self.balance_fault(loop)
+        if reason:
+            return reject(reason)
 
         # 4. atomic commitment: all fills land under one new root, or none —
         #    with the holds an option leg writes and the exercises that
@@ -352,6 +348,86 @@ class BookClearing:
                                   extra=self.hold_records(loop, lid, now))
         root = self.registry.commit()
         return Receipt(True, lid, book_root=root)
+
+    def balance_fault(self, loop) -> str | None:
+        """Step 3: node potentials exist with the required gain (a simple
+        cycle: product > 1), and indivisible legs have per-node surplus
+        (while `require_per_node`). None when the loop balances."""
+        if not loop.feasible:
+            return "no node potentials: the legs do not balance"
+        if loop.surplus < self.min_surplus:
+            return f"surplus {float(loop.surplus):.4f} below minimum"
+        if self.require_per_node and not loop.all_divisible and not loop.per_node_ok:
+            return "indivisible legs without per-node surplus"
+        return None
+
+    def recheck(self, record: dict, written: dict | None = None, *, loop_id: str | None = None) -> str | None:
+        """Re-derive a cleared loop from its `loop/` record against this
+        clearing's book: what every reader's fold asks of each loop in a
+        clearing book before admitting it (review item 9, decided by Peter
+        2026-10-10; this clearing's book is then the maker books' fold).
+        The checklist's own steps, not a copy: every offer the record names
+        is in the book; every leg holds (`verify_leg`, so it fits, within
+        the give's quantity, and meets each side's requirements, the gate
+        reading the registers at the roots the record pins); the legs form
+        a circulation whose id is the record's (and `loop_id`, its key's);
+        no inspector is party to what it inspects; and the legs balance
+        (`balance_fault`). Given `written`, the `fill/` and `option/`
+        records the book holds naming the loop, they must be exactly the
+        ones clearing it writes: a fill that takes more than the leg, or
+        an offer the loop never touched, hides it. None when it holds, else
+        the reason.
+
+        Judged at the record's own time (`found_at`), so every reader's fold
+        reaches the same answer whenever it runs. Not asked, because none is
+        a fact about the loop: the catalogue pin (the legs are re-derived
+        under this catalogue instead), the fills of other loops (the fold
+        checks the book whole, U11), a withdrawal after clearing, the chain,
+        and the oracle types one clearing can verify."""
+        from .beat import legs_from_record
+        try:
+            leg_records = LegRecord.of_loop(record)
+            for leg in leg_records:
+                leg.quantities                  # readable numbers, or the record is not
+            now = int(record.get("found_at", 0))
+            pinned = tuple(sorted((record.get("register_roots") or {}).items()))
+        except (AttributeError, KeyError, TypeError, ValueError, ZeroDivisionError):
+            return "unreadable loop record"
+        for leg in leg_records:
+            for oid in leg.offer_ids:
+                if not self.registry.store.contains(OFFER + oid):
+                    return f"unknown offer: {oid[:12]} is in no maker book"
+        legs = legs_from_record(record, self.registry)
+        reads = Reads(gate=self.gate(pinned, now=now))
+        for leg in legs:
+            reason = self.verify_leg(leg, now=now, reads=reads)
+            if reason:
+                return reason
+        try:
+            loop = Circulation(legs)
+        except ValueError as exc:
+            return str(exc)
+        if loop.loop_id != record.get("loop_id") or (loop_id is not None and loop.loop_id != loop_id):
+            return "its legs do not hash to its loop id"
+        faults = independence_faults(loop.legs, self.ontology)
+        if faults:
+            return faults[0]
+        reason = self.balance_fault(loop)
+        if reason:
+            return reason
+        if written is not None:
+            if all(not leg.taken for leg in leg_records):
+                # a loop of the 2026-08 shape: its offers filled whole, by name
+                expected = {FILL + oid: {"loop": loop.loop_id} for oid in loop.offer_ids}
+            else:
+                expected = {FILL + key: rec for key, rec in LoopProposal(loop, "", "", "", 0).fills().items()}
+            expected.update(option_holds(loop, loop.loop_id))
+            wrong = sorted(set(written) ^ set(expected)
+                           | {key for key in set(written) & set(expected) if written[key] != expected[key]})
+            if wrong:
+                return (f"its fills and holds are not the ones clearing it writes "
+                        f"({len(wrong)} differ, first {wrong[0][:40]}…)")
+        return None
 
     def verify_leg(self, leg, *, now: int, reads: Reads | None = None, available: dict | None = None,
                    held: dict | None = None, gate: CounterpartyGate | None = None) -> str | None:
@@ -398,14 +474,12 @@ class BookClearing:
         underlying for the leg's wanter until the exercise window ends, of
         what the leg took — and the `exercise/` records a holder's leg on a
         held offer writes (options-and-cover.md §3.2, §3.5)."""
-        out: dict = {}
+        out: dict = option_holds(loop, lid)
         for leg in loop.legs:
             for i, g in enumerate(leg.gives):
                 taken = leg.taken(i)
                 if g.v >= 6 and g.underlying:
                     until = int(g.exercise.end)
-                    out[f"option/{g.underlying}/{lid}"] = {
-                        "option": g.offer_id, "holder": leg.want.maker, "until": until, "qty": rat(taken)}
                     subject = self.registry.get(g.underlying)
                 else:
                     if self.registry.held_by(g.offer_id, leg.want.maker, now) > 0:
@@ -460,6 +534,22 @@ class BookClearing:
 #: The name this class had until 2026-10, kept for one release (review item
 #: 12, decided by Peter 2026-10-10): it clears a book, and mocks nothing.
 MockClearing = BookClearing
+
+
+def option_holds(loop, lid: str) -> dict:
+    """The `option/` records a loop's option legs write: a hold on each
+    option give's underlying for the leg's wanter, of what the leg took,
+    until the option's exercise window ends (options-and-cover.md §3.2). A
+    pure function of the loop, so a fold can ask a clearing book's holds to
+    be exactly these."""
+    out: dict = {}
+    for leg in loop.legs:
+        for i, g in enumerate(leg.gives):
+            if g.v >= 6 and g.underlying:
+                out[f"option/{g.underlying}/{lid}"] = {
+                    "option": g.offer_id, "holder": leg.want.maker, "until": int(g.exercise.end),
+                    "qty": rat(leg.taken(i))}
+    return out
 
 
 class ChainClearing(BookClearing):

@@ -45,7 +45,7 @@ from ..schema import q
 from ..selection import item_of, pack, weight
 from ..ontology import Ontology
 from ..reads import NO_READS, Reads, authorities
-from ..registry import OfferRegistry
+from ..registry import OfferRegistry, taken_on_chain
 from ..clearing import LoopProposal, Receipt, Clearing
 
 log = logging.getLogger("loopmarket.solver")
@@ -122,7 +122,7 @@ class SolverAgent:
         if chain_fills is not None:                # and the chain's fills are the authority
             kept = []
             for o in offers:
-                on_chain = q(chain_fills(o.offer_id))
+                on_chain = taken_on_chain(o, chain_fills)   # a want filled whole
                 if o.composed:
                     if on_chain > 0:
                         continue

@@ -241,8 +241,9 @@ print("mallory published a forged offer in amara's name\n")
 # --- two independent aggregators fold, in different orders --------------------
 
 announce_a = [a, b, c, mallory_owner]
-agg_a = Aggregator(fresh_store, aggregator_id="agg-a")
-agg_b = Aggregator(fresh_store, aggregator_id="agg-b")
+# each folds under the catalogue, which re-checks every loop a clearing book holds
+agg_a = Aggregator(fresh_store, aggregator_id="agg-a", ontology=catalogue)
+agg_b = Aggregator(fresh_store, aggregator_id="agg-b", ontology=catalogue)
 for owner in announce_a:
     agg_a.announce(owner, (books.get(owner) or mallory).store)
 for owner in reversed(announce_a):
@@ -270,7 +271,7 @@ class CensoringAggregator(Aggregator):
         return super()._sanitize(owner, role, root, source, provenance)
 
 
-cain = CensoringAggregator(fresh_store, aggregator_id="agg-cain")
+cain = CensoringAggregator(fresh_store, aggregator_id="agg-cain", ontology=catalogue)
 for owner in announce_a:
     cain.announce(owner, (books.get(owner) or mallory).store)
 m_c = cain.fold()
@@ -299,7 +300,7 @@ print(f"a solver trusting Cain's manifest finds "
 # own announcement names them — announcements, not manifests, are the
 # ground truth (on Swarm: registry events, maker feeds by (owner, topic)).
 announced = RecordStore.at(m_c.announcement_root, BLOB_SPACE)
-own = Aggregator(fresh_store, aggregator_id="solver-self")
+own = Aggregator(fresh_store, aggregator_id="solver-self", ontology=catalogue)
 for key in announced.keys("announce/"):
     rec = announced.get(key)
     own.announce(key[len("announce/"):], RecordStore.at(rec["root"], BLOB_SPACE))

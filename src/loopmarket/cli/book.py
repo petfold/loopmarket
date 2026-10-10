@@ -18,8 +18,9 @@ from .stores import Session, _resolve_id
 
 def cmd_mine(args, session, out):
     now = session.now
-    rows = [_row(o, now, session.book)
-            for o in session.book.offers(include_filled=True)
+    book = session._read_by_chain(session.book)       # where a chain is set, its fills decide
+    rows = [_row(o, now, book)
+            for o in book.offers(include_filled=True)
             if o.maker == session.maker]
     rows.sort(key=lambda r: r[0])
     _print_table(rows, args, out)
@@ -116,11 +117,16 @@ def cmd_announced(args, session, out):
 
 def cmd_fold(args, session, out):
     """Fold the announced books and my peers myself and print the root —
-    the number any aggregator's manifest must agree with (T14)."""
+    the number any aggregator's manifest must agree with (T14) — and, on
+    stderr, what the fold rejected and why: a record outside its writer's
+    authority, a loop of a clearing book that fails the re-check (review
+    item 9), a book it could not read."""
     fold = session.fold()
     every = list(fold.offers(include_filled=True))
     print(f"book root {fold.store.root or '(empty)'}", file=out)
     print(f"offers {len(every)}", file=_err())
+    for owner, key, reason in session.rejections:
+        print(f"rejected {owner} {key}: {reason}", file=_err())
     return 0
 
 

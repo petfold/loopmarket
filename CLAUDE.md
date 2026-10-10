@@ -193,18 +193,24 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
   propose. The baseline species and the beat's reserve bid; smarter
   species live outside this repo.
 - `clearing.py`: `LoopProposal`, `Receipt`, `BookClearing` (the production
-  verifier, despite its name), `ChainClearing` (`BookClearing` plus the
-  beat; it asks the contract's verifier before paying the bond).
+  verifier, despite its name; `recheck` re-derives a cleared loop record
+  with the same steps, for the fold), `ChainClearing` (`BookClearing` plus
+  the beat; it asks the contract's verifier before paying the bond).
 - `registry.py`: the book and its keyspaces (`offer/`, `sig/`,
   `withdraw/`, `fill/`, `loop/`, `handoff/`, `cred/`, `option/`,
   `exercise/`, `item/`), snapshots, availability, `or_set_resolver`,
   `verify_loop_atomicity`, `swarm_offer_book`. `LegRecord` is the one
   parser of a `loop/` record's legs (`gives`, else the 2026-08 single
   `give`; quantities parsed when asked), and `OfferRegistry.loop_legs`
-  reads a loop's legs. No index in the book.
+  reads a loop's legs. `OfferRegistry(chain_fills=)` is a book read with
+  the chain's finalized fills as the fill authority (item 9), and
+  `taken_on_chain` the one reading of those fills (a want filled whole).
+  No index in the book.
 - `federation.py`: `Aggregator` folds announced books under the admission
-  rules (rejections kept as attributed provenance) into a `Manifest`;
-  `audit_manifest` checks a manifest against the announced set.
+  rules (rejections kept as attributed provenance) into a `Manifest`,
+  re-checking every loop of a clearing book against the maker books under
+  its catalogue (`BookClearing.recheck`, item 9); `audit_manifest` checks
+  a manifest against the announced set.
 - `announce.py`: the announcement channel (`chain:`, `file:`, `memory:`;
   on chain the `LoopBookRegistry` event log).
 - `sigs.py`: maker signatures and contact cards, by `swarmfs.signer`.
@@ -344,8 +350,9 @@ engine, ontodag's index, with the default solver kept apart from the rest
 of loopmarket (item 2); matching and clearing refuse an offer whose
 registry or contract major differs from the installed ontodag's (item
 4, built); every reader's fold re-checks a clearing book's loops, and where a
-chain is configured only on-chain fills hide an offer (item 9; until then
-anyone can hide an offer with an invented loop); `cli.py` split by area,
+chain is configured only on-chain fills hide an offer (item 9, built:
+without a chain, two books each holding a valid loop over one offer
+still fail the fold, as decided); `cli.py` split by area,
 with a `Reads` object and a `LegRecord` type, built first of these (item
 10, built); durations and relative times in ontodag's units, `min` and
 `wk`, a bare `m` or `w` refused with the fix named (item 11, built); v1/v2
@@ -354,7 +361,7 @@ records stay readable), and `BookClearing` renamed `BookClearing` (item
 12); the
 phase gates restated for what they still guard (item 17, under "Roadmap
 (state)"). Every review item for loopmarket is decided, and the decided
-items are being built: items 5, 10, 11 and 4 so far.
+items are being built: items 5, 10, 11, 4 and 9 so far.
 
 ## Conventions
 

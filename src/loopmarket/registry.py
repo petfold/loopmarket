@@ -65,7 +65,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 from typing import Iterable, Iterator, Sequence
 
-from .schema import q, rat, Offer, Statement
+from .schema import GIVE, WANT, q, rat, Offer, Statement
 
 OFFER = "offer/"
 SIG = "sig/"
@@ -160,11 +160,55 @@ def or_set_resolver(key: str, base, ours, theirs):
     return ours if ours is not None else theirs
 
 
-class OfferRegistry:
-    """Publish, enumerate and clear offers over a duck-typed RecordStore."""
+def taken_on_chain(offer: Offer, chain_fills) -> Fraction:
+    """What the chain says has been taken of `offer`, in the offer's own
+    terms. `chain_fills(offer_id)` is what finalized beats recorded
+    (`BeatClient.filled`): the quantity taken of a give, and 1/1 against a
+    want, which is filled whole — so anything recorded against a want takes
+    all of it, whatever its quantity. The one reading of the chain's fills
+    for the book, the solver and the clearing."""
+    on = q(chain_fills(offer.offer_id))
+    if offer.kind == GIVE:
+        return on
+    if on <= 0:
+        return Fraction(0)
+    return Fraction(1) if offer.composed else q(offer.thing.qty)
 
-    def __init__(self, store):
+
+def _asked_once(read):
+    """`read`, asking each offer id once: a fold is one moment, and on a
+    chain every question is a call to a node."""
+    if getattr(read, "asked_once", False):
+        return read
+    answers: dict = {}
+
+    def once(offer_id):
+        if offer_id not in answers:
+            answers[offer_id] = read(offer_id)
+        return answers[offer_id]
+    once.asked_once = True
+    return once
+
+
+class OfferRegistry:
+    """Publish, enumerate and clear offers over a duck-typed RecordStore.
+
+    `chain_fills`, where a chain is configured (review item 9, decided by
+    Peter 2026-10-10), is the fill authority: offer id -> what finalized
+    beats recorded as taken (`BeatClient.filled`). With it, what is filled
+    and what is left — `taken`, `is_filled`, `available`, `offers()` — is
+    the chain's, and the book's `fill/` records hide nothing: anyone may
+    announce a clearing book, while the contract records a fill only for a
+    beat that survived its challenge window, and cancels a beat that would
+    overfill. The records stay the book's account of which loop took what
+    (`loop_of`, `loops_of`, U11). Without it the book's fills are the
+    authority. Give it to a registry that is read, never to the one a
+    clearing writes to: a clearing must refuse what its own book has
+    filled, or two loops would claim one offer in one book."""
+
+    def __init__(self, store, *, chain_fills=None):
         self.store = store
+        self.chain_fills = None if chain_fills is None else _asked_once(chain_fills)
 
     # -- writing ---------------------------------------------------------------
 
@@ -294,7 +338,10 @@ class OfferRegistry:
     def taken(self, offer_id: str) -> Fraction:
         """How much of the offer's thing fills have taken: the whole
         quantity under a whole fill (a want's always), the sum of the partial
-        fills otherwise."""
+        fills otherwise — or, where a chain is configured, what the chain
+        recorded (`taken_on_chain`)."""
+        if self.chain_fills is not None:
+            return taken_on_chain(self.get(offer_id), self.chain_fills)
         key = FILL + offer_id
         if self.store.contains(key):
             return q(self.get(offer_id).parts[0].qty) if not self.get(offer_id).composed \
@@ -311,7 +358,9 @@ class OfferRegistry:
         `now`, less what active holds keep for their holders (C2)."""
         offer = self.get(offer_id)
         if offer.composed:
-            return Fraction(0) if self.store.contains(FILL + offer_id) else Fraction(1)
+            filled = taken_on_chain(offer, self.chain_fills) > 0 if self.chain_fills is not None \
+                else self.store.contains(FILL + offer_id)
+            return Fraction(0) if filled else Fraction(1)
         left = q(offer.thing.qty) - self.taken(offer_id)
         if now is not None:
             left -= self.held(offer_id, now)
@@ -559,23 +608,34 @@ class OfferRegistry:
     # -- reading ---------------------------------------------------------------
 
     def snapshot(self):
-        """(root, frozen registry) — the unit a solver works against."""
+        """(root, frozen registry) — the unit a solver works against, with
+        this registry's fill authority."""
         root = self.store.root
         frozen = type(self.store).at(root, self.store.blobs)
-        return root, OfferRegistry(frozen)
+        return root, OfferRegistry(frozen, chain_fills=self.chain_fills)
 
     def get(self, offer_id: str) -> Offer:
         return Offer.from_record(self.store.get(OFFER + offer_id))
 
     def is_filled(self, offer_id: str) -> bool:
         """Filled whole, or a give whose remainder is too little for any
-        further fill (below its floor or its step: dust, left unfilled)."""
+        further fill (below its floor or its step: dust, left unfilled).
+        Where a chain is configured, by the chain's fills alone."""
+        if self.chain_fills is not None:
+            return self.store.contains(OFFER + offer_id) and self._filled_on_chain(self.get(offer_id))
         if self.store.contains(FILL + offer_id):
             return True
         if next(iter(self.store.keys(FILL + offer_id + "/")), None) is None:
             return False                       # no partial fill either
         offer = self.get(offer_id)
         return offer.thing.exhausted(self.available(offer_id))
+
+    def _filled_on_chain(self, offer: Offer) -> bool:
+        """A want with anything recorded against it, a give down to dust."""
+        taken = taken_on_chain(offer, self.chain_fills)
+        if offer.kind == WANT:
+            return taken > 0
+        return offer.thing.exhausted(q(offer.thing.qty) - taken)
 
     def offers(self, *, now: int | None = None,
                include_filled: bool = False) -> Iterator[Offer]:
@@ -586,10 +646,15 @@ class OfferRegistry:
         """
         for key, rec in self.store.items(OFFER):
             oid = key[len(OFFER):]
-            if not include_filled and (self.is_filled(oid)
-                                       or self.is_withdrawn(oid)):
-                continue
-            offer = Offer.from_record(rec)
+            if self.chain_fills is not None:
+                offer = Offer.from_record(rec)
+                if not include_filled and (self.is_withdrawn(oid) or self._filled_on_chain(offer)):
+                    continue
+            else:
+                if not include_filled and (self.is_filled(oid)
+                                           or self.is_withdrawn(oid)):
+                    continue
+                offer = Offer.from_record(rec)
             if now is not None and not offer.valid.is_open_at(now):
                 continue
             yield offer
