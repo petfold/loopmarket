@@ -142,6 +142,20 @@ where a chain is set (below); none changes a record byte or an id.
   adopted first where `geo` is not yet a prefix head (the one adoption
   every `declare_*` method shares). Same catalogue, same root.
 
+### Fixed
+
+- **A fold no longer takes time quadratic in the number of books.** The
+  aggregator merged each maker book into the growing union, and a merge
+  with no common base costs about the size of both sides, so N books cost
+  about N² record merges: 400 books took 10.8 s, the time per book
+  doubling with N. It now merges in rounds of pairs, earlier books on the
+  left, which keeps the root the one-at-a-time fold gave (the resolver
+  keeps the first owner's value of a key): 400 books take 0.84 s, about
+  2 ms a book, growing with log N. `tests/test_fold_scale.py` counts the
+  records the merges touch (64 books: within 2 × records × log2 64, where
+  the old fold touched 4,158 against a bound of 1,536) and checks the
+  fold of clean books is the union of their records.
+
 ## [0.14.5] — 2026-10-09
 
 Found in the 2026-10-09 review of ontodag and loopmarket (ontodag's

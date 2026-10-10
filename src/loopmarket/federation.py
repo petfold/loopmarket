@@ -194,6 +194,20 @@ class Aggregator:
             return staged_root if base is None else store_type.merge(
                 blobs, None, base, staged_root, resolver=or_set_resolver)
 
+        def merged_all(roots):
+            """Merge many staged roots in rounds of pairs, earlier books on
+            the left: a merge costs about the size of both sides, so a merge
+            tree costs the books' total size times log N, where merging one
+            book at a time into the growing union cost N² (400 maker books
+            took 10.8 s, 26.9 ms a book and doubling with N). Keeping the
+            earlier books on the left gives the root the one-at-a-time fold
+            gave: the resolver keeps the first owner's value of a key."""
+            roots = list(roots)
+            while len(roots) > 1:
+                roots = [merged(roots[i], roots[i + 1]) if i + 1 < len(roots)
+                         else roots[i] for i in range(0, len(roots), 2)]
+            return roots[0] if roots else None
+
         # The maker books first. Each loop of a clearing book is then
         # re-checked against them the way clearing checks it, and admitted
         # with its fills only if it holds (review item 9): anyone may
@@ -208,11 +222,9 @@ class Aggregator:
         # whole but claim one offer still fail U11 below, loudly: choosing
         # between them is the loop-granularity resolver's open problem
         # (P1-federated-book.md §3), not a rule for the fold to invent.
-        makers_root = None
-        for role, _owner, staged_root in staged_roots:
-            if role != CLEARING:
-                makers_root = merged(makers_root, staged_root)
-        book_root = makers_root
+        makers_root = merged_all(staged_root for role, _owner, staged_root
+                                 in staged_roots if role != CLEARING)
+        admitted = []
         for role, owner, staged_root in staged_roots:
             if role != CLEARING:
                 continue
@@ -227,8 +239,9 @@ class Aggregator:
                     "owner": owner,
                     "reason": f"loops not whole against the makers: {exc}"})
                 continue
-            book_root = merged(book_root, staged_root)
-        book_root = book_root or ""
+            admitted.append(staged_root)
+        book_root = merged_all([makers_root, *admitted]
+                               if makers_root else admitted) or ""
 
         if book_root:
             folded = OfferRegistry(store_type.at(book_root, blobs))
