@@ -142,6 +142,21 @@ where a chain is set (below); none changes a record byte or an id.
   adopted first where `geo` is not yet a prefix head (the one adoption
   every `declare_*` method shares). Same catalogue, same root.
 
+### Fixed
+
+- **An operator term the catalogue cannot read matched.** U7 says unknown
+  vocabulary never matches, and `satisfies` already refused a courier
+  whose argument it cannot read (`give transport(unicorn)`) in a direct
+  match. Two paths still let such a term through, because an argument the
+  catalogue refuses reads as no constraint at all: a want of
+  `transport(unicorn)` was met by a courier who takes anything (bare
+  `transport`), and the unreadable courier accepted any thing into a
+  composed leg (`Ontology.accepts`, the payload check of
+  `check_composition`). Both now fail closed, on both sides. The ontodag
+  index never gave such a want a candidate; the difference turned up while
+  checking that the index finds what the give × want product finds (the
+  review's item 2).
+
 ## [0.14.5] — 2026-10-09
 
 Found in the 2026-10-09 review of ontodag and loopmarket (ontodag's

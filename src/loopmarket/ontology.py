@@ -551,10 +551,12 @@ class Ontology:
         coordinate the give does not state answers nothing.
 
         Strict on vocabulary (U7): a wanted category nobody knows never
-        matches; an extra unknown category on the offered side only
-        narrows the offer and is ignored — except an operator term the
-        catalogue refuses (an unknown constraint), which would widen the
-        give to "accepts anything" and so refuses; a give
+        matches, nor does a wanted operator term whose argument the
+        catalogue cannot read (`transport(unicorn)`: no courier meets it,
+        not even one who takes anything); an extra unknown category on the
+        offered side only narrows the offer and is ignored — except an
+        operator term the catalogue refuses (an unknown constraint), which
+        would widen the give to "accepts anything" and so refuses; a give
         whose same-head terms are provably disjoint describes nothing and
         satisfies nothing.
 
@@ -582,6 +584,8 @@ class Ontology:
         for w in wanted:
             wc = self.handover_class(w)
             if w in ops_w:
+                if not self.known(w):
+                    return False        # its argument reads as no constraint: unknown, not "anything"
                 if not any(self.covers(ops_w[w], ho) for ho in ops_o.values()):
                     return False
             elif wc is None:
@@ -606,8 +610,13 @@ class Ontology:
         """Does a thing described by `concepts` fit what the operator terms
         accept — every constraint of every argument contains some concept?
         The payload check of a composed leg (`matching.check_composition`):
-        the box goes with the small-item courier, the piano does not."""
-        concepts = list(concepts)
+        the box goes with the small-item courier, the piano does not. A
+        term whose argument the catalogue cannot read accepts nothing (U7),
+        as `satisfies` refuses it: its argument would read as no constraint
+        at all."""
+        concepts, operator_terms = list(concepts), list(operator_terms)
+        if not all(self.known(t) for t in operator_terms):
+            return False
         return all(any(self.covers(c, d) for d in concepts)
                    for t in operator_terms for c in self.argument(t))
 

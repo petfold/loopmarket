@@ -224,6 +224,32 @@ def test_a_conjunction_in_the_argument_is_several_constraints():
     assert not cat.accepts(["piano", "flat"], ["transport(small-item)"])
 
 
+def test_an_operator_term_the_catalogue_cannot_read_matches_nothing():
+    """U7 on an operator's argument, on both sides. A want of
+    `transport(unicorn)` names vocabulary the catalogue does not know, so
+    no courier meets it, not even one who takes anything; and a courier
+    whose argument it cannot read takes nothing into a composed leg, as
+    `satisfies` already refused that courier in a direct match. Before,
+    an argument the catalogue refuses read as no constraint at all."""
+    from loopmarket import Thing, TimeWindow, give, want
+    from loopmarket.matching import check_composition, check_match
+    cat = _operators()
+    assert not cat.known("transport(unicorn)")
+    assert not cat.satisfies(["transport"], ["transport(unicorn)"])
+    assert cat.satisfies(["transport"], ["transport(bicycle)"])             # a readable want is met
+    assert not cat.satisfies(["transport(unicorn)"], ["transport(bicycle)"])
+    assert not cat.accepts(["bicycle", "flat"], ["transport(unicorn)"])
+    assert cat.accepts(["bicycle", "flat"], ["transport"])                  # a bare operator takes anything
+    v = dict(valid=TimeWindow(0, 1_000_000))
+    anything = give("courier", Thing(("transport", "from(barcelona)", "to(barcelona)")), 2, **v)
+    assert check_match(anything, want("amara", Thing(("transport(unicorn)",)), 5, **v), cat, now=5_000) is None
+    unreadable = give("courier", Thing(("transport(unicorn)", "from(barcelona)", "to(barcelona)")), 2, **v)
+    piano = give("bruno", Thing(("piano", "flat")), 50, **v)
+    at_shop = want("amara", Thing(("piano", "shop")), 60, **v)
+    assert check_composition(at_shop, (piano, anything), cat, now=5_000) is not None
+    assert check_composition(at_shop, (piano, unreadable), cat, now=5_000) is None
+
+
 def test_declare_operator_takes_a_category_and_two_ends():
     from ontodag import OntoDAG
     import pytest
