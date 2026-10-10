@@ -103,7 +103,7 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
             books[addr] = (i, reg)
 
         # the aggregator folds over the network
-        agg = Aggregator(blobstore, aggregator_id="agg-live")
+        agg = Aggregator(blobstore, aggregator_id="agg-live", ontology=catalogue)
         for addr, (_, reg) in books.items():
             agg.announce(addr, reg.store)
         m1 = agg.fold()
@@ -117,7 +117,7 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
         # stores: it shares no Python state with the publishers, only
         # (owner, topic) pairs and the network — must reproduce every
         # manifest root byte-identically
-        agg_b = Aggregator(blobstore, aggregator_id="agg-b-live")
+        agg_b = Aggregator(blobstore, aggregator_id="agg-b-live", ontology=catalogue)
         for addr, (i, _) in reversed(list(books.items())):
             agg_b.announce(
                 addr, swarm_store(f"{topic}-book-{i}", owner=addr, **swarm))
