@@ -124,7 +124,9 @@ documents and enter here only when their enforcing code and tests land.
   `option/` hold and `exercise/` record names present loops, and fills plus
   active holds stay within a give's quantity (checked when an option
   clears). Checked, not resolved: the loop-granularity resolver is an open
-  problem (`docs/plans/P1-federated-book.md` §3).
+  problem (`docs/plans/P1-federated-book.md` §3). Under a chain (question
+  25) the chain resolves it: the fold records rival loops over one offer
+  (`rival/` in its provenance) and excuses exactly their shared claims.
 
 The v6/v7 extensions (`docs/plans/credentials-cover-and-options.md`):
 every claim path has a clock (notice and cure, evidence, ruling,
@@ -141,7 +143,7 @@ PYTHONPATH=src python3 examples/demo_triangle.py    # must find and clear 1 loop
 LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples/triangle.od < examples/triangle.loop
 ```
 
-- With every extra installed: about 350 tests in about 11 minutes, most of
+- With every extra installed: about 420 tests in about 12 minutes, most of
   it the chain tests on a local EVM (the `evm` extra). Without `evm` they
   skip.
 - Extras: `[test]` for development; `[sig]` signatures and sealed
@@ -325,7 +327,8 @@ word.
 5. **Guarantees.** A maker's requirements (a neutral point, a ladder,
    accepted assets, witness types, escrow kinds, credentials) are enforced
    off chain and on; deposits are held by `LoopEscrow` and reserved per
-   fill at `finalize`; a contested claim goes to the resolver fixed at
+   fill at `finalize`, and a relied-on statement's floor on the deposit of
+   its subject or issuer per relying leg (question 27); a contested claim goes to the resolver fixed at
    clearing (factbond). Not built: `BeatClearing` reserving from the escrow
    itself, and a ruling that states an amount (factbond's to decide). The
    P3 mechanism design is factbond's (`docs/INTEGRATION.md` there).
@@ -391,11 +394,24 @@ suggestions 3, 4 and 9 is built: the golden corpus of record bytes
 (`tests/test_golden_records.py`), well-formed hostile records
 (`tests/test_hostile_records.py`), `watch` end to end on composed and
 aggregated legs (`tests/test_watch.py`) and the examples
-(`tests/test_examples.py`). Two strict expected failures there pin open
-faults: a stranger whose address sorts first displaces a party's notice,
-cure or case record in every reader's fold, and `watch` reports a case
-record from anyone; the first is ontodag's question 26, and rival clearing
-books under a chain question 25, both put to Peter.
+(`tests/test_examples.py`). The hostile-record tests found that a
+stranger whose address sorted first displaced a party's notice, cure or
+case record in every reader's fold: decided as ontodag's question 26 and
+built, each is kept under its writer's own key
+(`notice/<loop>/<offer>/<writer>`, `cure/…/<writer>`,
+`case/<loop>/<offer>/<kind>/<to>/<writer>`), the fold admits one only
+under its writer's key, readers ask for the party's, and the old keys are
+not read. One strict expected failure there still pins an open fault:
+`watch` reports a case record from anyone. The same tests found that a
+self-bonded statement passed every gate step naming another maker's
+deposit: decided as question 27 and built, step 6 takes a deposit only
+from the statement's subject or issuer and counts only what the escrow
+has free, and the clearing reserves each relied-on statement's floor per
+relying leg (`escrow.statement_slot`). Rival clearing books under a
+chain were question 25, decided A and built: there `loop propose` takes
+only the makers' records of the fold, the fold records rival loops
+instead of failing U11, and `watch` seals a handoff only once a
+finalized beat recorded its loop; without a chain U11 stays.
 
 ## Conventions
 

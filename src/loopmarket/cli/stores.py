@@ -104,6 +104,8 @@ class Session:
         self._catalogue = None
         #: (owner, key, reason) for everything the last fold rejected
         self.rejections: list[tuple[str, str, str]] = []
+        #: the `rival/` records of the last fold under a chain (question 25)
+        self.rivals: list[dict] = []
 
     # -- the book ---------------------------------------------------------------
 
@@ -134,9 +136,12 @@ class Session:
         Where a clearing contract is set (`beat`), the registry returned
         counts an offer filled only by what its finalized beats recorded
         (`OfferRegistry(chain_fills=...)`, review item 9): book fills hide
-        nothing there."""
+        nothing there. And two announced clearing books that each hold a
+        valid loop over one offer are rivals there, kept in `rivals`, where
+        without a chain they fail U11 (question 25): the chain decides."""
         specs, registry = _peer_specs(), _configured("registry")
-        self.rejections = []
+        self.rejections, self.rivals = [], []
+        contested = set()
         if not specs and not registry:
             return self._read_by_chain(self.book)
         from recordstore import MemoryBytesStore, RecordStore
@@ -151,6 +156,7 @@ class Session:
             clearing = any(ann.role == CLEARING for ann in announced)
             agg = Aggregator(lambda: RecordStore(blobs), aggregator_id="loop-cli",
                              ontology=self.catalogue if clearing else None,
+                             chain=(_configured("beat") or "").startswith("chain:"),
                              **(self._gate_reads() if clearing else {}))
             for ann in announced:
                 try:
@@ -169,13 +175,17 @@ class Session:
             if manifest.book_root:
                 folded.absorb(OfferRegistry(RecordStore.at(manifest.book_root, blobs)))
             if manifest.provenance_root:
+                from ..federation import rival_claims
+                provenance = RecordStore.at(manifest.provenance_root, blobs)
                 self.rejections = [(rec.get("owner", ""), key[len("reject/"):].partition("/")[2],
                                     rec.get("reason", ""))
-                                   for key, rec in RecordStore.at(manifest.provenance_root, blobs).items("reject/")]
+                                   for key, rec in provenance.items("reject/")]
+                self.rivals = [rec for _key, rec in provenance.items("rival/")]
+                contested = rival_claims(provenance)
         for spec in specs:
             folded.absorb(_open_book(spec))
         folded.commit()
-        folded.verify_loop_atomicity()
+        folded.verify_loop_atomicity(rivals=contested)
         return self._read_by_chain(folded)
 
     def _read_by_chain(self, registry: OfferRegistry) -> OfferRegistry:

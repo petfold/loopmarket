@@ -136,6 +136,41 @@ def test_conflicting_loops_fail_the_merge_loudly():
         reg.verify_loop_atomicity()
 
 
+def test_a_merge_of_rivals_is_whole_but_for_the_rivals_claims():
+    """Question 25: under a chain the fold names rival loops and the claims
+    they share (`rivals`, (loop, offer) pairs); U11 then holds for every
+    other claim, and a claim no rivalry names still fails it."""
+    blobs, base_root = _base()
+    a, b = _writer(blobs, base_root), _writer(blobs, base_root)
+    a.mark_filled(("o1", "o2", "o3", "o4"), "L1", _loop_rec([("o1", "o2"), ("o3", "o4")]))
+    b.mark_filled(("o3", "o4", "o5", "o6"), "L2", _loop_rec([("o3", "o4"), ("o5", "o6")]))
+    merged = RecordStore.merge(blobs, base_root, a.store.commit(), b.store.commit(), resolver=or_set_resolver)
+    reg = OfferRegistry(RecordStore(blobs, root=merged))
+    rivals = {(lid, oid) for lid in ("L1", "L2") for oid in ("o3", "o4")}
+    reg.verify_loop_atomicity(rivals=rivals)
+    with pytest.raises(PartialLoopError):
+        reg.verify_loop_atomicity(rivals=rivals - {("L2", "o4"), ("L1", "o4")})
+
+
+def test_absorbing_the_makers_records_leaves_a_clearings_records_out():
+    """Question 25: under a chain `loop propose` bases its book on the
+    makers' speech in the fold, never on another clearing's loops and
+    fills, so a loop someone cleared and never posted keeps nobody off its
+    offers."""
+    cleared = OfferRegistry(RecordStore(MemoryBytesStore()))
+    cleared.publish_many(OFFERS)
+    cleared.commit()
+    assert SolverAgent(cleared, ONT, BookClearing(cleared, ONT, clock=lambda: NOW)).step(now=NOW)[0].accepted
+    assert list(cleared.store.keys("loop/")) and list(cleared.store.keys("fill/"))
+    mine = OfferRegistry(RecordStore(MemoryBytesStore()))
+    mine.absorb(cleared, clearing=False)
+    for prefix in ("loop/", "fill/", "option/", "exercise/", "item/"):
+        assert not list(mine.store.keys(prefix)), prefix
+    assert sorted(o.offer_id for o in mine.offers(now=NOW)) == sorted(o.offer_id for o in OFFERS)
+    mine.absorb(cleared)                                  # the whole book, as a clearing re-bases
+    assert list(mine.store.keys("loop/"))
+
+
 def test_disjoint_loops_merge_whole():
     blobs, base_root = _base()
     a, b = _writer(blobs, base_root), _writer(blobs, base_root)

@@ -168,3 +168,63 @@ def test_watch_reports_fills_seals_and_opens_handoffs(env, tmp_path, monkeypatch
     monkeypatch.delenv("BEE_SIGNER")
     monkeypatch.setenv("LOOP_MAKER", B)
     assert "set bee_signer to open" in run.ok("handoffs")
+
+
+class _Chain:
+    """The clearing contract as `watch` and the fold read it: what its
+    finalized beats recorded, each beat's book root and fills."""
+
+    def __init__(self):
+        self.finalized = []                       # (book root, {offer id: taken})
+
+    def filled(self, offer_id):
+        from fractions import Fraction
+        return sum((fills.get(offer_id, Fraction(0)) for _root, fills in self.finalized), Fraction(0))
+
+    def beats(self):
+        return [{"beat": n, "finalized": True, "book_root": root} for n, (root, _f) in enumerate(self.finalized, 1)]
+
+    def pending_fills(self, beat):
+        from fractions import Fraction
+        return [(oid, taken, Fraction(0)) for oid, taken in self.finalized[beat - 1][1].items()]
+
+
+def test_under_a_chain_watch_seals_a_handoff_only_after_a_finalized_beat(env, tmp_path, monkeypatch):
+    """Question 25 (decided by Peter 2026-10-10: A): where a chain decides
+    what is filled, a fill in the book is pending until a finalized beat
+    records it, and the address goes to the counterparty only then — a loop
+    a rival may yet take is no reason to hand over a door code. Before:
+    `watch` sealed on the book's fill."""
+    from fractions import Fraction
+    from loopmarket import cli
+    _od_with_prelude(tmp_path / "town.od", [("ride", []), ("piano-lesson", [])])
+    monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "town.od"))
+    monkeypatch.delenv("LOOP_MAKER")
+
+    def as_(key):
+        monkeypatch.setenv("BEE_SIGNER", key)
+
+    run = Runner()
+    as_(KEY_A)
+    run.ok("place", "home", "46.05,14.50,5km", "Trubarjeva", "12")
+    run.ok("want", "ride", "home", "5")
+    run.ok("give", "piano-lesson", "home", "4")
+    as_(KEY_B)
+    run.ok("place", "depot", "46.05,14.50,5km")
+    run.ok("give", "ride", "geo(depot)", "4")
+    run.ok("want", "piano-lesson", "geo(depot)", "5")
+    run.ok("clearing")
+    book = run.session.book
+    (lid,) = [k[len("loop/"):] for k in book.store.keys("loop/")]
+    record = book.store.get(f"loop/{lid}")
+    chain = _Chain()
+    monkeypatch.setattr(cli.clients, "_beat_client", lambda session: chain)
+    monkeypatch.setenv("LOOP_BEAT", "chain:test@0x" + "be" * 20)
+    as_(KEY_A)
+    code, out, err = run("watch", "--once")
+    assert "sealed to" not in out and "waits for a finalized beat" in err
+    assert not list(book.handoffs())
+    offers = {o for leg in record["legs"] for o in (leg["want"], *leg.get("gives", [leg.get("give")]))}
+    chain.finalized.append((record["book_root"], {oid: Fraction(1) for oid in offers}))
+    out = run.ok("watch", "--once")
+    assert out.count(f"sealed to {B}") == 2               # her want and her give, both at home

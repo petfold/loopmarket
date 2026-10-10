@@ -186,7 +186,14 @@ fills — a "settled" loop missing a leg, which nothing repairs. Fixes:
 - **The resolver algorithm is a registered open problem** (below): it
   must be deterministic, commutative, and stable as late information
   arrives; conflict chains make greedy-by-sorted-`loop_id`
-  order-sensitive in exactly the way that matters.
+  order-sensitive in exactly the way that matters. Where a chain decides
+  what is filled (ontodag's review question 25, decided by Peter
+  2026-10-10, built), the chain is the resolver: the fold keeps rival
+  loops over one offer and records each rivalry (`rival/` in its
+  provenance), U11 excuses exactly their shared claims, a proposer takes
+  only the makers' records of the fold, and `watch` hands a counterparty
+  the door only once a finalized beat recorded the loop. The open problem
+  stands for a fold without a chain.
 - **Lineage**: each writer tracks the `base_root` it last folded, as
   `EagerOntoDAG` does; save-onto-moved-head is the CRDT merge, never
   last-writer-wins or locking (ontodag's 2026-08-04 decision).

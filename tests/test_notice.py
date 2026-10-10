@@ -75,10 +75,35 @@ def test_the_fold_admits_a_notice_and_a_cure_only_as_their_writers_speech():
     agg.announce("0xother", other.store)
     m = agg.fold()
     fold = OfferRegistry(RecordStore.at(m.book_root, blobs))
-    assert fold.notice(LOOP, OFFER) == side and fold.cure(LOOP, OFFER) == cure
-    assert read(fold.cure(LOOP, OFFER), kp)["evidence_ref"] == "refund-tx"
+    assert fold.notice(LOOP, OFFER, P) == side and fold.cure(LOOP, OFFER, D) == cure
+    assert read(fold.cure(LOOP, OFFER, D), kp)["evidence_ref"] == "refund-tx"
     rejected = {k: v["reason"] for k, v in RecordStore.at(m.provenance_root, blobs).items("reject/")}
-    assert rejected == {f"reject/0xother/notice/{LOOP}/{OFFER}": "notice from a key other than the book's owner"}
+    assert rejected == {f"reject/0xother/notice/{LOOP}/{OFFER}/{P.lower()}":
+                        "notice from a key other than the book's owner"}
+
+
+def test_the_fold_reads_a_notice_only_under_its_writers_own_key():
+    """One key per writer (review item 23): a book's owner writing its own
+    notice under another writer's key, or under the key's old shape that
+    names no writer, is refused, so no record can stand where a party's
+    would."""
+    kp, P = _keys()
+    kd, D = _keys()
+    blobs = MemoryBytesStore()
+    book = OfferRegistry(RecordStore(blobs))
+    side, _ = sealed(notice_record(P, D, "ab" * 32, policy_ref="cd" * 32, sent_at=NOW, cure_period=7 * DAY),
+                     sender=P, recipient=D, recipient_public_key=public_key_of(kd))
+    book.store.put(f"notice/{LOOP}/{OFFER}/{D.lower()}", side)          # P's notice under D's key
+    book.store.put(f"notice/{LOOP}/{OFFER}", side)                       # the shape before 2026-10-10
+    book.commit()
+    agg = Aggregator(lambda: RecordStore(blobs))
+    agg.announce(P, book.store)
+    m = agg.fold()
+    rejected = {k: v["reason"] for k, v in RecordStore.at(m.provenance_root, blobs).items("reject/")}
+    assert rejected == {f"reject/{P}/notice/{LOOP}/{OFFER}/{D.lower()}": "a notice under another writer's key",
+                        f"reject/{P}/notice/{LOOP}/{OFFER}": "a notice key that does not name its writer"}
+    fold = OfferRegistry(RecordStore.at(m.book_root, blobs)) if m.book_root else None
+    assert fold is None or fold.notice(LOOP, OFFER, P) is None
 
 
 def test_the_watch_finds_a_statement_that_lapsed_since_clearing():
@@ -172,7 +197,7 @@ def test_watch_reports_a_lapsed_licence_and_the_notice_and_cure_travel_sealed(en
     assert code != 0                                   # the cure period is mine to state, no default
     out = run.ok("notice", give_id[:12], "--fact", s.statement_id[:12], "--cure", "3d")
     assert f"notice   sent to {D}" in out
-    side = run.session.book.notice(loop_id, give_id)
+    side = run.session.book.notice(loop_id, give_id, P)
     assert side["from"] == P and side["to"] == D and s.statement_id not in json.dumps(side)
     path = out.strip().rsplit(" ", 1)[-1]
     opening = json.loads(open(path).read())

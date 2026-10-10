@@ -68,21 +68,66 @@ def cmd_handoff(args, session, out):
     return 0
 
 
+def _finalized_beats(session) -> list[tuple[str, set]]:
+    """(book root, the offers its fills took) for every finalized beat of
+    the clearing contract."""
+    from .clients import _beat_client
+    client = _beat_client(session)
+    return [(state["book_root"], {oid for oid, _taken, _cap in client.pending_fills(state["beat"])})
+            for state in client.beats() if state["finalized"]]
+
+
+def _finalized_leg(session: Session, fold: OfferRegistry, oid: str, found, beats):
+    """Under a chain: (loop id, leg, my side) for the loop a finalized beat
+    recorded taking `oid` — the book's loop for it or one of its rivals
+    (question 25) — else None. A loop is a beat's when the beat pinned the
+    loop's book root and its fills took every offer of the loop."""
+    candidates = [found[0]] + sorted(rec["rival"] for rec in session.rivals
+                                     if rec.get("loop") == found[0] and oid in rec.get("offers", ()))
+    for lid in candidates:
+        key = f"loop/{lid}"
+        if not fold.store.contains(key):
+            continue
+        rec = fold.store.get(key)
+        legs = LegRecord.of_loop(rec)
+        offers = {o for leg in legs for o in leg.offer_ids}
+        if not any(root == rec.get("book_root") and offers <= taken for root, taken in beats):
+            continue
+        for leg in legs:
+            if oid in leg.gives:
+                return lid, leg, "give"
+            if oid == leg.want:
+                return lid, leg, "want"
+    return None
+
+
 def _seal_pending(session: Session, fold: OfferRegistry, out, *, only=None) -> bool:
     """Seal every remembered text whose offer has cleared and whose
-    counterparty left a public key; returns whether anything was sealed."""
+    counterparty left a public key; returns whether anything was sealed.
+    Where a chain decides what is filled, an offer has cleared only when a
+    finalized beat recorded its loop (question 25, decided by Peter
+    2026-10-10): a fill in the book is a pending beat's, or a rival's that
+    the chain may never record, and a door code is not handed over on it."""
     from ..handoff import seal
     from ..sigs import recover_public_key
 
     pending = _read_json(_handoffs_path(), {})
     me = session.maker
     sealed = False
+    beats = None
     for oid, text in sorted(pending.items()):
         if only is not None and oid not in only:
             continue
         found = _leg_of(fold, oid)
         if found is None:
             continue
+        if fold.chain_fills is not None:
+            if beats is None:
+                beats = _finalized_beats(session)
+            found = _finalized_leg(session, fold, oid, found, beats)
+            if found is None:
+                print(f"handoff  {oid[:12]} waits for a finalized beat to record its loop", file=_err())
+                continue
         loop_id, leg, side = found
         if session.book.handoff(loop_id, oid) is not None \
                 or fold.handoff(loop_id, oid) is not None:
@@ -265,24 +310,27 @@ def _check_lapsed(session, fold, out, seen: list) -> bool:
 
 def _notices_in(session, fold, out, seen: list) -> bool:
     """Notices sealed to me on my gives, and cures sealed to me on my
-    notices, opened with bee_signer and reported once. Anyone may seal a
-    record to me, so one that does not open with my key, or whose plaintext
-    is not the record its kind names, is reported as unreadable and the
-    pass goes on; and a notice counts only from the leg's wanter, a cure
-    only from its giver (R6), so anyone else's is set aside, said once on
-    stderr."""
+    notices, opened with bee_signer and reported once. A notice counts only
+    from the leg's wanter, a cure only from its giver (R6), so only their
+    keys are read: anyone else's record is stored in its writer's book and
+    never read. One that does not open with my key, or whose plaintext is
+    not the record its kind names, is reported as unreadable and the pass
+    goes on; one whose `from` is not the key's writer (a raw write into a
+    shared book) is set aside, said once on stderr."""
     from ..notice import read
     signer, me, news = _configured("bee_signer"), session.maker, False
     rows = []
     for loop, leg, give_ in _my_legs(session, fold, "give"):
-        side = fold.notice(loop, give_.offer_id)
+        wanter = _maker_of(fold, leg.want)
+        side = fold.notice(loop, give_.offer_id, wanter) if wanter else None
         if side is not None and side.get("to") == me:
-            rows.append(("notice", loop, give_.offer_id, side, "wanter", _maker_of(fold, leg.want)))
+            rows.append(("notice", loop, give_.offer_id, side, "wanter", wanter))
     for loop, leg, _want in _my_legs(session, fold, "want"):
         for g in leg.gives:
-            side = fold.cure(loop, g)
+            giver = _maker_of(fold, g)
+            side = fold.cure(loop, g, giver) if giver else None
             if side is not None and side.get("to") == me:
-                rows.append(("cure", loop, g, side, "giver", _maker_of(fold, g)))
+                rows.append(("cure", loop, g, side, "giver", giver))
     for kind, loop, oid, side, role, party in rows:
         key = f"{kind}/{loop}/{oid}/{side['commitment']}"
         if key in seen:

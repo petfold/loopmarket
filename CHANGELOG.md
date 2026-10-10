@@ -45,6 +45,60 @@ solver apart from the rest of loopmarket.
 
 ### Changed
 
+- **Under a chain, the chain decides proposals too** (ontodag's review
+  item 22, question 25, decided by Peter 2026-10-10: A). `loop propose`
+  (and `outcome`) absorbed the whole fold into the proposer's clearing
+  book, so a valid loop in anyone's clearing book kept every proposer
+  off its offers, posted or not: announcing loops and never posting them
+  froze those offers. Now, with peers or a registry, my book takes only
+  the makers' records of the fold (`OfferRegistry.absorb(clearing=False)`,
+  `CLEARING_KEYSPACES`). Where a clearing contract is set, two announced
+  clearing books that each hold a valid loop over one offer are rivals,
+  not a failed fold: both loops stay, the fold records one
+  `rival/<loop>/<rival>` per rival with both owners and the offers they
+  share (`Aggregator(chain=True)`, `rival_claims`, `Session.rivals`,
+  printed by `loop fold`), and U11 excuses exactly those claims
+  (`verify_loop_atomicity(rivals=)`). And `watch` seals a handoff only
+  once a finalized beat recorded the loop (its book root pinned, its
+  offers all in the beat's fills), so no door code goes out on a pending
+  beat or a rival's fill. Without a chain U11 stays as it was.
+- **A statement's deposit is its backer's, and its floor is reserved per
+  relying leg** (ontodag's review item 24, question 27, decided by Peter
+  2026-10-10: A; D1). The gate's step 6 checked that a statement's
+  deposit was a bond in the escrow with enough free, never whose it was,
+  so Mallory's self-bonded "I am a dentist" naming a real dentist's
+  deposit passed every step; and at finalize the clearing reserved only
+  each give's own share, so a statement's floor was checked and never
+  locked, and one deposit could be counted by any number of legs. Now
+  step 6 refuses a deposit whose maker is neither the statement's
+  subject nor its issuer (a practice backs what it attests about its
+  dentists; a dentist backs an attestation about himself), counts only
+  what the escrow has free (`Reads.escrow_free`, `escrow.free_units`;
+  the solver, the clearing and the command line read it), and
+  `reservations_for` reserves each relied-on statement's floor on its
+  deposit for the relying party, with the leg's resolver, window and
+  claim period, under `escrow.statement_slot` (the escrow keeps one
+  reservation per offer and loop). `CounterpartyGate.floor` names what a
+  leg reserves. No record format or contract changes: the on-chain
+  verifier leaves a statement's deposit to the semantic half, as before.
+- **A notice, a cure and a case record are kept under their writer's own
+  key** (ontodag's review item 23, question 26, decided by Peter
+  2026-10-10: one key per writer, a clean break):
+  `notice/<loop>/<offer>/<writer>`, `cure/<loop>/<offer>/<writer>` and
+  `case/<loop>/<offer>/<kind>/<to>/<writer>`. Under one key per loop and
+  offer, anyone could write a record of their own under the key a party's
+  used, and the fold, keeping the first-merged value of a key, kept the
+  stranger's in every reader's fold when the stranger's address sorted
+  first. The fold now admits such a record only under its writer's key in
+  its writer's own book, as it admits contact cards; `notice`, `cure` and
+  `case_record` take the writer, and `watch`, `cure`, `claim`, `answer` and
+  `rule` ask for the party's key (the leg's wanter's notice, its giver's
+  cure, the reservation's wanter's claim), so a stranger's record is
+  stored and never read. Records under the old keys are not read: the
+  fold rejects them with the reason. `watch` still reports a case record
+  sealed to me from anyone (a ruling's author is the escrow reservation's
+  resolver, which `watch` does not read), pinned as before by a strict
+  expected failure.
 - **The index files an older offer's bare cell under its current spelling
   when ontodag writes cells by their own name** (ontodag 0.31, its review
   question 14: in a role of geo a cell is `from(geo(u2e4x))` and a bare

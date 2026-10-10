@@ -76,15 +76,21 @@ def read(side: dict, private_key_hex: str) -> dict:
     return notice.read(side, private_key_hex)
 
 
-def key(loop_id: str, offer_id: str, kind: str, to: str) -> str:
-    return f"{CASE}{loop_id}/{offer_id}/{kind}/{to.lower()}"
+def key(loop_id: str, offer_id: str, kind: str, to: str, writer: str) -> str:
+    """Where `writer`'s case record of `kind` to `to` is kept, one key per
+    writer (review item 23): `case/<loop>/<offer>/<kind>/<to>/<writer>`."""
+    return f"{CASE}{loop_id}/{offer_id}/{kind}/{to.lower()}/{writer.lower()}"
 
 
 def fault(owner: str, key_: str, rec: Any) -> str:
-    """Why a `case/` record is not `owner`'s speech, or ""."""
+    """Why a `case/` record is not `owner`'s speech under `owner`'s key, or ""."""
     parts = key_[len(CASE):].split("/")
-    if len(parts) != 4 or parts[2] not in KINDS:
+    if len(parts) == 4 and parts[2] in KINDS:
+        return "a case key that does not name its writer"
+    if len(parts) != 5 or parts[2] not in KINDS:
         return "unreadable case record"
+    if parts[4] != owner.lower():
+        return "a case record under another writer's key"
     if not isinstance(rec, dict) or rec.get("v") != VERSION or rec.get("kind") != parts[2]:
         return "unreadable case record"
     if str(rec.get("from", "")).lower() != owner.lower():

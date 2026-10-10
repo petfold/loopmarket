@@ -120,13 +120,19 @@ def cmd_fold(args, session, out):
     the number any aggregator's manifest must agree with (T14) — and, on
     stderr, what the fold rejected and why: a record outside its writer's
     authority, a loop of a clearing book that fails the re-check (review
-    item 9), a book it could not read."""
+    item 9), a book it could not read; and, under a chain, the loops of two
+    clearing books that claim one offer, which the chain decides between
+    (question 25)."""
     fold = session.fold()
     every = list(fold.offers(include_filled=True))
     print(f"book root {fold.store.root or '(empty)'}", file=out)
     print(f"offers {len(every)}", file=_err())
     for owner, key, reason in session.rejections:
         print(f"rejected {owner} {key}: {reason}", file=_err())
+    for rec in session.rivals:
+        print(f"rival    {rec['owner']} loop {rec['loop'][:16]}… and {rec['rival_owner']} loop "
+              f"{rec['rival'][:16]}… claim {', '.join(o[:12] for o in rec['offers'])}: the chain decides",
+              file=_err())
     return 0
 
 

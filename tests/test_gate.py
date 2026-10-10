@@ -84,16 +84,16 @@ class World:
     def registers(self):
         return {ATTESTER: self.attester, CHAMBER: self.chamber}
 
-    def gate(self, registers=None, held=None):
+    def gate(self, registers=None, held=None, free=None):
         return CounterpartyGate.over(self.book, self.registers if registers is None else registers, now=NOW,
-                                     span=SPANS.get, held=held)
+                                     span=SPANS.get, held=held, free=free)
 
     def faults(self, **kw):
         return self.gate(**kw).faults(self.patient, self.dentist, _cat(), window=WINDOW, taken=1, whole=10)
 
-    def clearing(self, held=None):
-        return BookClearing(self.book, _cat(), clock=lambda: NOW, span=SPANS.get,
-                            escrow_held=held, register_at=lambda rid, root: Register(RecordStore.at(root, self.blobs)))
+    def clearing(self, held=None, reads=None):
+        return BookClearing(self.book, _cat(), clock=lambda: NOW, span=SPANS.get, escrow_held=held, reads=reads,
+                            register_at=lambda rid, root: Register(RecordStore.at(root, self.blobs)))
 
     def proposal(self, roots=None):
         loop = Loop((Match(give=self.dentist, want=self.patient), Match(give=self.lesson, want=self.wants_lesson)))

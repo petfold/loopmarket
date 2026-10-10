@@ -69,7 +69,7 @@ def test_a_claim_is_answered_and_ruled_through_the_book_and_paid_by_the_escrow(e
     as_("wanter")
     out = run.ok("claim", ref[0], "0.6xDAI", *ref[1:], "--evidence", "ee" * 32, "--text", "never came")
     assert f"sent to {addr['judge']}, {addr['giver']}" in out and "no notice sent first" in out
-    sealed = run.session.book.case_record(loop, offer, "claim", addr["judge"])
+    sealed = run.session.book.case_record(loop, offer, "claim", addr["judge"], addr["wanter"])
     assert sealed["from"] == addr["wanter"] and "never came" not in str(sealed)
 
     # the giver sees the claim and answers, to the judge and the wanter
@@ -138,8 +138,10 @@ def test_the_fold_admits_a_case_record_only_as_its_writers_speech_to_its_named_r
     mine, other = OfferRegistry(RecordStore(blobs)), OfferRegistry(RecordStore(blobs))
     mine.write_case(loop, offer, "claim", side)
     # a book does not know its owner, so whose speech a record is the fold decides
-    other.store.put(f"case/{loop}/{offer}/claim/{J.lower()}", side)          # a copy of W's claim in G's book
-    other.store.put(f"case/{loop}/{offer}/claim/{G.lower()}", dict(side, **{"from": G}))   # to J, keyed to G
+    other.store.put(f"case/{loop}/{offer}/claim/{J.lower()}/{G.lower()}", side)   # a copy of W's claim in G's book
+    other.store.put(f"case/{loop}/{offer}/claim/{G.lower()}/{G.lower()}", dict(side, **{"from": G}))  # to J, keyed to G
+    other.store.put(f"case/{loop}/{offer}/claim/{J.lower()}/{W.lower()}", dict(side, **{"from": G}))  # under W's key
+    other.store.put(f"case/{loop}/{offer}/claim/{J.lower()}", dict(side, **{"from": G}))  # no writer: the old shape
     for b in (mine, other):
         b.commit()
     agg = Aggregator(lambda: RecordStore(blobs), aggregator_id="agg")
@@ -149,7 +151,11 @@ def test_the_fold_admits_a_case_record_only_as_its_writers_speech_to_its_named_r
     folded = OfferRegistry(RecordStore(blobs, root=m.book_root))
     assert [(k, r["from"]) for _l, _o, k, r in folded.cases()] == [("claim", W)]
     rejected = {k: v["reason"] for k, v in RecordStore(blobs, root=m.provenance_root).items("reject/")}
-    assert rejected[f"reject/{G}/case/{loop}/{offer}/claim/{J.lower()}"] == \
+    assert rejected[f"reject/{G}/case/{loop}/{offer}/claim/{J.lower()}/{G.lower()}"] == \
         "a case record from a key other than the book's owner"
-    assert rejected[f"reject/{G}/case/{loop}/{offer}/claim/{G.lower()}"] == \
+    assert rejected[f"reject/{G}/case/{loop}/{offer}/claim/{G.lower()}/{G.lower()}"] == \
         "a case record addressed otherwise than its key says"
+    assert rejected[f"reject/{G}/case/{loop}/{offer}/claim/{J.lower()}/{W.lower()}"] == \
+        "a case record under another writer's key"
+    assert rejected[f"reject/{G}/case/{loop}/{offer}/claim/{J.lower()}"] == \
+        "a case key that does not name its writer"

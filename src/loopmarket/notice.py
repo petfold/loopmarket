@@ -10,12 +10,17 @@ discovered the fault. The clocks and the refusals are factbond's
 (`factbond.procedure.decide`, whose `Notice` and `Cure` records are the
 content carried here); loopmarket carries them between the parties:
 
-    notice/<loop>/<offer>  -> the claimant's notice, sealed to the giver
-    cure/<loop>/<offer>    -> the giver's answer, sealed to the claimant
+    notice/<loop>/<offer>/<writer>  -> the claimant's notice, sealed to the giver
+    cure/<loop>/<offer>/<writer>    -> the giver's answer, sealed to the claimant
 
 each `{"v": 1, "from", "to", "commitment", "sealed"}`, written in the
 writer's own book — the book is the channel, as for handoffs — and admitted
-by the fold only there (`from` is the book's owner).
+by the fold only there (`from` is the book's owner, and so is the key's
+writer). One key per writer (review item 23, decided by Peter 2026-10-10):
+anyone may write a notice in their own book, and under one key per loop and
+offer a stranger's record displaced the party's in every reader's fold
+(the fold keeps the first-merged value of a key). A reader asks for the
+party's key, so a stranger's record is stored and never read.
 
 Why sealed, with a commitment beside the ciphertext (factbond THREATS T17,
 2026-09-28): a notice names an accusation against a key, and a permanent
@@ -109,8 +114,15 @@ def opens(side: dict, opening: dict) -> bool:
         and (parties[1] is None or parties[1] == side.get("to"))
 
 
-def fault(owner: str, rec: Any) -> str:
-    """Why a `notice/` or `cure/` record is not `owner`'s speech, or ""."""
+def key(prefix: str, loop_id: str, offer_id: str, writer: str) -> str:
+    """Where `writer`'s notice (`prefix` NOTICE) or cure (CURE) about the
+    fill of `offer_id` in `loop_id` is kept: `notice/<loop>/<offer>/<writer>`."""
+    return f"{prefix}{loop_id}/{offer_id}/{writer.lower()}"
+
+
+def fault(owner: str, rec: Any, key_: str | None = None) -> str:
+    """Why a `notice/` or `cure/` record is not `owner`'s speech, or "";
+    with `key_`, also why the key is not `owner`'s to write (the fold)."""
     if not isinstance(rec, dict) or rec.get("v") != VERSION:
         return "unreadable notice record"
     if rec.get("from") != owner:
@@ -120,6 +132,12 @@ def fault(owner: str, rec: Any) -> str:
     c = rec.get("commitment")
     if not (isinstance(c, str) and len(c) == 64 and all(ch in "0123456789abcdef" for ch in c)):
         return "unreadable notice record"
+    if key_ is not None:
+        parts = key_.split("/")
+        if len(parts) != 4:
+            return "a notice key that does not name its writer"
+        if parts[3] != owner.lower():
+            return "a notice under another writer's key"
     return ""
 
 

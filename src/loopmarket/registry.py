@@ -74,13 +74,17 @@ FILL = "fill/"
 LOOP = "loop/"
 HANDOFF = "handoff/"   # handoff/<loop_id>/<offer_id> -> sealed text (see handoff.py)
 CRED = "cred/"         # cred/<subject>/<statement_id> -> a presented statement (R2)
-NOTICE = "notice/"     # notice/<loop_id>/<offer_id> -> a sealed notice (R6)
+NOTICE = "notice/"     # notice/<loop_id>/<offer_id>/<writer> -> a sealed notice (R6)
 OPTION = "option/"     # option/<offer_id>/<loop_id> -> a hold (C2)
 EXERCISE = "exercise/"  # exercise/<offer_id>/<option loop>/<loop_id> -> what an exercise took (C2)
 ITEM = "item/"         # item/<h>/<maker>/<loop_id> -> a maker's claim on an item (I2)
-CURE = "cure/"         # cure/<loop_id>/<offer_id> -> a sealed cure (R6)
+CURE = "cure/"         # cure/<loop_id>/<offer_id>/<writer> -> a sealed cure (R6)
 KEY = "key/"           # key/<address> -> the key's card: its public key, recoverable (2026-10-01)
-CASE = "case/"         # case/<loop_id>/<offer_id>/<kind>/<to> -> a sealed case record (2026-10-01)
+CASE = "case/"         # case/<loop_id>/<offer_id>/<kind>/<to>/<writer> -> a sealed case record
+
+#: What only a clearing writes: its loops, their fills, holds, exercises and
+#: item claims (the fold rejects them in a maker book).
+CLEARING_KEYSPACES = (FILL, LOOP, OPTION, EXERCISE, ITEM)
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,7 +224,7 @@ class OfferRegistry:
     def publish_many(self, offers: Iterable[Offer]) -> list[str]:
         return [self.publish(o) for o in offers]
 
-    def absorb(self, other: "OfferRegistry") -> None:
+    def absorb(self, other: "OfferRegistry", *, clearing: bool = True) -> None:
         """Re-assert another book's entire content as this writer's base.
 
         The clearing pattern (P1 §1): a clearing instance bases its
@@ -230,9 +234,16 @@ class OfferRegistry:
         root — so anyone can verify the claimed base is exactly the fold
         (ontodag's clone-verification pattern). O(book); incremental
         re-basing via `diff` is the production upgrade.
+
+        `clearing=False` leaves out what only a clearing writes
+        (`CLEARING_KEYSPACES`): where a chain decides what is filled, a
+        proposer bases its book on the makers' speech alone, so a loop
+        another clearing holds and never posts keeps nobody off its offers
+        (question 25, decided by Peter 2026-10-10).
         """
         for key, rec in other.store.items(""):
-            self.store.put(key, rec)
+            if clearing or not key.startswith(CLEARING_KEYSPACES):
+                self.store.put(key, rec)
 
     def withdraw(self, offer_id: str) -> None:
         """Close an offer forever: a monotone tombstone (lands with P1, §5).
@@ -291,23 +302,26 @@ class OfferRegistry:
         into this, the writer's, book; refused when it is not readable as
         the writer's speech."""
         from .case import fault, key
-        k = key(loop_id, offer_id, kind, side.get("to", ""))
+        k = key(loop_id, offer_id, kind, side.get("to", ""), side.get("from", ""))
         why = fault(side.get("from", ""), k, side)
         if why:
             raise ValueError(why)
         self.store.put(k, side)
         return k
 
-    def case_record(self, loop_id: str, offer_id: str, kind: str, to: str) -> dict | None:
+    def case_record(self, loop_id: str, offer_id: str, kind: str, to: str, writer: str) -> dict | None:
+        """`writer`'s case record of `kind` to `to`, if this book holds one."""
         from .case import key
-        k = key(loop_id, offer_id, kind, to)
+        k = key(loop_id, offer_id, kind, to, writer)
         return self.store.get(k) if self.store.contains(k) else None
 
     def cases(self) -> Iterator[tuple[str, str, str, dict]]:
-        """Every case record: (loop id, offer id, kind, record)."""
+        """Every case record: (loop id, offer id, kind, record). A key that
+        does not name its writer is not read (one key per writer)."""
         for k, rec in self.store.items(CASE):
-            loop_id, offer_id, kind, _to = k[len(CASE):].split("/")
-            yield loop_id, offer_id, kind, rec
+            parts = k[len(CASE):].split("/")
+            if len(parts) == 5:
+                yield parts[0], parts[1], parts[2], rec
 
     def loop_legs(self, loop_id: str) -> tuple[LegRecord, ...]:
         """The legs of the loop `loop_id` as this book's `loop/` record
@@ -489,7 +503,8 @@ class OfferRegistry:
 
     def send_notice(self, loop_id: str, offer_id: str, side: dict) -> None:
         """Write a sealed notice (`notice.sealed`) about the fill of
-        `offer_id` in `loop_id` into this, the claimant's, book (R6)."""
+        `offer_id` in `loop_id` into this, the claimant's, book (R6), under
+        its writer's own key."""
         self._sidecar(NOTICE, loop_id, offer_id, side)
 
     def send_cure(self, loop_id: str, offer_id: str, side: dict) -> None:
@@ -497,19 +512,26 @@ class OfferRegistry:
         self._sidecar(CURE, loop_id, offer_id, side)
 
     def _sidecar(self, prefix: str, loop_id: str, offer_id: str, side: dict) -> None:
-        from .notice import fault
-        why = fault(side.get("from", "") if isinstance(side, dict) else "", side)
+        from .notice import fault, key
+        writer = side.get("from", "") if isinstance(side, dict) else ""
+        why = fault(writer, side)
         if why:
             raise ValueError(why)
-        self.store.put(f"{prefix}{loop_id}/{offer_id}", side)
+        self.store.put(key(prefix, loop_id, offer_id, writer), side)
 
-    def notice(self, loop_id: str, offer_id: str) -> dict | None:
-        key = f"{NOTICE}{loop_id}/{offer_id}"
-        return self.store.get(key) if self.store.contains(key) else None
+    def notice(self, loop_id: str, offer_id: str, writer: str) -> dict | None:
+        """`writer`'s notice about the fill of `offer_id` in `loop_id`: a
+        reader names the party it expects, the leg's wanter."""
+        from .notice import key
+        k = key(NOTICE, loop_id, offer_id, writer)
+        return self.store.get(k) if self.store.contains(k) else None
 
-    def cure(self, loop_id: str, offer_id: str) -> dict | None:
-        key = f"{CURE}{loop_id}/{offer_id}"
-        return self.store.get(key) if self.store.contains(key) else None
+    def cure(self, loop_id: str, offer_id: str, writer: str) -> dict | None:
+        """`writer`'s cure on the fill of `offer_id` in `loop_id`: a reader
+        names the party it expects, the leg's giver."""
+        from .notice import key
+        k = key(CURE, loop_id, offer_id, writer)
+        return self.store.get(k) if self.store.contains(k) else None
 
     def statements(self, subject: str | None = None) -> Iterator[tuple[Statement, dict | None]]:
         """Every presented (statement, presentation), or those about `subject`."""
@@ -551,7 +573,7 @@ class OfferRegistry:
             self.verify_loop_atomicity()
         return root
 
-    def verify_loop_atomicity(self) -> None:
+    def verify_loop_atomicity(self, rivals=()) -> None:
         """Raise PartialLoopError unless every loop in the book is whole.
 
         The U11 invariant, checked rather than resolved: every present
@@ -559,11 +581,21 @@ class OfferRegistry:
         `fill/` points at a present loop. Run after every fold (reconciled
         commits do it automatically; aggregators folding with
         `RecordStore.merge` must call it themselves).
+
+        `rivals`, (loop id, offer id) pairs: where a chain decides what is
+        filled, the fold keeps rival loops over one offer and names their
+        claims (`federation.rival_claims`, question 25); a named loop may
+        lack its fill of a named offer, and a named offer may be claimed
+        past its quantity. Everything else holds as without a chain.
         """
+        rivals = set(rivals)
+        contested = {oid for _lid, oid in rivals}
         for key, rec in self.store.items(LOOP):
             lid = key[len(LOOP):]
             for leg in LegRecord.of_loop(rec):
                 for oid in leg.offer_ids:
+                    if (lid, oid) in rivals:
+                        continue
                     claim = (self.store.get(FILL + oid)
                              if self.store.contains(FILL + oid) else None)
                     winner = claim.get("loop") if isinstance(claim, dict) else None
@@ -580,7 +612,7 @@ class OfferRegistry:
                     f"fill on {key[len(FILL):][:12]} points at absent loop"
                 )
             oid, _, part = key[len(FILL):].partition("/")
-            if part:
+            if part and oid not in contested:
                 partial[oid] = partial.get(oid, Fraction(0)) + q(rec.get("qty", 0))
                 if self.store.contains(FILL + oid):
                     raise PartialLoopError(
