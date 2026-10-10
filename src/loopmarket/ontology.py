@@ -534,10 +534,12 @@ class Ontology:
         coordinate the give does not state answers nothing.
 
         Strict on vocabulary (U7): a wanted category nobody knows never
-        matches; an extra unknown category on the offered side only
-        narrows the offer and is ignored — except an operator term the
-        catalogue refuses (an unknown constraint), which would widen the
-        give to "accepts anything" and so refuses; a give
+        matches, nor does a wanted operator term whose argument the
+        catalogue cannot read (`transport(unicorn)`: no courier meets it,
+        not even one who takes anything); an extra unknown category on the
+        offered side only narrows the offer and is ignored — except an
+        operator term the catalogue refuses (an unknown constraint), which
+        would widen the give to "accepts anything" and so refuses; a give
         whose same-head terms are provably disjoint describes nothing and
         satisfies nothing.
 
@@ -557,7 +559,7 @@ class Ontology:
         where and when it changes hands).
         """
         offered, wanted = list(offered), list(wanted)
-        if not self._consistent(offered) or not self._consistent(wanted):
+        if not self.consistent(offered) or not self.consistent(wanted):
             return False                # a conjunction that describes nothing
         classes = {o: self.handover_class(o) for o in offered}
         ops_o = {o: h for o in offered if (h := self.operator_of(o))}
@@ -565,6 +567,8 @@ class Ontology:
         for w in wanted:
             wc = self.handover_class(w)
             if w in ops_w:
+                if not self.known(w):
+                    return False        # its argument reads as no constraint: unknown, not "anything"
                 if not any(self.covers(ops_w[w], ho) for ho in ops_o.values()):
                     return False
             elif wc is None:
@@ -589,20 +593,26 @@ class Ontology:
         """Does a thing described by `concepts` fit what the operator terms
         accept — every constraint of every argument contains some concept?
         The payload check of a composed leg (`matching.check_composition`):
-        the box goes with the small-item courier, the piano does not."""
-        concepts = list(concepts)
+        the box goes with the small-item courier, the piano does not. A
+        term whose argument the catalogue cannot read accepts nothing (U7),
+        as `satisfies` refuses it: its argument would read as no constraint
+        at all."""
+        concepts, operator_terms = list(concepts), list(operator_terms)
+        if not all(self.known(t) for t in operator_terms):
+            return False
         return all(any(self.covers(c, d) for d in concepts)
                    for t in operator_terms for c in self.argument(t))
 
-    def _consistent(self, concepts) -> bool:
+    def consistent(self, concepts: Iterable[str]) -> bool:
         """Can the conjunction be held at all? Two coordinates of one head
         that provably share no point — `from(u2e4)` and `from(u2e5)`, a
         place under `u2e4x` and the cell `u2f` — describe nothing: ontodag
         refuses to file such an item, so the index never holds it, and the
-        exact check agrees by matching it against nothing (recall-exactness
-        both ways). Same-head descriptive terms likewise. Decided by
-        ontodag's pairwise `overlaps` (terms or nodes either side); a pair
-        it cannot compare fails closed."""
+        exact checks agree by matching it against nothing (recall-exactness
+        both ways): `satisfies` asks it of both sides, `check_composition`
+        of the thing it moves. Same-head descriptive terms likewise.
+        Decided by ontodag's pairwise `overlaps` (terms or nodes either
+        side); a pair it cannot compare fails closed."""
         by_class: dict[str, list[str]] = {}
         for c in concepts:
             cls = self.handover_class(c)

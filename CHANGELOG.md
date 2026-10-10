@@ -9,7 +9,7 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
-The 2026-10 review's items 10, 11, 4, 9, 12 and 17 (ontodag's
+The 2026-10 review's items 10, 11, 4, 9, 12, 17 and 2 (ontodag's
 `docs/plans/REVIEW_2026-10.md` §8): the command line split by area, with
 a `Reads` object and a `LegRecord` type; durations in ontodag's units;
 offers of another ontodag major refused; every loop of a clearing book
@@ -19,10 +19,55 @@ byte or id changes, which a golden corpus now pins. Beside them, the
 tests the review suggested (§7) found faults, fixed below: what `watch`,
 `cure`, `answer` and `rule` do with a sealed record they cannot read or
 that comes from someone who is not the leg's party, and `watch`'s fill
-line for an operator's give.
+line for an operator's give. Item 2 changes how the searches
+find their candidates, not what they find, and keeps the baseline
+solver apart from the rest of loopmarket.
 
 ### Changed
 
+- **One matching engine: ontodag's index** (the review's item 2, decided
+  by Peter 2026-10-10, option A). `candidate_matches`, `aggregate_legs`,
+  `parts_legs` and `composed_legs` no longer try every give against every
+  want: each asks a `DimensionIndex` for the gives inside a want's cones
+  (one ontodag `get` per wanted thing; for a composed want, per part) and
+  runs the exact checks, with the reads, on those alone, whatever the size
+  of the book — no threshold. They find exactly what the give × want
+  product found, in the same order (the product yielded gives in `offers`
+  order, then wants, and a caller keeping the first of equal edges keeps
+  the same one); the product survives only as the oracle
+  `tests/test_one_engine.py` proves that against over random books of
+  every record version, with fills, escrow holdings and a counterparty
+  gate (`tests/oracle.py`). Each search takes `index=` (a fresh index when
+  none is given), and `SolverAgent` builds one per pass and hands it to all
+  four. `DimensionIndex.candidates(want, thing=None)` names a part of a
+  composed want; `.query(thing)` and `.cone(want, terms)` are the two
+  halves of it. The composition search leaves out of a want's query any
+  term an operator's output coordinate lies under (a place filed under a
+  category as well as under its cell), since the move may answer it.
+  `candidate_matches_indexed` is now the older name of `candidate_matches`.
+  `candidate_matches` also takes a one-shot iterator of offers now: the
+  product read `offers` twice and so found nothing in one. Measured with
+  the engine wired (gate G3, `docs/plans/ontodag-coupling.md` §5, both
+  orders, fresh interpreters): matching alone at 200 offers a side, 3,292
+  against 305 ms on a 300-category tree and 3,285 against 400 ms on the
+  core pack; building the index costs 96 ms on the core pack, so below
+  about 40 offers a side there the product was faster (a whole step at 10
+  a side: 21 against 105 ms).
+- **The baseline solver is kept apart from the rest of loopmarket** (the
+  review's item 2, decided by Peter 2026-10-10, with the engine). Nothing
+  but the command line imports `loopmarket.solver` now, and a new boundary
+  test, B3, holds it so: `import loopmarket` no longer loads the solver
+  (`from loopmarket import SolverAgent` still works, loading it on first
+  use), and no module of the clearing side imports it, even inside a
+  function. `auction.baseline_proposals`, which the auction's module
+  imported the solver for, is `loopmarket.solver.baseline_proposals`;
+  `auction.outcome` takes the reserve bid from its caller as before
+  (`baseline=`). The solver imports only names `loopmarket.__all__`
+  exports or the reference manual documents, by absolute path, as an
+  outside solver would; the manual now documents the four it used
+  without them: `matching.independence_faults`, `selection.item_of`,
+  `reads.NO_READS` and `reads.authorities` (with `Reads` and `reads_of`,
+  in a new section), and `Thing.exhausted`.
 - **Durations and relative times are ontodag's** (the review's item 11,
   decided by Peter 2026-10-10). `loop` reads a duration (`valid(...)`,
   the duration settings, `--until`, `extend-claim`, `notice --cure`,
@@ -186,6 +231,27 @@ line for an operator's give.
   courier's `transport(...)` give has none, so the courier read `gives  to`
   and the name of the buyer. It now names such a give by its terms
   (`gives from(sp3) to(sp3) transport(small-item) to …`).
+
+- **An operator term the catalogue cannot read matched.** U7 says unknown
+  vocabulary never matches, and `satisfies` already refused a courier
+  whose argument it cannot read (`give transport(unicorn)`) in a direct
+  match. Two paths still let such a term through, because an argument the
+  catalogue refuses reads as no constraint at all: a want of
+  `transport(unicorn)` was met by a courier who takes anything (bare
+  `transport`), and the unreadable courier accepted any thing into a
+  composed leg (`Ontology.accepts`, the payload check of
+  `check_composition`). Both now fail closed, on both sides. The ontodag
+  index never gave such a want a candidate; the difference turned up while
+  checking that the index finds what the give × want product finds (the
+  review's item 2).
+- **A thing that describes nothing composed into a leg.** A give at two
+  places that share no point (`geo(sp3e) geo(sp3g)`) satisfies nothing,
+  and ontodag refuses to file it; but moved by two couriers, each picking
+  it up at one of the two places, it lost both, and `check_composition`
+  passed the leg, because it checked only the moved thing. It now asks of
+  the thing what every other check asks of a give:
+  `Ontology.consistent(concepts)`, public now (it was the private
+  `_consistent` behind `satisfies`).
 
 ### Removed
 

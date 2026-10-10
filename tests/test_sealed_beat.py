@@ -13,10 +13,11 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want
 from loopmarket.auction import (
-    CLOSED, COMMIT, REVEAL, Candidate, MemorySealedBeat, baseline_proposals, bundle_bytes,
+    CLOSED, COMMIT, REVEAL, Candidate, MemorySealedBeat, bundle_bytes,
     fairness_filter, outcome, references, score, seal, select, unbundle,
 )
 from loopmarket.clearing import LoopProposal
+from loopmarket.solver import baseline_proposals
 
 NOW = 5_000
 V = dict(valid=TimeWindow(0, 1_000_000))

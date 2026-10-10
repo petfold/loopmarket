@@ -4,7 +4,8 @@ The cycle of one `step()`:
 
     1. snapshot the book        (one root reference — free, isolated)
     2. load active offers       (skip filled, skip expired)
-    3. generate matches         (exact pairwise check; see matching.py)
+    3. generate matches         (candidates from ontodag's index, one
+                                 per pass; the exact check on each)
     4. build the exchange graph (best rate per giver->receiver pair)
     5. hunt profitable loops    (Bellman-Ford negative cycles)
     6. propose to clearing    (which re-verifies everything)
@@ -14,11 +15,13 @@ against a pinned book root and pinned ontology root (so its search is
 reproducible and auditable), and nothing it computes is believed by
 clearing — proposals are re-derived there from the current book.
 
-This is a *baseline*: exact, deterministic, O(gives*wants) matching and
-O(V*E) cycle search. Competing agents are expected to beat it with motif
-libraries, planners over ontodag's cones (`dimensions.DimensionIndex`),
-learned candidate generators — anything, as long as the loops they emit survive
-re-verification. The interface to beat is `step()`.
+This is a *baseline*: exact and deterministic, its matches and legs found
+through one `dimensions.DimensionIndex` per pass (a want's candidates are
+the gives inside its cones, each checked exactly; review item 2), its
+loops by bounded cycle search (`find_loops`). Competing agents are
+expected to beat it with motif libraries, planners over ontodag's cones,
+learned candidate generators — anything, as long as the loops they emit
+survive re-verification. The interface to beat is `step()`.
 
 The boundary is deliberate (owner doctrine, 2026-08-21): loopmarket
 provides the basic mechanisms and the means to express intentions;
@@ -27,7 +30,16 @@ the hard combinatorial optimization belongs to professional solvers
 wins — whose internals are not loopmarket's concern and may stay secret
 for competitive edge. That is healthy: U3 means cleverness can be
 trusted because it is never trusted. This baseline exists to demo the
-pipeline and (P2) to floor the auction as its reserve bid.
+pipeline and (P2) to floor the auction as its reserve bid
+(`baseline_proposals`).
+
+So it is kept apart from the rest of loopmarket (the 2026-10 review's
+item 2, decided by Peter 2026-10-10): it is built the way an outside
+solver would be, against the same public interfaces, and nothing in
+loopmarket but the command line imports it — not the clearing, not the
+beat, not the auction, whose outcome takes the reserve bid from its
+caller. `import loopmarket` does not load it; `loopmarket.SolverAgent`
+does, on first use. Both rules are tests (tests/test_boundaries.py, B3).
 """
 
 from __future__ import annotations
@@ -38,15 +50,19 @@ import logging
 import time as _time
 from dataclasses import dataclass, field
 
-from ..graph import Circulation, ExchangeGraph, Loop, find_circulations, enumerate_cycles
-from ..gate import CounterpartyGate
-from ..matching import Leg, aggregate_legs, candidate_matches, composed_legs, independence_faults, parts_legs
-from ..schema import q
-from ..selection import item_of, pack, weight
-from ..ontology import Ontology
-from ..reads import NO_READS, Reads, authorities
-from ..registry import OfferRegistry, taken_on_chain
-from ..clearing import LoopProposal, Receipt, Clearing
+# What any solver outside loopmarket would import, and nothing else: public
+# names only (in `loopmarket.__all__` or documented in docs/REFERENCE.md),
+# by their absolute module path (tests/test_boundaries.py, B3).
+from loopmarket.clearing import Clearing, LoopProposal, Receipt
+from loopmarket.dimensions import DimensionIndex
+from loopmarket.gate import CounterpartyGate
+from loopmarket.graph import Circulation, ExchangeGraph, Loop, enumerate_cycles, find_circulations
+from loopmarket.matching import Leg, aggregate_legs, candidate_matches, composed_legs, independence_faults, parts_legs
+from loopmarket.ontology import Ontology
+from loopmarket.reads import NO_READS, Reads, authorities
+from loopmarket.registry import OfferRegistry, taken_on_chain
+from loopmarket.schema import q
+from loopmarket.selection import item_of, pack, weight
 
 log = logging.getLogger("loopmarket.solver")
 
@@ -139,7 +155,10 @@ class SolverAgent:
                     if o.v >= 5 and o.bond is not None and o.bond.escrow}
         gate = self.gate(book, now=now, held=held)
         reads = self.reads.replace(available=available, held=held, gate=gate)
-        matches = list(candidate_matches(offers, self.ontology, now=now, reads=reads))
+        # one index for the pass: every search below asks it for the gives
+        # inside a want's cones instead of trying every give (review item 2)
+        index = DimensionIndex(self.ontology)
+        matches = list(candidate_matches(offers, self.ontology, now=now, reads=reads, index=index))
         cycles, complete = enumerate_cycles(matches, max_legs=self.max_legs,
                                             limit=self.cycle_limit, min_surplus=self.min_surplus)
         candidates: dict[str, Loop | Circulation] = {c.loop_id: c for c in cycles}
@@ -149,9 +168,9 @@ class SolverAgent:
             for loop in graph.find_profitable_loops(min_surplus=self.min_surplus,
                                                     limit=self.max_loops_per_step):
                 candidates.setdefault(loop.loop_id, loop)
-        composed = list(composed_legs(offers, self.ontology, now=now, reads=reads)) \
-            + list(parts_legs(offers, self.ontology, now=now, reads=reads)) \
-            + list(aggregate_legs(offers, self.ontology, now=now, reads=reads))
+        composed = list(composed_legs(offers, self.ontology, now=now, reads=reads, index=index)) \
+            + list(parts_legs(offers, self.ontology, now=now, reads=reads, index=index)) \
+            + list(aggregate_legs(offers, self.ontology, now=now, reads=reads, index=index))
         if composed:
             legs = composed + [Leg.from_match(m) for m in matches]
             for circ in find_circulations(legs, min_surplus=self.min_surplus,
@@ -211,3 +230,17 @@ class SolverAgent:
             receipts.append(receipt)
         self.receipts.extend(receipts)
         return receipts
+
+
+def baseline_proposals(snapshot: OfferRegistry, ontology, *, now: int, solver="baseline",
+                       min_surplus=0, chain_fills=None, reads: Reads | None = None) -> list[LoopProposal]:
+    """The deterministic baseline's loops on the snapshot — the sealed beat's
+    reserve bid every replica can compute (U6), passed to
+    `auction.outcome(baseline=)` by whoever derives the outcome — past what
+    the chain has filled (`reads.chain_fills`, or its older spelling
+    `chain_fills=`). It lives here, not in the auction, so the clearing side
+    never runs a solver."""
+    agent = SolverAgent(snapshot, ontology, clearing=None, solver_id=solver, min_surplus=min_surplus,
+                        chain_fills=chain_fills, reads=reads if reads is not None else NO_READS)
+    root, loops = agent.find_loops(now=now)
+    return [LoopProposal(loop, root, ontology.root, solver, now) for loop in loops]

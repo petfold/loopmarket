@@ -77,7 +77,9 @@ apples out of a thousand, `25` for 25 kg sacks; `divisible` is the v1–v3
 field and a shorthand (`True` is `step=0`, `False` `step=qty`) and is
 derived from `step`. `min` is the give-side floor, the least one fill may
 take (0: none), a multiple of `step`. `.takes(qty)` is the matching rule:
-within `qty`, not below `min`, a positive multiple of `step`. Raises
+within `qty`, not below `min`, a positive multiple of `step`;
+`.exhausted(available)` says what is left is too little for any fill
+(nothing, below the floor, or under one step). Raises
 `ValueError` on empty concepts, non-positive qty, a step or floor outside
 `[0, qty]`, a floor off the step, or `divisible` disagreeing with `step`.
 `.to_record(v)`: v1–v3 `{"concepts","qty","unit","divisible"}` with the
@@ -220,14 +222,15 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 | `.load({sub: [supers, ...]})` | bulk, order-independent declaration; returns self |
 | `.known(concept)` | vocabulary membership: a node, or a parametric term of a declared head the DAG can order — incl. a role term naming a place, region or floor node (ontodag #15); a name outside the head's dimension fails closed |
 | `.covers(wanted, offered)` | `offered` fits within `wanted` (equal or descendant); **False for unknown names** (U7) |
-| `.satisfies(offered, wanted)` | every wanted term answered: a category or descriptive term by an offered concept that fits within it (the want is the wider cone); a **handover coordinate** — a bare geo/time term or a term of a role under a marked dimension — by an offered coordinate of the same head that fits within it *or contains it*; an **operator term** (`transport(bicycle)`, a category under `operator`) by an offered operator term whose category fits within it and whose argument — the operator's own want — contains the wanted argument constraint by constraint (`bicycle ⊑ small-item`; an offered constraint the want does not answer refuses); a head the want does not name constrains nothing; a conjunction with provably disjoint same-head terms describes nothing, on either side |
+| `.satisfies(offered, wanted)` | every wanted term answered: a category or descriptive term by an offered concept that fits within it (the want is the wider cone); a **handover coordinate** — a bare geo/time term or a term of a role under a marked dimension — by an offered coordinate of the same head that fits within it *or contains it*; an **operator term** (`transport(bicycle)`, a category under `operator`) by an offered operator term whose category fits within it and whose argument — the operator's own want — contains the wanted argument constraint by constraint (`bicycle ⊑ small-item`; an offered constraint the want does not answer refuses); an operator term whose argument the catalogue cannot read (`transport(unicorn)`) is met by nothing and meets nothing (U7); a head the want does not name constrains nothing; a conjunction with provably disjoint same-head terms describes nothing, on either side |
+| `.consistent(concepts)` | can the conjunction be held at all: `False` when two coordinates of one head, or two same-head descriptive terms, provably share no point (ontodag's `overlaps`; a pair it cannot compare fails closed) — such a conjunction describes nothing, ontodag refuses to file it, and `satisfies` and `check_composition` (of the thing it moves) match it against nothing |
 | `.declare_roles({head: base})` | seed convenience: put each head under its base dimension head — a role of that dimension, whose parameters may name its nodes (ontodag #15); a catalogue write. |
 | `.declare_handover(heads)` | mark base dimension heads (`geo`, `time`) as handover coordinates under the `handover` marker; roles under them inherit it; prelude adopted on demand |
 | `.declare_descriptive(heads)` | opt a geo/time head out (`made_in`, `made`) under the `descriptive` marker: its terms describe the thing and match one-way |
 | `.handover_class(concept)` / `.handover_heads()` | the head whose coordinate a term states (`None` for categories and descriptive terms; a bare place node states `geo`'s); the marked base heads |
 | `.declare_operator({category: (input_head, output_head)})` | `{"transport": ("from", "to"), "storage": ("depart", "arrive")}`: the category under the `operator` marker (created if absent), the two ends — roles of one dimension — under `operator-input`/`operator-output`; a give naming the category and both ends moves a thing along that dimension (composition, `P2-loop-selection.md` §10); the category's parenthesised argument is what it accepts. 0.5.0's `{base: (in, out)}` shape raises |
 | `.operator_of(term)` / `.argument(term)` | the operator category a term names (`transport(bicycle)` and bare `transport` → `transport`; None otherwise); the constraints of its argument in ontodag's canonical spelling (`transport(small-item mass(..8000g))` → `("mass(..8kg)", "small-item")`; bare → `()`; a term the catalogue refuses → `()`, and `known` is False) — the term is ontodag's graph kind (#19, 0.26.1) |
-| `.ends(concepts)` / `.accepts(concepts, operator_terms)` | the moves an operator give states, `[(base, input_term, output_term)]`; whether a thing fits every constraint of the operator terms' arguments (the payload check of `check_composition`) |
+| `.ends(concepts)` / `.accepts(concepts, operator_terms)` | the moves an operator give states, `[(base, input_term, output_term)]`; whether a thing fits every constraint of the operator terms' arguments (the payload check of `check_composition`; a term whose argument the catalogue cannot read accepts nothing, U7) |
 | `.base_head(head)` / `.coordinate(concepts, base)` / `.bare(term)` | a role's base head; the bare coordinate of `base` a conjunction states; a role term respelled as the bare coordinate it denotes (`to(u2e4)` → `geo(u2e4)`, `from(shop)` → `shop`) |
 | `.head_kind(head)` | the registry kind a declared head orders values by, else `None` |
 | `.root` | canonical root of the last committed state, `''` if in-memory/uncommitted |
@@ -386,24 +389,40 @@ want's `legs` left to the composed leg when `legs_checked`
 leg's operator gives fail of them). No requirement: `True`; a requirement
 nothing can check: `False` (U7).
 
-### `candidate_matches(offers, ontology, *, now, available=None, held=None, gate=None) -> Iterator[Match]`
-The exact check over the full give × want product. The recall baseline.
+### `candidate_matches(offers, ontology, *, now, available=None, held=None, gate=None, index=None) -> Iterator[Match]`
+Every feasible handoff among `offers`: for each want, the gives a
+`DimensionIndex` (§6) holds inside every wanted cone — one ontodag `get`
+per want — each checked exactly (`check_match`, with the reads). The one
+candidate engine (review item 2, decided by Peter 2026-10-10: no
+threshold, whatever the size of the book): recall-exact, since a give
+outside a wanted cone cannot satisfy the want, and yielded in the order
+the give × want product yields (gives in `offers` order, then wants), so
+a caller keeping the first of equal edges keeps the same one. The product
+survives only as the tests' oracle (`tests/oracle.py`,
+`tests/test_one_engine.py`). `index`: the `DimensionIndex` to ask, built
+over the same catalogue — a solver builds one per step and hands it to
+all four searches (this, `aggregate_legs`, `parts_legs`,
+`composed_legs`) — else a fresh one; only the gives in `offers` are ever
+candidates.
 
 ### `check_parts(want, gives, ontology, *, now, available=None, held=None, gate=None) -> Leg | None`
 The exact check of a composed want's leg (v4): give `i` serves part `i` —
 the gates against that part (quantity on the give's step and floor, units,
 pins) and `satisfies` — every give distinct, all or nothing. Re-run by
-clearing (U3). `parts_legs(offers, ontology, *, now, limit=64)` is the
-baseline search: per part the gives that serve it, every combination of
-distinct gives checked exactly, deterministic order.
+clearing (U3). `parts_legs(offers, ontology, *, now, limit=64,
+index=None)` is the baseline search: per part the gives that serve it —
+those the index holds in the part's cones (`DimensionIndex.candidates(want,
+part)`), then checked — every combination of distinct gives checked
+exactly, deterministic order.
 
 ### `check_aggregate(want, gives, quantities, ontology, *, now, available=None, held=None, gate=None) -> Leg | None`
 The exact check of an aggregated leg (the six lifters, 2026-09-14): one
 want of one thing met by several gives of it, each contributing a share it
 may give (`Thing.takes`, within what is left of it), the shares summing to
 the want's quantity. `aggregate_legs(offers, ontology, *, now,
-available=None, max_gives=6, max_alternatives=8)` is the deterministic
-depth-first baseline search, largest shares first.
+available=None, max_gives=6, max_alternatives=8, index=None)` is the
+deterministic depth-first baseline search over the gives the index holds
+in the want's cones, largest shares first.
 
 ### `Leg(want: Offer, gives: tuple[Offer, ...], quantities=None)` — frozen
 One want met by one or more gives — the hyperedge of `P2-loop-selection.md`
@@ -428,27 +447,53 @@ replaces it; the thing so moved must satisfy the want; every give passes
 gate). An argument-only operator (`insure(...)`, `inspect(...)`, declared
 by `Ontology.declare_argument_operator`) attaches to the thing when its
 argument accepts it and moves nothing; a want's `requires.legs` are
-checked here (`legs_faults`). Re-run by clearing (U3).
+checked here (`legs_faults`). A thing that describes nothing (`Ontology.consistent`) composes into nothing, though the moves may leave neither of its places in the moved thing. Re-run by clearing (U3).
 
-### `composed_legs(offers, ontology, *, now, max_hops=2, available=None, held=None, gate=None) -> Iterator[Leg]`
+### `composed_legs(offers, ontology, *, now, max_hops=2, available=None, held=None, gate=None, index=None) -> Iterator[Leg]`
 Baseline composition search: every want × thing give that does not already
 match it × every chain of up to `max_hops` operator gives, checked exactly;
-a chain only where a shorter one does not reach; deterministic order.
+a chain only where a shorter one does not reach; deterministic order. The
+thing gives a want is tried with are those the index holds in its wanted
+cones (moving a thing changes where it is, never what it is), except that
+a wanted term some operator's output coordinate lies under (a place filed
+under a category as well as under its cell) is left out of that want's
+query, since the move may answer it.
+
+### `independence_faults(legs, ontology, *, head="inspect") -> list[str]`
+Inspector independence (E2): an inspection give — an operator give under
+the catalogue's `inspect` — is admissible only if its giver is no party
+to a leg of the loop naming an item the inspected thing names, its own
+leg included. What clearing refuses a loop for, and what the baseline
+solver drops a circulation for before proposing it; `[]` when the
+catalogue has no `inspect`.
 
 ---
 
-## 6. `loopmarket.dimensions` — indexed candidate generation
+## 5b. `loopmarket.reads` — what a check reads beyond the offers
 
-Recall-exact against the baseline (enforced by test); **one `get` per
-want**, the want's own conjunction as the query, no set arithmetic on the
-answer.
+| name | meaning |
+|---|---|
+| `Reads(available=None, held=None, gate=None, chain_fills=None, escrow_held=None)` | frozen; what fills have left of an offer (`OfferRegistry.availability`), what the escrow holds behind a deposit, the counterparty gate (§8f), the chain's fills (`BeatClient.filled`) and the escrow's holdings asked one offer at a time (`escrow.held_units`); an absent field asks nothing beyond the book. `.replace(**changes)` |
+| `NO_READS` | `Reads()`: the checks see the offers and the catalogue alone |
+| `reads_of(reads=None, *, available=None, held=None, gate=None, chain_fills=None, escrow_held=None) -> Reads` | `reads` with the reads passed as keywords folded in, the spelling every public check also takes; a read given both ways is a `TypeError` unless it is the same object |
+| `authorities(reads=None, *, chain_fills=None, escrow_held=None, taker) -> Reads` | the reads a solver or a clearing is constructed with: the chain's fills and the escrow's holdings, by either spelling; `available`, `held` and a gate, which each pass derives from its snapshot, are refused with a `TypeError` naming `taker` |
+
+## 6. `loopmarket.dimensions` — the candidate engine
+
+The candidates of every search that pairs gives with wants
+(`candidate_matches`, `aggregate_legs`, `parts_legs`, `composed_legs`,
+§5): recall-exact against the give × want product (enforced by
+`tests/test_one_engine.py`); **one `get` per wanted thing**, its own
+conjunction as the query, no set arithmetic on the answer.
 
 | member | meaning |
 |---|---|
-| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) under exactly the terms they carry, plus a marker |
-| `.file(offer) -> bool` | index a give under its concepts and the marker; `False` for non-gives, retired v1/v2 offers, unknown vocabulary (U7's outcome) and a conjunction ontodag refuses |
-| `.candidates(want) -> set[str]` | one `get([marker, *one-way terms], items_only=True)`: the gives inside every wanted category cone; handover coordinates are left to `check_match` (a give that *contains* the want's place sits above it, not in its cone); none for a v1/v2 want |
-| `candidate_matches_indexed(offers, ontology, *, now, index=None)` | drop-in for `candidate_matches` |
+| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) under exactly the terms they carry, plus a marker; build one per solver step and pass it to the searches as `index=` (the copy is its fixed cost) |
+| `.file(offer) -> bool` | index a give under its known concepts (an operator term as its category) and the marker; an unknown concept is left out (it only narrows a give); `False` for non-gives, retired v1/v2 offers and a conjunction ontodag refuses (it describes nothing) |
+| `.candidates(want, thing=None) -> set[str]` | the gives that may serve `thing` — the want's own thing, or one part of a composed want (a composed want with no part named gets none): `.cone(want, .query(thing))` |
+| `.query(thing) -> list[str] \| None` | the terms asked: categories and descriptive terms, an operator term as its category; handover coordinates are left to `check_match` (a give that *contains* the want's place sits above it, not in its cone); `None` when a concept is unknown (U7: nothing serves it) |
+| `.cone(want, terms) -> set[str]` | one `get([marker, *terms], items_only=True)`: the gives inside every cone of `terms`; none for a v1/v2 want |
+| `candidate_matches_indexed` | the older name of `candidate_matches`, from when the index was the alternative to the product |
 
 ontodag's `items_only` (#14), role parameters naming nodes (#15) and the
 dimension cache (#18) are all in the 0.26.1 floor.
@@ -610,7 +655,7 @@ defaults to the contract's `filled`. The receipt's reason names the beat
 | name | one line |
 |---|---|
 | `bundle_bytes(proposals)` / `seal(bytes, salt)` | a proposal is a bundle of loop records pinning one root; sealed as keccak(bytes ‖ salt) |
-| `outcome(beat, revealed, snapshot, ontology, *, now, chain_fills=None, baseline=...)` | re-derive every revealed loop (U3), add the baseline's loops as the reserve bid, the fairness filter, select the set worth most under the offers' capacities (`selection.pack`), ties by loop_id then bundle hash |
+| `outcome(beat, revealed, snapshot, ontology, *, now, chain_fills=None, baseline=...)` | re-derive every revealed loop (U3), add the baseline's loops as the reserve bid (`baseline`: what `loopmarket.solver.baseline_proposals` finds on the same snapshot, computed by the caller and re-derived like any other — the clearing side never runs a solver, B3), the fairness filter, select the set worth most under the offers' capacities (`selection.pack`), ties by loop_id then bundle hash |
 | `SealedBeatClient` / `MemorySealedBeat` (`open_sealed(spec)`) | commit, reveal, read a beat's phase and reveals, record the outcome; `SealedBeat.sol` |
 
 ## 8d. `loopmarket.selection` — loop selection (P2, 2026-09-18)
@@ -619,6 +664,7 @@ defaults to the contract's `filled`. The receipt's reason names the beat
 |---|---|
 | `Item(key, takes, legs, gain, payload=None)` | a candidate loop: what it takes from each offer (`{offer id: quantity}` — a want whole, a give by the leg's quantity), its leg count and uniform gain, the loop itself as `payload` |
 | `pack(items, capacity, *, prior=0, factor=None, exact_up_to=24, budget=200_000) -> Packing` | the set worth most under per-offer capacities (`{offer id: what is left}`): exact branch and bound up to `exact_up_to` items within a node `budget`, greedy beyond, `order_key`'s total order (U6); `Packing(chosen, exact, infeasible)` |
+| `item_of(loop, key_extra="") -> Item` | the packer's view of a `Loop` or `Circulation`: a want taken whole (a composed want counts as one), a give by what its leg takes; the loop itself as `payload` |
 | `weight(item, prior=0, factor=None)` | the objective per loop: Π(1+gain) exactly, or (1−p)^legs·ln(1+gain) in fixed-precision decimal with a failure prior; `factor` the risk-weight hook nobody sets |
 
 ## 8e. `loopmarket.escrow` — the crypto escrow (P3 §5a/§5e, 2026-09-19)
@@ -743,13 +789,20 @@ refused.
 | `notice.notice_record(...)` / `cure_record(...)` / `sealed(record, *, sender, recipient, recipient_public_key)` / `read(side, private_key_hex)` / `opens(side, opening)` | a notice before a claim and its cure, factbond's shape, sealed to the other party beside a salted commitment anyone checks once opened |
 | `notice.lapsed(gives, statements_of, registers)` / `gives_of(loop_record, book)` | the relied-on statements revoked or suspended since clearing — the watch's re-check |
 
-## 9. `loopmarket.solver.agent` — the baseline species
+## 9. `loopmarket.solver` — the baseline species
+
+Kept apart from the rest of loopmarket (the 2026-10 review's item 2,
+decided by Peter 2026-10-10; boundary B3): built the way an outside solver
+would be, it imports only names `loopmarket.__all__` exports or this
+manual documents, and nothing in loopmarket but the command line imports
+it. `import loopmarket` does not load it; `from loopmarket import
+SolverAgent` does, on first use.
 
 ### `SolverAgent(registry, ontology, clearing, solver_id="solver-0", min_surplus=0.005, max_loops_per_step=10, chain_fills=None, escrow_held=None, max_legs=5, cycle_limit=2000, exact_up_to=24, pack_budget=200_000, failure_prior=0, registers={}, span=None, register_latest=None, resolver_profile=None)`
 
 | member | meaning |
 |---|---|
-| `.find_loops(*, now=None) -> (book_root, [Loop \| Circulation])` | snapshot → offers (the chain's fills and the escrow's holdings subtracted) → matches → every simple cycle (`enumerate_cycles`) plus the composed legs → `selection.pack` |
+| `.find_loops(*, now=None) -> (book_root, [Loop \| Circulation])` | snapshot → offers (the chain's fills and the escrow's holdings subtracted) → one `DimensionIndex` for the pass → matches → every simple cycle (`enumerate_cycles`) plus the composed, parts and aggregated legs, all four searches asking the one index → `selection.pack` |
 | `.step(*, now=None) -> [Receipt]` | find, then propose each loop (pinning the snapshot root and `ontology.root`); appends to `.receipts` |
 
 `registers` (register id → `Register`), `span`, `register_latest` and
@@ -757,6 +810,13 @@ refused.
 every register a requirement names is pinned in the proposal.
 Deterministic and exact by design — the species smarter solvers must
 beat, and the sealed beat's reserve bid.
+
+### `baseline_proposals(snapshot, ontology, *, now, solver="baseline", min_surplus=0, chain_fills=None, reads=None) -> [LoopProposal]`
+The baseline's loops on a beat's snapshot as proposals pinning its root —
+the reserve bid every replica computes and hands to `auction.outcome` as
+`baseline=` — past what the chain has filled (`reads.chain_fills`, or
+`chain_fills=`). It was `auction.baseline_proposals` until the clearing
+side was kept from importing the solver.
 
 ---
 

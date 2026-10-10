@@ -63,7 +63,7 @@ agent.step()                          # snapshot → match → candidates → se
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 378 tests (three need a live Bee node, sixty the evm extra, one swarmfs — skipped per test without them; two are expected failures that pin open bugs)
+python3 -m pytest tests/ -v           # 400 tests (three need a live Bee node, sixty the evm extra, one swarmfs — skipped per test without them; two are expected failures that pin open bugs)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
@@ -98,17 +98,18 @@ with the API alongside), then the **[Reference Manual](docs/REFERENCE.md)**
 one-screen version; the design record with its reasons is
 [`docs/plans/cli.md`](docs/plans/cli.md).
 
-Candidate generation can also run through ontodag's **parametric
-dimensions**: `DimensionIndex` files gives under exactly the terms they
-carry (`geo(u24)`, `ljubljana`, `time(...)`, `from(my_home)` — cells,
-places, regions and floors, ordered by the graph), and
-`candidate_matches_indexed` asks **one** ontodag `get` per want — the
-want's categories as the query, items only; where and when are the exact
-check's, since a give that contains the want's place sits above it —
-provably the same matches as the exhaustive baseline
-(the recall test enforces set-equality), with far fewer exact checks. The
-index is a derived, per-solver copy; the shared catalogue and its pinned
-roots never move because of it. Swap the in-memory store for
+Candidates come from one engine, ontodag's **parametric dimensions**:
+`DimensionIndex` files gives under exactly the terms they carry
+(`geo(u24)`, `ljubljana`, `time(...)`, `from(my_home)` — cells, places,
+regions and floors, ordered by the graph), and every search — simple
+matches, aggregation, composed wants, composition — asks it **one**
+ontodag `get` per wanted thing: the want's categories as the query, items
+only; where and when are the exact check's, since a give that contains
+the want's place sits above it. It finds exactly what trying every give
+against every want finds, in the same order (proved against that product
+over random books), with far fewer exact checks, whatever the size of the
+book. The index is a derived, per-solver copy; the shared catalogue and
+its pinned roots never move because of it. Swap the in-memory store for
 `recordstore.swarm_store("offers", signer=...)` (extra:
 `pip install -e ".[swarm]"`, plus a Bee node and a postage batch) and the
 same code runs with the book on Swarm.

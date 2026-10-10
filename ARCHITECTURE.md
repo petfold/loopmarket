@@ -505,9 +505,18 @@ until re-posted); and `satisfies` under the catalogue. Its
 self-containedness is a design requirement, not tidiness: settlement re-runs
 it, so no index, cache or heuristic may be load-bearing for correctness.
 
-The baseline candidate generator is the full give×want product with the
-constant-time gates doing the pruning — right for in-memory books, and the
-benchmark smarter generators must not fall behind on recall.
+Candidates come from one engine, ontodag's intersection: a derived index
+of the gives (`dimensions.DimensionIndex`, a copy of the catalogue with
+every give filed under the terms it carries) answers, per want, the gives
+inside every wanted cone in one `get`, and each faces the exact check.
+`candidate_matches`, the aggregation search and the parts and composed
+searches all ask it, whatever the size of the book (the 2026-10 review's
+item 2, decided by Peter 2026-10-10: one engine, no threshold). It is
+recall-exact, since a give outside a wanted cone cannot satisfy the want,
+and it is the benchmark smarter generators must not fall behind on
+recall; the give×want product it replaced survives only as the oracle the
+tests prove that against (`tests/oracle.py`). Clearing never asks the
+index: it re-runs the exact checks on the legs it is given.
 
 **Update 2026-09-13 — composed legs and circulations in the baseline.**
 Peter, after the vegetable-box example: *the whole point of a solver is to
@@ -764,8 +773,8 @@ each keeping the checklist's shape rather than adding a second one:
 > **2026-09-07.** The baseline here is deliberately the whole of loopmarket's solving; smarter species live outside the protocol, propose, and are verified like anything else. The algorithms such a species would build on are listed in `docs/plans/P2-loop-selection.md` §11.
 
 `step()`: snapshot → load active offers (the chain's fills and the
-escrow's holdings subtracted) → exact matches → every simple cycle up to a
-length cap (`enumerate_cycles`, since 2026-09-18; Bellman–Ford over the
+escrow's holdings subtracted) → one candidate index for the pass → exact
+matches → every simple cycle up to a length cap (`enumerate_cycles`, since 2026-09-18; Bellman–Ford over the
 best-rate graph tops up when the cap cut it) plus the composed, parts and
 aggregated legs and their circulations → one packing under the offers'
 capacities (`selection.pack`) → proposals. Deliberately trust-poor in both directions:
@@ -773,6 +782,17 @@ solves only against pinned roots (reproducible), and produces nothing that
 is believed (settlement re-derives). `run()` polls a live book. Multiple
 agents against one book are safe by construction: first valid proposal
 wins, the rest are rejected on the `fill/` check.
+
+**Kept apart (the 2026-10 review's item 2, decided by Peter 2026-10-10).**
+Solvers should be separate, some hopefully outside loopmarket entirely and
+run by others; so the baseline is built like any outside solver would be,
+against the same public interfaces (names in `loopmarket.__all__` or
+documented in the reference manual, by their absolute paths), and nothing
+in loopmarket but the command line imports it. The clearing, the beat and
+the auction never load it: the auction's outcome takes the reserve bid
+from its caller, who computes it with `solver.baseline_proposals`, and
+`loopmarket.SolverAgent` is loaded on first use. Boundary B3 tests both
+rules.
 
 ## 10. What is deliberately absent
 

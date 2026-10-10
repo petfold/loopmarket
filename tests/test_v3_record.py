@@ -10,12 +10,13 @@ import pytest
 from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
+import oracle
 from loopmarket import (
     BookClearing, Offer, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 from loopmarket.dimensions import candidate_matches_indexed
-from loopmarket.matching import candidate_matches, check_match
+from loopmarket.matching import check_match
 
 NOW = 5_000
 ROLES = {"from": "geo", "to": "geo"}
@@ -155,7 +156,7 @@ def test_index_is_recall_exact_on_a_mixed_version_book():
         offers = _mixed_book(seed)
         version = {o.offer_id: o.v for o in offers}
         expected = {(m.give.offer_id, m.want.offer_id)
-                    for m in candidate_matches(offers, ont, now=NOW)}
+                    for m in oracle.candidate_matches(offers, ont, now=NOW)}
         got = {(m.give.offer_id, m.want.offer_id)
                for m in candidate_matches_indexed(offers, ont, now=NOW)}
         assert got == expected, f"drift at seed {seed}"

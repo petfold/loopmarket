@@ -35,7 +35,6 @@ from .sigs import maker_address, recover_maker, sign_offer, verify_offer_sig
 from .dimensions import DimensionIndex, candidate_matches_indexed
 from .graph import Circulation, ExchangeGraph, Loop, find_circulations
 from .clearing import LoopProposal, BookClearing, MockClearing, Receipt, Clearing
-from .solver.agent import SolverAgent
 
 __version__ = "0.14.5"
 
@@ -56,5 +55,22 @@ __all__ = [
     "maker_address", "recover_maker", "sign_offer", "verify_offer_sig",
     "DimensionIndex", "candidate_matches_indexed", "ExchangeGraph", "Loop",
     "Circulation", "find_circulations", "Leg", "check_composition",
-    "LoopProposal", "BookClearing", "MockClearing", "Receipt", "Clearing", "SolverAgent",
+    "LoopProposal", "BookClearing", "MockClearing", "Receipt", "Clearing",
 ]
+
+#: Names loaded on first use (`__getattr__` below), never by `import
+#: loopmarket`: the baseline solver is kept apart from the rest of the
+#: package, as a solver outside it is (the 2026-10 review's item 2), so the
+#: clearing, the beat and the auction never load it, and
+#: `from loopmarket import SolverAgent` still works.
+_LAZY = {"SolverAgent": "loopmarket.solver"}
+__all__ += sorted(_LAZY)
+
+
+def __getattr__(name: str):
+    if name in _LAZY:
+        from importlib import import_module
+        value = getattr(import_module(_LAZY[name]), name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

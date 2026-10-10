@@ -16,8 +16,10 @@ the filter on what loopmarket pushes upstream (disjointness stays out);
 `BINDING` §1's one-filler-per-role rule as schema validation; the tripwire
 table, with the Merkle-cone-commitment wall fired formally at P2 start and
 solver query-set logging on from day one. Open here: pin agility under
-catalogue growth; abduction weights; the indexed-generator threshold;
-shared tangent-plane frames; ordinal and cyclic encodings.
+catalogue growth; abduction weights; shared tangent-plane frames; ordinal
+and cyclic encodings. Superseded 2026-10-10 (the 2026-10 review's item 2,
+decided by Peter): the indexed generator is the one candidate engine,
+with no threshold (§5).
 
 This is the treaty between loopmarket and its catalogue: what loopmarket
 relies on upstream, what it must never build locally, and what evidence
@@ -324,6 +326,104 @@ system will ever have:
   the answer), nothing filed but what a give says. ontodag removed
   `overlapping=` from `get` the same night; `items_only` (#14's second
   ask) and #18's dimension cache stay. Suite 54 s → 11 s.
+  **Decided 2026-10-10 (the 2026-10 review's item 2, option A, Peter):
+  one engine and no threshold.** The index supplies the candidates of
+  the simple matches, of the aggregation search, and of the parts and
+  composed searches wherever they pair gives with wants, with the filters
+  the give × want product applies (`available`, `held`, `gate`); the
+  product stays only as the tests' oracle (`tests/oracle.py`), against
+  which `tests/test_one_engine.py` proves every search finds the same
+  results in the same order over random books of every record version.
+  Declined: a threshold (two paths and a catalogue-dependent rule, to save
+  at most about 60 ms a step), the simple matcher only, keeping the
+  product. Built the same day: each search takes `index=`, and
+  `SolverAgent` builds one `DimensionIndex` per pass for all four. Two
+  exact-check gaps the comparison turned up were closed first, since the
+  index already behaved as the rules say: a wanted operator term the
+  catalogue cannot read matched a courier who takes anything (U7), and a
+  thing at two places that share no point composed into a leg. One rule
+  keeps the composition search exact: a wanted term an operator's output
+  coordinate lies under (a place filed under a category as well as under
+  its cell) is left out of that want's query, since the move may answer
+  it.
+- **G3, measured with the engine wired** (2026-10-10, after the
+  switch; `scripts/perf_matching.py`). The give × want product (the
+  tests' oracle) against the index: matching alone (`candidate_matches`),
+  and a whole `SolverAgent.find_loops` as built and with its four searches
+  swapped for the oracle's, no index built. An i7-3612QM laptop (4 cores,
+  2.1 GHz, 8 GB), Python 3.12, ontodag 0.30.8, recordstore 0.22.2; load
+  average 1.2–3.0 while it ran (another session's test suite on one
+  core). Books of n gives and n wants, v4 offers, fifty makers: a give of
+  any category, a want of one of a hundred broad ones (the first third of
+  the tree; the core pack's hundred categories with the most below them).
+  The `places` books, on the tree with geo and time declared, give every
+  give a cell (one of eight) and a window of a few hours, half the wants
+  a parent cell and a third a window of days. Each row ran in six fresh
+  interpreters, three with the product first and three with the index
+  first; a cell is the median time in ms with the product first / with
+  the index first. Both found the same matches and the same loops in
+  every run. Rows under about 50 ms are noisy (at 10 a side single runs
+  ranged 8–16 ms); larger ones stayed within about 20%.
+
+  300-category tree (building the index: 4.6 ms)
+
+  | n a side | matches | matching, product | matching, index | loops | step, product | step, index |
+  |---:|---:|---:|---:|---:|---:|---:|
+  | 10 | 2 | 10 / 9.1 | 8.5 / 8.7 | 0 | 21 / 20 | 14 / 14 |
+  | 25 | 11 | 54 / 56 | 14 / 15 | 0 | 94 / 97 | 32 / 29 |
+  | 50 | 147 | 223 / 226 | 37 / 38 | 1 | 314 / 296 | 77 / 73 |
+  | 100 | 552 | 862 / 849 | 93 / 99 | 3 | 5,085 / 5,263 | 4,287 / 4,392 |
+  | 200 | 2,385 | 3,292 / 3,294 | 305 / 313 | 10 | 9,748 / 9,626 | 6,843 / 6,851 |
+  | 400 | 8,312 | 12,517 / 12,432 | 907 / 929 | | | |
+
+  Core pack, 5,030 nodes (building the index: 96 ms)
+
+  | n a side | matches | matching, product | matching, index | loops | step, product | step, index |
+  |---:|---:|---:|---:|---:|---:|---:|
+  | 10 | 0 | 9.1 / 8.9 | 96 / 96 | 0 | 21 / 21 | 106 / 105 |
+  | 25 | 5 | 54 / 54 | 104 / 108 | 0 | 103 / 103 | 134 / 130 |
+  | 50 | 68 | 218 / 223 | 130 / 150 | 1 | 349 / 348 | 195 / 190 |
+  | 100 | 312 | 880 / 874 | 224 / 218 | 3 | 2,029 / 1,994 | 1,160 / 1,197 |
+  | 200 | 1,162 | 3,285 / 3,355 | 400 / 408 | 9 | 7,106 / 7,046 | 3,992 / 4,055 |
+  | 400 | 4,764 | 12,617 / 12,535 | 1,025 / 1,051 | | | |
+
+  300-category tree, offers with places and times (building the index: 5.3 ms)
+
+  | n a side | matches | matching, product | matching, index | loops | step, product | step, index |
+  |---:|---:|---:|---:|---:|---:|---:|
+  | 10 | 4 | 55 / 51 | 45 / 48 | 0 | 116 / 113 | 51 / 58 |
+  | 25 | 22 | 317 / 293 | 103 / 114 | 0 | 640 / 619 | 136 / 146 |
+  | 50 | 93 | 1,191 / 1,168 | 238 / 260 | 0 | 2,278 / 2,248 | 308 / 325 |
+  | 100 | 383 | 4,654 / 4,604 | 667 / 768 | 4 | 8,609 / 8,635 | 1,387 / 1,483 |
+  | 200 | 1,675 | 17,514 / 17,269 | 1,809 / 2,044 | | | |
+
+  What it shows. Matching through the index is faster from about 10 offers
+  a side on the tree, with or without places and times, and from between
+  25 and 50 on the core pack; at 200 to 400 a side it is 8 to 14 times
+  faster. Its fixed cost is building it: a copy of the catalogue, in which
+  ontodag's `deepcopy` recounts every node's descendants, 96 ms for the
+  core pack (61 ms when measured before deciding). That is the price of no
+  threshold: on the core pack a step at 10 a side takes about 105 ms
+  against 21, and at 25 about 130 against 103; Peter weighed it as at most
+  about 60 ms a step. Places and times make the product dearer per pair (a
+  containment test on every coordinate), so the index wins sooner there,
+  although filing a give is dearer too: a give with a cell and a window
+  took a median 3.1 ms to file, against 0.27 ms for a category alone on
+  the tree and 0.41 ms on the core pack (the 200 gives of a 200-a-side
+  book, measured apart at load 0.7), so filing is about a third of the
+  index's 1.8 s at 200 a side with places. A step with the index is faster
+  from 10 a side on the tree and from about 40 on the core pack. What
+  remains of a large step is cycle search: profiled at 200 a side,
+  `enumerate_cycles` and the Bellman–Ford top-up after its cut are three
+  quarters of an index step on the core pack and nine tenths on the tree,
+  matching and the aggregation search an eighth and a twentieth. The
+  measurement before deciding put a core-pack step at 200 a side at 0.33 s
+  with every product gone; on these books, with 1,162 matches at that
+  size, cycle search makes it about 4 s, as it made the 300-category step
+  then, untouched by this decision. Two upstream costs are worth asking
+  about if they come to matter: `deepcopy` could copy the counts it
+  recounts (a copy has the same edges, so the same counts, I5), and filing
+  under a time window.
 - **One intersection engine** (Peter, 2026-09-07). ontodag is the master
   of every set-valued intersection, optimisations included; loopmarket
   does **no set arithmetic on the answer** — it issues one query per want,
@@ -457,7 +557,11 @@ implementation with its own bugs and no treaty.
 - **G3 — the threshold is a measurement.** N* pinned by benchmark
   (baseline vs indexed generator over growing randomized books, both
   recall-exact by test); `SolverAgent` switches at N* with the equality
-  suite green at the switch point. Owner: P1.
+  suite green at the switch point. Owner: P1. **Decided 2026-10-10 on
+  the measurement (review item 2): no threshold.** The index is the one
+  engine at every size, and the equality suite (`tests/test_one_engine.py`)
+  runs on every commit. Measured again with the engine wired: §5, "G3,
+  measured with the engine wired".
 - **G4 — the ladder is advisory by construction.** Degree computation
   ships with a property test for Di Noia monotonicity (adding a concept
   to an offer never lowers its degree) and a settlement test proving
@@ -486,9 +590,8 @@ implementation with its own bugs and no treaty.
   (§4) is the only adopted constraint. Whether weights are solver-local
   policy, broker configuration, or learned from settled-loop statistics
   (U12-guarded) is open. Work package: `adoption-and-thickness.md`.
-- **The indexed-generator threshold.** N* is unmeasured; the 0.8×
-  candidate-count bound is a test-fixture fact, not a benchmark. Work
-  package: P1 (gate G3).
+- **The indexed-generator threshold.** Resolved 2026-10-10 (review item
+  2): no threshold; the index is the one engine (§5).
 - **Shared tangent-plane frames.** Recall-exact geo needs frame
   vocabulary — who declares frames, at what granularity, governed like
   units. Nobody's tripwire yet. Work package: post-P1, with
