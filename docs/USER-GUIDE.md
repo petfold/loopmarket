@@ -415,9 +415,10 @@ windows open at `now` → (v1/v2 only) service windows and discs intersect
 same unit → **version pins** (mixed pinning refuses; pinned catalogues
 refuse unpinned offers; major registry/contract skew refuses, and so does
 a major other than the installed ontodag's, with the advice to re-post) → catalogue
-subsumption. `candidate_matches(offers, catalogue, now=...)` runs it over
-the full give × want product — fine in memory, and §10 shows the indexed
-generator for bigger books.
+subsumption. `candidate_matches(offers, catalogue, now=...)` runs it on
+every pair that could match: for each want, the gives inside its
+categories' cones in an index of the catalogue (§10), the same matches
+as trying every give against every want.
 
 ## 6. Loops
 
@@ -1285,24 +1286,33 @@ Across independent clearing instances the chain serializes it (§11.1):
 overfill an offer the second is cancelled at finalization and its bond
 returned.
 
-## 10. Bigger books: indexed candidate generation
+## 10. How candidates are found: one engine
 
-The exhaustive give × want product is fine in memory. When it isn't,
-`candidate_matches_indexed` prunes through the catalogue itself — gives are
-filed under exactly the terms they carry, and a want's candidates are one
-catalogue query: the gives inside every one of its categories' cones,
-ontodag's intersection. Where and when are left to the exact check (a give
-that *contains* the want's place sits above it, not in its cone). It is
-**recall-exact**: the same matches as the baseline (a test enforces
-set-equality), just fewer exact checks.
+No search tries every give against every want. `candidate_matches`, the
+aggregation search (`aggregate_legs`), the search for composed wants
+(`parts_legs`) and the composition search (`composed_legs`) all ask one
+index of the catalogue (`DimensionIndex`): gives are filed under exactly
+the terms they carry, and a want's candidates are one catalogue query, the
+gives inside every one of its categories' cones, ontodag's intersection.
+Where and when are left to the exact check (a give that *contains* the
+want's place sits above it, not in its cone), and every candidate faces
+it. The index is **recall-exact**: the same matches and legs as trying
+every pair, in the same order (`tests/test_one_engine.py` checks it
+against that product over random books), just far fewer exact checks.
+There is no size below which the product is used instead: one engine,
+decided by Peter in the 2026-10 review.
 
 ```python
-from loopmarket import candidate_matches_indexed
-matches = list(candidate_matches_indexed(everyone, catalogue, now=NOW))
+from loopmarket import DimensionIndex, aggregate_legs, candidate_matches
+index = DimensionIndex(catalogue)           # one per pass; the solver builds its own
+matches = list(candidate_matches(everyone, catalogue, now=NOW, index=index))
+legs = list(aggregate_legs(everyone, catalogue, now=NOW, index=index))
 ```
 
 The index is a derived, per-solver deepcopy of the catalogue — filing
-offers never touches the shared catalogue or its pinned roots.
+offers never touches the shared catalogue or its pinned roots. Building
+it is its fixed cost; hand one to every search of a pass, as the solver
+does.
 
 ## 11. Going live on Swarm
 

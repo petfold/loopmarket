@@ -53,7 +53,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fractions import Fraction
-from itertools import product
 from typing import Iterable, Iterator
 
 from .ontology import Ontology
@@ -576,24 +575,55 @@ def check_aggregate(want: Offer, gives: Iterable[Offer], quantities: Iterable,
     return Leg(want, gives, quantities)
 
 
+def _index(ontology: Ontology, index):
+    """The `DimensionIndex` a search asks: the caller's — a solver builds one
+    per step and hands it to all four searches — or a fresh one."""
+    from .dimensions import DimensionIndex      # dimensions imports this module
+    return index if index is not None else DimensionIndex(ontology)
+
+
+def _filed(offers: list[Offer], index) -> dict[str, list[Offer]]:
+    """Files every give of `offers` in `index`. Returns give id -> the gives
+    filed under it, in `offers` order: one, unless `offers` repeats an offer.
+    Only these are candidates — an index handed in may hold gives of other
+    books — and a give ontodag refuses to file describes nothing, so no
+    check passes it either."""
+    filed: dict[str, list[Offer]] = {}
+    for o in offers:
+        if o.kind == GIVE and index.file(o):
+            filed.setdefault(o.offer_id, []).append(o)
+    return filed
+
+
+def _in_id_order(filed: dict[str, list[Offer]], ids) -> list[Offer]:
+    """The filed gives among `ids`, in id order: the order every search
+    visits gives in (U6)."""
+    return [g for oid in sorted(ids) for g in filed.get(oid, ())]
+
+
 def aggregate_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,
                    reads: Reads | None = None, available=None, held=None, gate=None,
-                   max_gives: int = 6, max_alternatives: int = 8) -> Iterator[Leg]:
+                   max_gives: int = 6, max_alternatives: int = 8, index=None) -> Iterator[Leg]:
     """Baseline aggregation search: for every simple want no single give
-    serves, the gives of its thing in id order, each contributing a share it
-    may give — the most first (its whole remainder, or the largest multiple
-    of its step within what the want still needs), then smaller multiples,
+    serves, the gives of its thing in id order — those the ontodag index
+    holds inside its wanted cones (`DimensionIndex.candidates`), the only
+    ones whose concepts can satisfy it — each contributing a share it may
+    give — the most first (its whole remainder, or the largest multiple of
+    its step within what the want still needs), then smaller multiples,
     never below its floor — depth-first until the shares sum to the want's
     quantity: the first such set, at most `max_gives` gives, checked
     exactly. Deterministic (U6); polynomial only because the pool and the
     alternatives per give are bounded — the recall benchmark a smarter
-    aggregating species must beat."""
+    aggregating species must beat. `index`: a `DimensionIndex` to ask (a
+    fresh one when None)."""
     reads = reads_of(reads, available=available, held=held, gate=gate)
     available = reads.available
     offers = list(offers)
-    gives = sorted((o for o in offers if o.kind == GIVE), key=lambda o: o.offer_id)
+    index = _index(ontology, index)
+    filed = _filed(offers, index)
     for w in sorted((o for o in offers if o.kind == WANT and not o.composed),
                     key=lambda o: o.offer_id):
+        gives = _in_id_order(filed, index.candidates(w))
         if any(check_match(g, w, ontology, now=now, reads=reads) for g in gives):
             continue                   # one give reaches: nothing to add up
         pool = [g for g in gives
@@ -640,17 +670,20 @@ def aggregate_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int,
 
 
 def parts_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int, limit: int = 64,
-               reads: Reads | None = None, available=None, held=None, gate=None) -> Iterator[Leg]:
-    """Baseline search for composed wants: per part the gives that serve
-    it, then every combination of distinct gives (at most `limit` per
-    want, deterministic order) checked exactly."""
+               reads: Reads | None = None, available=None, held=None, gate=None,
+               index=None) -> Iterator[Leg]:
+    """Baseline search for composed wants: per part the gives that serve it
+    — asked of the ontodag index part by part, then checked — then every
+    combination of distinct gives (at most `limit` per want, deterministic
+    order) checked exactly. `index`: as for `aggregate_legs`."""
     from itertools import product as _product
     reads = reads_of(reads, available=available, held=held, gate=gate)
     offers = list(offers)
-    gives = sorted((o for o in offers if o.kind == GIVE), key=lambda o: o.offer_id)
+    index = _index(ontology, index)
+    filed = _filed(offers, index)
     for w in sorted((o for o in offers if o.kind == WANT and o.composed),
                     key=lambda o: o.offer_id):
-        per_part = [[g for g in gives
+        per_part = [[g for g in _in_id_order(filed, index.candidates(w, part))
                      if _gates(g, w, ontology, now=now, thing=part, reads=reads)
                      and ontology.satisfies(g.thing.concepts, part.concepts)]
                     for part in w.parts]
@@ -667,7 +700,8 @@ def parts_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int, limit: 
 
 
 def composed_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int, max_hops: int = 2,
-                  reads: Reads | None = None, available=None, held=None, gate=None) -> Iterator[Leg]:
+                  reads: Reads | None = None, available=None, held=None, gate=None,
+                  index=None) -> Iterator[Leg]:
     """Baseline composition search: every want × every thing-give that does
     not already satisfy it × every chain of up to `max_hops` distinct
     operator gives, checked exactly — an operator is composed only where it
@@ -678,9 +712,16 @@ def composed_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int, max_
     door — are a two-hop leg; the intermediate coordinate is where the
     first operator puts the thing down and the second picks it up
     (`P2-loop-selection.md` §10's open problem, closed for fixed hops).
-    Polynomial in the book with the exponent `max_hops`, which the baseline
-    accepts as the recall benchmark composing species must beat.
-    Deterministic order."""
+
+    The thing-gives a want is tried with are those the ontodag index holds
+    inside its wanted cones: moving a thing changes where it is, never what
+    it is. One exception keeps the search exact: a wanted term an
+    operator's output coordinate lies under (a place filed under a category
+    as well as under its cell) may be answered by the move rather than by
+    the thing, so it is left out of that want's query. Polynomial in the
+    book with the exponent `max_hops`, which the baseline accepts as the
+    recall benchmark composing species must beat. Deterministic order.
+    `index`: as for `aggregate_legs`."""
     from itertools import permutations
     reads = reads_of(reads, available=available, held=held, gate=gate)
     offers = list(offers)
@@ -694,9 +735,25 @@ def composed_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int, max_
                        for c in g.thing.concepts if ontology.operator_of(c)))]
     if not ops:
         return
-    things = [g for g in gives if g not in ops]
+    index = _index(ontology, index)
+    filed = _filed(offers, index)
+    op_ids = {g.offer_id for g in ops}
+    outputs = sorted({ontology.bare(out) for g in ops for _, _, out in ontology.ends(g.thing.concepts)})
+    moved: dict[str, bool] = {}
+
+    def answered_by_a_move(term: str) -> bool:
+        if term not in moved:
+            moved[term] = any(ontology.covers(term, c) for c in outputs)
+        return moved[term]
+
     for w in wants:
-        for thing in things:
+        terms = index.query(w.thing)
+        if terms is None:
+            continue                   # unknown wanted vocabulary: nothing serves it, moved or not
+        cone = index.cone(w, [t for t in terms if not answered_by_a_move(t)])
+        for thing in _in_id_order(filed, cone):
+            if thing.offer_id in op_ids:
+                continue
             if check_match(thing, w, ontology, now=now, reads=reads) is not None:
                 continue           # the thing already reaches: no operator needed
             reached = False
@@ -712,20 +769,33 @@ def composed_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int, max_
 
 def candidate_matches(offers: Iterable[Offer], ontology: Ontology, *, now: int,
                       reads: Reads | None = None, available=None, held=None,
-                      gate=None) -> Iterator[Match]:
-    """All feasible handoffs among `offers`.
-
-    Prototype strategy: exact check over the give x want product, with the
-    cheap constant-time conditions doing the pruning. This is
-    O(gives*wants) and entirely adequate for books that fit in memory; the
-    scaling path is `dimensions.candidate_matches_indexed` (the want's
-    conjunction as one catalogue query), refined by this same exact
-    check.
-    """
+                      gate=None, index=None) -> Iterator[Match]:
+    """All feasible handoffs among `offers`: for each want, the gives the
+    ontodag index holds inside every wanted cone (`DimensionIndex`, one
+    `get` per want, the want's conjunction as the query), each checked
+    exactly (`check_match`, with the reads). The one candidate engine (the
+    2026-10 review's item 2, decided by Peter 2026-10-10): recall-exact,
+    since a give outside a wanted cone cannot satisfy the want, and yielded
+    in the order the give × want product yields them (gives in `offers`
+    order, then wants), so a caller keeping the first of equal edges keeps
+    the same one. The product itself stays only as the tests' oracle
+    (`tests/oracle.py`). `index`: as for `aggregate_legs`."""
     reads = reads_of(reads, available=available, held=held, gate=gate)
-    gives = [o for o in offers if o.kind == GIVE]
-    wants = [o for o in offers if o.kind == WANT and not o.composed]
-    for g, w in product(gives, wants):
-        m = check_match(g, w, ontology, now=now, reads=reads)
-        if m is not None:
-            yield m
+    offers = list(offers)
+    index = _index(ontology, index)
+    at: dict[str, list[tuple[int, Offer]]] = {}
+    for i, o in enumerate(offers):
+        if o.kind == GIVE and index.file(o):
+            at.setdefault(o.offer_id, []).append((i, o))
+    found = []
+    for j, w in enumerate(offers):
+        if w.kind != WANT or w.composed:
+            continue
+        for oid in index.candidates(w):
+            for i, g in at.get(oid, ()):
+                m = check_match(g, w, ontology, now=now, reads=reads)
+                if m is not None:
+                    found.append((i, j, m))
+    found.sort(key=lambda f: (f[0], f[1]))
+    for _, _, m in found:
+        yield m

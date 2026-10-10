@@ -14,11 +14,34 @@ The 2026-10 review's item 10 (ontodag's `docs/plans/REVIEW_2026-10.md`
 `LegRecord` type. On every record the code writes, no command prints or
 does anything different, and no record byte or id changes. Item 11
 changes how `loop` reads and prints durations, item 4 what matching and
-clearing admit, and item 9 what a fold admits and what counts as filled
-where a chain is set (below); none changes a record byte or an id.
+clearing admit, item 9 what a fold admits and what counts as filled
+where a chain is set, and item 2 how the searches find their candidates,
+not what they find (below); none changes a record byte or an id.
 
 ### Changed
 
+- **One matching engine: ontodag's index** (the review's item 2, decided
+  by Peter 2026-10-10, option A). `candidate_matches`, `aggregate_legs`,
+  `parts_legs` and `composed_legs` no longer try every give against every
+  want: each asks a `DimensionIndex` for the gives inside a want's cones
+  (one ontodag `get` per wanted thing; for a composed want, per part) and
+  runs the exact checks, with the reads, on those alone, whatever the size
+  of the book — no threshold. They find exactly what the give × want
+  product found, in the same order (the product yielded gives in `offers`
+  order, then wants, and a caller keeping the first of equal edges keeps
+  the same one); the product survives only as the oracle
+  `tests/test_one_engine.py` proves that against over random books of
+  every record version, with fills, escrow holdings and a counterparty
+  gate (`tests/oracle.py`). Each search takes `index=` (a fresh index when
+  none is given), and `SolverAgent` builds one per pass and hands it to all
+  four. `DimensionIndex.candidates(want, thing=None)` names a part of a
+  composed want; `.query(thing)` and `.cone(want, terms)` are the two
+  halves of it. The composition search leaves out of a want's query any
+  term an operator's output coordinate lies under (a place filed under a
+  category as well as under its cell), since the move may answer it.
+  `candidate_matches_indexed` is now the older name of `candidate_matches`.
+  `candidate_matches` also takes a one-shot iterator of offers now: the
+  product read `offers` twice and so found nothing in one.
 - **Durations and relative times are ontodag's** (the review's item 11,
   decided by Peter 2026-10-10). `loop` reads a duration (`valid(...)`,
   the duration settings, `--until`, `extend-claim`, `notice --cure`,

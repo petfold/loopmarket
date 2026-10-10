@@ -16,8 +16,10 @@ the filter on what loopmarket pushes upstream (disjointness stays out);
 `BINDING` §1's one-filler-per-role rule as schema validation; the tripwire
 table, with the Merkle-cone-commitment wall fired formally at P2 start and
 solver query-set logging on from day one. Open here: pin agility under
-catalogue growth; abduction weights; the indexed-generator threshold;
-shared tangent-plane frames; ordinal and cyclic encodings.
+catalogue growth; abduction weights; shared tangent-plane frames; ordinal
+and cyclic encodings. Superseded 2026-10-10 (the 2026-10 review's item 2,
+decided by Peter): the indexed generator is the one candidate engine,
+with no threshold (§5).
 
 This is the treaty between loopmarket and its catalogue: what loopmarket
 relies on upstream, what it must never build locally, and what evidence
@@ -324,6 +326,26 @@ system will ever have:
   the answer), nothing filed but what a give says. ontodag removed
   `overlapping=` from `get` the same night; `items_only` (#14's second
   ask) and #18's dimension cache stay. Suite 54 s → 11 s.
+  **Decided 2026-10-10 (the 2026-10 review's item 2, option A, Peter):
+  one engine and no threshold.** The index supplies the candidates of
+  the simple matches, of the aggregation search, and of the parts and
+  composed searches wherever they pair gives with wants, with the filters
+  the give × want product applies (`available`, `held`, `gate`); the
+  product stays only as the tests' oracle (`tests/oracle.py`), against
+  which `tests/test_one_engine.py` proves every search finds the same
+  results in the same order over random books of every record version.
+  Declined: a threshold (two paths and a catalogue-dependent rule, to save
+  at most about 60 ms a step), the simple matcher only, keeping the
+  product. Built the same day: each search takes `index=`, and
+  `SolverAgent` builds one `DimensionIndex` per pass for all four. Two
+  exact-check gaps the comparison turned up were closed first, since the
+  index already behaved as the rules say: a wanted operator term the
+  catalogue cannot read matched a courier who takes anything (U7), and a
+  thing at two places that share no point composed into a leg. One rule
+  keeps the composition search exact: a wanted term an operator's output
+  coordinate lies under (a place filed under a category as well as under
+  its cell) is left out of that want's query, since the move may answer
+  it.
 - **One intersection engine** (Peter, 2026-09-07). ontodag is the master
   of every set-valued intersection, optimisations included; loopmarket
   does **no set arithmetic on the answer** — it issues one query per want,
@@ -457,7 +479,10 @@ implementation with its own bugs and no treaty.
 - **G3 — the threshold is a measurement.** N* pinned by benchmark
   (baseline vs indexed generator over growing randomized books, both
   recall-exact by test); `SolverAgent` switches at N* with the equality
-  suite green at the switch point. Owner: P1.
+  suite green at the switch point. Owner: P1. **Decided 2026-10-10 on
+  the measurement (review item 2): no threshold.** The index is the one
+  engine at every size, and the equality suite (`tests/test_one_engine.py`)
+  runs on every commit.
 - **G4 — the ladder is advisory by construction.** Degree computation
   ships with a property test for Di Noia monotonicity (adding a concept
   to an offer never lowers its degree) and a settlement test proving
@@ -486,9 +511,8 @@ implementation with its own bugs and no treaty.
   (§4) is the only adopted constraint. Whether weights are solver-local
   policy, broker configuration, or learned from settled-loop statistics
   (U12-guarded) is open. Work package: `adoption-and-thickness.md`.
-- **The indexed-generator threshold.** N* is unmeasured; the 0.8×
-  candidate-count bound is a test-fixture fact, not a benchmark. Work
-  package: P1 (gate G3).
+- **The indexed-generator threshold.** Resolved 2026-10-10 (review item
+  2): no threshold; the index is the one engine (§5).
 - **Shared tangent-plane frames.** Recall-exact geo needs frame
   vocabulary — who declares frames, at what granularity, governed like
   units. Nobody's tripwire yet. Work package: post-P1, with

@@ -1,18 +1,21 @@
-"""The dimension-backed candidate generator (loopmarket.dimensions).
+"""The dimension-backed candidate engine (loopmarket.dimensions).
 
-The load-bearing assertion is RECALL: over randomized books, the indexed
-generator must yield exactly the matches of the exact give x want baseline —
-this is the benchmark ARCHITECTURE.md §6 demands of smarter generators.
-The second assertion is that it actually prunes (fewer exact checks than
-the full product), so it cannot silently degenerate into the baseline."""
+The load-bearing assertion is RECALL: over randomized books, the index must
+yield exactly the matches of the exact give x want product, which the tests
+keep as their oracle (`tests/oracle.py`; every search is compared with it
+in `tests/test_one_engine.py`) — this is the benchmark ARCHITECTURE.md §6
+demands of smarter generators. The second assertion is that it actually
+prunes (fewer exact checks than the full product), so it cannot silently
+degenerate into the product."""
 
 import random
 
 import pytest
 
+import oracle
 from loopmarket import GeoDisc, Ontology, Thing, TimeWindow, give, want
 from loopmarket.dimensions import DimensionIndex, candidate_matches_indexed
-from loopmarket.matching import candidate_matches, check_match
+from loopmarket.matching import check_match
 
 NOW = 5_000
 CATALOGUE = {
@@ -106,7 +109,7 @@ class TestRecallAgainstBaseline:
         for seed in range(5):
             offers = self._random_book(seed)
             expected = {(m.give.offer_id, m.want.offer_id)
-                        for m in candidate_matches(offers, ontology, now=NOW)}
+                        for m in oracle.candidate_matches(offers, ontology, now=NOW)}
             got = {(m.give.offer_id, m.want.offer_id)
                    for m in candidate_matches_indexed(
                        offers, ontology, now=NOW)}
@@ -194,7 +197,7 @@ class TestRoleTerms:
         for seed in range(4):
             offers = self._random_book(seed, n=60)
             expected = {(m.give.offer_id, m.want.offer_id)
-                        for m in candidate_matches(offers, ontology, now=NOW)}
+                        for m in oracle.candidate_matches(offers, ontology, now=NOW)}
             got = {(m.give.offer_id, m.want.offer_id)
                    for m in candidate_matches_indexed(offers, ontology, now=NOW)}
             assert got == expected, f"recall/precision drift at seed {seed}"
@@ -209,7 +212,7 @@ class TestRoleTerms:
         milliseconds (the cost note in `ontodag-coupling.md` §7)."""
         ontology = roles_ontology()
         offers = self._random_book(7, n=50, places=PLACES)
-        baseline = list(candidate_matches(offers, ontology, now=NOW))
+        baseline = list(oracle.candidate_matches(offers, ontology, now=NOW))
         expected = {(m.give.offer_id, m.want.offer_id) for m in baseline}
         got = {(m.give.offer_id, m.want.offer_id)
                for m in candidate_matches_indexed(offers, ontology, now=NOW)}

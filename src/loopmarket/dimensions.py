@@ -1,4 +1,12 @@
-"""Candidate generation through ontodag parametric dimensions — one query.
+"""The one candidate engine: ontodag's index of the gives, one query per
+wanted thing.
+
+Every search that pairs gives with wants asks it — `candidate_matches`,
+`aggregate_legs`, `parts_legs` part by part and `composed_legs`
+(`matching.py`) — whatever the size of the book: the 2026-10 review's item
+2, decided by Peter 2026-10-10, one engine and no threshold. The give x
+want product they ran before survives only as the oracle the tests compare
+them against (`tests/oracle.py`).
 
 The want's categories and descriptive terms ARE the query (Peter,
 2026-09-12: ontodag is intersection; for what a thing is, a want is the
@@ -35,8 +43,10 @@ what makes `items_only` return offers and nothing else: a childless
 *category* in the wanted cone (`fruit-box` when nobody offers one) is an
 item to ontodag, but it is not under the marker.
 
-The generator is recall-exact against the baseline give x want product —
-and clearing re-verification never depends on it either way (invariant U3).
+The index is recall-exact — a give outside a wanted cone cannot satisfy the
+want, so every candidate the product would check and pass is in the
+answer — and clearing re-verification never depends on it either way
+(invariant U3).
 
 **The index is derived, local, and never shared.** Filing offers into the
 shared catalogue would move its root under every offer that pins it, so
@@ -57,11 +67,11 @@ disjoint values.
 
 from __future__ import annotations
 
-from typing import Iterable, Iterator
+from typing import Iterable
 
-from .matching import Match, check_match
+from .matching import candidate_matches
 from .ontology import Ontology
-from .schema import GIVE, WANT, Offer
+from .schema import GIVE, Offer, Thing
 
 #: Index-private marker categories: which record line a filed give is on.
 _LINE = {2: "loopmarket:record-line-2", 3: "loopmarket:record-line-3"}
@@ -75,9 +85,10 @@ def _line(offer: Offer) -> int:
 class DimensionIndex:
     """Files gives into a derived catalogue copy; answers want candidates.
 
-    Build one per solve step, like a snapshot: it is cheap relative to the
-    O(gives x wants) product it replaces, and regenerating it is what keeps it
-    honest (derived state is never merged, never persisted).
+    Build one per solve step, like a snapshot, and hand it to every search
+    of the step (their `index=`): building it is its fixed cost (a copy of
+    the catalogue), and regenerating it is what keeps it honest (derived
+    state is never merged, never persisted).
     """
 
     def __init__(self, ontology: Ontology):
@@ -113,43 +124,43 @@ class DimensionIndex:
         self._filed.add(offer.offer_id)
         return True
 
-    def candidates(self, want_offer: Offer) -> set[str]:
-        """Give offer-ids inside every wanted category cone, on the want's
-        record line: one `get`. Handover coordinates (place, time, a
-        route's ends) are left to `check_match`, which every candidate
-        still faces (module docstring)."""
-        if want_offer.composed:
-            return set()          # a composed want is met part by part (`parts_legs`)
-        concepts = want_offer.thing.concepts
-        if not all(self.ontology.known(c) for c in concepts):
-            return set()          # unknown wanted vocabulary matches nothing
-        one_way = [self.ontology.operator_of(c) or c for c in concepts
-                   if self.ontology.handover_class(c) is None]
+    def query(self, thing: Thing) -> list[str] | None:
+        """The terms the index asks for a wanted `thing`: its categories and
+        descriptive terms, an operator term as its category (its argument
+        is the exact check's). Handover coordinates — place, time, a
+        route's ends — are not asked: a give that contains the want's
+        coordinate sits above it, not in its cone, so they are left to the
+        exact check, which every candidate still faces (module docstring).
+        None when the catalogue does not know one of the concepts: unknown
+        wanted vocabulary matches nothing (U7)."""
+        if not all(self.ontology.known(c) for c in thing.concepts):
+            return None
+        return [self.ontology.operator_of(c) or c for c in thing.concepts
+                if self.ontology.handover_class(c) is None]
+
+    def cone(self, want_offer: Offer, terms: Iterable[str]) -> set[str]:
+        """Give offer-ids on `want_offer`'s record line inside every cone of
+        `terms`: one `get`, ontodag's planner ordering the cones smallest
+        first and stopping on empty, no set arithmetic on the answer."""
         try:
-            items = self._dag.get([_LINE[_line(want_offer)], *one_way],
+            items = self._dag.get([_LINE[_line(want_offer)], *terms],
                                   items_only=True)
         except ValueError:        # a conjunction ontodag cannot order
             return set()
         return {item.name for item in items}
 
+    def candidates(self, want_offer: Offer, thing: Thing | None = None) -> set[str]:
+        """Give offer-ids that may serve `thing` — the want's own thing, or
+        one part of a composed want — on the want's record line: the gives
+        inside every cone `query` asks for, one `get`."""
+        if thing is None:
+            if want_offer.composed:
+                return set()      # a composed want is met part by part: name the part
+            thing = want_offer.thing
+        terms = self.query(thing)
+        return set() if terms is None else self.cone(want_offer, terms)
 
-def candidate_matches_indexed(
-        offers: Iterable[Offer], ontology: Ontology, *,
-        now: int, index: DimensionIndex | None = None) -> Iterator[Match]:
-    """Drop-in for `matching.candidate_matches`, generating through a
-    `DimensionIndex` instead of the full give x want product. Yields exactly
-    the baseline's matches (the recall test in tests/test_dimensions.py is
-    the benchmark ARCHITECTURE.md §6 demands of smarter generators)."""
-    offers = list(offers)
-    index = index if index is not None else DimensionIndex(ontology)
-    gives_by_id: dict[str, Offer] = {}
-    for offer in offers:
-        if offer.kind == GIVE and index.file(offer):
-            gives_by_id[offer.offer_id] = offer
-    for want_offer in offers:
-        if want_offer.kind != WANT:
-            continue
-        for oid in sorted(index.candidates(want_offer)):
-            match = check_match(gives_by_id[oid], want_offer, ontology, now=now)
-            if match is not None:
-                yield match
+
+#: The older name of `matching.candidate_matches`, from when the index was
+#: the alternative to the give x want product rather than the engine.
+candidate_matches_indexed = candidate_matches

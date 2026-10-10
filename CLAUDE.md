@@ -171,14 +171,20 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
   give within the want); an operator's argument matches the other way
   round (want within give). Whoever fixes a value states a fact, whoever
   leaves it open an acceptance, and the fact lies within the acceptance.
-- `dimensions.py`: `DimensionIndex` and `candidate_matches_indexed`, the
-  ontodag-backed candidate generator (one `get` per want), recall-exact
-  against the baseline. Not yet used by the solver (review item 2).
+- `dimensions.py`: `DimensionIndex`, the one candidate engine (review item
+  2): a derived copy of the catalogue with the gives filed in it, asked
+  one `get` per wanted thing by every search that pairs gives with wants,
+  whatever the size of the book. Recall-exact against the give × want
+  product, which survives only as the tests' oracle (`tests/oracle.py`,
+  `tests/test_one_engine.py`); `candidate_matches_indexed` is the older
+  name of `candidate_matches`.
 - `matching.py`: the exact checks (`check_match`, `check_composition`,
   `check_parts`, `check_aggregate`), `meets` (every requirement fails
   closed), `version_fault` (an offer pinned to another major than the
   installed ontodag's, refused by matching, clearing and a challenger) and
-  the give × want candidate generator the solver uses.
+  the searches the solver runs (`candidate_matches`, `aggregate_legs`,
+  `parts_legs`, `composed_legs`), each taking its candidates from a
+  `DimensionIndex` (`index=`; a solver builds one per pass).
 - `reads.py`: `Reads`, what the checks, the solver and the clearing read
   beyond the offers: `available`, `held`, `gate`, the chain's fills and
   the escrow's holdings. A solver or a clearing is given the last two and
@@ -289,12 +295,12 @@ word.
    aggregation by quantity and declared parts are built; give-side bundles
    stay excluded (the reseller is the route), and a give's floor is in the
    record but the CLI spelling `10kg..` on a give is not wired.
-2. **Candidate generation is the give × want product in the solver.** The
-   indexed generator (`dimensions.py`) finds the same matches 6–16× faster
-   from 100 offers a side. Decided (review item 2, 2026-10-10), not built
-   yet: it becomes the one engine, for simple matches and the aggregation
-   search, with no threshold, and the default solver is kept apart from
-   the rest of loopmarket, the way an outside solver would be.
+2. **Candidates come from ontodag's index; place and time from the exact
+   check.** Every search asks one `DimensionIndex` (review item 2), but a
+   want's handover coordinates are not in its query: a give that contains
+   the want's place sits above it, not in its cone. The ask upstream, when
+   place pruning is worth having, is a "comparable to X" query term
+   (`docs/plans/ontodag-coupling.md` §7).
 3. **Geo: cells for v3 and later, discs for v1/v2.** A place is a cell, a
    place node under a cell, or a region node above cells, and containment
    is exact; a region's covering is a lower bound. Covering as a value
@@ -347,7 +353,7 @@ The joint review is in ontodag (`docs/plans/REVIEW_2026-10.md`;
 so far: it is in ontodag's release gate, its chain tests run nightly and
 before releases, and pyflakes runs in CI (item 5, built); one matching
 engine, ontodag's index, with the default solver kept apart from the rest
-of loopmarket (item 2); matching and clearing refuse an offer whose
+of loopmarket (item 2, the engine built); matching and clearing refuse an offer whose
 registry or contract major differs from the installed ontodag's (item
 4, built); every reader's fold re-checks a clearing book's loops, and where a
 chain is configured only on-chain fills hide an offer (item 9, built:
@@ -361,7 +367,8 @@ records stay readable), and `BookClearing` renamed `BookClearing` (item
 12); the
 phase gates restated for what they still guard (item 17, under "Roadmap
 (state)"). Every review item for loopmarket is decided, and the decided
-items are being built: items 5, 10, 11, 4 and 9 so far.
+items are being built: items 5, 10, 11, 4 and 9 so far, and item 2's
+engine.
 
 ## Conventions
 

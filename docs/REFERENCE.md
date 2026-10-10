@@ -386,24 +386,39 @@ the composed leg when `legs_checked` (`legs_faults(want, gives, ontology,
 *, gate=None)` lists what a composed leg's operator gives fail of them).
 No requirement: `True`; a requirement nothing can check: `False` (U7).
 
-### `candidate_matches(offers, ontology, *, now, available=None, held=None, gate=None) -> Iterator[Match]`
-The exact check over the full give × want product. The recall baseline.
+### `candidate_matches(offers, ontology, *, now, available=None, held=None, gate=None, index=None) -> Iterator[Match]`
+Every feasible handoff among `offers`: for each want, the gives a
+`DimensionIndex` (§6) holds inside every wanted cone — one ontodag `get`
+per want — each checked exactly (`check_match`, with the reads). The one
+candidate engine (review item 2, decided by Peter 2026-10-10: no
+threshold, whatever the size of the book): recall-exact, since a give
+outside a wanted cone cannot satisfy the want, and yielded in the order
+the give × want product yields (gives in `offers` order, then wants), so
+a caller keeping the first of equal edges keeps the same one. The product
+survives only as the tests' oracle (`tests/oracle.py`,
+`tests/test_one_engine.py`). `index`: the `DimensionIndex` to ask — a
+solver builds one per step and hands it to all four searches (this,
+`aggregate_legs`, `parts_legs`, `composed_legs`) — else a fresh one; only
+the gives in `offers` are ever candidates.
 
 ### `check_parts(want, gives, ontology, *, now, available=None, held=None, gate=None) -> Leg | None`
 The exact check of a composed want's leg (v4): give `i` serves part `i` —
 the gates against that part (quantity on the give's step and floor, units,
 pins) and `satisfies` — every give distinct, all or nothing. Re-run by
-clearing (U3). `parts_legs(offers, ontology, *, now, limit=64)` is the
-baseline search: per part the gives that serve it, every combination of
-distinct gives checked exactly, deterministic order.
+clearing (U3). `parts_legs(offers, ontology, *, now, limit=64,
+index=None)` is the baseline search: per part the gives that serve it —
+those the index holds in the part's cones (`DimensionIndex.candidates(want,
+part)`), then checked — every combination of distinct gives checked
+exactly, deterministic order.
 
 ### `check_aggregate(want, gives, quantities, ontology, *, now, available=None, held=None, gate=None) -> Leg | None`
 The exact check of an aggregated leg (the six lifters, 2026-09-14): one
 want of one thing met by several gives of it, each contributing a share it
 may give (`Thing.takes`, within what is left of it), the shares summing to
 the want's quantity. `aggregate_legs(offers, ontology, *, now,
-available=None, max_gives=6, max_alternatives=8)` is the deterministic
-depth-first baseline search, largest shares first.
+available=None, max_gives=6, max_alternatives=8, index=None)` is the
+deterministic depth-first baseline search over the gives the index holds
+in the want's cones, largest shares first.
 
 ### `Leg(want: Offer, gives: tuple[Offer, ...], quantities=None)` — frozen
 One want met by one or more gives — the hyperedge of `P2-loop-selection.md`
@@ -430,25 +445,34 @@ by `Ontology.declare_argument_operator`) attaches to the thing when its
 argument accepts it and moves nothing; a want's `requires.legs` are
 checked here (`legs_faults`). A thing that describes nothing (`Ontology.consistent`) composes into nothing, though the moves may leave neither of its places in the moved thing. Re-run by clearing (U3).
 
-### `composed_legs(offers, ontology, *, now, max_hops=2, available=None, held=None, gate=None) -> Iterator[Leg]`
+### `composed_legs(offers, ontology, *, now, max_hops=2, available=None, held=None, gate=None, index=None) -> Iterator[Leg]`
 Baseline composition search: every want × thing give that does not already
 match it × every chain of up to `max_hops` operator gives, checked exactly;
-a chain only where a shorter one does not reach; deterministic order.
+a chain only where a shorter one does not reach; deterministic order. The
+thing gives a want is tried with are those the index holds in its wanted
+cones (moving a thing changes where it is, never what it is), except that
+a wanted term some operator's output coordinate lies under (a place filed
+under a category as well as under its cell) is left out of that want's
+query, since the move may answer it.
 
 ---
 
-## 6. `loopmarket.dimensions` — indexed candidate generation
+## 6. `loopmarket.dimensions` — the candidate engine
 
-Recall-exact against the baseline (enforced by test); **one `get` per
-want**, the want's own conjunction as the query, no set arithmetic on the
-answer.
+The candidates of every search that pairs gives with wants
+(`candidate_matches`, `aggregate_legs`, `parts_legs`, `composed_legs`,
+§5): recall-exact against the give × want product (enforced by
+`tests/test_one_engine.py`); **one `get` per wanted thing**, its own
+conjunction as the query, no set arithmetic on the answer.
 
 | member | meaning |
 |---|---|
-| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) under exactly the terms they carry, plus a record-line marker |
-| `.file(offer) -> bool` | index a give under its concepts and its line marker; `False` for non-gives, unknown vocabulary (U7's outcome) and a conjunction ontodag refuses |
-| `.candidates(want) -> set[str]` | one `get([line marker, *one-way terms], items_only=True)`: the gives inside every wanted category cone; handover coordinates are left to `check_match` (a give that *contains* the want's place sits above it, not in its cone) |
-| `candidate_matches_indexed(offers, ontology, *, now, index=None)` | drop-in for `candidate_matches` |
+| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) under exactly the terms they carry, plus a record-line marker; build one per solver step and pass it to the searches as `index=` (the copy is its fixed cost) |
+| `.file(offer) -> bool` | index a give under its known concepts (an operator term as its category) and its line marker; an unknown concept is left out (it only narrows a give); `False` for non-gives and a conjunction ontodag refuses (it describes nothing) |
+| `.candidates(want, thing=None) -> set[str]` | the gives that may serve `thing` — the want's own thing, or one part of a composed want (a composed want with no part named gets none): `.cone(want, .query(thing))` |
+| `.query(thing) -> list[str] \| None` | the terms asked: categories and descriptive terms, an operator term as its category; handover coordinates are left to `check_match` (a give that *contains* the want's place sits above it, not in its cone); `None` when a concept is unknown (U7: nothing serves it) |
+| `.cone(want, terms) -> set[str]` | one `get([line marker, *terms], items_only=True)`: the gives on the want's record line inside every cone of `terms` |
+| `candidate_matches_indexed` | the older name of `candidate_matches`, from when the index was the alternative to the product |
 
 The v1/v2 window and disc are fields the exact check gates, not terms;
 they are not filed. ontodag's `items_only` (#14), role parameters naming

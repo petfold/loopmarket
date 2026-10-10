@@ -21,7 +21,7 @@ from ontodag import OntoDAG
 import oracle
 from loopmarket import (Accept, Acceptance, Bond, Credential, Offer, Ontology, Parts, Requires, Thing,
                         TimeWindow, give, want)
-from loopmarket.dimensions import candidate_matches_indexed
+from loopmarket.dimensions import DimensionIndex, candidate_matches_indexed
 from loopmarket.gate import CounterpartyGate
 from loopmarket.items import natural_id
 from loopmarket.matching import aggregate_legs, candidate_matches, composed_legs, parts_legs
@@ -259,12 +259,14 @@ def expected(seed: int, with_reads: bool) -> dict:
 @pytest.mark.parametrize("seed", SEEDS)
 @pytest.mark.parametrize("with_reads", [False, True])
 def test_every_search_finds_what_the_product_finds(seed, with_reads):
+    """One index for the four searches, as a solver's pass shares it."""
     cat, offers, reads = _book(seed, with_reads)
     product = expected(seed, with_reads)
-    assert _pairs(candidate_matches(offers, cat, now=NOW, reads=reads)) == product["matches"]
-    assert _keys(aggregate_legs(offers, cat, now=NOW, reads=reads)) == product["aggregate"]
-    assert _keys(parts_legs(offers, cat, now=NOW, reads=reads)) == product["parts"]
-    assert _keys(composed_legs(offers, cat, now=NOW, reads=reads)) == product["composed"]
+    index = DimensionIndex(cat)
+    assert _pairs(candidate_matches(offers, cat, now=NOW, reads=reads, index=index)) == product["matches"]
+    assert _keys(aggregate_legs(offers, cat, now=NOW, reads=reads, index=index)) == product["aggregate"]
+    assert _keys(parts_legs(offers, cat, now=NOW, reads=reads, index=index)) == product["parts"]
+    assert _keys(composed_legs(offers, cat, now=NOW, reads=reads, index=index)) == product["composed"]
     if reads is None:          # the index's own generator, compared as sets: it once had its own order
         assert sorted(_pairs(candidate_matches_indexed(offers, cat, now=NOW))) == sorted(product["matches"])
 
