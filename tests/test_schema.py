@@ -2,7 +2,7 @@
 
 import pytest
 
-from loopmarket.schema import GeoDisc, Offer, Thing, TimeWindow, Tokens, give, want
+from loopmarket.schema import Offer, Thing, TimeWindow, Tokens, give, want
 
 W = dict(valid=TimeWindow(0, 10_000))
 
@@ -67,16 +67,11 @@ def test_v1_records_re_encode_as_v1(golden):
     assert v2.offer_id != v1.offer_id            # the bump is part of identity
 
 
-def test_time_and_geo_fits_within():
+def test_time_windows_fit_within():
     assert TimeWindow(0, 100).contains(TimeWindow(10, 90))
     assert not TimeWindow(0, 100).contains(TimeWindow(10, 101))
     assert TimeWindow(0, 100).overlaps(TimeWindow(99, 200))
     assert not TimeWindow(0, 100).overlaps(TimeWindow(100, 200))
-    big, small = GeoDisc(46.0, 14.0, 10_000), GeoDisc(46.01, 14.01, 500)
-    assert big.contains(small) and not small.contains(big)
-    assert big.intersects(small)
-    far = GeoDisc(48.0, 16.0, 1_000)
-    assert not big.intersects(far)
 
 
 

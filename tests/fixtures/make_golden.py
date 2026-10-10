@@ -8,10 +8,10 @@ to v7, under the id each got; `loop/` records of each shape books hold
 and v2, whose legs name their `gives` and what was `taken`); and the
 `fill/` records written with them, of `{"loop"}` alone and with
 quantities. Each scenario is written as the code of its time wrote it:
-the offers by the constructors, the loops by `BookClearing`, and the
-2026-08 loop record, which nothing writes any more, by the encoding
-spelled out below. Every book is in memory with fixed nonces and clocks,
-so the same code writes the same file.
+the offers by the constructors, the loops by `BookClearing`, and what
+nothing writes any more, the v1 and v2 offers and the 2026-08 loop
+record, by the encodings spelled out below. Every book is in memory with
+fixed nonces and clocks, so the same code writes the same file.
 
 `tests/test_golden_records.py` reads every record back, recomputes its id
 and re-encodes it to the same bytes. If that fails, a change would make
@@ -37,8 +37,8 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore, canonical_bytes
 
 from loopmarket import (
-    Accept, Acceptance, Bond, BookClearing, Credential, GeoDisc, Leg, Loop, LoopProposal,
-    Match, OfferRegistry, Ontology, Parts, RequiredLeg, Requires, SolverAgent, Thing,
+    Accept, Acceptance, Bond, BookClearing, Credential, Leg, Loop, LoopProposal, Match,
+    Offer, OfferRegistry, Ontology, Parts, RequiredLeg, Requires, SolverAgent, Thing,
     TimeWindow, find_circulations, give, want,
 )
 from loopmarket.matching import candidate_matches, composed_legs
@@ -143,20 +143,40 @@ def _record_of_2026_08(book, offers, *, solver, found_at) -> None:
 
 # ------------------------------------------------------------------ v1, v2, v3
 
+def old_offer(v, maker, kind, concepts, amount, *, qty=1.0, unit="unit", divisible=False,
+              service, where, valid, nonce, ontology_root="", bond=0.0, oracle="countersign",
+              arbitrator="", registry_version="", contract_version="") -> Offer:
+    """A v1 or v2 offer, which no constructor makes any more (the review's
+    item 12): its record as the constructors of 2026-07-29 (v1) and
+    2026-08-20 (v2) wrote it, read back as a reader of an old book reads
+    it. A thing of those versions carries its quantity and `divisible`;
+    `service` and `where` are fields, a window and a disc."""
+    thing = {"type": "thing", "concepts": sorted(set(concepts)), "qty": qty, "unit": unit,
+             "divisible": divisible}
+    tokens = {"type": "tokens", "issuer": maker, "amount": amount}
+    rec = {"v": v, "maker": maker, "gives": thing if kind == "give" else tokens,
+           "wants": tokens if kind == "give" else thing, "valid": valid,
+           "service": service, "where": where, "ontology_root": ontology_root, "bond": bond,
+           "oracle": oracle, "arbitrator": arbitrator, "nonce": nonce}
+    if v == 2:
+        rec.update(registry_version=registry_version, contract_version=contract_version)
+    return Offer.from_record(rec)
+
+
 def triangle(v: int):
     """The demo triangle as `examples/demo_triangle.py` published it in v1
     and v2: the service window and the disc are fields."""
     t = AUG if v == 1 else AUG + 21 * DAY
-    town = dict(service=TimeWindow(t, t + 120 * DAY), valid=TimeWindow(t - 3_600, t + 30 * DAY), v=v)
-    flat, farm, shop = GeoDisc(46.05, 14.50, 5_000), GeoDisc(46.10, 14.55, 15_000), GeoDisc(46.06, 14.51, 4_000)
+    town = dict(service=[t, t + 120 * DAY], valid=[t - 3_600, t + 30 * DAY], unit="course")
+    flat, farm, shop = [46.05, 14.50, 5_000], [46.10, 14.55, 15_000], [46.06, 14.51, 4_000]
     n = t * 1000
     return [
-        give("amara", Thing(("piano-lesson",), unit="course"), 100, where=flat, nonce=n + 1, **town),
-        want("amara", Thing(("produce", "local", "weekly"), unit="course"), 104, where=flat, nonce=n + 2, **town),
-        give("bruno", Thing(("vegetable-box",), unit="course"), 50, where=farm, nonce=n + 3, **town),
-        want("bruno", Thing(("bicycle-repair",), unit="course"), 52, where=farm, nonce=n + 4, **town),
-        give("chen", Thing(("bicycle-repair",), unit="course"), 80, where=shop, nonce=n + 5, **town),
-        want("chen", Thing(("music-lesson",), unit="course"), 83, where=shop, nonce=n + 6, **town),
+        old_offer(v, "amara", "give", ["piano-lesson"], 100, where=flat, nonce=n + 1, **town),
+        old_offer(v, "amara", "want", ["produce", "local", "weekly"], 104, where=flat, nonce=n + 2, **town),
+        old_offer(v, "bruno", "give", ["vegetable-box"], 50, where=farm, nonce=n + 3, **town),
+        old_offer(v, "bruno", "want", ["bicycle-repair"], 52, where=farm, nonce=n + 4, **town),
+        old_offer(v, "chen", "give", ["bicycle-repair"], 80, where=shop, nonce=n + 5, **town),
+        old_offer(v, "chen", "want", ["music-lesson"], 83, where=shop, nonce=n + 6, **town),
     ]
 
 
@@ -166,10 +186,10 @@ v1 (2026-07-29): the demo triangle, and an offer using every other v1 field.
 The loop records of that time named their legs `ask` and `bid`, a shape
 nothing has read since 2026-08-21, so none is here.""")
     t = AUG + 5 * DAY
-    odd = want("dora", Thing(("produce", "fruit-box"), 2.5, "kg", divisible=True), 37.5,
-               service=TimeWindow(t, t + 7 * DAY), where=GeoDisc(-33.87, 151.21, 2_500.5),
-               valid=TimeWindow(t - DAY, t + 14 * DAY), bond=5.0, oracle="photo", arbitrator="arb-1",
-               ontology_root="ab" * 32, nonce=t * 1000 + 7, v=1)
+    odd = old_offer(1, "dora", "want", ["produce", "fruit-box"], 37.5, qty=2.5, unit="kg",
+                    divisible=True, service=[t, t + 7 * DAY], where=[-33.87, 151.21, 2_500.5],
+                    valid=[t - DAY, t + 14 * DAY], bond=5.0, oracle="photo", arbitrator="arb-1",
+                    ontology_root="ab" * 32, nonce=t * 1000 + 7)
     corpus.book(_book([*triangle(1), odd]))
 
     corpus.section("""
@@ -181,10 +201,10 @@ and an offer that pins the registry and the contract.""")
     _record_of_2026_08(book, offers, solver="demo-solver", found_at=AUG + 21 * DAY + 60)
     corpus.book(book)
     t = AUG + 25 * DAY
-    pinned = give("emil", Thing(("bicycle-repair", "local"), 2, "visit"), 120,
-                  service=TimeWindow(t, t + 30 * DAY), where=GeoDisc(46.05, 14.5, 12_000),
-                  valid=TimeWindow(t, t + 30 * DAY), ontology_root="cd" * 32,
-                  registry_version="1.0", contract_version="0.1", nonce=t * 1000 + 1, v=2)
+    pinned = old_offer(2, "emil", "give", ["bicycle-repair", "local"], 120, qty=2, unit="visit",
+                       service=[t, t + 30 * DAY], where=[46.05, 14.5, 12_000],
+                       valid=[t, t + 30 * DAY], ontology_root="cd" * 32,
+                       registry_version="1.0", contract_version="0.1", nonce=t * 1000 + 1)
     corpus.book(_book([pinned]))
 
 

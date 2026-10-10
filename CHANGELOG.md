@@ -9,10 +9,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
-The 2026-10 review's item 10 (ontodag's `docs/plans/REVIEW_2026-10.md`
-§8): the command line split by area, with a `Reads` object and a
-`LegRecord` type. On every record the code writes, no command prints or
-does anything different, and no record byte or id changes.
+The 2026-10 review's items 10 and 12 (ontodag's
+`docs/plans/REVIEW_2026-10.md` §8): the command line split by area, with
+a `Reads` object and a `LegRecord` type; and v1/v2 offers retired, made
+and matched no more, their records read as before. No record byte or id
+changes, which a golden corpus now pins, and on every record the command
+line writes, no command prints or does anything different.
 
 ### Changed
 
@@ -61,6 +63,28 @@ does anything different, and no record byte or id changes.
   adopted first where `geo` is not yet a prefix head (the one adoption
   every `declare_*` method shares). Same catalogue, same root.
 
+### Removed
+
+- **v1 and v2 offers are retired** (the review's item 12, decided by Peter
+  2026-10-10, option A: circulator's benchmark and these tests moved to
+  v4 offers first). `Offer`, `give` and `want` make no v1 or v2 offer:
+  `service=`, `where=`, `v=1` and `v=2` raise `ValueError` naming the
+  terms that say the same thing, `geo(...)` the finest cell containing
+  the disc (what `loop` makes of `LAT,LON,R`) and `time(...)` the window's
+  seconds; so does `dataclasses.replace` on an old offer. No check
+  matches one: `check_match` and every check built on it refuse a v1/v2
+  offer on either side, and the index files none and gives none
+  candidates, so the solver proposes no loop through one and clearing
+  re-derives none. Old records stay readable: `Offer.from_record` reads
+  v1 and v2 as before and re-encodes them to the same bytes under the
+  same ids (U2, pinned by the golden corpus); folds admit them, and the
+  loops and fills that name them read as before. A v1/v2 offer matched
+  only another v1/v2 offer, and the chain's verifier takes only v4 to v7.
+  Gone with them: `GeoDisc.contains`, `GeoDisc.intersects`, `haversine_m`
+  and the float tolerance in the disc gates, and the `service` and
+  `where` parameters of `give` and `want`. `GeoDisc` stays, the type of
+  an old record's `where`.
+
 ### Tests
 
 - **A golden corpus pins the bytes of every record format** (the
@@ -100,6 +124,19 @@ does anything different, and no record byte or id changes.
   offers a side) in about the same time. A federation test took its
   maker's first offer for her give; under v4 ids the first is her want,
   so it picks the give.
+- **The retirement's guards** (`tests/test_v1_v2_retired.py`, written
+  before the change and failing on the code before it, five of six): the
+  constructors refuse v1/v2 and name the terms to write; old records read
+  under their ids, pickled too, and a copy with a change is refused; a
+  maker's book of v2 offers is still folded; the corpus's v1 and v2 demo
+  triangles, which matched among themselves, match nothing, by the
+  product or by the index, nor meet a current offer; and no loop through
+  them is proposed or cleared. The golden corpus passed unchanged, and
+  `tests/fixtures/make_golden.py`, which spells out the v1/v2 records now
+  that no constructor makes them, writes the same file byte for byte.
+  Tests that made the v2 field form or matched v2 offers among themselves
+  now read the corpus or are covered by these; the index's mixed-version
+  book mixes v3 and v4.
 
 ## [0.14.5] — 2026-10-09
 

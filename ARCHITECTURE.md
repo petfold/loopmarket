@@ -71,7 +71,9 @@ route's `from`/`to` —
 plus quantity) against **Tokens** of the maker's personal numéraire, while a
 validity window stands (open-ended since v3: until withdrawn). The v1/v2
 records carried a service `TimeWindow` and a service `GeoDisc` as fields;
-`docs/plans/P1-spacetime-terms.md` is the package that moved them. Exactly one side is the
+`docs/plans/P1-spacetime-terms.md` is the package that moved them. Those
+offers are retired (§3, update of 2026-10-10): their records are read
+under their ids, and nothing makes or matches one. Exactly one side is the
 maker's own token — enforced in the constructor, not documented as a
 convention. This uniformity is what makes the entire marketplace one data
 structure: transport, storage, aggregation, compute and cabbages differ only
@@ -127,10 +129,10 @@ offers are separate legs joined by the solver, never bundles.
 ## 3. Time and place are catalogue dimensions (spacetime.py)
 
 Interval containment, region containment and category subsumption are the
-same partial order — *fits-within*. The prototype keeps exact geometry in
+same partial order — *fits-within*. The prototype kept exact geometry in
 `schema.py` (interval overlap/containment; disc containment/intersection via
-haversine) and derives discretised **names** whose prefix structure mirrors
-containment:
+haversine, gone with the v1/v2 offers on 2026-10-10) and derived
+discretised **names** whose prefix structure mirrors containment:
 
 - time: `2026` ⊐ `2026-08` ⊐ `2026-08-14` (day buckets + chains)
 - space: geohash prefixes, where every longer cell fits within every shorter
@@ -284,6 +286,19 @@ together — and the same day the baseline solver learned to compose them
 deterministic circulation hunt after Bellman–Ford's simple cycles;
 `examples/delivery.loop` clears it (`tests/test_handover.py`,
 `tests/test_circulation.py`).
+
+**Update 2026-10-10 — the v1/v2 forms retire.** The 2026-10 review's item
+12, decided by Peter: loopmarket stops making and matching v1/v2 offers,
+once circulator's benchmark and these tests write v4 offers, and old
+records stay readable, their ids and history standing (U2; the golden
+corpus, `tests/fixtures/golden_records.txt`, pins their bytes). The
+constructors refuse the field form and name the terms that say the same
+thing: the finest cell containing the disc and the window's seconds as a
+`time` term. `GeoDisc` stays as the type of an old record's `where`; its
+matching, the haversine and the float tolerance in the disc gates go.
+Measured before deciding: about 65 lines across the package served the
+v1/v2 forms, which matched nothing current (a v1/v2 offer never matched a
+v3+ one, and the chain's verifier takes only v4–v7).
 
 ## 4. The catalogue (ontology.py)
 
@@ -450,11 +465,10 @@ live in `docs/plans/P1-federated-book.md`.
 ## 6. Matching (matching.py)
 
 `check_match(give, want, ontology, now)` is the exact, self-contained pairwise
-truth: kinds and distinct makers; both on one side of the v2/v3 line; both
-validity windows open; for v1/v2 records the service windows
-overlap (a delivery instant exists) and the service discs intersect (a handover
-point exists); quantity within capacity (equality unless divisible); same
-unit; agreeing ontology pins; and `satisfies` under the catalogue. Its
+truth: kinds and distinct makers; both offers v3 or later (a v1/v2 offer is
+read, never matched); both validity windows open; quantity within capacity
+(equality unless divisible); same unit; agreeing ontology pins; and
+`satisfies` under the catalogue. Its
 self-containedness is a design requirement, not tidiness: settlement re-runs
 it, so no index, cache or heuristic may be load-bearing for correctness.
 
