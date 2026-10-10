@@ -51,19 +51,13 @@ Raises `ValueError` unless `end > start`.
 | `.to_record()` | `[start, end]` (`end` may be `null`) |
 
 ### `GeoDisc(lat: float, lon: float, radius_m: float)`
-Frozen. A disc on the sphere — **v1/v2 records only**: since the v3 record
-(2026-09-12) a place is a cell or region term in the conjunction, and this
-class exists to read and match old records among themselves; nothing
-creates a new disc. Raises `ValueError` for out-of-range centre or
-negative radius.
-
-| member | meaning |
-|---|---|
-| `.contains(other)` | fits-within (haversine, 1e-9 m tolerance) |
-| `.intersects(other)` | a handover point both parties can reach |
-| `.to_record()` | `[lat, lon, radius_m]` |
-
-`haversine_m(lat1, lon1, lat2, lon2) -> float` — great-circle metres.
+Frozen. A disc on the sphere: the `where` of a v1/v2 record, kept so that
+old records read back to their bytes. No offer is made with one and
+nothing matches on one (v1/v2 offers are retired, the 2026-10 review's
+item 12): since the v3 record a place is a cell or region term in the
+conjunction, and `spacetime.cell_for_coords(lat, lon, radius_m)` gives the
+cell that contains a disc. Raises `ValueError` for out-of-range centre or
+negative radius. `.to_record()` → `[lat, lon, radius_m]`.
 
 ### `q(x) -> Fraction` / `rat(x) -> str`
 Exact numbers (invariant U9, the v4 record, 2026-09-14). `q` reads an int
@@ -110,6 +104,11 @@ Offer(maker, gives, wants, valid, service=None, where=None,
       requires=None, nonce=<auto: unix ms>, registry_version="", contract_version="",
       claim_max=0, underlying="", exercise=None, v=4)
 ```
+
+`v` is 3 to 7. v1 and v2 offers are retired: `Offer.from_record` makes
+them from old records (their ids stand, U2), and constructing one, or a
+later offer with `service` or `where`, raises `ValueError` naming the
+`geo(...)` and `time(...)` terms that say the same thing.
 
 v5 (2026-09-18/19, admissibility by declaration): `bond` is a `Bond(asset:
 Thing, value, escrow)` — a deposit worth `value` on the giver's scale, held
@@ -160,10 +159,11 @@ SHA-256 of `canonical_bytes()`. Presented in the subject's own book as
 
 Validation (`ValueError`): exactly one of `gives`/`wants` is a `Thing`
 (or, on the want side of a v4 record, `Parts`) and one a `Tokens` whose
-`issuer == maker` (invariant U1); `bond >= 0` (v<5) or a `Bond` (v5+); `v in {1, …, 7}`; an
-option names both its `underlying` (a 64-hex id) and its `exercise`; v1
-records carry no registry/contract pins; parts, a `step` other than 0 or
-the whole quantity, and a floor are v4 forms.
+`issuer == maker` (invariant U1); `bond >= 0` (v<5) or a `Bond` (v5+); `v` from 3
+to 7, or 1 and 2 when read by `from_record`; an option names both its
+`underlying` (a 64-hex id) and its `exercise`; v1 records carry no
+registry/contract pins; parts, a `step` other than 0 or the whole
+quantity, and a floor are v4 forms.
 
 | member | meaning |
 |---|---|
@@ -172,7 +172,7 @@ the whole quantity, and a floor are v4 forms.
 | `.composed` / `.parts` | a want of several parts; the things this offer is about — one for a give or a simple want, several for a composed want |
 | `.amount` / `.unit_price` | the price of the lot, exact; scale units per thing-unit, exact (`Fraction`; not for a composed want) |
 | `.to_record()` | dict, **in the offer's native version** (a v1 offer re-encodes as v1 — version is identity, U2) |
-| `Offer.from_record(rec)` | classmethod; dispatches on `rec["v"]`, **raises `ValueError` on unknown versions** |
+| `Offer.from_record(rec)` | classmethod; dispatches on `rec["v"]`, **raises `ValueError` on unknown versions**; the one way a v1 or v2 offer is made |
 | `.canonical_bytes()` | recordstore canonical JSON of `to_record()` |
 | `.offer_id` | SHA-256 hex of `canonical_bytes()` — the content address |
 
@@ -181,12 +181,14 @@ v5 a maker's *requirement* of them is enforced (`matching.meets`, the
 contract's verifier), and since 2026-09-19 a deposit naming an escrow
 counts only up to what the contract holds (`meets(held=)`).
 
-### `give(maker, thing, amount, *, valid, service=None, where=None, **kw) -> Offer`
-### `want(maker, thing_or_parts, amount, *, valid, service=None, where=None, **kw) -> Offer`
+### `give(maker, thing, amount, *, valid, **kw) -> Offer`
+### `want(maker, thing_or_parts, amount, *, valid, **kw) -> Offer`
 The current record by default — v4, or the version its fields need: a
 `requires` or a `Bond` deposit v5, a v6 requirement field, `claim_max`
-or an option v6, a deductible v7 — unless `v=` says otherwise; passing
-`service`/`where` yields the v2 field form.
+or an option v6, a deductible v7 — unless `v=` says otherwise (3 to 7).
+`service=`, `where=`, `v=1` and `v=2` raise `ValueError` naming the terms
+that say the same thing: the finest cell containing the disc and the
+window's seconds as a `time` term.
 Convenience constructors; `**kw` passes through (`nonce=`, pins, etc.).
 Splat `**Ontology.pins` to pin the catalogue.
 
@@ -338,17 +340,17 @@ composed want returns `None` (its legs are `check_parts`'). Gates, in
 order:
 
 1. kinds: give is `GIVE`, want is `WANT`, distinct makers
-2. the record line: both v1/v2 or both v3+ (a disc is not a cell)
+2. the record: both offers v3 or later (a v1/v2 offer is retired: read,
+   never matched)
 3. an option give's underlying (`gate.option_fault`, §8f), an item term's
    whole id and the maker's one open claim per item (`gate.item_fault`, §8h)
 4. **requirements**: each side's `requires` met by the other side's
    declaration (`meets`, below)
 5. validity: both offers open at `now`
-6. (v1/v2 only) service windows and discs intersect
-7. quantity: `give.thing.takes(want.qty, left)` — within what is left
+6. quantity: `give.thing.takes(want.qty, left)` — within what is left
    (plus the holder's own hold), not below the floor, on the step — and
    equal units
-8. **pins**: if the verifying catalogue is pinned (`ontology.root`), both
+7. **pins**: if the verifying catalogue is pinned (`ontology.root`), both
    offers must carry all three pins; mixed pinning (one side declares,
    the other silent) always refuses; equal `ontology_root` when both
    pin; registry/contract versions refuse on **major** skew (minor is
@@ -359,7 +361,7 @@ order:
    installed ontodag's either (`version_fault`, below; review item 4):
    offers agreeing with each other under an old major are not matched
    under this node's rules
-9. meaning: `ontology.satisfies(give concepts, want concepts)`
+8. meaning: `ontology.satisfies(give concepts, want concepts)`
 
 ### `version_fault(offer) -> str | None`
 Why this node refuses `offer`'s version pins, or `None` (review item 4,
@@ -444,14 +446,13 @@ answer.
 
 | member | meaning |
 |---|---|
-| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) under exactly the terms they carry, plus a record-line marker |
-| `.file(offer) -> bool` | index a give under its concepts and its line marker; `False` for non-gives, unknown vocabulary (U7's outcome) and a conjunction ontodag refuses |
-| `.candidates(want) -> set[str]` | one `get([line marker, *one-way terms], items_only=True)`: the gives inside every wanted category cone; handover coordinates are left to `check_match` (a give that *contains* the want's place sits above it, not in its cone) |
+| `DimensionIndex(ontology)` | files gives into a **deepcopy** of the catalogue (derived, per-solver, never merged/persisted) under exactly the terms they carry, plus a marker |
+| `.file(offer) -> bool` | index a give under its concepts and the marker; `False` for non-gives, retired v1/v2 offers, unknown vocabulary (U7's outcome) and a conjunction ontodag refuses |
+| `.candidates(want) -> set[str]` | one `get([marker, *one-way terms], items_only=True)`: the gives inside every wanted category cone; handover coordinates are left to `check_match` (a give that *contains* the want's place sits above it, not in its cone); none for a v1/v2 want |
 | `candidate_matches_indexed(offers, ontology, *, now, index=None)` | drop-in for `candidate_matches` |
 
-The v1/v2 window and disc are fields the exact check gates, not terms;
-they are not filed. ontodag's `items_only` (#14), role parameters naming
-nodes (#15) and the dimension cache (#18) are all in the 0.26.1 floor.
+ontodag's `items_only` (#14), role parameters naming nodes (#15) and the
+dimension cache (#18) are all in the 0.26.1 floor.
 
 ---
 
@@ -942,8 +943,8 @@ one side contains the other (the seller delivering anywhere in the city
 serves the want at the door; the buyer collecting anywhere is served by the
 shop); a want that names none does not care. `valid` may have a `null` end
 (stands until withdrawn). A v3 record carrying `service` or `where` is
-refused on read.
-v2 and v3 offers never match each other (`check_match`):
+refused on read, and a v1 or v2 offer matches nothing (`check_match`). A
+v3 record:
 
 ```json
 {"v": 3, "maker": "amara",
@@ -958,7 +959,8 @@ v2 and v3 offers never match each other (`check_match`):
  "bond": 0.0, "oracle": "countersign", "arbitrator": "", "nonce": 1}
 ```
 
-**Offer, v2** (read and matched among v2 offers forever — U2; v1 lacks
+**Offer, v2** (read for good under its id — U2 — and never matched or
+made since the 2026-10 review's item 12; v1 lacks
 `registry_version`/`contract_version` and says `"v": 1`):
 
 ```json

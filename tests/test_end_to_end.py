@@ -4,15 +4,12 @@ import pytest
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    GeoDisc, BookClearing, OfferRegistry, Ontology, SolverAgent, Thing,
+    BookClearing, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 
 NOW = 1_700_000_000
-W = dict(
-    service=TimeWindow(NOW, NOW + 90 * 86_400),
-    valid=TimeWindow(NOW - 1, NOW + 30 * 86_400),
-)
+W = dict(valid=TimeWindow(NOW - 1, NOW + 30 * 86_400))
 
 ONT = Ontology().load({
     "service": [], "lesson": ["service"], "music-lesson": ["lesson"],
@@ -24,19 +21,15 @@ ONT = Ontology().load({
 
 def _book(chen_oracle="countersign", pins=None):
     registry = OfferRegistry(RecordStore(MemoryBytesStore()))
-    a_flat = GeoDisc(46.05, 14.50, 5_000)
-    b_farm = GeoDisc(46.10, 14.55, 15_000)
-    c_shop = GeoDisc(46.06, 14.51, 4_000)
     P = pins or {}
     registry.publish_many([
-        give("amara", Thing(("piano-lesson",), unit="course"), 100, where=a_flat, **W, **P),
-        want("amara", Thing(("produce", "local", "weekly"), unit="course"), 104,
-            where=a_flat, **W, **P),
-        give("bruno", Thing(("vegetable-box",), unit="course"), 50, where=b_farm, **W, **P),
-        want("bruno", Thing(("bicycle-repair",), unit="course"), 52, where=b_farm, **W, **P),
-        give("chen", Thing(("bicycle-repair",), unit="course"), 80, where=c_shop,
+        give("amara", Thing(("piano-lesson",), unit="course"), 100, **W, **P),
+        want("amara", Thing(("produce", "local", "weekly"), unit="course"), 104, **W, **P),
+        give("bruno", Thing(("vegetable-box",), unit="course"), 50, **W, **P),
+        want("bruno", Thing(("bicycle-repair",), unit="course"), 52, **W, **P),
+        give("chen", Thing(("bicycle-repair",), unit="course"), 80,
             oracle=chen_oracle, **W, **P),
-        want("chen", Thing(("music-lesson",), unit="course"), 83, where=c_shop, **W, **P),
+        want("chen", Thing(("music-lesson",), unit="course"), 83, **W, **P),
     ])
     registry.commit()
     return registry
@@ -151,8 +144,7 @@ def test_snapshot_isolation():
     root, frozen = registry.snapshot()
     # new offers after the snapshot are invisible to the frozen view
     registry.publish(
-        give("dora", Thing(("vegetable-box",), unit="course"), 1,
-            where=GeoDisc(46.0, 14.0, 1_000), **W)
+        give("dora", Thing(("vegetable-box",), unit="course"), 1, **W)
     )
     registry.commit()
     assert len(list(frozen.offers(now=NOW))) == 6

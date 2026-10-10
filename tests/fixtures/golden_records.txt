@@ -1,0 +1,249 @@
+# The golden corpus of book records: KEY, a tab, the record's canonical bytes.
+# Written by tests/fixtures/make_golden.py, read by tests/test_golden_records.py.
+# Never regenerate it to make a test pass: the script's docstring says when.
+
+# v1 (2026-07-29): the demo triangle, and an offer using every other v1 field.
+# The loop records of that time named their legs `ask` and `bid`, a shape
+# nothing has read since 2026-08-21, so none is here.
+# v1 give by bruno: vegetable-box
+offer/0dfa97b0290bd6fac43ac003486db924a845ef8382689caaf48c7201427d8bd7	{"arbitrator":"","bond":0.0,"gives":{"concepts":["vegetable-box"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"maker":"bruno","nonce":1785542400003,"ontology_root":"","oracle":"countersign","service":[1785542400,1795910400],"v":1,"valid":[1785538800,1788134400],"wants":{"amount":50,"issuer":"bruno","type":"tokens"},"where":[46.1,14.55,15000]}
+# v1 give by chen: bicycle-repair
+offer/5882d8e69e113db4e07cef57e9df4c3d73ba51d42e376d04961ec5209bca02f7	{"arbitrator":"","bond":0.0,"gives":{"concepts":["bicycle-repair"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"maker":"chen","nonce":1785542400005,"ontology_root":"","oracle":"countersign","service":[1785542400,1795910400],"v":1,"valid":[1785538800,1788134400],"wants":{"amount":80,"issuer":"chen","type":"tokens"},"where":[46.06,14.51,4000]}
+# v1 want by dora: fruit-box produce
+offer/b76be62260633a75425ff79a56c57cb6506893d9335918372e78c22ea0980627	{"arbitrator":"arb-1","bond":5.0,"gives":{"amount":37.5,"issuer":"dora","type":"tokens"},"maker":"dora","nonce":1785974400007,"ontology_root":"abababababababababababababababababababababababababababababababab","oracle":"photo","service":[1785974400,1786579200],"v":1,"valid":[1785888000,1787184000],"wants":{"concepts":["fruit-box","produce"],"divisible":true,"qty":2.5,"type":"thing","unit":"kg"},"where":[-33.87,151.21,2500.5]}
+# v1 give by amara: piano-lesson
+offer/cbf3b9b7fe6333fc2697ea9444757cebb45f2e0606f9599ed5f51e87cb62b88b	{"arbitrator":"","bond":0.0,"gives":{"concepts":["piano-lesson"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"maker":"amara","nonce":1785542400001,"ontology_root":"","oracle":"countersign","service":[1785542400,1795910400],"v":1,"valid":[1785538800,1788134400],"wants":{"amount":100,"issuer":"amara","type":"tokens"},"where":[46.05,14.5,5000]}
+# v1 want by chen: music-lesson
+offer/d7ee2218cde741d4b4aaaf1306d2a1bdf18f321e42b6c563c693b610828cd182	{"arbitrator":"","bond":0.0,"gives":{"amount":83,"issuer":"chen","type":"tokens"},"maker":"chen","nonce":1785542400006,"ontology_root":"","oracle":"countersign","service":[1785542400,1795910400],"v":1,"valid":[1785538800,1788134400],"wants":{"concepts":["music-lesson"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"where":[46.06,14.51,4000]}
+# v1 want by bruno: bicycle-repair
+offer/fee30929da26e311aa051443cb706a8030c2820b581574373ce94250713317f2	{"arbitrator":"","bond":0.0,"gives":{"amount":52,"issuer":"bruno","type":"tokens"},"maker":"bruno","nonce":1785542400004,"ontology_root":"","oracle":"countersign","service":[1785542400,1795910400],"v":1,"valid":[1785538800,1788134400],"wants":{"concepts":["bicycle-repair"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"where":[46.1,14.55,15000]}
+# v1 want by amara: local produce weekly
+offer/feeb56983223dceba26a0b6229900a95e8c794fff9e070b6b971a56dc8f9f9e1	{"arbitrator":"","bond":0.0,"gives":{"amount":104,"issuer":"amara","type":"tokens"},"maker":"amara","nonce":1785542400002,"ontology_root":"","oracle":"countersign","service":[1785542400,1795910400],"v":1,"valid":[1785538800,1788134400],"wants":{"concepts":["local","produce","weekly"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"where":[46.05,14.5,5000]}
+
+# v2 (2026-08-20): the demo triangle, cleared under the 2026-08 loop record
+# (no version, one `give` per leg, floats) with fills of `{"loop"}` alone;
+# and an offer that pins the registry and the contract.
+# v2 want by amara: local produce weekly
+offer/0b5535c60f4adbf273c73a65f640c486073caea9080200fc47d7fa2d08e31698	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":104,"issuer":"amara","type":"tokens"},"maker":"amara","nonce":1787356800002,"ontology_root":"","oracle":"countersign","registry_version":"","service":[1787356800,1797724800],"v":2,"valid":[1787353200,1789948800],"wants":{"concepts":["local","produce","weekly"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"where":[46.05,14.5,5000]}
+# v2 want by chen: music-lesson
+offer/2e7638c313617155fef6173d6e58bc6923062ddb6e51f644b23e8f6f1af55160	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":83,"issuer":"chen","type":"tokens"},"maker":"chen","nonce":1787356800006,"ontology_root":"","oracle":"countersign","registry_version":"","service":[1787356800,1797724800],"v":2,"valid":[1787353200,1789948800],"wants":{"concepts":["music-lesson"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"where":[46.06,14.51,4000]}
+# v2 want by bruno: bicycle-repair
+offer/54e8d6639edcf3608e69bffa32692f99d5a06ae99d5c60f6c1f5caec5aa37972	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":52,"issuer":"bruno","type":"tokens"},"maker":"bruno","nonce":1787356800004,"ontology_root":"","oracle":"countersign","registry_version":"","service":[1787356800,1797724800],"v":2,"valid":[1787353200,1789948800],"wants":{"concepts":["bicycle-repair"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"where":[46.1,14.55,15000]}
+# v2 give by bruno: vegetable-box
+offer/6c5e38d6b7560ce45fc33074c6927c59d0ed4c74d68ca0df0dd78aef61e63ddf	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["vegetable-box"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"maker":"bruno","nonce":1787356800003,"ontology_root":"","oracle":"countersign","registry_version":"","service":[1787356800,1797724800],"v":2,"valid":[1787353200,1789948800],"wants":{"amount":50,"issuer":"bruno","type":"tokens"},"where":[46.1,14.55,15000]}
+# v2 give by amara: piano-lesson
+offer/8017e7e1ae5b2915c4f6926f0b0580a6e70352b3f63ed84466f2ad25ed87d03b	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["piano-lesson"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"maker":"amara","nonce":1787356800001,"ontology_root":"","oracle":"countersign","registry_version":"","service":[1787356800,1797724800],"v":2,"valid":[1787353200,1789948800],"wants":{"amount":100,"issuer":"amara","type":"tokens"},"where":[46.05,14.5,5000]}
+# v2 give by chen: bicycle-repair
+offer/c4c3ead6c101f6d5dde6da6b5006f95b7efb3030bf0dbd2b09a9bdcb68cd313b	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["bicycle-repair"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"maker":"chen","nonce":1787356800005,"ontology_root":"","oracle":"countersign","registry_version":"","service":[1787356800,1797724800],"v":2,"valid":[1787353200,1789948800],"wants":{"amount":80,"issuer":"chen","type":"tokens"},"where":[46.06,14.51,4000]}
+# the 2026-08 loop record: 3 legs, amara, chen, bruno
+loop/26f4edc6009af1e15b978b2c881e59acc73e3fd295bba42f4262dcc6d5b8be4c	{"book_root":"2410c92b44e871230e35d128641fc5746306288d1105551e89bd0f1f6f7cc915","found_at":1787356860,"legs":[{"give":"8017e7e1ae5b2915c4f6926f0b0580a6e70352b3f63ed84466f2ad25ed87d03b","rate":0.83,"want":"2e7638c313617155fef6173d6e58bc6923062ddb6e51f644b23e8f6f1af55160"},{"give":"c4c3ead6c101f6d5dde6da6b5006f95b7efb3030bf0dbd2b09a9bdcb68cd313b","rate":0.65,"want":"54e8d6639edcf3608e69bffa32692f99d5a06ae99d5c60f6c1f5caec5aa37972"},{"give":"6c5e38d6b7560ce45fc33074c6927c59d0ed4c74d68ca0df0dd78aef61e63ddf","rate":2.08,"want":"0b5535c60f4adbf273c73a65f640c486073caea9080200fc47d7fa2d08e31698"}],"loop_id":"26f4edc6009af1e15b978b2c881e59acc73e3fd295bba42f4262dcc6d5b8be4c","nodes":["amara","chen","bruno"],"ontology_root":"","solver":"demo-solver","surplus":0.12216000000000005}
+# fill: v2 want by amara: local produce weekly
+fill/0b5535c60f4adbf273c73a65f640c486073caea9080200fc47d7fa2d08e31698	{"loop":"26f4edc6009af1e15b978b2c881e59acc73e3fd295bba42f4262dcc6d5b8be4c"}
+# fill: v2 want by chen: music-lesson
+fill/2e7638c313617155fef6173d6e58bc6923062ddb6e51f644b23e8f6f1af55160	{"loop":"26f4edc6009af1e15b978b2c881e59acc73e3fd295bba42f4262dcc6d5b8be4c"}
+# fill: v2 want by bruno: bicycle-repair
+fill/54e8d6639edcf3608e69bffa32692f99d5a06ae99d5c60f6c1f5caec5aa37972	{"loop":"26f4edc6009af1e15b978b2c881e59acc73e3fd295bba42f4262dcc6d5b8be4c"}
+# fill: v2 give by bruno: vegetable-box
+fill/6c5e38d6b7560ce45fc33074c6927c59d0ed4c74d68ca0df0dd78aef61e63ddf	{"loop":"26f4edc6009af1e15b978b2c881e59acc73e3fd295bba42f4262dcc6d5b8be4c"}
+# fill: v2 give by amara: piano-lesson
+fill/8017e7e1ae5b2915c4f6926f0b0580a6e70352b3f63ed84466f2ad25ed87d03b	{"loop":"26f4edc6009af1e15b978b2c881e59acc73e3fd295bba42f4262dcc6d5b8be4c"}
+# fill: v2 give by chen: bicycle-repair
+fill/c4c3ead6c101f6d5dde6da6b5006f95b7efb3030bf0dbd2b09a9bdcb68cd313b	{"loop":"26f4edc6009af1e15b978b2c881e59acc73e3fd295bba42f4262dcc6d5b8be4c"}
+# v2 give by emil: bicycle-repair local
+offer/b315bacd80b73f9d09ad6fd02cd4ad83f2f6b862ad1640cb09f8dd06c7354dc8	{"arbitrator":"","bond":0.0,"contract_version":"0.1","gives":{"concepts":["bicycle-repair","local"],"divisible":false,"qty":2,"type":"thing","unit":"visit"},"maker":"emil","nonce":1787702400001,"ontology_root":"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd","oracle":"countersign","registry_version":"1.0","service":[1787702400,1790294400],"v":2,"valid":[1787702400,1790294400],"wants":{"amount":120,"issuer":"emil","type":"tokens"},"where":[46.05,14.5,12000]}
+
+# v3 (2026-09-12): where and when are terms in the conjunction, and `valid`
+# may be open-ended. The triangle again, under the 2026-08 loop record, which
+# a simple cycle was cleared under until 2026-09-14; and a divisible give.
+# v3 give by bruno: geo(u2e4x) time(2026-09-12..2026-12-31) vegetable-box
+offer/0a214522ac670ff55db5a8ee44f896a69a67a93a89ae3e670e883026fb6c8b25	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["geo(u2e4x)","time(2026-09-12..2026-12-31)","vegetable-box"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"maker":"bruno","nonce":1789257600003,"ontology_root":"","oracle":"countersign","registry_version":"","v":3,"valid":[1789171200,null],"wants":{"amount":50,"issuer":"bruno","type":"tokens"}}
+# v3 give by chen: bicycle-repair geo(u2e4x) time(2026-09-12..2026-12-31)
+offer/0f64a8c3ae67019beba5565eb5d2756ac8b9c28ff336386a74679c7fd1cd6bc4	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["bicycle-repair","geo(u2e4x)","time(2026-09-12..2026-12-31)"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"maker":"chen","nonce":1789257600005,"ontology_root":"","oracle":"countersign","registry_version":"","v":3,"valid":[1789171200,null],"wants":{"amount":80,"issuer":"chen","type":"tokens"}}
+# v3 give by amara: geo(u2e4x) piano-lesson time(2026-09-12..2026-12-31)
+offer/13607963a917559a0047f8a9ddb7ce98ad8e86c617ca5e17ed0396f45112361c	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["geo(u2e4x)","piano-lesson","time(2026-09-12..2026-12-31)"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"},"maker":"amara","nonce":1789257600001,"ontology_root":"","oracle":"countersign","registry_version":"","v":3,"valid":[1789171200,null],"wants":{"amount":100,"issuer":"amara","type":"tokens"}}
+# v3 want by amara: geo(u2e4x) local produce time(2026-09-12..2026-12-31) weekly
+offer/3472fe32a502a42c850c0884467e0c1d0633a9d6dbae18591eb30b80cb68ec06	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":104,"issuer":"amara","type":"tokens"},"maker":"amara","nonce":1789257600002,"ontology_root":"","oracle":"countersign","registry_version":"","v":3,"valid":[1789171200,null],"wants":{"concepts":["geo(u2e4x)","local","produce","time(2026-09-12..2026-12-31)","weekly"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"}}
+# v3 want by bruno: bicycle-repair geo(u2e4) time(2026-09-12..2026-12-31)
+offer/52eb949ae78a640e561c1adc857a743bc4375673f1a22f0af3899d67c2b637e4	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":52,"issuer":"bruno","type":"tokens"},"maker":"bruno","nonce":1789257600004,"ontology_root":"","oracle":"countersign","registry_version":"","v":3,"valid":[1789171200,null],"wants":{"concepts":["bicycle-repair","geo(u2e4)","time(2026-09-12..2026-12-31)"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"}}
+# v3 want by chen: geo(u2e4x) music-lesson time(2026-09-12..2026-12-31)
+offer/8c1af6541b5a931720af34b6f076e9d5910e7b865d5f08e9763e9a008116ba31	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":83,"issuer":"chen","type":"tokens"},"maker":"chen","nonce":1789257600006,"ontology_root":"","oracle":"countersign","registry_version":"","v":3,"valid":[1789171200,null],"wants":{"concepts":["geo(u2e4x)","music-lesson","time(2026-09-12..2026-12-31)"],"divisible":false,"qty":1.0,"type":"thing","unit":"course"}}
+# the 2026-08 loop record: 3 legs, amara, chen, bruno
+loop/1d820c4e8c00ebba3b1cdcd73886ed20cfe9dd43e4ed33dedf1696226d8776d7	{"book_root":"6e8c3ecaf93bf981bd0efa59ba2ba9c0218529e627a1b16da99a1f8327dad034","found_at":1789257660,"legs":[{"give":"13607963a917559a0047f8a9ddb7ce98ad8e86c617ca5e17ed0396f45112361c","rate":0.83,"want":"8c1af6541b5a931720af34b6f076e9d5910e7b865d5f08e9763e9a008116ba31"},{"give":"0f64a8c3ae67019beba5565eb5d2756ac8b9c28ff336386a74679c7fd1cd6bc4","rate":0.65,"want":"52eb949ae78a640e561c1adc857a743bc4375673f1a22f0af3899d67c2b637e4"},{"give":"0a214522ac670ff55db5a8ee44f896a69a67a93a89ae3e670e883026fb6c8b25","rate":2.08,"want":"3472fe32a502a42c850c0884467e0c1d0633a9d6dbae18591eb30b80cb68ec06"}],"loop_id":"1d820c4e8c00ebba3b1cdcd73886ed20cfe9dd43e4ed33dedf1696226d8776d7","nodes":["amara","chen","bruno"],"ontology_root":"","solver":"t","surplus":0.12216000000000005}
+# fill: v3 give by bruno: geo(u2e4x) time(2026-09-12..2026-12-31) vegetable-box
+fill/0a214522ac670ff55db5a8ee44f896a69a67a93a89ae3e670e883026fb6c8b25	{"loop":"1d820c4e8c00ebba3b1cdcd73886ed20cfe9dd43e4ed33dedf1696226d8776d7"}
+# fill: v3 give by chen: bicycle-repair geo(u2e4x) time(2026-09-12..2026-12-31)
+fill/0f64a8c3ae67019beba5565eb5d2756ac8b9c28ff336386a74679c7fd1cd6bc4	{"loop":"1d820c4e8c00ebba3b1cdcd73886ed20cfe9dd43e4ed33dedf1696226d8776d7"}
+# fill: v3 give by amara: geo(u2e4x) piano-lesson time(2026-09-12..2026-12-31)
+fill/13607963a917559a0047f8a9ddb7ce98ad8e86c617ca5e17ed0396f45112361c	{"loop":"1d820c4e8c00ebba3b1cdcd73886ed20cfe9dd43e4ed33dedf1696226d8776d7"}
+# fill: v3 want by amara: geo(u2e4x) local produce time(2026-09-12..2026-12-31) weekly
+fill/3472fe32a502a42c850c0884467e0c1d0633a9d6dbae18591eb30b80cb68ec06	{"loop":"1d820c4e8c00ebba3b1cdcd73886ed20cfe9dd43e4ed33dedf1696226d8776d7"}
+# fill: v3 want by bruno: bicycle-repair geo(u2e4) time(2026-09-12..2026-12-31)
+fill/52eb949ae78a640e561c1adc857a743bc4375673f1a22f0af3899d67c2b637e4	{"loop":"1d820c4e8c00ebba3b1cdcd73886ed20cfe9dd43e4ed33dedf1696226d8776d7"}
+# fill: v3 want by chen: geo(u2e4x) music-lesson time(2026-09-12..2026-12-31)
+fill/8c1af6541b5a931720af34b6f076e9d5910e7b865d5f08e9763e9a008116ba31	{"loop":"1d820c4e8c00ebba3b1cdcd73886ed20cfe9dd43e4ed33dedf1696226d8776d7"}
+# v3 give by fern: apple geo(u2e4)
+offer/569eb66df8d442ad0bd5671cd5d261162a9f42dbd9cba25ca857a888afa297f1	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["apple","geo(u2e4)"],"divisible":true,"qty":2.0,"type":"thing","unit":"kg"},"maker":"fern","nonce":1789344000001,"ontology_root":"","oracle":"countersign","registry_version":"","v":3,"valid":[1789344000,1790208000],"wants":{"amount":5,"issuer":"fern","type":"tokens"}}
+
+# v4 (2026-09-14): exact numbers as n/d strings, `step` and `min` in place of
+# `divisible`, and a want of several parts. Loop record v1: the composed
+# want's leg takes two of the theatre's ten tickets (a partial fill), and
+# the fills name every give and its quantity.
+# v4 give by buyer: lesson
+offer/1492bf8b369a86cb11fd527d6d05528f9b573833a9899987cf12b5efd3f3b995	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"buyer","nonce":4,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"amount":"30","issuer":"buyer","type":"tokens"}}
+# v4 want by theatre: lesson
+offer/246eadcbb6054ae86e770b35f1464862abe5d50e6f6dccb8bb3035d632c17fa1	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"42","issuer":"theatre","type":"tokens"},"maker":"theatre","nonce":6,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"}}
+# v4 want by driver: lesson
+offer/6220a0b34d856caad7ba6a5eb65aaba9340f48b1e29b77877430f669ef1521ef	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"31","issuer":"driver","type":"tokens"},"maker":"driver","nonce":7,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"}}
+# v4 want by buyer: ticket + transport
+offer/98067da8554422808ea8454a7237e4287bc5cd7d8e84231bf391c4fc3baa05a3	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"60","issuer":"buyer","type":"tokens"},"maker":"buyer","nonce":1,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"parts":[{"concepts":["ticket"],"min":"0","qty":"2","step":"2","unit":"unit"},{"concepts":["transport"],"min":"0","qty":"1","step":"1","unit":"unit"}],"type":"parts"}}
+# v4 give by buyer: lesson
+offer/b25d4f025f2186759a176c07e01cf0627e23a357b85603ce4d8d10198bf36613	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"buyer","nonce":5,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"amount":"30","issuer":"buyer","type":"tokens"}}
+# v4 give by theatre: ticket
+offer/e54d0508e708ba8886a417059ae529d1b217593db2b89bfa1483c998205b260a	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["ticket"],"min":"0","qty":"10","step":"1","type":"thing","unit":"unit"},"maker":"theatre","nonce":2,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"amount":"200","issuer":"theatre","type":"tokens"}}
+# v4 give by driver: transport
+offer/f710178e4db4cc16d4919397f10270b1efb22c872648f8d4628d847523dda89f	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["transport"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"driver","nonce":3,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"amount":"15","issuer":"driver","type":"tokens"}}
+# loop record v1: 3 legs, buyer, driver, theatre
+loop/ae67fb0bde60d2fe391520508b38bb5a00cf10b860363a356c2c34d66c8859ee	{"book_root":"98f73c7938b9bbde16133b7a102f9bbb196b7b50b4d5d82dc1e329c4b4aeacf5","found_at":1789516800,"legs":[{"give":"1492bf8b369a86cb11fd527d6d05528f9b573833a9899987cf12b5efd3f3b995","gives":["1492bf8b369a86cb11fd527d6d05528f9b573833a9899987cf12b5efd3f3b995"],"rate":"7/5","taken":["1"],"want":"246eadcbb6054ae86e770b35f1464862abe5d50e6f6dccb8bb3035d632c17fa1"},{"give":"b25d4f025f2186759a176c07e01cf0627e23a357b85603ce4d8d10198bf36613","gives":["b25d4f025f2186759a176c07e01cf0627e23a357b85603ce4d8d10198bf36613"],"rate":"31/30","taken":["1"],"want":"6220a0b34d856caad7ba6a5eb65aaba9340f48b1e29b77877430f669ef1521ef"},{"give":"e54d0508e708ba8886a417059ae529d1b217593db2b89bfa1483c998205b260a","gives":["e54d0508e708ba8886a417059ae529d1b217593db2b89bfa1483c998205b260a","f710178e4db4cc16d4919397f10270b1efb22c872648f8d4628d847523dda89f"],"taken":["2","1"],"want":"98067da8554422808ea8454a7237e4287bc5cd7d8e84231bf391c4fc3baa05a3"}],"loop_id":"ae67fb0bde60d2fe391520508b38bb5a00cf10b860363a356c2c34d66c8859ee","nodes":["buyer","driver","theatre"],"ontology_root":"","potentials":{"buyer":"1","driver":"1","theatre":"1"},"solver":"t","surplus":"42081095435435592404274288298800839/166153499473114484112975882535043072","v":1}
+# fill: v4 give by buyer: lesson
+fill/1492bf8b369a86cb11fd527d6d05528f9b573833a9899987cf12b5efd3f3b995	{"loop":"ae67fb0bde60d2fe391520508b38bb5a00cf10b860363a356c2c34d66c8859ee","qty":"1"}
+# fill: v4 want by theatre: lesson
+fill/246eadcbb6054ae86e770b35f1464862abe5d50e6f6dccb8bb3035d632c17fa1	{"gives":[{"offer":"1492bf8b369a86cb11fd527d6d05528f9b573833a9899987cf12b5efd3f3b995","qty":"1"}],"loop":"ae67fb0bde60d2fe391520508b38bb5a00cf10b860363a356c2c34d66c8859ee"}
+# fill: v4 want by driver: lesson
+fill/6220a0b34d856caad7ba6a5eb65aaba9340f48b1e29b77877430f669ef1521ef	{"gives":[{"offer":"b25d4f025f2186759a176c07e01cf0627e23a357b85603ce4d8d10198bf36613","qty":"1"}],"loop":"ae67fb0bde60d2fe391520508b38bb5a00cf10b860363a356c2c34d66c8859ee"}
+# fill: v4 want by buyer: ticket + transport
+fill/98067da8554422808ea8454a7237e4287bc5cd7d8e84231bf391c4fc3baa05a3	{"gives":[{"offer":"e54d0508e708ba8886a417059ae529d1b217593db2b89bfa1483c998205b260a","qty":"2"},{"offer":"f710178e4db4cc16d4919397f10270b1efb22c872648f8d4628d847523dda89f","qty":"1"}],"loop":"ae67fb0bde60d2fe391520508b38bb5a00cf10b860363a356c2c34d66c8859ee"}
+# fill: v4 give by buyer: lesson
+fill/b25d4f025f2186759a176c07e01cf0627e23a357b85603ce4d8d10198bf36613	{"loop":"ae67fb0bde60d2fe391520508b38bb5a00cf10b860363a356c2c34d66c8859ee","qty":"1"}
+# partial fill: v4 give by theatre: ticket
+fill/e54d0508e708ba8886a417059ae529d1b217593db2b89bfa1483c998205b260a/ae67fb0bde60d2fe391520508b38bb5a00cf10b860363a356c2c34d66c8859ee	{"loop":"ae67fb0bde60d2fe391520508b38bb5a00cf10b860363a356c2c34d66c8859ee","qty":"2"}
+# fill: v4 give by driver: transport
+fill/f710178e4db4cc16d4919397f10270b1efb22c872648f8d4628d847523dda89f	{"loop":"ae67fb0bde60d2fe391520508b38bb5a00cf10b860363a356c2c34d66c8859ee","qty":"1"}
+
+# Loop record v1: a composed leg, the courier's run moving the box from the
+# shop to the door; the run is taken whole.
+# v4 give by mechanic: barcelona bicycle-repair
+offer/043dc68df5a9730ab8eb0211c5607c3fad3ef077845c9f40f191a6b1a917ab53	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["barcelona","bicycle-repair"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"mechanic","nonce":18,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,null],"wants":{"amount":"5","issuer":"mechanic","type":"tokens"}}
+# v4 want by buyer: door vegetable-box
+offer/103cf7c7d1ce63c6b57aceeaf88a61e8f342e50c9261733152ec2e916a12e4cf	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"8","issuer":"buyer","type":"tokens"},"maker":"buyer","nonce":15,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,null],"wants":{"concepts":["door","vegetable-box"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"}}
+# v4 want by grocer: bicycle-repair shop
+offer/278a793301574cab5d1dd8790c3eef3d322af5bf6475bafe801868ed0a69538c	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"6","issuer":"grocer","type":"tokens"},"maker":"grocer","nonce":12,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,null],"wants":{"concepts":["bicycle-repair","shop"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"}}
+# v4 give by buyer: door piano-lesson
+offer/2ffbf83375d803e4d6c7b3c8dd23355056a08ac181a8f95f86d732c70cecbf28	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["door","piano-lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"buyer","nonce":16,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,null],"wants":{"amount":"4","issuer":"buyer","type":"tokens"}}
+# v4 give by courier: from(barcelona) to(barcelona) transport
+offer/831f18726e72628fc6b21ce7cb214c5ea0bd454681c8b7ef8f5ce3feaec48813	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["from(barcelona)","to(barcelona)","transport"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"courier","nonce":13,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,null],"wants":{"amount":"2","issuer":"courier","type":"tokens"}}
+# v4 give by buyer: door piano-lesson
+offer/a2a76da4fc1b9e63b57bac3b0c5b5a864389e9b5ba4b1c46d793ba5f9e6b9bb7	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["door","piano-lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"buyer","nonce":17,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,null],"wants":{"amount":"4","issuer":"buyer","type":"tokens"}}
+# v4 want by mechanic: barcelona piano-lesson
+offer/ac84001216b1906071ccf99b5cb30c7998633c93bf8807cbc883ce17a7593df9	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"5","issuer":"mechanic","type":"tokens"},"maker":"mechanic","nonce":19,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,null],"wants":{"concepts":["barcelona","piano-lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"}}
+# v4 want by courier: barcelona piano-lesson
+offer/b4f90208f819591e10351b665b996b121b55f74906cdbedd0d110453ffca6a5c	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"5","issuer":"courier","type":"tokens"},"maker":"courier","nonce":14,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,null],"wants":{"concepts":["barcelona","piano-lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"}}
+# v4 give by grocer: shop vegetable-box
+offer/dab468c4b850b59086f350ff2bba9afed1becee30cd85bd07d1e6052e59f9a00	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["shop","vegetable-box"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"grocer","nonce":11,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,null],"wants":{"amount":"5","issuer":"grocer","type":"tokens"}}
+# loop record v1: 4 legs, buyer, courier, grocer, mechanic
+loop/9f60fae131d5fa7f91ef1f5c5383bb942a63f68a06800605df24c8223c2b1b6d	{"book_root":"d222759ba4734c98e51a1b8771eabf2f654b30d091491d298fc0381b96dc578f","found_at":1789516800,"legs":[{"give":"043dc68df5a9730ab8eb0211c5607c3fad3ef077845c9f40f191a6b1a917ab53","gives":["043dc68df5a9730ab8eb0211c5607c3fad3ef077845c9f40f191a6b1a917ab53"],"rate":"6/5","taken":["1"],"want":"278a793301574cab5d1dd8790c3eef3d322af5bf6475bafe801868ed0a69538c"},{"give":"2ffbf83375d803e4d6c7b3c8dd23355056a08ac181a8f95f86d732c70cecbf28","gives":["2ffbf83375d803e4d6c7b3c8dd23355056a08ac181a8f95f86d732c70cecbf28"],"rate":"5/4","taken":["1"],"want":"ac84001216b1906071ccf99b5cb30c7998633c93bf8807cbc883ce17a7593df9"},{"give":"a2a76da4fc1b9e63b57bac3b0c5b5a864389e9b5ba4b1c46d793ba5f9e6b9bb7","gives":["a2a76da4fc1b9e63b57bac3b0c5b5a864389e9b5ba4b1c46d793ba5f9e6b9bb7"],"rate":"5/4","taken":["1"],"want":"b4f90208f819591e10351b665b996b121b55f74906cdbedd0d110453ffca6a5c"},{"give":"dab468c4b850b59086f350ff2bba9afed1becee30cd85bd07d1e6052e59f9a00","gives":["dab468c4b850b59086f350ff2bba9afed1becee30cd85bd07d1e6052e59f9a00","831f18726e72628fc6b21ce7cb214c5ea0bd454681c8b7ef8f5ce3feaec48813"],"taken":["1","1"],"want":"103cf7c7d1ce63c6b57aceeaf88a61e8f342e50c9261733152ec2e916a12e4cf"}],"loop_id":"9f60fae131d5fa7f91ef1f5c5383bb942a63f68a06800605df24c8223c2b1b6d","nodes":["buyer","courier","grocer","mechanic"],"ontology_root":"","potentials":{"buyer":"1","courier":"1","grocer":"1","mechanic":"1"},"solver":"t","surplus":"1521154765378834801050225968341627768715474039985/1461501637330902918203684832716283019655932542976","v":1}
+# fill: v4 give by mechanic: barcelona bicycle-repair
+fill/043dc68df5a9730ab8eb0211c5607c3fad3ef077845c9f40f191a6b1a917ab53	{"loop":"9f60fae131d5fa7f91ef1f5c5383bb942a63f68a06800605df24c8223c2b1b6d","qty":"1"}
+# fill: v4 want by buyer: door vegetable-box
+fill/103cf7c7d1ce63c6b57aceeaf88a61e8f342e50c9261733152ec2e916a12e4cf	{"gives":[{"offer":"dab468c4b850b59086f350ff2bba9afed1becee30cd85bd07d1e6052e59f9a00","qty":"1"},{"offer":"831f18726e72628fc6b21ce7cb214c5ea0bd454681c8b7ef8f5ce3feaec48813","qty":"1"}],"loop":"9f60fae131d5fa7f91ef1f5c5383bb942a63f68a06800605df24c8223c2b1b6d"}
+# fill: v4 want by grocer: bicycle-repair shop
+fill/278a793301574cab5d1dd8790c3eef3d322af5bf6475bafe801868ed0a69538c	{"gives":[{"offer":"043dc68df5a9730ab8eb0211c5607c3fad3ef077845c9f40f191a6b1a917ab53","qty":"1"}],"loop":"9f60fae131d5fa7f91ef1f5c5383bb942a63f68a06800605df24c8223c2b1b6d"}
+# fill: v4 give by buyer: door piano-lesson
+fill/2ffbf83375d803e4d6c7b3c8dd23355056a08ac181a8f95f86d732c70cecbf28	{"loop":"9f60fae131d5fa7f91ef1f5c5383bb942a63f68a06800605df24c8223c2b1b6d","qty":"1"}
+# fill: v4 give by courier: from(barcelona) to(barcelona) transport
+fill/831f18726e72628fc6b21ce7cb214c5ea0bd454681c8b7ef8f5ce3feaec48813	{"loop":"9f60fae131d5fa7f91ef1f5c5383bb942a63f68a06800605df24c8223c2b1b6d","qty":"1"}
+# fill: v4 give by buyer: door piano-lesson
+fill/a2a76da4fc1b9e63b57bac3b0c5b5a864389e9b5ba4b1c46d793ba5f9e6b9bb7	{"loop":"9f60fae131d5fa7f91ef1f5c5383bb942a63f68a06800605df24c8223c2b1b6d","qty":"1"}
+# fill: v4 want by mechanic: barcelona piano-lesson
+fill/ac84001216b1906071ccf99b5cb30c7998633c93bf8807cbc883ce17a7593df9	{"gives":[{"offer":"2ffbf83375d803e4d6c7b3c8dd23355056a08ac181a8f95f86d732c70cecbf28","qty":"1"}],"loop":"9f60fae131d5fa7f91ef1f5c5383bb942a63f68a06800605df24c8223c2b1b6d"}
+# fill: v4 want by courier: barcelona piano-lesson
+fill/b4f90208f819591e10351b665b996b121b55f74906cdbedd0d110453ffca6a5c	{"gives":[{"offer":"a2a76da4fc1b9e63b57bac3b0c5b5a864389e9b5ba4b1c46d793ba5f9e6b9bb7","qty":"1"}],"loop":"9f60fae131d5fa7f91ef1f5c5383bb942a63f68a06800605df24c8223c2b1b6d"}
+# fill: v4 give by grocer: shop vegetable-box
+fill/dab468c4b850b59086f350ff2bba9afed1becee30cd85bd07d1e6052e59f9a00	{"loop":"9f60fae131d5fa7f91ef1f5c5383bb942a63f68a06800605df24c8223c2b1b6d","qty":"1"}
+
+# Loop record v1: an aggregated leg, six lifters from two of three gives,
+# each give's share recorded as taken.
+# v4 give by mover: lesson
+offer/1a9b7707f9fdf89bf37b6f1949ff35289b1e74d7fa21c1469081f4d2ac6f0bb2	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"mover","nonce":27,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"amount":"50","issuer":"mover","type":"tokens"}}
+# v4 give by lift-a: lifting
+offer/4530bc2927efa90a512a00a688ca60124bba0db42310efe17073a7a8a14185ef	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["lifting"],"min":"0","qty":"2","step":"2","type":"thing","unit":"unit"},"maker":"lift-a","nonce":22,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"amount":"30","issuer":"lift-a","type":"tokens"}}
+# v4 want by lift-b: lesson
+offer/573ccf8420a32da6ef20f4131b30387b0358eae6c765a4d51989329bdf8c13f3	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"46","issuer":"lift-b","type":"tokens"},"maker":"lift-b","nonce":29,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"}}
+# v4 give by mover: lesson
+offer/8f243537d9e7f04cad8419dbc795e22f24ee36a0c04c7c64a5db3054554c5037	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"mover","nonce":26,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"amount":"50","issuer":"mover","type":"tokens"}}
+# v4 want by lift-c: lesson
+offer/98dfdcb28e287b513866d17768fb8ae61657d05f4f896bb002d2e0cefc6f0494	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"61","issuer":"lift-c","type":"tokens"},"maker":"lift-c","nonce":30,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"}}
+# v4 give by lift-c: lifting
+offer/9a6fba79c8b09551bd294959e72e7e9120adff0bc68119dd6c86dd4945e5e65e	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["lifting"],"min":"0","qty":"4","step":"1","type":"thing","unit":"unit"},"maker":"lift-c","nonce":24,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"amount":"60","issuer":"lift-c","type":"tokens"}}
+# v4 give by mover: lesson
+offer/af6ed333d08ed504e61775a83ef281046f6db8ce238ce81651d41b305317bb2a	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"mover","nonce":25,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"amount":"50","issuer":"mover","type":"tokens"}}
+# v4 want by mover: lifting
+offer/d2a87183fc53a15240c7e35350474667be71e6c561bf8ded691b9c07b4c63a32	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"160","issuer":"mover","type":"tokens"},"maker":"mover","nonce":21,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"concepts":["lifting"],"min":"0","qty":"6","step":"6","type":"thing","unit":"unit"}}
+# v4 give by lift-b: lifting
+offer/e46c67a7124ad864c1d7af738fa7224d9c6e49121f254ea19a0a9b9ae013a1a7	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["lifting"],"min":"0","qty":"3","step":"3","type":"thing","unit":"unit"},"maker":"lift-b","nonce":23,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"amount":"45","issuer":"lift-b","type":"tokens"}}
+# v4 want by lift-a: lesson
+offer/e629d3ea0d7c7c6637418f33d8d2ee4863d663344f1a3b678150cb2df67b0382	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"31","issuer":"lift-a","type":"tokens"},"maker":"lift-a","nonce":28,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"}}
+# loop record v1: 3 legs, lift-a, lift-c, mover
+loop/07c9eb07c08826364522954d5f3f0cbb57136aa4ae24c24deda86e41b114343c	{"book_root":"3aeac7a1c5459a72fadf0992e36be8f4c5d80e661b7b09051b0897f8f4977a07","found_at":1789516800,"legs":[{"give":"1a9b7707f9fdf89bf37b6f1949ff35289b1e74d7fa21c1469081f4d2ac6f0bb2","gives":["1a9b7707f9fdf89bf37b6f1949ff35289b1e74d7fa21c1469081f4d2ac6f0bb2"],"rate":"61/50","taken":["1"],"want":"98dfdcb28e287b513866d17768fb8ae61657d05f4f896bb002d2e0cefc6f0494"},{"give":"4530bc2927efa90a512a00a688ca60124bba0db42310efe17073a7a8a14185ef","gives":["4530bc2927efa90a512a00a688ca60124bba0db42310efe17073a7a8a14185ef","9a6fba79c8b09551bd294959e72e7e9120adff0bc68119dd6c86dd4945e5e65e"],"taken":["2","4"],"want":"d2a87183fc53a15240c7e35350474667be71e6c561bf8ded691b9c07b4c63a32"},{"give":"8f243537d9e7f04cad8419dbc795e22f24ee36a0c04c7c64a5db3054554c5037","gives":["8f243537d9e7f04cad8419dbc795e22f24ee36a0c04c7c64a5db3054554c5037"],"rate":"31/50","taken":["1"],"want":"e629d3ea0d7c7c6637418f33d8d2ee4863d663344f1a3b678150cb2df67b0382"}],"loop_id":"07c9eb07c08826364522954d5f3f0cbb57136aa4ae24c24deda86e41b114343c","nodes":["lift-a","lift-c","mover"],"ontology_root":"","potentials":{"lift-a":"50/31","lift-c":"1","mover":"1"},"solver":"t","surplus":"1462172756385076973130298331062854387/1329227995784915872903807060280344576","v":1}
+# fill: v4 give by mover: lesson
+fill/1a9b7707f9fdf89bf37b6f1949ff35289b1e74d7fa21c1469081f4d2ac6f0bb2	{"loop":"07c9eb07c08826364522954d5f3f0cbb57136aa4ae24c24deda86e41b114343c","qty":"1"}
+# fill: v4 give by lift-a: lifting
+fill/4530bc2927efa90a512a00a688ca60124bba0db42310efe17073a7a8a14185ef	{"loop":"07c9eb07c08826364522954d5f3f0cbb57136aa4ae24c24deda86e41b114343c","qty":"2"}
+# fill: v4 give by mover: lesson
+fill/8f243537d9e7f04cad8419dbc795e22f24ee36a0c04c7c64a5db3054554c5037	{"loop":"07c9eb07c08826364522954d5f3f0cbb57136aa4ae24c24deda86e41b114343c","qty":"1"}
+# fill: v4 want by lift-c: lesson
+fill/98dfdcb28e287b513866d17768fb8ae61657d05f4f896bb002d2e0cefc6f0494	{"gives":[{"offer":"1a9b7707f9fdf89bf37b6f1949ff35289b1e74d7fa21c1469081f4d2ac6f0bb2","qty":"1"}],"loop":"07c9eb07c08826364522954d5f3f0cbb57136aa4ae24c24deda86e41b114343c"}
+# fill: v4 give by lift-c: lifting
+fill/9a6fba79c8b09551bd294959e72e7e9120adff0bc68119dd6c86dd4945e5e65e	{"loop":"07c9eb07c08826364522954d5f3f0cbb57136aa4ae24c24deda86e41b114343c","qty":"4"}
+# fill: v4 want by mover: lifting
+fill/d2a87183fc53a15240c7e35350474667be71e6c561bf8ded691b9c07b4c63a32	{"gives":[{"offer":"4530bc2927efa90a512a00a688ca60124bba0db42310efe17073a7a8a14185ef","qty":"2"},{"offer":"9a6fba79c8b09551bd294959e72e7e9120adff0bc68119dd6c86dd4945e5e65e","qty":"4"}],"loop":"07c9eb07c08826364522954d5f3f0cbb57136aa4ae24c24deda86e41b114343c"}
+# fill: v4 want by lift-a: lesson
+fill/e629d3ea0d7c7c6637418f33d8d2ee4863d663344f1a3b678150cb2df67b0382	{"gives":[{"offer":"8f243537d9e7f04cad8419dbc795e22f24ee36a0c04c7c64a5db3054554c5037","qty":"1"}],"loop":"07c9eb07c08826364522954d5f3f0cbb57136aa4ae24c24deda86e41b114343c"}
+
+# More v4: the composed want and the plain give whose ids
+# tests/test_v6_record.py pins, and a decimal price for a unit beyond ASCII.
+# v4 give by a: apple
+offer/0d9c420e80047ba87cbaf52ac1dcceaeae9a87119b4ea900322404a54bc5c145	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["apple"],"min":"0","qty":"3","step":"3","type":"thing","unit":"unit"},"maker":"a","nonce":7,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[0,1000000],"wants":{"amount":"9","issuer":"a","type":"tokens"}}
+# v4 want by cook: apple + flour
+offer/853c3472a3cccd704507861e7cc99756d4bd2667233ad9583698cc990fa8a664	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"amount":"30","issuer":"cook","type":"tokens"},"maker":"cook","nonce":4,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[0,1000000],"wants":{"parts":[{"concepts":["apple"],"min":"0","qty":"5","step":"5","unit":"kg"},{"concepts":["flour"],"min":"0","qty":"2","step":"2","unit":"kg"}],"type":"parts"}}
+# v4 give by tiler: tiling
+offer/e0598d74c76692d7c41023b1dd03019f42985eb9c92f49db23e04b203ac7e84b	{"arbitrator":"","bond":0.0,"contract_version":"","gives":{"concepts":["tiling"],"min":"2","qty":"12","step":"1/2","type":"thing","unit":"m²"},"maker":"tiler","nonce":31,"ontology_root":"","oracle":"countersign","registry_version":"","v":4,"valid":[1789430400,1792108800],"wants":{"amount":"9999/100","issuer":"tiler","type":"tokens"}}
+
+# v5 (2026-09-19): what a maker requires of a counterparty, and the deposit:
+# the three v5 offers whose ids tests/test_v6_record.py pins.
+# v5 give by farm: apple time(2026-09-20)
+offer/aafba5615ba516997ba2aec22069d8e0f5b9fb26101de2e75d10b7b7784642a5	{"arbitrator":"0xcccccccccccccccccccccccccccccccccccccccc","bond":null,"contract_version":"","gives":{"concepts":["apple","time(2026-09-20)"],"min":"10","qty":"100","step":"5","type":"thing","unit":"kg"},"maker":"farm","nonce":3,"ontology_root":"","oracle":"countersign","registry_version":"","requires":{"accepts":[],"oracles":["countersign","locker"],"point":"0"},"v":5,"valid":[0,1000000],"wants":{"amount":"200","issuer":"farm","type":"tokens"}}
+# v5 give by driver: transport
+offer/c1f379a41d893456a0396f72a1244e552ae9cd93826104ef2c8719402b88c5f9	{"arbitrator":"","bond":{"asset":{"concepts":["stablecoin-eur"],"min":"0","qty":"60","step":"60","unit":"EUR"},"escrow":"0xE","value":"45"},"contract_version":"","gives":{"concepts":["transport"],"min":"0","qty":"1","step":"1","type":"thing","unit":"run"},"maker":"driver","nonce":2,"ontology_root":"","oracle":"countersign","registry_version":"","requires":{"accepts":[],"oracles":[],"point":"0"},"v":5,"valid":[0,1000000],"wants":{"amount":"45","issuer":"driver","type":"tokens"}}
+# v5 want by amara: transport
+offer/e2a07847e69850dea803712b27a60c2816f97f81a85c3ad907f83c656c81a49b	{"arbitrator":"","bond":null,"contract_version":"","gives":{"amount":"40","issuer":"amara","type":"tokens"},"maker":"amara","nonce":1,"ontology_root":"","oracle":"countersign","registry_version":"","requires":{"accepts":[[["btc"],"sat","1/2000"],[["stablecoin-eur"],"EUR","1"]],"escrows":["contract"],"ladder":[["604800","5"],["86400","20"],["0","50"]],"oracles":[],"point":"50"},"v":5,"valid":[0,1000000],"wants":{"concepts":["transport"],"min":"0","qty":"1","step":"1","type":"thing","unit":"run"}}
+
+# v6 and v7 (2026-09-29): the counterparty gate's requirements, `claim_max`,
+# an option, and a deposit's deductible. Loop record v2 adds the register
+# roots the proposal pinned.
+# v6 want by pat: dentistry
+offer/6dcc3060939e1c0b26bd5a8ed3f7a266b741b81c73f5d01655cae11f16f1b27e	{"arbitrator":"","bond":null,"claim_max":0,"contract_version":"","exercise":null,"gives":{"amount":"21","issuer":"pat","type":"tokens"},"maker":"pat","nonce":42,"ontology_root":"","oracle":"countersign","registry_version":"","requires":{"accepts":[[["stablecoin-eur"],"EUR","1"]],"claim_period":2592000,"oracles":[],"point":"30"},"underlying":"","v":6,"valid":[1790640000,1795910400],"wants":{"concepts":["dentistry"],"min":"0","qty":"1","step":"1","type":"thing","unit":"visit"}}
+# v7 give by clinic: dentistry
+offer/7e87b7876bb010654a107179de39457c704d24996242f47f57ac6256c3a5b0bb	{"arbitrator":"","bond":{"asset":{"concepts":["stablecoin-eur"],"min":"0","qty":"60","step":"60","unit":"EUR"},"deductible":"5","escrow":"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","value":"45"},"claim_max":2592000,"contract_version":"","exercise":null,"gives":{"concepts":["dentistry"],"min":"0","qty":"1","step":"1","type":"thing","unit":"visit"},"maker":"clinic","nonce":41,"ontology_root":"","oracle":"countersign","registry_version":"","requires":{"accepts":[],"oracles":[],"point":"0"},"underlying":"","v":7,"valid":[1790640000,1795910400],"wants":{"amount":"40","issuer":"clinic","type":"tokens"}}
+# v7 want by clinic: lesson
+offer/b43254d43769a9251868107f24c9624487aee8a8f2244e6715b3ca4b1e26572c	{"arbitrator":"","bond":null,"claim_max":0,"contract_version":"","exercise":null,"gives":{"amount":"42","issuer":"clinic","type":"tokens"},"maker":"clinic","nonce":44,"ontology_root":"","oracle":"countersign","registry_version":"","requires":{"accepts":[],"oracles":[],"point":"0"},"underlying":"","v":7,"valid":[1790640000,1795910400],"wants":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"}}
+# v5 give by pat: lesson
+offer/d9fc437b38fb740e3b549e6511a48fd52568f3fb4d945d9a2c79e5167a07ca94	{"arbitrator":"","bond":null,"contract_version":"","gives":{"concepts":["lesson"],"min":"0","qty":"1","step":"1","type":"thing","unit":"unit"},"maker":"pat","nonce":43,"ontology_root":"","oracle":"countersign","registry_version":"","requires":{"accepts":[],"oracles":["countersign"],"point":"0"},"v":5,"valid":[1790640000,1795910400],"wants":{"amount":"20","issuer":"pat","type":"tokens"}}
+# loop record v2: 2 legs, clinic, pat
+loop/bfa96fec61d652efe82999677b105355bd84958c98dec454301a173cb5bc8f02	{"book_root":"4de0d1ca51400a77f01b94c3d956c9deb621b07ad65f55c44ea54bbb376b7746","found_at":1790726400,"legs":[{"give":"7e87b7876bb010654a107179de39457c704d24996242f47f57ac6256c3a5b0bb","gives":["7e87b7876bb010654a107179de39457c704d24996242f47f57ac6256c3a5b0bb"],"rate":"21/40","taken":["1"],"want":"6dcc3060939e1c0b26bd5a8ed3f7a266b741b81c73f5d01655cae11f16f1b27e"},{"give":"d9fc437b38fb740e3b549e6511a48fd52568f3fb4d945d9a2c79e5167a07ca94","gives":["d9fc437b38fb740e3b549e6511a48fd52568f3fb4d945d9a2c79e5167a07ca94"],"rate":"21/10","taken":["1"],"want":"b43254d43769a9251868107f24c9624487aee8a8f2244e6715b3ca4b1e26572c"}],"loop_id":"bfa96fec61d652efe82999677b105355bd84958c98dec454301a173cb5bc8f02","nodes":["clinic","pat"],"ontology_root":"","potentials":{"clinic":"1","pat":"40/21"},"register_roots":{"0x1111111111111111111111111111111111111111":"2222222222222222222222222222222222222222222222222222222222222222"},"solver":"t","surplus":"41/400","v":2}
+# fill: v6 want by pat: dentistry
+fill/6dcc3060939e1c0b26bd5a8ed3f7a266b741b81c73f5d01655cae11f16f1b27e	{"gives":[{"offer":"7e87b7876bb010654a107179de39457c704d24996242f47f57ac6256c3a5b0bb","qty":"1"}],"loop":"bfa96fec61d652efe82999677b105355bd84958c98dec454301a173cb5bc8f02"}
+# fill: v7 give by clinic: dentistry
+fill/7e87b7876bb010654a107179de39457c704d24996242f47f57ac6256c3a5b0bb	{"loop":"bfa96fec61d652efe82999677b105355bd84958c98dec454301a173cb5bc8f02","qty":"1"}
+# fill: v7 want by clinic: lesson
+fill/b43254d43769a9251868107f24c9624487aee8a8f2244e6715b3ca4b1e26572c	{"gives":[{"offer":"d9fc437b38fb740e3b549e6511a48fd52568f3fb4d945d9a2c79e5167a07ca94","qty":"1"}],"loop":"bfa96fec61d652efe82999677b105355bd84958c98dec454301a173cb5bc8f02"}
+# fill: v5 give by pat: lesson
+fill/d9fc437b38fb740e3b549e6511a48fd52568f3fb4d945d9a2c79e5167a07ca94	{"loop":"bfa96fec61d652efe82999677b105355bd84958c98dec454301a173cb5bc8f02","qty":"1"}
+
+# More v6 and v7: the dentist's want with every v6 requirement, an option on
+# the clinic's visit, and a v7 want.
+# v6 want by amara: dentistry
+offer/27a6aeeec1bbc07f85f90ab87b53df3ee786878d6b0814db7922942602224338	{"arbitrator":"","bond":null,"claim_max":0,"contract_version":"","exercise":null,"gives":{"amount":"40","issuer":"amara","type":"tokens"},"maker":"amara","nonce":11,"ontology_root":"","oracle":"countersign","registry_version":"","requires":{"accepts":[[["stablecoin-eur"],"EUR","1"]],"claim_period":2592000,"counterparty":[{"category":"dentist-licensed","kinds":["attested","self-bonded"],"max_root_age":86400,"min_bond":"20","roots":["0x1111111111111111111111111111111111111111"]}],"legs":[{"accept":{"clean_for":0,"issuance":[],"keys":[],"min_deposit":"100","roots":["0x2222222222222222222222222222222222222222"]},"category":"insure"}],"oracles":[],"point":"30","resolvers":{"clean_for":31536000,"issuance":[],"keys":["0x3333333333333333333333333333333333333333"],"min_deposit":"0","roots":[]}},"underlying":"","v":6,"valid":[0,1000000],"wants":{"concepts":["dentistry"],"min":"0","qty":"1","step":"1","type":"thing","unit":"visit"}}
+# v6 give by clinic: dentistry
+offer/9368fa270e21ec8c36740603895b09996d2db949232742eadece13d7747ae9f3	{"arbitrator":"","bond":null,"claim_max":0,"contract_version":"","exercise":[1790726400,1791936000],"gives":{"concepts":["dentistry"],"min":"0","qty":"1","step":"1","type":"thing","unit":"visit"},"maker":"clinic","nonce":45,"ontology_root":"","oracle":"countersign","registry_version":"","requires":{"accepts":[],"oracles":[],"point":"0"},"underlying":"7e87b7876bb010654a107179de39457c704d24996242f47f57ac6256c3a5b0bb","v":6,"valid":[1790640000,1795910400],"wants":{"amount":"3","issuer":"clinic","type":"tokens"}}
+# v7 want by pat: dentistry time(2026-10)
+offer/a1e7c0ed19a3b9719d7f2c806d8886ffcbfae8a8905f398937bfd0143cc4ec9d	{"arbitrator":"","bond":null,"claim_max":0,"contract_version":"","exercise":null,"gives":{"amount":"25","issuer":"pat","type":"tokens"},"maker":"pat","nonce":46,"ontology_root":"","oracle":"countersign","registry_version":"","requires":{"accepts":[],"oracles":[],"point":"0","resolvers":{"clean_for":0,"issuance":[],"keys":["0x3333333333333333333333333333333333333333"],"min_deposit":"0","roots":[]}},"underlying":"","v":7,"valid":[1790640000,1795910400],"wants":{"concepts":["dentistry","time(2026-10)"],"min":"0","qty":"1","step":"1","type":"thing","unit":"visit"}}

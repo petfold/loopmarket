@@ -1,7 +1,7 @@
 """The v3 offer record (docs/plans/P1-spacetime-terms.md §2, §5.5, decided
 2026-09-12): where and when a thing changes hands are role terms in the
-conjunction, `valid` may be open-ended, no record holds a disc, and pairs
-across the v2/v3 line are refused at matching."""
+conjunction, `valid` may be open-ended, and no record holds a disc. The
+v1/v2 offers that did are retired (tests/test_v1_v2_retired.py)."""
 
 import random
 from datetime import datetime, timezone
@@ -11,7 +11,7 @@ from ontodag import OntoDAG
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    GeoDisc, BookClearing, Offer, OfferRegistry, Ontology, SolverAgent, Thing,
+    BookClearing, Offer, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 from loopmarket.dimensions import candidate_matches_indexed
@@ -20,8 +20,6 @@ from loopmarket.matching import candidate_matches, check_match
 NOW = 5_000
 ROLES = {"from": "geo", "to": "geo"}
 V = dict(valid=TimeWindow(0, 1_000_000))
-FIELDS = dict(service=TimeWindow(1_000, 100_000),
-              where=GeoDisc(46.0, 14.0, 10_000), **V)
 
 
 def iso(t):
@@ -63,11 +61,6 @@ def test_v3_is_the_default_record_and_carries_no_fields():
     assert back == o and back.offer_id == o.offer_id
     with pytest.raises(ValueError):                       # the fields are v1/v2
         give("a", Thing(("ride",)), 5, service=TimeWindow(1, 2), v=3, **V)
-    with pytest.raises(ValueError):                       # and v2 needs them
-        give("a", Thing(("ride",)), 5, v=2, **V)
-    # the field form still yields a v2 record, unchanged in every byte
-    v2 = give("a", Thing(("ride",)), 5, nonce=7, **FIELDS)
-    assert v2.v == 2 and Offer.from_record(v2.to_record()).offer_id == v2.offer_id
 
 
 def test_v3_refuses_field_keys_and_unknown_versions():
@@ -93,9 +86,6 @@ def test_open_ended_valid_is_a_v3_form():
     o = give("a", Thing(("ride",)), 5, valid=forever)
     assert o.to_record()["valid"] == [100, None]
     assert Offer.from_record(o.to_record()) == o
-    with pytest.raises(ValueError):                       # v2 windows are finite
-        give("a", Thing(("ride",)), 5, valid=forever,
-             service=TimeWindow(1, 2), where=GeoDisc(46.0, 14.0, 10))
 
 
 # ------------------------------------------------------------------- matching
@@ -131,18 +121,6 @@ def test_v3_matches_through_the_conjunction():
     assert check_match(silent, standing, ont, now=10**10) is None  # give expired
 
 
-def test_pairs_across_the_v2_v3_line_are_refused():
-    ont = catalogue()
-    v2_give = give("bruno", Thing(("ride",)), 5, **FIELDS)
-    v3_want = want("amara", Thing(("ride",)), 6, **V)
-    assert check_match(v2_give, v3_want, ont, now=NOW) is None
-    assert check_match(give("bruno", Thing(("ride",)), 5, **V),
-                       want("amara", Thing(("ride",)), 6, **FIELDS), ont, now=NOW) is None
-    # each side still matches its own kind
-    assert check_match(v2_give, want("amara", Thing(("ride",)), 6, **FIELDS), ont, now=NOW)
-    assert check_match(give("bruno", Thing(("ride",)), 5, **V), v3_want, ont, now=NOW)
-
-
 # --------------------------------------------------------- index and registry
 
 CELLS = ["u2e", "u2e4", "u2e4x", "u2e5", "u2f"]
@@ -156,42 +134,34 @@ def _mixed_book(seed, n=80):
     for i in range(n):
         terms = list(rng.sample(concepts, rng.randint(1, 2)))
         side = give if rng.random() < 0.5 else want
-        if rng.random() < 0.5:                       # a v3 offer: terms
-            if rng.random() < 0.8:
-                terms.append(f"geo({rng.choice(CELLS)})")
-            if rng.random() < 0.8:
-                a = 1_000 + rng.randrange(0, 90_000)
-                terms.append(time(a, a + rng.randrange(600, 60_000)))
-            fields = dict(valid=TimeWindow(0) if rng.random() < 0.3
-                          else TimeWindow(0, 1_000_000))
-        else:                                        # a v2 offer: fields
-            start = rng.randrange(0, 150_000)
-            fields = dict(
-                service=TimeWindow(start, start + rng.randrange(600, 90_000)),
-                where=GeoDisc(45 + rng.random() * 2, 13 + rng.random() * 2,
-                              rng.choice([2_000, 20_000, 80_000])),
-                valid=TimeWindow(0, 1_000_000))
+        if rng.random() < 0.8:
+            terms.append(f"geo({rng.choice(CELLS)})")
+        if rng.random() < 0.8:
+            a = 1_000 + rng.randrange(0, 90_000)
+            terms.append(time(a, a + rng.randrange(600, 60_000)))
+        fields = dict(valid=TimeWindow(0) if rng.random() < 0.3 else TimeWindow(0, 1_000_000),
+                      v=3 if rng.random() < 0.5 else 4)
         offers.append(side(f"maker-{i}", Thing(tuple(terms), qty=1),
                            10 + rng.randrange(90), **fields))
     return offers
 
 
 def test_index_is_recall_exact_on_a_mixed_version_book():
+    """v3 and v4 offers in one book: the index finds the baseline's
+    matches, across the two versions too."""
     ont = catalogue()
-    total = 0
+    total = across = 0
     for seed in range(5):
         offers = _mixed_book(seed)
+        version = {o.offer_id: o.v for o in offers}
         expected = {(m.give.offer_id, m.want.offer_id)
                     for m in candidate_matches(offers, ont, now=NOW)}
         got = {(m.give.offer_id, m.want.offer_id)
                for m in candidate_matches_indexed(offers, ont, now=NOW)}
         assert got == expected, f"drift at seed {seed}"
-        assert all(  # never across the line
-            (next(o for o in offers if o.offer_id == g).v >= 3)
-            == (next(o for o in offers if o.offer_id == w).v >= 3)
-            for g, w in got)
         total += len(got)
-    assert total > 20
+        across += sum(version[g] != version[w] for g, w in got)
+    assert total > 20 and across > 0
 
 
 def test_registry_files_v3_offers_and_nothing_else():

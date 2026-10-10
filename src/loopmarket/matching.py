@@ -9,23 +9,19 @@ problem").
 Conditions, in cheap-to-expensive order:
 
 1. kinds:      one GIVE, one WANT, different makers
-2. record:     both sides on the same side of the v2/v3 line — a v2
-               offer's place is a disc, a v3 offer's a cell, and a view
-               of one as the other would say what the maker never said
-               (decided 2026-09-12: refuse; repost instead)
+2. record:     both offers v3 or later — a v1/v2 offer is retired: its
+               record is read (U2), and it matches nothing (the 2026-10
+               review's item 12, decided 2026-10-10)
 3. validity:   both offers open at `now`
-4. time:       v1/v2 only — the service windows intersect (a delivery
-               instant exists); v3 says it with a bare `time(...)` in step 7
-5. space:      v1/v2 only — the service discs intersect (a handover point
-               exists); v3 says it with a bare geo term or `from(...)`/`to(...)`
-6. quantity:   wanted quantity within given quantity (equal, unless
+4. quantity:   wanted quantity within given quantity (equal, unless
                divisible), identical units
-7. meaning:    the given conjunction satisfies the wanted one under the
+5. meaning:    the given conjunction satisfies the wanted one under the
                pinned ontology, term by term (`Ontology.satisfies`): what
                the thing is, the give within the want; where and when it
-               changes hands, one side within the other; an operator's
-               argument, the want within the give
-8. version:    pinned semantic ground must not move between the two sides:
+               changes hands (a bare `time(...)` or geo term, a route's
+               `from(...)`/`to(...)`), one side within the other; an
+               operator's argument, the want within the give
+6. version:    pinned semantic ground must not move between the two sides:
                ontology roots must agree, registry/contract versions must
                not diverge on their major component (ontodag D10: minor
                skew is vocabulary-additive and interoperates) — and once
@@ -236,15 +232,15 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
            quantity: bool = True, thing: Thing | None = None,
            reads: Reads = NO_READS, taken=None, legs_checked: bool = False) -> bool:
     """Everything `check_match` decides before meaning: kinds and makers,
-    the record line, validity, the v1/v2 fields, quantity and unit (skipped
-    for an operator give, which moves a lot rather than being one), pins.
+    the record version, validity, quantity and unit (skipped for an
+    operator give, which moves a lot rather than being one), pins.
     `thing` is the wanted thing when the want has parts (one gate per
     part); the want's one thing otherwise."""
     available, gate = reads.available, reads.gate
     if give.kind != GIVE or want.kind != WANT or give.maker == want.maker:
         return False
-    if (give.v >= 3) != (want.v >= 3):
-        return False
+    if give.v < 3 or want.v < 3:
+        return False                    # a retired v1/v2 offer: read, never matched
     if give.v >= 6 and give.underlying:
         # an option (C2): its underlying must hold what it promises — read
         # through the gate, which sees the book; no gate, no option (U7)
@@ -272,11 +268,6 @@ def _gates(give: Offer, want: Offer, ontology: Ontology, *, now: int,
         return False
     if not (give.valid.is_open_at(now) and want.valid.is_open_at(now)):
         return False
-    if give.v < 3:
-        if not give.service.overlaps(want.service):
-            return False
-        if not give.where.intersects(want.where):
-            return False
     g = give.thing
     w = thing if thing is not None else (None if want.composed else want.thing)
     if w is None:

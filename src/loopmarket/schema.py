@@ -19,19 +19,19 @@ the SHA-256 of those bytes: the offer's logical content address. When the
 record is stored on Swarm the storage layer assigns its own (BMT) reference;
 the logical id stays the key at the application layer.
 
-Time and place. The v1/v2 records carried them as fields — a `service`
-window and a `where` disc beside the concepts, matched by interval overlap
-and disc intersection here. The v3 record (2026-09-12, decided in
+Time and place. The v3 record (2026-09-12, decided in
 `docs/plans/P1-spacetime-terms.md`) carries them *in the conjunction*:
 bare geo and time terms (`geo(cell)`, a place or region node,
 `time(a..b)`), and role heads only for two coordinates of one kind (a
 route's `from`/`to`, a transport's `depart`/`arrive`), matched when one
-side contains the other; cells and region nodes are the exact truth, and
-no v3 record holds a disc.
-`GeoDisc` and the haversine survive only to read and match v1/v2 records
-among themselves; nothing creates a new one. Only `valid` — a property of
-the record, not of the thing — stays a window, and since v3 it may be
-open-ended: the offer stands until withdrawn.
+side contains the other; cells and region nodes are the exact truth. The
+v1/v2 records carried them as fields, a `service` window and a `where`
+disc (`GeoDisc`). Those offers are retired (the 2026-10 review's item 12,
+decided 2026-10-10): `Offer.from_record` reads their records, so their
+ids and history stand (U2), but no constructor makes one and no check
+matches one. Only `valid` — a property of the record, not of the thing —
+stays a window, and since v3 it may be open-ended: the offer stands until
+withdrawn.
 """
 
 from __future__ import annotations
@@ -41,6 +41,7 @@ import json
 import math
 import re
 import time as _time
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from fractions import Fraction
@@ -161,24 +162,14 @@ class TimeWindow:
 
 # ---------------------------------------------------------------------------- geo
 
-_EARTH_RADIUS_M = 6_371_000.0
-
-
-def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Great-circle distance in meters."""
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    dp, dl = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
-    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return 2 * _EARTH_RADIUS_M * math.asin(math.sqrt(a))
-
-
 @dataclass(frozen=True, slots=True)
 class GeoDisc:
-    """A disc on the sphere: radius (meters) around a lat/lon centre.
-
-    v1/v2 records only. Since the v3 record (2026-09-12) a place is a cell
-    or region term in the conjunction and this class exists to read and
-    match the old records among themselves; nothing creates a new disc.
+    """A disc on the sphere: radius (meters) around a lat/lon centre — the
+    `where` of a v1/v2 record, kept so that those records read back to
+    their bytes. No offer is made with one and nothing matches on one:
+    since the v3 record a place is a cell or region term in the
+    conjunction, and `spacetime.cell_for_coords` gives the cell that
+    contains a disc.
     """
 
     lat: float
@@ -190,16 +181,6 @@ class GeoDisc:
             raise ValueError("GeoDisc centre out of range")
         if self.radius_m < 0:
             raise ValueError("GeoDisc radius must be non-negative")
-
-    def contains(self, other: "GeoDisc") -> bool:
-        """fits-within for space: `other` lies entirely inside `self`."""
-        d = haversine_m(self.lat, self.lon, other.lat, other.lon)
-        return d + other.radius_m <= self.radius_m + 1e-9
-
-    def intersects(self, other: "GeoDisc") -> bool:
-        """A handover point exists that both parties can reach."""
-        d = haversine_m(self.lat, self.lon, other.lat, other.lon)
-        return d <= self.radius_m + other.radius_m + 1e-9
 
     def to_record(self) -> list[float]:
         return [self.lat, self.lon, self.radius_m]
@@ -788,9 +769,9 @@ class Offer:
     gives: Thing | Tokens
     wants: Thing | Parts | Tokens
     valid: TimeWindow             # while the offer itself stands (v3: may be open)
-    # v1/v2 only — when and where the thing changes hands. v3 carries both
-    # as bare geo/time terms in the conjunction (`geo(...)`, `time(...)`, a place);
-    # the constructor refuses them on a v3 record and requires them below.
+    # v1/v2 only, filled by `from_record` from an old record — when and
+    # where the thing changes hands. v3 carries both as bare geo/time terms
+    # in the conjunction (`geo(...)`, `time(...)`, a place).
     service: TimeWindow | None = None
     where: GeoDisc | None = None
     ontology_root: str = ""       # pinned catalogue version (recordstore root)
@@ -845,6 +826,8 @@ class Offer:
             )
         if self.v not in (1, 2, 3, 4, 5, 6, 7):
             raise ValueError(f"unknown offer record version: {self.v!r}")
+        if self.v < 3 and not _READING.get():
+            raise ValueError(_retired(self.service, self.where))
         if self.v < 7 and isinstance(self.bond, Bond) and self.bond.deductible:
             raise ValueError("a deductible is a v7 form")
         if self.v < 6:
@@ -881,10 +864,7 @@ class Offer:
                     raise ValueError("a step other than 0 or the whole quantity is a v4 form")
         if self.v >= 3:
             if self.service is not None or self.where is not None:
-                raise ValueError(
-                    "a v3 offer carries no service/where fields: put time(...) "
-                    "and place as bare terms in the conjunction, or pass v=2 "
-                    "for the field form")
+                raise ValueError(_retired(self.service, self.where))
         else:
             if self.service is None or self.where is None:
                 raise ValueError("v1/v2 offers require service and where")
@@ -1005,8 +985,17 @@ class Offer:
         Fail closed, never best-effort: a future version may carry fields
         this code cannot interpret, and matching an offer while ignoring
         part of its meaning is exactly the silent drift U7 forbids for
-        vocabulary.
+        vocabulary. The one way a v1 or v2 offer is made: from its record.
         """
+        token = _READING.set(True)
+        try:
+            return cls._read(rec)
+        finally:
+            _READING.reset(token)
+
+    @classmethod
+    def _read(cls, rec: dict[str, Any]) -> "Offer":
+        """`from_record`'s reading, done while `_READING` is set."""
         v = rec.get("v")
         if v not in (1, 2, 3, 4, 5, 6, 7):
             raise ValueError(f"unknown offer record version: {v!r}")
@@ -1076,14 +1065,41 @@ class Offer:
         return self._id
 
 
+#: True while `Offer.from_record` builds an offer: the one path on which a
+#: v1 or v2 offer is still made, from a record a book already holds (U2).
+#: A context variable rather than a parameter, so that the constructor's
+#: signature, and `dataclasses.replace` on any offer, stay as they are.
+_READING: ContextVar[bool] = ContextVar("loopmarket_offer_from_record", default=False)
+
+
+def _iso(t: int) -> str:
+    return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _retired(service=None, where=None) -> str:
+    """The error a v1/v2 offer gets, naming the terms that say the same in
+    the current record: the finest cell containing the disc (what `loop`
+    makes of `LAT,LON,R`) and the window's seconds as a `time` term."""
+    terms = []
+    if isinstance(where, GeoDisc):
+        from .spacetime import cell_for_coords
+        terms.append(f"geo({cell_for_coords(where.lat, where.lon, where.radius_m)})")
+    if isinstance(service, TimeWindow) and service.end is not None:
+        terms.append(f"time({_iso(service.start)}..{_iso(service.end - 1)})")
+    shown = ", ".join(repr(t) for t in terms or ("geo(u2e4x)", "time(2026-10-10..2026-10-12)"))
+    return ("v1 and v2 offers are retired: their records are read, but no new one is made. "
+            f"Say where and when as terms of the thing, Thing((..., {shown})), and leave "
+            "out service=, where= and v=1 or v=2.")
+
+
 # ---------------------------------------------------------------- convenience
 
-def _field_form(service, where, kw: dict[str, Any]) -> dict[str, Any]:
-    """`service`/`where` passed ⇒ the v2 field form unless `v` says
-    otherwise (the fields exist in no later record); nothing passed ⇒ the
-    current record, whose spacetime is in the conjunction."""
-    if (service is not None or where is not None) and "v" not in kw:
-        kw = dict(kw, v=2)
+def _field_form(kw: dict[str, Any]) -> dict[str, Any]:
+    """The record the fields given need: v4, or the version a field asks
+    for, unless `v` says otherwise. The v1/v2 fields, `service` and
+    `where`, are refused, with the terms that say the same thing."""
+    if kw.get("service") is not None or kw.get("where") is not None or kw.get("v") in (1, 2):
+        raise ValueError(_retired(kw.get("service"), kw.get("where")))
     if "v" not in kw:
         req = kw.get("requires")
         bond = kw.get("bond")
@@ -1094,24 +1110,20 @@ def _field_form(service, where, kw: dict[str, Any]) -> dict[str, Any]:
             kw = dict(kw, v=6)          # the counterparty gate's fields, claim_max, an option
         elif req is not None or isinstance(kw.get("bond"), Bond):
             kw = dict(kw, v=5)          # a requirement or a deposit is a v5 form
-    return dict(kw, service=service, where=where)
+    return kw
 
 
-def give(maker: str, thing: Thing, amount, *, valid: TimeWindow,
-         service: TimeWindow | None = None, where: GeoDisc | None = None,
-         **kw: Any) -> Offer:
+def give(maker: str, thing: Thing, amount, *, valid: TimeWindow, **kw: Any) -> Offer:
     """I give `thing`, priced `amount` on my own scale."""
     return Offer(maker=maker, gives=thing, wants=Tokens(maker, amount),
-                 valid=valid, **_field_form(service, where, kw))
+                 valid=valid, **_field_form(kw))
 
 
-def want(maker: str, thing: Thing | Parts, amount, *, valid: TimeWindow,
-         service: TimeWindow | None = None, where: GeoDisc | None = None,
-         **kw: Any) -> Offer:
+def want(maker: str, thing: Thing | Parts, amount, *, valid: TimeWindow, **kw: Any) -> Offer:
     """I want `thing` — or several things together, `Parts` — priced
     `amount` on my own scale for the lot."""
     return Offer(maker=maker, gives=Tokens(maker, amount), wants=thing,
-                 valid=valid, **_field_form(service, where, kw))
+                 valid=valid, **_field_form(kw))
 
 
 ask = give     # order-book synonyms, kept for familiarity

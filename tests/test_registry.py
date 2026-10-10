@@ -10,17 +10,13 @@ import pytest
 from recordstore import MemoryBytesStore, MemoryPointer, RecordStore
 
 from loopmarket import (
-    GeoDisc, BookClearing, OfferRegistry, Ontology, PartialLoopError,
+    BookClearing, OfferRegistry, Ontology, PartialLoopError,
     SolverAgent, Thing, TimeWindow, give, want,
 )
 from loopmarket.registry import LegRecord, or_set_resolver
 
 NOW = 1_700_000_000
-W = dict(
-    service=TimeWindow(NOW, NOW + 90 * 86_400),
-    valid=TimeWindow(NOW - 1, NOW + 30 * 86_400),
-    where=GeoDisc(46.0, 14.0, 50_000),
-)
+W = dict(valid=TimeWindow(NOW - 1, NOW + 30 * 86_400))
 ONT = Ontology().load({"g1": [], "g2": [], "g3": []})
 
 # One shared offer list: replicas of a book hold the *same* offers

@@ -78,7 +78,12 @@ documents and enter here only when their enforcing code and tests land.
   version bump (`"v"`, now 1–7), and `from_record` keeps reading old
   records: it dispatches on `"v"` and raises on an unknown one, and
   `to_record` re-encodes each offer in its own version, so old ids never
-  change (pinned by corpora, e.g. `tests/test_v6_record.py`).
+  change. v1 and v2 offers are read only: no constructor makes one and no
+  check matches one (review item 12). The golden corpus pins the bytes of
+  every offer version and of the loop and fill records
+  (`tests/fixtures/golden_records.txt`, read by
+  `tests/test_golden_records.py`); it is never regenerated to make a test
+  pass (`tests/fixtures/make_golden.py` says when it may be).
 - **U3 Clearing trusts no solver.** `BookClearing.submit` checks the
   proposal's ontology pin and register pins and every offer's registry and
   contract majors against the installed ontodag's, re-derives every leg against
@@ -129,7 +134,7 @@ PYTHONPATH=src python3 examples/demo_triangle.py    # must find and clear 1 loop
 LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples/triangle.od < examples/triangle.loop
 ```
 
-- With every extra installed: about 330 tests in about 11 minutes, most of
+- With every extra installed: about 350 tests in about 11 minutes, most of
   it the chain tests on a local EVM (the `evm` extra). Without `evm` they
   skip.
 - Extras: `[test]` for development; `[sig]` signatures and sealed
@@ -159,7 +164,8 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
   `Offer`; `Requires`, `Bond`, `Credential`, `RequiredLeg`, `Accept`,
   `Statement`), canonical encoding and ids, record versions 1–7, exact
   numbers (`q`, `rat`). Where and when are terms in the thing's concepts
-  (since v3); v1/v2 discs survive only to read old records.
+  (since v3); v1/v2 offers are read, never made or matched (`GeoDisc` is
+  an old record's `where`).
 - `spacetime.py`: geohash cells; `LAT,LON,R` becomes the finest cell
   containing the radius. Input only; ontodag orders the stored names.
 - `ontology.py`: the catalogue facade: build (`load`, the `declare_*`
@@ -295,9 +301,9 @@ word.
    yet: it becomes the one engine, for simple matches and the aggregation
    search, with no threshold, and the default solver is kept apart from
    the rest of loopmarket, the way an outside solver would be.
-3. **Geo: cells for v3 and later, discs for v1/v2.** A place is a cell, a
-   place node under a cell, or a region node above cells, and containment
-   is exact; a region's covering is a lower bound. Covering as a value
+3. **Geo: cells.** A place is a cell, a place node under a cell, or a
+   region node above cells, and containment is exact; a region's
+   covering is a lower bound. Covering as a value
    (`where(u24m+u24q)`) is deferred upstream (ontodag DIMENSIONS.md §14).
 4. **Books.** One book per maker (its own feed and signer), folded by
    aggregators (`docs/plans/P1-federated-book.md`). A shared Swarm book is a
@@ -356,12 +362,12 @@ still fail the fold, as decided); `cli.py` split by area,
 with a `Reads` object and a `LegRecord` type, built first of these (item
 10, built); durations and relative times in ontodag's units, `min` and
 `wk`, a bare `m` or `w` refused with the fix named (item 11, built); v1/v2
-offers retired once circulator's benchmark and the tests write v4+ (old
-records stay readable), and `BookClearing` renamed `BookClearing` (item
-12); the
+offers retired after circulator's benchmark and the tests moved to v4+
+(old records stay readable, pinned by the golden corpus), and
+`MockClearing` renamed `BookClearing` (item 12, built); the
 phase gates restated for what they still guard (item 17, under "Roadmap
 (state)"). Every review item for loopmarket is decided, and the decided
-items are being built: items 5, 10, 11, 4 and 9 so far.
+items are being built: items 5, 10, 11, 4, 9 and 12 so far.
 
 ## Conventions
 

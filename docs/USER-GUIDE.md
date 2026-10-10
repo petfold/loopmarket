@@ -407,11 +407,11 @@ Rates are exact rationals (invariant U9): 52/25 is 2.08 exactly, and
 everything clearing re-checks is computed without rounding.
 `check_match` is exact and self-contained — cheap to re-run, which is what
 lets clearing re-verify without trusting anyone. Its gates, in order:
-kinds and distinct makers → one side of the v2/v3 record line → an
-option's underlying and an item's id (§7.3, §7.4) → each side's
-requirements met by the other's declarations (§7.2, §7.5) → validity
-windows open at `now` → (v1/v2 only) service windows and discs intersect
-→ quantity within what is left, on the step and above the floor, in the
+kinds and distinct makers → both offers v3 or later (an old v1/v2 offer,
+read from a book, matches nothing) → an option's underlying and an item's
+id (§7.3, §7.4) → each side's requirements met by the other's
+declarations (§7.2, §7.5) → validity windows open at `now` → quantity
+within what is left, on the step and above the floor, in the
 same unit → **version pins** (mixed pinning refuses; pinned catalogues
 refuse unpinned offers; major registry/contract skew refuses, and so does
 a major other than the installed ontodag's, with the advice to re-post) → catalogue

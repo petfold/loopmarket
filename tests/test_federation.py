@@ -10,26 +10,19 @@ import pytest
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    Aggregator, GeoDisc, BookClearing, OfferRegistry, Ontology,
+    Aggregator, BookClearing, OfferRegistry, Ontology,
     SolverAgent, Thing, TimeWindow, give, want,
 )
 from loopmarket.federation import CLEARING
 
 NOW = 1_700_000_000
-W = dict(
-    service=TimeWindow(NOW, NOW + 90 * 86_400),
-    valid=TimeWindow(NOW - 1, NOW + 30 * 86_400),
-)
+W = dict(valid=TimeWindow(NOW - 1, NOW + 30 * 86_400))
 ONT = Ontology().load({
     "service": [], "lesson": ["service"], "music-lesson": ["lesson"],
     "piano-lesson": ["music-lesson"], "repair": ["service"],
     "bicycle-repair": ["repair"], "food": [], "produce": ["food"],
     "local": [], "weekly": [], "vegetable-box": ["produce", "local", "weekly"],
 })
-
-FLAT = GeoDisc(46.05, 14.50, 5_000)
-FARM = GeoDisc(46.10, 14.55, 15_000)
-SHOP = GeoDisc(46.06, 14.51, 4_000)
 
 
 def _maker_books(blobs):
@@ -38,21 +31,21 @@ def _maker_books(blobs):
     offers = {
         "amara": [
             give("amara", Thing(("piano-lesson",), unit="course"), 100,
-                nonce=1, where=FLAT, **W),
+                nonce=1, **W),
             want("amara", Thing(("produce", "local", "weekly"),
-                               unit="course"), 104, nonce=2, where=FLAT, **W),
+                               unit="course"), 104, nonce=2, **W),
         ],
         "bruno": [
             give("bruno", Thing(("vegetable-box",), unit="course"), 50,
-                nonce=3, where=FARM, **W),
+                nonce=3, **W),
             want("bruno", Thing(("bicycle-repair",), unit="course"), 52,
-                nonce=4, where=FARM, **W),
+                nonce=4, **W),
         ],
         "chen": [
             give("chen", Thing(("bicycle-repair",), unit="course"), 80,
-                nonce=5, where=SHOP, **W),
+                nonce=5, **W),
             want("chen", Thing(("music-lesson",), unit="course"), 83,
-                nonce=6, where=SHOP, **W),
+                nonce=6, **W),
         ],
     }
     for owner, own in offers.items():
@@ -157,9 +150,9 @@ def test_forged_maker_dies_at_the_fold():
     blobs = MemoryBytesStore()
     mallory = OfferRegistry(RecordStore(blobs))
     forged = give("amara", Thing(("piano-lesson",), unit="course"), 1,
-                 nonce=666, where=FLAT, **W)   # "amara" sells cheap, says mallory
+                 nonce=666, **W)   # "amara" sells cheap, says mallory
     honest = give("mallory", Thing(("vegetable-box",), unit="course"), 50,
-                 nonce=7, where=FARM, **W)
+                 nonce=7, **W)
     mallory.publish_many([forged, honest])
     mallory.commit()
 
@@ -184,7 +177,7 @@ def test_foreign_offer_with_valid_signature_enters():
     key = "01" * 32
     maker = maker_address(key)
     offer = give(maker, Thing(("vegetable-box",), unit="course"), 50,
-                nonce=8, where=FARM, **W)
+                nonce=8, **W)
     relay = OfferRegistry(RecordStore(blobs))    # someone else's book
     relay.publish(offer)
     relay.attach_signature(offer.offer_id, sign_offer(offer, key))
@@ -201,8 +194,7 @@ def test_foreign_offer_with_valid_signature_enters():
 def test_maker_book_speaking_clearing_is_refused():
     blobs = MemoryBytesStore()
     sneaky = OfferRegistry(RecordStore(blobs))
-    offer = give("sneaky", Thing(("vegetable-box",)), 50, nonce=9,
-                where=FARM, **W)
+    offer = give("sneaky", Thing(("vegetable-box",)), 50, nonce=9, **W)
     sneaky.publish(offer)
     sneaky.mark_filled((offer.offer_id,), "L-fake",
                        {"legs": [{"give": offer.offer_id,
@@ -304,7 +296,7 @@ def test_dropped_tombstone_is_an_omission_too():
     books = _maker_books(blobs)
     regret = books["bruno"].publish(
         give("bruno", Thing(("vegetable-box",), unit="course"), 90,
-            nonce=7, where=FARM, **W))
+            nonce=7, **W))
     books["bruno"].withdraw(regret)
     books["bruno"].commit()
     eater = _TombstoneEater(lambda: RecordStore(blobs), aggregator_id="eater")
@@ -383,8 +375,8 @@ def test_owner_names_cannot_decide_admission(hostile):
 def _dana(blobs):
     """A fourth maker who trades with bruno alone: her repair for his box."""
     dana = OfferRegistry(RecordStore(blobs))
-    dana.publish_many([give("dana", Thing(("bicycle-repair",), unit="course"), 40, nonce=7, where=FARM, **W),
-                       want("dana", Thing(("vegetable-box",), unit="course"), 60, nonce=8, where=FARM, **W)])
+    dana.publish_many([give("dana", Thing(("bicycle-repair",), unit="course"), 40, nonce=7, **W),
+                       want("dana", Thing(("vegetable-box",), unit="course"), 60, nonce=8, **W)])
     dana.commit()
     return dana
 
@@ -470,7 +462,7 @@ def test_a_valid_loop_is_admitted_and_its_fills_must_be_the_loops():
     clearing it writes: rejected with its reason, so it hides nothing."""
     blobs = MemoryBytesStore()
     books = _maker_books(blobs)
-    extra = give("dana", Thing(("vegetable-box",), unit="course"), 40, nonce=7, where=FARM, **W)
+    extra = give("dana", Thing(("vegetable-box",), unit="course"), 40, nonce=7, **W)
     books["dana"] = OfferRegistry(RecordStore(blobs))
     books["dana"].publish(extra)
     books["dana"].commit()
@@ -539,7 +531,7 @@ def test_a_bad_number_rejects_its_record_not_the_book():
     books = _maker_books(blobs)
     amara = books["amara"].store
     honest = sorted(k for k in amara.keys() if k.startswith("offer/"))
-    record = amara.get(honest[0])
+    record = next(amara.get(k) for k in honest if amara.get(k)["gives"]["type"] == "thing")   # her give
     bad = {}
     for n, (side, field, text) in enumerate((("wants", "amount", "1/0"),
                                              ("gives", "qty", "1e10000000"))):

@@ -1,14 +1,10 @@
 """Loop hunting: negative cycles, determinism, per-node surplus."""
 
-from loopmarket import ExchangeGraph, GeoDisc, Ontology, Thing, TimeWindow, give, want
+from loopmarket import ExchangeGraph, Ontology, Thing, TimeWindow, give, want
 from loopmarket.matching import candidate_matches
 
 NOW = 5_000
-W = dict(
-    service=TimeWindow(1_000, 100_000),
-    where=GeoDisc(46.0, 14.0, 50_000),
-    valid=TimeWindow(0, 1_000_000),
-)
+W = dict(valid=TimeWindow(0, 1_000_000))
 ONT = Ontology().load({"g1": [], "g2": [], "g3": []})
 
 

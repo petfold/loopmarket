@@ -10,9 +10,10 @@ import random
 
 import pytest
 
-from loopmarket import GeoDisc, Ontology, Thing, TimeWindow, give, want
+from loopmarket import Ontology, Thing, TimeWindow, give, want
 from loopmarket.dimensions import DimensionIndex, candidate_matches_indexed
 from loopmarket.matching import candidate_matches, check_match
+from loopmarket.spacetime import cell_for_coords
 
 NOW = 5_000
 CATALOGUE = {
@@ -25,25 +26,25 @@ CATALOGUE = {
 
 
 def fresh_ontology():
-    return Ontology().load(dict(CATALOGUE))
+    ont = Ontology().load(dict(CATALOGUE))
+    ont.declare_handover(["geo", "time"])     # where and when: one contains the other
+    return ont
 
 
 def wide(**kw):
-    base = dict(service=TimeWindow(1_000, 100_000),
-                where=GeoDisc(46.0, 14.0, 10_000),
-                valid=TimeWindow(0, 1_000_000))
-    base.update(kw)
-    return base
+    return {"valid": TimeWindow(0, 1_000_000), **kw}
+
+
+SEASON, LATE = "time(2026-10-01..2026-12-31)", "time(2027-01)"
 
 
 class TestCandidates:
     def test_courier_style_pruning(self):
         ontology = fresh_ontology()
-        a1 = give("bruno", Thing(("vegetable-box",)), 50, **wide())
-        a2 = give("chiara", Thing(("piano-lesson",)), 30, **wide())
-        late = wide(service=TimeWindow(200_000, 300_000))
-        a3 = give("dora", Thing(("vegetable-box",)), 40, **late)
-        b = want("amara", Thing(("produce", "weekly")), 104, **wide())
+        a1 = give("bruno", Thing(("vegetable-box", SEASON)), 50, **wide())
+        a2 = give("chiara", Thing(("piano-lesson", SEASON)), 30, **wide())
+        a3 = give("dora", Thing(("vegetable-box", LATE)), 40, **wide())
+        b = want("amara", Thing(("produce", "weekly", SEASON)), 104, **wide())
 
         index = DimensionIndex(ontology)
         for a in (a1, a2, a3):
@@ -51,9 +52,10 @@ class TestCandidates:
         cands = index.candidates(b)
         assert a1.offer_id in cands
         assert a2.offer_id not in cands          # wrong concept cone
-        # a v1/v2 window is a field, not a term: the exact check gates it
+        # time is a handover term, left out of the query: the exact check gates it
         assert a3.offer_id in cands
         assert check_match(a3, b, ontology, now=NOW) is None
+        assert check_match(a1, b, ontology, now=NOW) is not None
 
     def test_unknown_vocabulary_on_a_give_is_left_out_not_refused(self):
         """An unknown term narrows a give; the exact check ignores it, so
@@ -86,19 +88,17 @@ class TestRecallAgainstBaseline:
         offers = []
         for i in range(n):
             maker = f"maker-{i}"
-            thing = Thing(tuple(rng.sample(concepts, rng.randint(1, 2))),
-                          qty=rng.choice([1, 2, 4]),
-                          divisible=rng.random() < 0.5)
+            terms = tuple(rng.sample(concepts, rng.randint(1, 2)))
+            qty, divisible = rng.choice([1, 2, 4]), rng.random() < 0.5
             start = rng.randrange(0, 150_000)
-            window = dict(
-                service=TimeWindow(start, start + rng.randrange(600, 90_000)),
-                where=GeoDisc(45 + rng.random() * 2, 13 + rng.random() * 2,
-                              rng.choice([2_000, 20_000, 80_000])),
-                valid=TimeWindow(0, 1_000_000),
-            )
+            # a service window and a disc, as v4 terms: the window's
+            # seconds, the finest cell containing the disc
+            when = f"time({_iso(start)}..{_iso(start + rng.randrange(600, 90_000) - 1)})"
+            cell = cell_for_coords(45 + rng.random() * 2, 13 + rng.random() * 2,
+                                   rng.choice([2_000, 20_000, 80_000]))
+            thing = Thing(terms + (f"geo({cell})", when), qty=qty, divisible=divisible)
             side = give if rng.random() < 0.5 else want
-            offers.append(side(maker, thing, 10 + rng.randrange(90),
-                               **window))
+            offers.append(side(maker, thing, 10 + rng.randrange(90), **wide()))
         return offers
 
     def test_exactly_the_baseline_matches(self):

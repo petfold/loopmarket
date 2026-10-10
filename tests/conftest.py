@@ -14,6 +14,21 @@ from test_escrow import NOTICE
 HERE = os.path.dirname(__file__)
 
 
+@pytest.fixture(scope="session")
+def golden():
+    """The golden corpus (`fixtures/golden_records.txt`), every record by
+    its key: where a test finds a v1 or v2 offer, which nothing makes any
+    more and every reader must still read."""
+    import json
+    records = {}
+    with open(os.path.join(HERE, "fixtures", "golden_records.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.strip() and not line.startswith("#"):
+                key, _, text = line.rstrip("\n").partition("\t")
+                records[key] = json.loads(text)
+    return records
+
+
 @pytest.fixture
 def env(tmp_path, monkeypatch):
     """A scratch home for both tools, an unpinned `.od` catalogue, a fixed

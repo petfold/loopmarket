@@ -9,15 +9,11 @@ pytest.importorskip("coincurve")
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
-    GeoDisc, OfferRegistry, Thing, TimeWindow, give,
+    OfferRegistry, Thing, TimeWindow, give,
     maker_address, recover_maker, sign_offer, verify_offer_sig,
 )
 
-W = dict(
-    service=TimeWindow(1_000, 2_000),
-    where=GeoDisc(46.0, 14.0, 1_000),
-    valid=TimeWindow(0, 10_000),
-)
+W = dict(valid=TimeWindow(0, 10_000))
 KEY = "01" * 32
 OTHER_KEY = "02" * 32
 

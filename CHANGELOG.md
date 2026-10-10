@@ -9,13 +9,13 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
-The 2026-10 review's item 10 (ontodag's `docs/plans/REVIEW_2026-10.md`
-§8): the command line split by area, with a `Reads` object and a
-`LegRecord` type. On every record the code writes, no command prints or
-does anything different, and no record byte or id changes. Item 11
-changes how `loop` reads and prints durations, item 4 what matching and
-clearing admit, and item 9 what a fold admits and what counts as filled
-where a chain is set (below); none changes a record byte or an id.
+The 2026-10 review's items 10, 11, 4, 9 and 12 (ontodag's
+`docs/plans/REVIEW_2026-10.md` §8): the command line split by area, with
+a `Reads` object and a `LegRecord` type; durations in ontodag's units;
+offers of another ontodag major refused; every loop of a clearing book
+re-checked by the fold; and v1/v2 offers retired, made and matched no
+more, their records read as before. No record byte or id changes, which
+a golden corpus now pins.
 
 ### Changed
 
@@ -155,6 +155,81 @@ where a chain is set (below); none changes a record byte or an id.
   records the merges touch (64 books: within 2 × records × log2 64, where
   the old fold touched 4,158 against a bound of 1,536) and checks the
   fold of clean books is the union of their records.
+
+### Removed
+
+- **v1 and v2 offers are retired** (the review's item 12, decided by Peter
+  2026-10-10, option A: circulator's benchmark and these tests moved to
+  v4 offers first). `Offer`, `give` and `want` make no v1 or v2 offer:
+  `service=`, `where=`, `v=1` and `v=2` raise `ValueError` naming the
+  terms that say the same thing, `geo(...)` the finest cell containing
+  the disc (what `loop` makes of `LAT,LON,R`) and `time(...)` the window's
+  seconds; so does `dataclasses.replace` on an old offer. No check
+  matches one: `check_match` and every check built on it refuse a v1/v2
+  offer on either side, and the index files none and gives none
+  candidates, so the solver proposes no loop through one and clearing
+  re-derives none. Old records stay readable: `Offer.from_record` reads
+  v1 and v2 as before and re-encodes them to the same bytes under the
+  same ids (U2, pinned by the golden corpus); folds admit them, and the
+  loops and fills that name them read as before. A v1/v2 offer matched
+  only another v1/v2 offer, and the chain's verifier takes only v4 to v7.
+  Gone with them: `GeoDisc.contains`, `GeoDisc.intersects`, `haversine_m`
+  and the float tolerance in the disc gates, and the `service` and
+  `where` parameters of `give` and `want`. `GeoDisc` stays, the type of
+  an old record's `where`.
+
+### Tests
+
+- **A golden corpus pins the bytes of every record format** (the
+  review's test suggestion 4, written before the change it guards, the
+  retirement of v1/v2 offers). `tests/fixtures/golden_records.txt` holds
+  105 records as loopmarket wrote them: offers of every version, v1 to
+  v7, under their ids; loop records of each shape a book holds (the
+  2026-08 loop record, whose legs name one `give`, and loop record v1
+  and v2); and the fills written with them, of the loop alone and with
+  quantities. `tests/test_golden_records.py` reads each back, recomputes
+  its id and re-encodes it to the same bytes; loop record v1 and v2 are
+  rebuilt through `proposal_from_record` and write the same fills, key
+  for key. Round trips could not catch an encoding that changed on both
+  sides at once; this does (a disc's radius written as a float, a v3
+  quantity spelled exactly, a loop record without rates, each fails it).
+  `tests/fixtures/make_golden.py` writes the file, and says it is never
+  regenerated to make a test pass, only with a deliberate change of the
+  format, the diff being the review. Each scenario was checked against
+  the code of its time, from git: the constructors of 2026-07-29 give the
+  same v1 ids, the clearing of 2026-09-07, 2026-09-14 and 2026-09-29
+  writes the same offers, loop records and fills byte for byte, and every
+  `schema.py` since 2026-07-29 re-encodes every record of the versions it
+  reads to the same bytes. Not in it, because nothing has read them
+  since: loop records of 2026-07-29 to 2026-08-21, whose legs named `ask`
+  and `bid`, and v5 offers of 2026-09-18, whose requirement was replaced
+  within v5 the next day.
+- **The tests and the matching probe write v4 offers** (the review's item
+  12, its first step). Eight test files made v2 offers, with a service
+  window and a disc as fields. Where place and time are the point (the
+  time and space gates, the index's recall book) they are now `geo` and
+  `time` terms, under a catalogue that declares them handover heads;
+  where they were incidental (every disc intersected every other) they
+  are left out. A test that needs an old record reads it from the golden
+  corpus (`golden`, a fixture in `tests/conftest.py`): the v1 re-encoding
+  and the fuzzed reader's v2 seed. `scripts/perf_matching.py` finds the
+  same matches as before (552, 8,312 and 35,541 at 100, 400 and 800
+  offers a side) in about the same time. A federation test took its
+  maker's first offer for her give; under v4 ids the first is her want,
+  so it picks the give.
+- **The retirement's guards** (`tests/test_v1_v2_retired.py`, written
+  before the change and failing on the code before it, five of six): the
+  constructors refuse v1/v2 and name the terms to write; old records read
+  under their ids, pickled too, and a copy with a change is refused; a
+  maker's book of v2 offers is still folded; the corpus's v1 and v2 demo
+  triangles, which matched among themselves, match nothing, by the
+  product or by the index, nor meet a current offer; and no loop through
+  them is proposed or cleared. The golden corpus passed unchanged, and
+  `tests/fixtures/make_golden.py`, which spells out the v1/v2 records now
+  that no constructor makes them, writes the same file byte for byte.
+  Tests that made the v2 field form or matched v2 offers among themselves
+  now read the corpus or are covered by these; the index's mixed-version
+  book mixes v3 and v4.
 
 ## [0.14.5] — 2026-10-09
 
