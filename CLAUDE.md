@@ -311,10 +311,11 @@ word.
 - **P0**, the in-memory prototype: done.
 - **P1**, the Swarm book: done on one machine (books on Swarm, the
   announcement channel on Gnosis, folds as the default read path, the CLI).
-  Open: announced books folded live from a second machine, and two
-  upstream asks to ontodag (`docs/plans/cli.md` §11): coordinates for
-  `geo`, and relative times in `time(...)`. The third ask, a public store
-  opener, is in ontodag's unreleased 0.31.
+  Open, and needed before a public launch: announced books folded live
+  from a second machine, and two upstream asks to ontodag
+  (`docs/plans/cli.md` §11): coordinates for `geo`, and relative times in
+  `time(...)`. The third ask, a public store opener, is in ontodag's
+  unreleased 0.31.
 - **P2**, verifiable clearing: the contracts, the challenger, Swarm
   addressing on chain and the sealed beat are built. Open: Shutter, solver
   bonds and the spread leg, chains and netting (G4, G5), priors from data
@@ -325,8 +326,7 @@ word.
   2026-09-19; decided (review item 17), the gates are restated for what
   they still guard: the record-format freeze gates a public launch, and
   factbond's scored Phase-0 run gates selling insurance from a pool. The
-  README, ROADMAP and ARCHITECTURE say so once the decided items are
-  built; factbond's plans already do.
+  README, ROADMAP and ARCHITECTURE say so, as factbond's plans do.
 - **P4**, privacy: staged, not started.
 - **Later**: price and capacity schedules inside one offer
   (`docs/plans/P2-loop-selection.md`, open problems).
@@ -351,7 +351,14 @@ records stay readable), and `BookClearing` renamed `BookClearing` (item
 12); the
 phase gates restated for what they still guard (item 17, under "Roadmap
 (state)"). Every review item for loopmarket is decided, and the decided
-items are being built: items 5 and 10 so far.
+items are being built: items 5, 10 and 17 so far. Of the tests the
+review suggested (§7, question 23), loopmarket's half of suggestions 3 and
+9 is built: well-formed hostile records (`tests/test_hostile_records.py`),
+`watch` end to end on composed and aggregated legs (`tests/test_watch.py`)
+and the examples (`tests/test_examples.py`). Two strict expected failures
+there pin open faults: a stranger whose address sorts first displaces a
+party's notice, cure or case record in every reader's fold, and `watch`
+reports a case record from anyone.
 
 ## Conventions
 

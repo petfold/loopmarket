@@ -350,6 +350,22 @@ P2's record formats freeze — witness telemetry alone lands earlier, since
 it depends on nothing). The boundary discipline is unchanged: the core
 model keeps running with no guarantee fabric present.
 
+**Update 2026-10-10 — the gates restated (the 2026-10 review's item 17,
+Peter).** P3's mechanics went ahead of both gates on Peter's decisions
+from 2026-09-19: the escrow with factbond's contract as a resolver, cover
+and the deductible, the counterparty gate and its registers, arbitrators,
+notices and cases, reputation, door witness types and items, live on
+Gnosis at test amounts, while neither gate had passed (Phase 0 has no
+scored run; no freeze was declared, the offer record going from v4 to v7
+in September). The gates keep their owners and now guard what they still
+protect. The P2 record-format freeze gates a public launch, where other
+people's offers and real money enter the books: no new record version
+after it, with `docs/plans/P4-privacy.md` §5 as the checklist. factbond's
+scored Phase-0 run gates selling insurance from a pool, the
+clearing-attached product of the 2026-08-01 update; single-insurer cover
+between named parties on the escrow is not gated by it. factbond's
+`loopmarket-coupling.md` §5 carries the same update.
+
 ## 5. The book (registry.py)
 
 One book = one recordstore keyspace = one root reference per version:

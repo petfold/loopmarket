@@ -76,6 +76,12 @@ aggregator that cannot lie about what it folded.
 - [ ] The three upstream asks in [cli.md §11](docs/plans/cli.md):
       coordinate input for `geo`, relative time in `time(...)`, a public
       store opener — each deletes a loopmarket-only behaviour.
+- [ ] **Before a public launch** (the review's item 17, 2026-10-10): announced
+      books folded live from a second machine, and ontodag accepting
+      coordinates for `geo` and relative times in `time(...)`, the first two
+      asks above (the third, a public store opener, is in ontodag's
+      unreleased 0.31). The P2 record-format freeze gates the launch too
+      (P3, below).
 
 ## P2 — verifiable clearing
 
@@ -167,6 +173,23 @@ built 2026-09-13 to 2026-09-19 (0.5.0–0.11.0). What follows is what stands.
 - [ ] A want-side floor (the partial-fill question mirrored).
 
 ## P3 — the guarantee fabric · [plan](docs/plans/P3-guarantee-coupling.md)
+
+**Built ahead of its gates**, on Peter's decisions from 2026-09-19: the
+escrow, the counterparty gate, registers, arbitrators, notices, cases,
+reputation, witness types and items (nine modules, 1,853 lines), with their
+contracts live on Gnosis, while factbond's Phase-0 simulation and the P2
+record-format freeze, the gates the plans set, had not passed. The
+review's item 17 (Peter, 2026-10-10) restates them for what they still
+guard:
+
+- the **P2 record-format freeze gates a public launch**: no new record
+  version once other people's offers are in the books
+  ([P4-privacy.md §5](docs/plans/P4-privacy.md) is the checklist); it is
+  declared once the review's decided items have landed;
+- **factbond's scored Phase-0 run gates selling insurance from a pool**;
+  single-insurer cover between named parties on the escrow is not gated by
+  it, and the pre-registration is Peter's, made when Phase 0's answer is
+  wanted.
 
 - [ ] Witness-edge emission as derived telemetry at settlement
       re-verification; settlement-attached insurance under the indemnity

@@ -133,6 +133,19 @@ for an operator's give.
   and the name of the buyer. It now names such a give by its terms
   (`gives from(sp3) to(sp3) transport(small-item) to …`).
 
+### Documentation
+
+- **P3 went ahead of its gates, and the gates are restated** (the review's
+  item 17, decided by Peter 2026-10-10). The README, ROADMAP and
+  ARCHITECTURE record that the guarantee fabric was built on Peter's
+  decisions from 2026-09-19 (nine modules, 1,853 lines, contracts live on
+  Gnosis) while neither gate had passed, and say what the gates guard now:
+  the P2 record-format freeze gates a public launch, and factbond's scored
+  Phase-0 run gates selling insurance from a pool. They also list what P1
+  lacks before that launch: a second machine folding live books, and
+  ontodag accepting coordinates and relative times. factbond's roadmap and
+  `loopmarket-coupling.md` §5 say the same.
+
 ### Removed
 
 - **Dead code** (the review's §3.2). Nothing calls any of it: not

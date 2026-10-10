@@ -181,6 +181,36 @@ and a personal view of arbitrators from the escrow's log (`loop claim`,
 `answer`, `hold`, `rule`, `arbitrators`; live on Gnosis the same day).
 Alpha; interfaces will move.
 
+**P3 went ahead of its gates.** The guarantee fabric was built on Peter's
+decisions from 2026-09-19: the escrow, the counterparty gate, registers,
+arbitrators, notices, cases, reputation, door witness types and items,
+nine modules of 1,853 lines (`wc -l` over `escrow.py`, `gate.py`,
+`register.py`, `arbitrators.py`, `notice.py`, `case.py`, `reputation.py`,
+`witness.py` and `items.py`, 2026-10-10), with their contracts live on
+Gnosis. This page had gated P3 behind factbond's Phase-0 simulation and
+the P2 record-format freeze, and neither has passed: Phase 0 has its
+harness but no scored run, and no freeze was declared (the offer record
+went from v4 to v7 between 2026-09-14 and 09-29). The 2026-10 review's
+item 17, decided by Peter on 2026-10-10, restates the two gates for what
+they still guard:
+
+- **The P2 record-format freeze gates a public launch:** no new record
+  version once other people's offers are in the books.
+  [`P4-privacy.md`](docs/plans/P4-privacy.md) §5 is its checklist. It is
+  declared once the review's decided items have landed, since they may
+  touch the record.
+- **factbond's scored Phase-0 run gates selling insurance from a pool**
+  (the clearing-attached product, the premium feed). Single-insurer
+  cover between named parties on the escrow is not gated by it. The run
+  waits for the pre-registration, which Peter makes when Phase 0's answer
+  is wanted.
+
+Before a public launch, P1 also still lacks a second machine folding live
+books, and ontodag accepting coordinates for `geo` and relative times in
+`time(...)` ([`cli.md`](docs/plans/cli.md) §11). factbond's roadmap
+("Alignment with loopmarket") and its `loopmarket-coupling.md` §5 say the
+same.
+
 **Designed (2026-08-07):** most of what loopmarket *is* now lives as a
 decided, research-grounded plan corpus under `docs/plans/` — one document
 per work package, each with measurable gates, named open problems, and a
@@ -235,8 +265,9 @@ supported by `ontodag-coupling.md` and `catalogue-bootstrap.md`, with
 (verifiable clearing): the three P2 docs plus `proof-fabric.md`,
 *constrained* by `P4-privacy.md`'s format-freeze list and gated by
 `THREATS.md` tripwires. P3 (guarantee fabric): `P3-guarantee-coupling.md`
-plus factbond's entire corpus — gated by factbond's Phase-0 simulation
-going green *and* the P2 format freeze — and, since 2026-09-25, the
+plus factbond's entire corpus — built ahead of its gates, which now guard
+a public launch (the format freeze) and selling insurance from a pool
+(factbond's scored Phase-0 run), as above — and, since 2026-09-25, the
 credentials track: `credentials-cover-and-options.md` indexing
 `counterparty-gate.md`, `options-and-cover.md` and `items-and-ownership.md`,
 reviewed against practice in `commercial-practice-review.md`. P4 (privacy): `P4-privacy.md`,
@@ -252,8 +283,8 @@ Guarantee track: factbond `DESIGN.md` → `mechanism-design.md` →
 `P3-guarantee-coupling.md`. Market track: `adoption-and-thickness.md` →
 `catalogue-bootstrap.md` → `ontodag-coupling.md`.
 
-Order of documents is not order of construction — gates decide that; and a
-document's existence proves nothing about feasibility. The Phase-0
+Order of documents is not order of construction, and a document's
+existence proves nothing about feasibility. The Phase-0
 simulation and the named empirical gates can kill designs recorded here;
 the corpus is built so that they can.
 
