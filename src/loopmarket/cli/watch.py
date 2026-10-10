@@ -262,7 +262,10 @@ def _check_lapsed(session, fold, out, seen: list) -> bool:
 
 def _notices_in(session, fold, out, seen: list) -> bool:
     """Notices sealed to me on my gives, and cures sealed to me on my
-    notices, opened with bee_signer and reported once."""
+    notices, opened with bee_signer and reported once. Anyone may seal a
+    record to me, so one that does not open with my key, or whose plaintext
+    is not the record its kind names, is reported as unreadable and the
+    pass goes on."""
     from ..notice import read
     signer, me, news = _configured("bee_signer"), session.maker, False
     rows = []
@@ -281,26 +284,32 @@ def _notices_in(session, fold, out, seen: list) -> bool:
             continue
         seen.append(key)
         news = True
-        try:
-            rec = read(side, signer) if signer else None
-        except Exception as exc:  # noqa: BLE001
-            rec, why = None, exc.__class__.__name__
+        hint = f" — `loop cure {oid[:12]} --loop {loop[:12]}` answers it" if kind == "notice" else ""
+        if not signer:
+            text = "(sealed; set bee_signer to open)"
         else:
-            why = "sealed; set bee_signer to open"
-        if kind == "notice":
-            text = (f"cure by {_iso(rec['cure_deadline'])}, fact {rec['referred_fact'][:16]}" if rec
-                    else f"({why})")
-            print(f"notice   from {side['from']} on {oid[:12]} in loop {loop[:16]}…: {text} — "
-                  f"`loop cure {oid[:12]} --loop {loop[:12]}` answers it", file=out)
-        else:
-            text = f"at {_iso(rec['time'])}" + (f", evidence {rec['evidence_ref'][:16]}" if rec and rec['evidence_ref'] else "") \
-                if rec else f"({why})"
-            print(f"cured    by {side['from']} on {oid[:12]} in loop {loop[:16]}…: {text}", file=out)
+            try:
+                text = _sealed_text(kind, read(side, signer))
+            except Exception as exc:  # noqa: BLE001 — sealed to another key, or not a record of its kind
+                text, hint = f"cannot be read ({exc.__class__.__name__})", ""
+        who = f"notice   from {side['from']}" if kind == "notice" else f"cured    by {side['from']}"
+        print(f"{who} on {oid[:12]} in loop {loop[:16]}…: {text}{hint}", file=out)
     return news
 
 
+def _sealed_text(kind: str, rec: dict) -> str:
+    """What an opened notice or cure says; raises when its plaintext is not
+    the record its kind names."""
+    if kind == "notice":
+        return f"cure by {_iso(rec['cure_deadline'])}, fact {rec['referred_fact'][:16]}"
+    evidence = f", evidence {rec['evidence_ref'][:16]}" if rec["evidence_ref"] else ""
+    return f"at {_iso(rec['time'])}{evidence}"
+
+
 def _cases_in(session, fold, out, seen: list) -> bool:
-    """Claims, answers and rulings sealed to me, opened and reported once."""
+    """Claims, answers and rulings sealed to me, opened and reported once;
+    one that does not open with my key, or whose plaintext is not the
+    record its kind names, is reported as unreadable and the pass goes on."""
     from ..case import read
     signer, me, news = _configured("bee_signer"), session.maker, False
     for loop, oid, kind, rec in fold.cases():
@@ -311,22 +320,29 @@ def _cases_in(session, fold, out, seen: list) -> bool:
             continue
         seen.append(k)
         news = True
+        frm, where = rec.get("from"), f"on {oid[:12]} in loop {loop[:16]}…"
         try:
-            body = read(rec, signer) if signer else None
-        except Exception:  # noqa: BLE001
-            body = None
-        frm = rec.get("from")
-        if kind == "claim":
-            what = f"claims {_num(Fraction(body['amount'], 10 ** 18))}" if body else "claims (sealed; set bee_signer)"
-            hint = " — `loop answer` if I am the giver, `loop hold`/`loop rule` if I am the arbitrator"
-        elif kind == "answer":
-            what, hint = "answers the claim", ""
-        else:
-            what = (f"rules {_num(Fraction(body['to_wanter'], 10 ** 18))} to the wanter: {body['reason']}"
-                    if body else "rules (sealed; set bee_signer)")
-            hint = ""
-        print(f"case     {frm} {what} on {oid[:12]} in loop {loop[:16]}…{hint}", file=out)
+            what, hint = _case_text(kind, read(rec, signer) if signer else None)
+        except Exception as exc:  # noqa: BLE001 — sealed to another key, or not a record of its kind
+            print(f"case     {frm} {kind} {where}: cannot be read ({exc.__class__.__name__})", file=out)
+            continue
+        print(f"case     {frm} {what} {where}{hint}", file=out)
     return news
+
+
+def _case_text(kind: str, body: dict | None) -> tuple[str, str]:
+    """What a case record says, and the hint after it; `body` is None when
+    no key is set to open it. Raises when the plaintext is not the record
+    its kind names."""
+    if kind == "claim":
+        what = f"claims {_num(Fraction(body['amount'], 10 ** 18))}" if body is not None \
+            else "claims (sealed; set bee_signer)"
+        return what, " — `loop answer` if I am the giver, `loop hold`/`loop rule` if I am the arbitrator"
+    if kind == "answer":
+        return "answers the claim", ""
+    what = (f"rules {_num(Fraction(body['to_wanter'], 10 ** 18))} to the wanter: {body['reason']}"
+            if body is not None else "rules (sealed; set bee_signer)")
+    return what, ""
 
 
 def cmd_watch(args, session, out):

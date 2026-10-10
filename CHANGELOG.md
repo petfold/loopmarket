@@ -71,15 +71,28 @@ does anything different, and no record byte or id changes.
   offer, a contact card that is another key's card or a signature over an
   offer, a door response for another offer or another challenge, an issued
   statement re-keyed to another subject, a handoff sealed to someone else:
-  each reader refuses or ignores each one, with its reason. Four tests pin
-  what the readers get wrong, as strict expected failures with the reason:
-  a sealed notice or case record that does not open with my key, or whose
-  plaintext is not the record its kind names, stops `watch`, `cure`,
-  `answer` and `rule`; a notice or cure counts from whoever wrote it, and
-  `answer` seals the giver's answer to whoever a claim's plaintext names;
-  `watch` reports a case record from anyone; and a stranger whose address
-  sorts first displaces a party's notice, cure or case record in every
-  reader's fold.
+  each reader refuses or ignores each one, with its reason. They found
+  four faults (one fixed below); three tests pin the rest as strict
+  expected failures with the reason: a notice or cure counts from whoever
+  wrote it, and `answer` seals the giver's answer to whoever a claim's
+  plaintext names; `watch` reports a case record from anyone; and a
+  stranger whose address sorts first displaces a party's notice, cure or
+  case record in every reader's fold.
+
+### Fixed
+
+- **A sealed record that does not read no longer stops its reader.**
+  Anyone may seal a notice, a cure or a case record to anyone. `watch`
+  read such a record's fields outside its error handling, so one whose
+  plaintext was not the record its kind names ended the pass, and a
+  ruling whose `to_wanter` was not a number raised `TypeError` past the
+  command line; the watch daemon stopped, and stopped again on every
+  restart. `cure`, `answer` and `rule` let cryptography's `InvalidTag`
+  escape for a record sealed to another key. Now `watch` reports such a
+  record as unreadable, with the reason, and goes on; `cure` and `answer`
+  refuse with the reason; `rule` rules citing no claim, as it does when
+  the claim was made outside the book. An answer that does not open is no
+  longer reported as one.
 
 ### Removed
 

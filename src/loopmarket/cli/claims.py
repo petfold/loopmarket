@@ -34,6 +34,21 @@ def _public_key_of(fold, offer_id: str) -> bytes:
     return _public_key_for(fold, fold.get(offer_id).maker)
 
 
+def _opened(side: dict, signer: str, what: str) -> dict:
+    """A sealed notice, cure or case record opened with my key, or a
+    ValueError saying why not: anyone may seal a record to me, and one
+    sealed to another key, tampered, or not a record must not end the
+    command with a traceback."""
+    from ..notice import read
+    try:
+        rec = read(side, signer)
+    except Exception as exc:  # noqa: BLE001 — sealed to another key, or tampered
+        raise ValueError(f"{what} cannot be read with my key ({exc.__class__.__name__})") from None
+    if not isinstance(rec, dict):
+        raise ValueError(f"{what} is not a record")
+    return rec
+
+
 def _public_key_for(fold, address: str) -> bytes:
     """A key's public key, to seal to it: its contact card (`loop contact-card`),
     else a signature on any of its offers in the fold."""
@@ -147,14 +162,13 @@ def cmd_claim(args, session, out):
 
 def _claim_to_me(session, fold, loop: str, oid: str) -> dict:
     """The claim on (offer, loop) sealed to me, opened with bee_signer."""
-    from ..case import read
     signer = _configured("bee_signer")
     if not signer:
         raise ValueError("opening a case record needs my key: set bee_signer")
     me = session.maker
     for loop_id, offer_id, kind, rec in fold.cases():
         if (loop_id, offer_id, kind) == (loop, oid, "claim") and str(rec.get("to", "")).lower() == me.lower():
-            return read(rec, signer)
+            return _opened(rec, signer, f"the claim to me on {oid[:12]} in loop {loop[:16]}…")
     raise ValueError(f"no claim to me on {oid[:12]} in loop {loop[:16]}…")
 
 
@@ -327,7 +341,7 @@ def cmd_cure(args, session, out):
     naming the notice by its reference and what I did (`--evidence`, a
     reference: the refund's transaction, the corrected statement), sealed
     back to the claimant beside a commitment, written into my book."""
-    from ..notice import cure_record, read, ref, sealed
+    from ..notice import cure_record, ref, sealed
     fold, me = session.fold(), session.maker
     oid, loop = _reservation_ref(session, args.offer, args.loop)
     side = fold.notice(loop, oid)
@@ -336,7 +350,7 @@ def cmd_cure(args, session, out):
     signer = _configured("bee_signer")
     if not signer:
         raise ValueError("opening the notice needs my key: set bee_signer")
-    notice = read(side, signer)
+    notice = _opened(side, signer, f"the notice on {oid[:12]} in loop {loop[:16]}…")
     leg = _leg_with(fold, loop, oid)
     cure = cure_record(ref(notice), me, session.now, args.evidence or "")
     back, opening = sealed(cure, sender=me, recipient=notice["notifier"],

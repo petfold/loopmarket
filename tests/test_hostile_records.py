@@ -281,17 +281,15 @@ def _notice(c, kind, *, sender, to, sealed_to=None, **fields):
     c.book.commit()
 
 
-@pytest.mark.xfail(strict=True, reason="a sealed record that does not open with my key, or whose plaintext "
-                   "is not the record its kind names, stops the reader: `watch` reads a record's fields "
-                   "outside its try (a ruling whose `to_wanter`, or a cure whose `time`, is not a number "
-                   "raises TypeError past the command line), and `cure`, `answer` and `rule` let "
-                   "cryptography's InvalidTag escape")
 def test_a_sealed_record_that_does_not_read_never_stops_a_reader(cleared, monkeypatch):
     """Records sealed to the wrong key, and records sealed to the right key
     whose plaintext is not the record their kind names, each reported as
     unreadable with the reason, the pass finishing (so the next pass has
     nothing new); `cure` and `answer` refuse with the reason, and `rule`
-    rules citing no claim."""
+    rules citing no claim. (Until 2026-10-10 `watch` read a record's fields
+    outside its try, so a ruling whose `to_wanter` was not a number raised
+    TypeError past the command line, and `cure`, `answer` and `rule` let
+    cryptography's InvalidTag escape.)"""
     c = cleared
     A, B, J = c.who["amara"], c.who["bruno"], c.who["judge"]
     where = f"on {c.ride[:12]} in loop {c.loop[:16]}…"
