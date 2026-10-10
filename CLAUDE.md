@@ -124,7 +124,9 @@ documents and enter here only when their enforcing code and tests land.
   `option/` hold and `exercise/` record names present loops, and fills plus
   active holds stay within a give's quantity (checked when an option
   clears). Checked, not resolved: the loop-granularity resolver is an open
-  problem (`docs/plans/P1-federated-book.md` §3).
+  problem (`docs/plans/P1-federated-book.md` §3). Under a chain (question
+  25) the chain resolves it: the fold records rival loops over one offer
+  (`rival/` in its provenance) and excuses exactly their shared claims.
 
 The v6/v7 extensions (`docs/plans/credentials-cover-and-options.md`):
 every claim path has a clock (notice and cure, evidence, ruling,
@@ -406,7 +408,10 @@ deposit: decided as question 27 and built, step 6 takes a deposit only
 from the statement's subject or issuer and counts only what the escrow
 has free, and the clearing reserves each relied-on statement's floor per
 relying leg (`escrow.statement_slot`). Rival clearing books under a
-chain are question 25 (decided A, not built yet).
+chain were question 25, decided A and built: there `loop propose` takes
+only the makers' records of the fold, the fold records rival loops
+instead of failing U11, and `watch` seals a handoff only once a
+finalized beat recorded its loop; without a chain U11 stays.
 
 ## Conventions
 

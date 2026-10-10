@@ -25,6 +25,23 @@ solver apart from the rest of loopmarket.
 
 ### Changed
 
+- **Under a chain, the chain decides proposals too** (ontodag's review
+  item 22, question 25, decided by Peter 2026-10-10: A). `loop propose`
+  (and `outcome`) absorbed the whole fold into the proposer's clearing
+  book, so a valid loop in anyone's clearing book kept every proposer
+  off its offers, posted or not: announcing loops and never posting them
+  froze those offers. Now, with peers or a registry, my book takes only
+  the makers' records of the fold (`OfferRegistry.absorb(clearing=False)`,
+  `CLEARING_KEYSPACES`). Where a clearing contract is set, two announced
+  clearing books that each hold a valid loop over one offer are rivals,
+  not a failed fold: both loops stay, the fold records one
+  `rival/<loop>/<rival>` per rival with both owners and the offers they
+  share (`Aggregator(chain=True)`, `rival_claims`, `Session.rivals`,
+  printed by `loop fold`), and U11 excuses exactly those claims
+  (`verify_loop_atomicity(rivals=)`). And `watch` seals a handoff only
+  once a finalized beat recorded the loop (its book root pinned, its
+  offers all in the beat's fills), so no door code goes out on a pending
+  beat or a rival's fill. Without a chain U11 stays as it was.
 - **A statement's deposit is its backer's, and its floor is reserved per
   relying leg** (ontodag's review item 24, question 27, decided by Peter
   2026-10-10: A; D1). The gate's step 6 checked that a statement's

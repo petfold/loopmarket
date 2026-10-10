@@ -68,21 +68,66 @@ def cmd_handoff(args, session, out):
     return 0
 
 
+def _finalized_beats(session) -> list[tuple[str, set]]:
+    """(book root, the offers its fills took) for every finalized beat of
+    the clearing contract."""
+    from .clients import _beat_client
+    client = _beat_client(session)
+    return [(state["book_root"], {oid for oid, _taken, _cap in client.pending_fills(state["beat"])})
+            for state in client.beats() if state["finalized"]]
+
+
+def _finalized_leg(session: Session, fold: OfferRegistry, oid: str, found, beats):
+    """Under a chain: (loop id, leg, my side) for the loop a finalized beat
+    recorded taking `oid` — the book's loop for it or one of its rivals
+    (question 25) — else None. A loop is a beat's when the beat pinned the
+    loop's book root and its fills took every offer of the loop."""
+    candidates = [found[0]] + sorted(rec["rival"] for rec in session.rivals
+                                     if rec.get("loop") == found[0] and oid in rec.get("offers", ()))
+    for lid in candidates:
+        key = f"loop/{lid}"
+        if not fold.store.contains(key):
+            continue
+        rec = fold.store.get(key)
+        legs = LegRecord.of_loop(rec)
+        offers = {o for leg in legs for o in leg.offer_ids}
+        if not any(root == rec.get("book_root") and offers <= taken for root, taken in beats):
+            continue
+        for leg in legs:
+            if oid in leg.gives:
+                return lid, leg, "give"
+            if oid == leg.want:
+                return lid, leg, "want"
+    return None
+
+
 def _seal_pending(session: Session, fold: OfferRegistry, out, *, only=None) -> bool:
     """Seal every remembered text whose offer has cleared and whose
-    counterparty left a public key; returns whether anything was sealed."""
+    counterparty left a public key; returns whether anything was sealed.
+    Where a chain decides what is filled, an offer has cleared only when a
+    finalized beat recorded its loop (question 25, decided by Peter
+    2026-10-10): a fill in the book is a pending beat's, or a rival's that
+    the chain may never record, and a door code is not handed over on it."""
     from ..handoff import seal
     from ..sigs import recover_public_key
 
     pending = _read_json(_handoffs_path(), {})
     me = session.maker
     sealed = False
+    beats = None
     for oid, text in sorted(pending.items()):
         if only is not None and oid not in only:
             continue
         found = _leg_of(fold, oid)
         if found is None:
             continue
+        if fold.chain_fills is not None:
+            if beats is None:
+                beats = _finalized_beats(session)
+            found = _finalized_leg(session, fold, oid, found, beats)
+            if found is None:
+                print(f"handoff  {oid[:12]} waits for a finalized beat to record its loop", file=_err())
+                continue
         loop_id, leg, side = found
         if session.book.handoff(loop_id, oid) is not None \
                 or fold.handoff(loop_id, oid) is not None:

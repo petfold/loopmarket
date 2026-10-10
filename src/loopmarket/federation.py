@@ -42,6 +42,7 @@ address, which is what makes U8's primary layer real (P1 §1).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
 
 from recordstore import RecordStore
 
@@ -50,7 +51,7 @@ from .registry import (
     FILL, LOOP, OFFER, SIG, WITHDRAW, OfferRegistry, PartialLoopError,
     or_set_resolver,
 )
-from .schema import Offer, Statement
+from .schema import Offer, Statement, q
 
 #: Roles an announced book may carry: makers speak offers, signatures,
 #: tombstones and statements about themselves; a clearing instance speaks
@@ -93,18 +94,23 @@ class Aggregator:
     """
 
     def __init__(self, store_factory, *, aggregator_id: str = "agg-0", ontology=None,
-                 register_at=None, span=None, register_latest=None, resolver_profile=None):
+                 register_at=None, span=None, register_latest=None, resolver_profile=None,
+                 chain: bool = False):
         """`ontology` is the catalogue every clearing book's loops are
         re-checked under (review item 9): without one no loop can be, and
         none is admitted. `register_at`, `span`, `register_latest` and
         `resolver_profile` are the counterparty gate's reads, as
         `BookClearing` takes them, for loops whose legs require credentials
         or accept resolvers by property; without them such a requirement
-        fails closed here as it would at clearing (U7)."""
+        fails closed here as it would at clearing (U7). `chain`: a chain
+        decides what is filled (question 25), so two clearing books that
+        each hold a valid loop over one offer are rivals, recorded, where
+        without a chain they fail U11."""
         self._new_store = store_factory
         self.id = aggregator_id
         self._announced: dict[str, tuple[str, object]] = {}
         self.ontology = ontology
+        self.chain = chain
         self._gate_reads = dict(register_at=register_at, span=span, register_latest=register_latest,
                                 resolver_profile=resolver_profile)
 
@@ -219,9 +225,12 @@ class Aggregator:
         # with a loop and no fills did, 2026-10-09). Each book is tested on
         # its own, so which other books were announced, and how their owners
         # sort, cannot decide whether it is admitted. Two books that are each
-        # whole but claim one offer still fail U11 below, loudly: choosing
-        # between them is the loop-granularity resolver's open problem
-        # (P1-federated-book.md §3), not a rule for the fold to invent.
+        # whole but claim one offer fail U11 below, loudly, where no chain
+        # decides: choosing between them is the loop-granularity resolver's
+        # open problem (P1-federated-book.md §3), not a rule for the fold to
+        # invent. Where a chain decides (`chain`, question 25), they are
+        # rivals: both stay, each rivalry is recorded, and the chain's
+        # finalized fills say which loop took the offer.
         makers_root = merged_all(staged_root for role, _owner, staged_root
                                  in staged_roots if role != CLEARING)
         admitted = []
@@ -239,13 +248,16 @@ class Aggregator:
                     "owner": owner,
                     "reason": f"loops not whole against the makers: {exc}"})
                 continue
-            admitted.append(staged_root)
-        book_root = merged_all([makers_root, *admitted]
-                               if makers_root else admitted) or ""
+            admitted.append((owner, staged_root))
+        rivals = set()
+        if self.chain and len(admitted) > 1:
+            rivals = self._record_rivals(admitted, makers_root, blobs, store_type, provenance)
+        book_root = merged_all([makers_root, *(r for _o, r in admitted)]
+                               if makers_root else [r for _o, r in admitted]) or ""
 
         if book_root:
             folded = OfferRegistry(store_type.at(book_root, blobs))
-            folded.verify_loop_atomicity()   # U11, on every fold
+            folded.verify_loop_atomicity(rivals=rivals)   # U11, on every fold
 
         return Manifest(
             aggregator=self.id,
@@ -253,6 +265,47 @@ class Aggregator:
             provenance_root=provenance.commit() or "",
             announcement_root=announcement.commit() or "",
         )
+
+    def _record_rivals(self, admitted, makers_root, blobs, store_type, provenance) -> set:
+        """Under a chain: every offer two admitted clearing books' loops
+        claim beyond what it holds (two whole fills by different loops, a
+        whole fill beside parts, parts past its quantity) makes those loops
+        rivals. Each rivalry is recorded per loop, `rival/<loop>/<rival>`,
+        naming both owners and the offers they share; returns the claims
+        U11 then leaves to the chain, (loop, offer) pairs."""
+        makers = OfferRegistry(store_type.at(makers_root, blobs)) if makers_root else None
+        claims: dict[str, dict[str, tuple[str, Fraction | None]]] = {}
+        for owner, root in admitted:
+            for key, rec in store_type.at(root, blobs).items(FILL):
+                lid = rec.get("loop") if isinstance(rec, dict) else None
+                if not lid:
+                    continue
+                oid, _, part = key[len(FILL):].partition("/")
+                claims.setdefault(oid, {}).setdefault(lid, (owner, q(rec.get("qty", 0)) if part else None))
+        pairs: dict[tuple[str, str], dict] = {}
+        exempt = set()
+        for oid, by_loop in sorted(claims.items()):
+            if len(by_loop) < 2 or len({owner for owner, _ in by_loop.values()}) < 2:
+                continue
+            whole = [lid for lid, (_o, qty) in by_loop.items() if qty is None]
+            parts = sum((qty for _o, qty in by_loop.values() if qty is not None), Fraction(0))
+            try:
+                cap = q(makers.get(oid).thing.qty) if makers is not None else None
+            except KeyError:
+                cap = None
+            if not (len(whole) > 1 or (whole and len(by_loop) > len(whole))
+                    or (cap is not None and parts > cap)):
+                continue
+            for lid, (owner, _qty) in by_loop.items():
+                exempt.add((lid, oid))
+                for rid, (rowner, _rqty) in by_loop.items():
+                    if rid != lid and rowner != owner:
+                        rec = pairs.setdefault((lid, rid), {"loop": lid, "owner": owner, "rival": rid,
+                                                            "rival_owner": rowner, "offers": []})
+                        rec["offers"].append(oid)
+        for (lid, rid), rec in sorted(pairs.items()):
+            provenance.put(f"rival/{lid}/{rid}", rec)
+        return exempt
 
     # -- admission (the U8 fold rules) -------------------------------------------
 
@@ -525,6 +578,20 @@ class Omission:
     key: str
     announced_root: str
     proof: dict | None
+
+
+def rival_claims(provenance) -> set[tuple[str, str]]:
+    """The claims a fold under a chain left to the chain (question 25):
+    (loop id, offer id) for every loop a `rival/` record of `provenance`
+    names and every offer it shares with its rival — what
+    `OfferRegistry.verify_loop_atomicity(rivals=)` takes."""
+    out = set()
+    for _key, rec in provenance.items("rival/"):
+        if isinstance(rec, dict):
+            for oid in rec.get("offers", ()):
+                out.add((rec.get("loop", ""), oid))
+                out.add((rec.get("rival", ""), oid))
+    return out
 
 
 def audit_manifest(manifest: Manifest, blobs, *,

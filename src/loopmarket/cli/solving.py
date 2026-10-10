@@ -38,11 +38,17 @@ def cmd_propose(args, session, out):
     """Clear locally as `clearing` does and post every accepted loop as one
     beat on the clearing contract (P2, 2026-09-15): the book keeps the data,
     the chain the commitments and — after `finalize` — the fills. The
-    bee_signer key pays the bond and is the submitter."""
+    bee_signer key pays the bond and is the submitter. With peers or a
+    registry my book first takes the makers' records of the fold, never
+    another clearing's loops and fills: the chain decides what is filled,
+    so a loop someone holds and never posts keeps nobody off its offers
+    (question 25)."""
     from ..clearing import ChainClearing
     now = session.now
     if _peer_specs() or _configured("registry"):
-        session.book.absorb(session.fold())
+        # the makers' speech only: the chain decides what is filled, so a
+        # loop another clearing holds keeps nobody off its offers (question 25)
+        session.book.absorb(session.fold(), clearing=False)
         session.book.commit()
     book, ontology = session.book, session.catalogue
     client = clients._beat_client(session)
@@ -164,7 +170,7 @@ def cmd_outcome(args, session, out):
         return 2
     now = session.now
     if _peer_specs() or _configured("registry"):
-        session.book.absorb(session.fold())
+        session.book.absorb(session.fold(), clearing=False)     # the chain decides, as for propose
         session.book.commit()
     book, ontology = session.book, session.catalogue
     root, snapshot = book.snapshot()

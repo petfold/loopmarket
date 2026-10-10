@@ -56,11 +56,11 @@ def _maker_books(blobs):
     return books
 
 
-def _aggregator(blobs, aggregator_id, books, order, ontology=ONT):
+def _aggregator(blobs, aggregator_id, books, order, ontology=ONT, chain=False):
     """Every reader's fold re-checks a clearing book's loops under its
     catalogue (review item 9), so the aggregator is given the one the
     offers are matched under."""
-    agg = Aggregator(lambda: RecordStore(blobs), aggregator_id=aggregator_id, ontology=ontology)
+    agg = Aggregator(lambda: RecordStore(blobs), aggregator_id=aggregator_id, ontology=ontology, chain=chain)
     for owner in order:
         agg.announce(owner, books[owner].store)
     return agg
@@ -400,6 +400,68 @@ def test_two_valid_books_claiming_one_offer_fail_loudly(rival):
     agg.announce(rival, pair.store, role=CLEARING)
     with pytest.raises(PartialLoopError):
         agg.fold()
+
+
+@pytest.mark.parametrize("rival", ["0-rival", "zz-rival"])
+def test_under_a_chain_two_valid_books_claiming_one_offer_are_rivals(rival):
+    """Question 25 (decided by Peter 2026-10-10: A): where a chain decides
+    what is filled, the same two books are rivals, not a failure. Both
+    loops stay in the fold with their records, one `rival/` record per
+    rival names the other and both owners and the offers they share, and
+    U11 holds for everything but the rivals' claims on those offers; the
+    chain's finalized fills say which loop took them. Whichever owner sorts
+    first, the same rivals are recorded."""
+    from loopmarket import PartialLoopError
+    from loopmarket.federation import rival_claims
+    blobs = MemoryBytesStore()
+    books = {**_maker_books(blobs), "dana": _dana(blobs)}
+    triangle = _cleared(blobs, _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"]).fold().book_root,
+                        "fed-solver")
+    pair = _cleared(blobs, _aggregator(blobs, "agg", books, ["bruno", "dana"]).fold().book_root, "other-solver")
+    (t,) = [k[len("loop/"):] for k in triangle.store.keys("loop/")]
+    (p,) = [k[len("loop/"):] for k in pair.store.keys("loop/")]
+    shared = sorted(o.offer_id for o in books["bruno"].offers(now=NOW))
+    agg = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen", "dana"], chain=True)
+    agg.announce("clearing-0", triangle.store, role=CLEARING)
+    agg.announce(rival, pair.store, role=CLEARING)
+    m = agg.fold()
+    prov = RecordStore.at(m.provenance_root, blobs)
+    assert not list(prov.items("reject/"))
+    recorded = dict(prov.items("rival/"))
+    assert recorded == {
+        f"rival/{t}/{p}": {"loop": t, "owner": "clearing-0", "rival": p, "rival_owner": rival, "offers": shared},
+        f"rival/{p}/{t}": {"loop": p, "owner": rival, "rival": t, "rival_owner": "clearing-0", "offers": shared}}
+    folded = OfferRegistry(RecordStore.at(m.book_root, blobs))
+    assert folded.store.contains(f"loop/{t}") and folded.store.contains(f"loop/{p}")
+    folded.verify_loop_atomicity(rivals=rival_claims(prov))
+    with pytest.raises(PartialLoopError):
+        folded.verify_loop_atomicity()
+    # the same fold with the books announced under swapped names records the same rivals
+    other = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen", "dana"], chain=True)
+    other.announce(rival, triangle.store, role=CLEARING)
+    other.announce("clearing-0", pair.store, role=CLEARING)
+    swapped = dict(RecordStore.at(other.fold().provenance_root, blobs).items("rival/"))
+    assert {k: (v["loop"], v["rival"]) for k, v in swapped.items()} == \
+        {k: (v["loop"], v["rival"]) for k, v in recorded.items()}
+
+
+def test_under_a_chain_a_rival_never_hides_a_broken_book():
+    """A rival is a valid loop: a clearing book whose loop fails the
+    re-check is rejected under a chain as without one, and records no
+    rivalry."""
+    blobs = MemoryBytesStore()
+    books = _maker_books(blobs)
+    honest = _cleared(blobs, _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"]).fold().book_root,
+                      "fed-solver")
+    fake = RecordStore(blobs)
+    fake.put("loop/" + "cd" * 32, {"legs": [{"give": "ef" * 32, "want": "01" * 32, "qty": "1"}]})
+    fake.commit()
+    agg = _aggregator(blobs, "agg", books, ["amara", "bruno", "chen"], chain=True)
+    agg.announce("clearing-0", honest.store, role=CLEARING)
+    agg.announce("mallory", fake, role=CLEARING)
+    prov = RecordStore.at(agg.fold().provenance_root, blobs)
+    assert {k for k, _ in prov.items("reject/")} == {f"reject/mallory/loop/{'cd' * 32}"}
+    assert not list(prov.items("rival/"))
 
 
 # --------------------------------------------------------------------------- #

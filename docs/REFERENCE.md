@@ -273,7 +273,7 @@ Writing:
 | `.publish(offer) -> offer_id` | store the offer record (nothing else — there is no index in the book) |
 | `.publish_many(offers) -> [ids]` | |
 | `.withdraw(offer_id)` | monotone tombstone; survives merges; `KeyError` if the offer isn't in this book; re-publishing identical content does not un-withdraw |
-| `.absorb(other)` | re-assert another book's entire content as this writer's base; canonical addressing makes the re-commit reproduce the source root (clone verification). O(book) |
+| `.absorb(other, *, clearing=True)` | re-assert another book's entire content as this writer's base; canonical addressing makes the re-commit reproduce the source root (clone verification). O(book). `clearing=False` leaves out `CLEARING_KEYSPACES` (`fill/`, `loop/`, `option/`, `exercise/`, `item/`): under a chain a proposer takes the makers' speech alone (question 25) |
 | `.attach_signature(offer_id, sig_hex)` | store a detached signature; `ValueError` unless it recovers to the offer's maker; needs `[sig]` |
 | `.mark_filled(fills, loop_id, loop_record, extra=None)` | clearing's stroke: fills (whole, or per loop for a divisible give taken in part) + the loop record + `extra` records (holds, exercises, item claims) under one commit; **no wall clock** — a pure function of the decision |
 | `.publish_contact_card(address, sig_hex)` | `key/<address>`: a signature over sha256(`b"loopmarket contact card\n"` + address) from which anyone recovers the key's public key (`sigs.sign_contact_card`) — how a key with no signed offer, an arbitrator, is sealed to |
@@ -303,7 +303,7 @@ Reading:
 | `.available(offer_id, now=None)` | what a fill may still take: the quantity less fills and, given `now`, less active holds |
 | `.item_claims(h, maker)` / `.item_claimed(h, maker, now, *, offer_id="")` | the maker's `item/<h>/<maker>/<loop>` claims; whether one is active through another offer (I2) |
 | `.offers(*, now=None, include_filled=False)` | active offers: fills and tombstones filtered, expiry filtered when `now` given; `include_filled=True` disables all filtering (full-book scan) |
-| `.verify_loop_atomicity()` | raises `PartialLoopError` unless every `loop/` record holds all its fills and every fill points at a present loop, and every `option/`, `exercise/` and `item/` record names a present loop (U11) |
+| `.verify_loop_atomicity(rivals=())` | raises `PartialLoopError` unless every `loop/` record holds all its fills and every fill points at a present loop, and every `option/`, `exercise/` and `item/` record names a present loop (U11); `rivals`, (loop, offer) pairs a fold under a chain left to the chain (`federation.rival_claims`), are excused their claims on those offers |
 
 ### `or_set_resolver(key, base, ours, theirs)`
 Merge policy for concurrent writers: add-only presence everywhere; a
@@ -878,14 +878,15 @@ What an aggregator publishes. `book_root` is the pure fold;
 input-set commitment (completeness handle, threat T14). No derived root
 since 2026-09-12 (the `idx/` index it named is gone).
 
-### `Aggregator(store_factory, *, aggregator_id="agg-0", ontology=None, register_at=None, span=None, register_latest=None, resolver_profile=None)`
+### `Aggregator(store_factory, *, aggregator_id="agg-0", ontology=None, register_at=None, span=None, register_latest=None, resolver_profile=None, chain=False)`
 `store_factory() -> store` must return fresh writable stores over the
 **shared blob space** (all books one blob space — Swarm's, or one
 `MemoryBytesStore`). `ontology` is the catalogue a clearing book's loops
 are re-checked under (review item 9); without one no loop is admitted.
-The other four are the counterparty gate's reads, as `BookClearing` takes
+The next four are the counterparty gate's reads, as `BookClearing` takes
 them, for loops whose legs require credentials or accept resolvers by
-property.
+property. `chain`: a chain decides what is filled, so rival loops are
+recorded rather than failing U11 (below; question 25).
 
 | member | meaning |
 |---|---|
@@ -923,8 +924,16 @@ be exactly the ones clearing it writes (`LoopProposal.fills`,
 claims go with it; a record naming a loop the book does not hold is
 rejected on its own ("names a loop this book does not hold"). What is
 left must be whole (U11) against the makers alone, or the book is
-rejected whole. Two books each holding a valid loop over one offer still
-fail U11 loudly (P1-federated-book.md §3, left open).
+rejected whole. Two books each holding a valid loop over one offer fail
+U11 loudly where no chain decides (P1-federated-book.md §3, left open).
+Under a chain (`chain=True`, question 25, decided by Peter 2026-10-10)
+they are rivals: both loops stay with their records, the fold records one
+`rival/<loop>/<rival>` per rival in its provenance — `{loop, owner,
+rival, rival_owner, offers}`, the offers they claim beyond what each
+holds (two whole fills, a whole fill beside parts, parts past its
+quantity) — and U11 excuses exactly those claims (`rival_claims(provenance)
+-> {(loop, offer)}`); the chain's finalized beats say which loop took
+the offer.
 
 ### `Omission(owner, key, announced_root, proof)` — frozen
 One record an announced maker book holds at `announced_root` that is
@@ -1099,7 +1108,7 @@ its quantity (U11 raises "oversold"). Nothing else, ever: no wall clock
 | **U6** | the baseline solver is deterministic: same book, same loop, every replica |
 | **U7** | vocabulary fails closed: unknown categories never match |
 | **U9** | exact rationals in everything clearing re-verifies: quantities, amounts, rates, potentials and surplus are `Fraction`s, records spell them `n/d`, no epsilon in a gate (the solver's `-log` search may float) |
-| **U11** | no partially-filled loop survives a merge unnoticed: `verify_loop_atomicity` on every reconciled commit and every fold, raising rather than repairing — every loop holds a fill for each leg, every fill (and every `option/`, `exercise/` and `item/` record) names a present loop, and the partial fills of one give never sum past its quantity |
+| **U11** | no partially-filled loop survives a merge unnoticed: `verify_loop_atomicity` on every reconciled commit and every fold, raising rather than repairing — every loop holds a fill for each leg, every fill (and every `option/`, `exercise/` and `item/` record) names a present loop, and the partial fills of one give never sum past its quantity. Under a chain the fold records rival loops' shared claims and leaves them to the chain (question 25) |
 
 The other planned invariants of **U8–U14** (offer authenticity,
 load-bearing pins, cost-borne statistics, no protocol emissions,
@@ -1236,7 +1245,7 @@ it is set. Radii: `5km`, `500m`, bare metres.
 | | `mine` | my offers, all states |
 | | `place NAME LAT,LON,RADIUS [ADDRESS...]` | a place node under the cell containing that radius, written to odag's active store (temporary bridge; adopts the prelude there if absent); the address is settlement text on the node, shown in the block of an offer naming the place and sealed to the cleared counterparty |
 | | `handoff ID TEXT...` | what my offer's cleared counterparty may read (replaces the place text for this offer); kept in `$LOOP_HOME/handoffs`, sealed by `watch` once filled |
-| | `watch [--once]` | poll the fold every `interval`: report my fills, seal pending handoffs to the counterparty's key (from the signature on their offer), open incoming ones with `bee_signer`, and the notices, cures and case records sealed to me (a notice only from the leg's wanter and a cure only from its giver, anyone else's set aside on stderr; a record that does not open with my key, or does not read as its kind, reported as unreadable); `--once` is one pass, exit 1 when nothing new |
+| | `watch [--once]` | poll the fold every `interval`: report my fills, seal pending handoffs to the counterparty's key (from the signature on their offer; under a chain only once a finalized beat recorded the loop, question 25), open incoming ones with `bee_signer`, and the notices, cures and case records sealed to me (a notice only from the leg's wanter and a cure only from its giver, anyone else's set aside on stderr; a record that does not open with my key, or does not read as its kind, reported as unreadable); `--once` is one pass, exit 1 when nothing new |
 | | `handoffs` | every handoff sealed to me, opened (exit 1: none) |
 | | `want PART + PART... PRICE` | a composed want on one line: every part resolved, one price for the lot, published as one v4 offer — all the parts or nothing |
 | | `draft [NAME] want\|give ...` | stage one resolved offer (price optional) or part in `$LOOP_HOME/drafts` (a file, never the book; no id); re-drafting a name replaces it; numbers name the unnamed |
@@ -1254,7 +1263,7 @@ it is set. Radii: `5km`, `500m`, bare metres.
 | | `export` | every offer of my book as JSON lines of canonical records |
 | | `import [FILE]` | publish records from FILE or stdin; ids survive |
 | | `help`, `--version` | |
-| chain | `propose` | clear locally as `clearing` does and post each loop as one beat on `beat` (the contract's verdict asked first; the bee_signer key pays the bond) |
+| chain | `propose` | clear locally as `clearing` does and post each loop as one beat on `beat` (the contract's verdict asked first; the bee_signer key pays the bond); with peers or a registry my book first takes the fold's makers' records, never another clearing's loops and fills (question 25) |
 | | `beats [--open]` | every beat on the contract: submitter, root, fills, state |
 | | `challenge BEAT [LEG] [--check] [--book SPEC]` | find the record behind a beat, re-derive every leg off chain and by the verifier for free, send only what convicts (exit 2: no record anywhere) |
 | | `finalize BEAT` | after the window: fills recorded on chain; with `escrow` set, each bonded give's share reserved per fill |
@@ -1276,7 +1285,7 @@ it is set. Radii: `5km`, `500m`, bare metres.
 | | `arbitrators [--trust KEYS]` | a personal view, never a gate: the arbitrators named on escrow reservations where I or a maker I trust was a party, their rulings, who among us lost under one and chose it again with an offer posted after the loss, and the accreditation each presents |
 | | `notice OFFER --cure DURATION [--fact STATEMENT]` | as the wanter of a cleared leg: factbond's `Notice` to the giver, sealed to its key beside a commitment, in my book; the opening kept locally for a claim |
 | | `cure OFFER [--evidence REF]` | as the giver: answer the leg's wanter's notice on my give, sealed back to the wanter (a notice from anyone else is refused) |
-| discovery | `announce [--role maker\|clearing\|register]` / `announced` / `fold` | say "my book is here" on `registry` (role `maker` by default; a clearing book says `clearing`, a register `register`); the standing set; fold the announced books myself, print the root, and on stderr what the fold rejected and why (a loop of a clearing book that fails the re-check among them) |
+| discovery | `announce [--role maker\|clearing\|register]` / `announced` / `fold` | say "my book is here" on `registry` (role `maker` by default; a clearing book says `clearing`, a register `register`); the standing set; fold the announced books myself, print the root, and on stderr what the fold rejected and why (a loop of a clearing book that fails the re-check among them) and, under a chain, the rival loops the chain decides between |
 
 The escrow verbs name a reservation by its offer's id prefix and, when the
 book knows more than one loop that took from it, `--loop LOOP` (a prefix,

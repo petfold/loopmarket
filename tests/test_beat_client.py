@@ -506,3 +506,61 @@ def test_a_v5_book_posts_and_verifies(chain):
     beat = int(receipts[0].reason.split()[1])
     result = challenge_beat(client, beat, [book], cat, now=NOW)
     assert result.verifies and [v.chain for v in result.legs] == ["leg verifies"] * 2
+
+
+def test_a_loop_another_clearing_never_posts_keeps_nobody_off_its_offers(chain, tmp_path, monkeypatch):
+    """Question 25 (decided by Peter 2026-10-10: A). Someone clears the
+    farm's loop in a clearing book of their own and never posts a beat.
+    Under a chain the chain decides what is filled, so `loop propose`
+    bases my book on the makers' records in the fold, not on that book's
+    loop and fills, and posts the loop itself. Before, it absorbed the
+    whole fold, the other book's fills hid the offers, and nobody could
+    clear them while that book stood."""
+    from ontodag import __main__ as odag
+    from ontodag.prelude import apply as apply_prelude
+    from loopmarket import cli
+    w3, address, key = chain
+    monkeypatch.setenv("LOOP_HOME", str(tmp_path / "loop"))
+    monkeypatch.setenv("ONTODAG_HOME", str(tmp_path / "odag"))
+    monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'book'}")
+    monkeypatch.setenv("LOOP_CONFIRM", "off")
+    monkeypatch.setenv("LOOP_NOW", str(NOW))
+    monkeypatch.setenv("LOOP_BEAT", f"chain:test@{address}")
+    for var in ("LOOP_REGISTRY", "LOOP_PEERS"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("BEE_SIGNER", key)
+    cli._OVERRIDES.clear()
+    spec = f"rs:{tmp_path / 'cat'}"
+    cat = odag.Session(odag._normalize_spec(spec))
+    apply_prelude(cat.dag)
+    for name in ("apple", "lesson"):
+        cat.dag.put(name, [])
+    cat.save()
+    monkeypatch.setenv("LOOP_CATALOGUE", spec)
+    client = BeatClient("", address, key=key, client=w3)
+    monkeypatch.setattr(cli.clients, "_beat_client", lambda session: client)
+
+    def run(*argv):
+        import io
+        out, err = io.StringIO(), io.StringIO()
+        code = cli.dispatch(list(argv), cli.Session(), out, err)
+        return code, out.getvalue(), err.getvalue()
+
+    monkeypatch.setenv("LOOP_MAKER", "farm")
+    assert run("give", "100kg:5", "apple", "200")[0] == 0
+    assert run("want", "lesson", "85")[0] == 0
+    monkeypatch.setenv("LOOP_MAKER", "b1")
+    assert run("want", "40kg", "apple", "90")[0] == 0
+    assert run("give", "lesson", "80")[0] == 0
+    session = cli.Session()
+    foreign = cli.stores._open_book(f"rs:{tmp_path / 'foreign'}")
+    foreign.absorb(session.book)
+    foreign.commit()
+    now = session.now                                    # LOOP_NOW as the command line reads it
+    receipts = SolverAgent(foreign, session.catalogue, BookClearing(foreign, session.catalogue, clock=lambda: now),
+                           solver_id="squatter", min_surplus=0.0).step(now=now)
+    assert [r.accepted for r in receipts] == [True]
+    monkeypatch.setenv("LOOP_PEERS", f"rs:{tmp_path / 'foreign'}")
+    assert list(cli.Session().fold().store.keys("fill/"))      # the squatter's fills are in the fold
+    code, out, err = run("propose")
+    assert code == 0 and "posted beat " in out, (out, err)
