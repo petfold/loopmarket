@@ -391,11 +391,16 @@ suggestions 3, 4 and 9 is built: the golden corpus of record bytes
 (`tests/test_golden_records.py`), well-formed hostile records
 (`tests/test_hostile_records.py`), `watch` end to end on composed and
 aggregated legs (`tests/test_watch.py`) and the examples
-(`tests/test_examples.py`). Two strict expected failures there pin open
-faults: a stranger whose address sorts first displaces a party's notice,
-cure or case record in every reader's fold, and `watch` reports a case
-record from anyone; the first is ontodag's question 26, and rival clearing
-books under a chain question 25, both put to Peter.
+(`tests/test_examples.py`). The hostile-record tests found that a
+stranger whose address sorted first displaced a party's notice, cure or
+case record in every reader's fold: decided as ontodag's question 26 and
+built, each is kept under its writer's own key
+(`notice/<loop>/<offer>/<writer>`, `cure/…/<writer>`,
+`case/<loop>/<offer>/<kind>/<to>/<writer>`), the fold admits one only
+under its writer's key, readers ask for the party's, and the old keys are
+not read. One strict expected failure there still pins an open fault:
+`watch` reports a case record from anyone. Rival clearing books under a
+chain are question 25 (decided A, not built yet).
 
 ## Conventions
 

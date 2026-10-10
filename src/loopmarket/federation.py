@@ -397,7 +397,8 @@ class Aggregator:
                 staged.put(key, rec)
             elif key.startswith(CASE):
                 # a claim, an answer, a ruling: the writer's sealed speech
-                # to one recipient, in its own maker book (case.py)
+                # to one recipient, in its own maker book under its own key
+                # (case.py)
                 from .case import fault as case_fault
                 reason = "a case record outside a maker book" if role != MAKER else case_fault(owner, key, rec)
                 if reason:
@@ -421,9 +422,10 @@ class Aggregator:
                 staged.put(key, rec)
             elif key.startswith(NOTICE) or key.startswith(CURE):
                 # R6: a notice or a cure is its writer's speech between the
-                # parties, sealed; admitted in the writer's own maker book
+                # parties, sealed; admitted in the writer's own maker book,
+                # under the writer's own key
                 from .notice import fault
-                reason = "notice outside a maker book" if role != MAKER else fault(owner, rec)
+                reason = "notice outside a maker book" if role != MAKER else fault(owner, rec, key)
                 if reason:
                     reject(key, reason)
                     continue

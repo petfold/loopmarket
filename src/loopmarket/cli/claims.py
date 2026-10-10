@@ -148,8 +148,8 @@ def cmd_claim(args, session, out):
                          f"({_num(Fraction(r['amount'], 10 ** 18))})")
     fold = session.fold()
     giver = client.deposit_of(oid)["giver"]
-    side = fold.notice(loop, oid)
-    notice_ref = side["commitment"] if side is not None and str(side.get("from", "")).lower() == me.lower() else ""
+    side = fold.notice(loop, oid, me)
+    notice_ref = side["commitment"] if side is not None else ""
     record = claim_record(me, giver, oid, loop, amount, sent_at=session.now, evidence_ref=args.evidence or "",
                           notice_ref=notice_ref, text=args.text or "")
     sent = _case_to(session, fold, loop, oid, "claim", record, [r["resolver"], giver])
@@ -161,23 +161,24 @@ def cmd_claim(args, session, out):
 
 
 def _claim_to_me(session, fold, loop: str, oid: str, *, wanter: str) -> dict:
-    """The claim on (offer, loop) sealed to me, opened with bee_signer. Only
-    the reservation's wanter may claim (`loop claim` refuses anyone else),
-    so a claim someone else sealed to me is refused, never answered or
-    cited: answering it would seal the giver's answer to its writer."""
+    """The reservation's wanter's claim on (offer, loop) sealed to me,
+    opened with bee_signer. Only the wanter may claim (`loop claim` refuses
+    anyone else), so only the wanter's key is read: a claim someone else
+    sealed to me is never answered or cited (answering it would seal the
+    giver's answer to its writer)."""
     signer = _configured("bee_signer")
     if not signer:
         raise ValueError("opening a case record needs my key: set bee_signer")
     me = session.maker
-    for loop_id, offer_id, kind, rec in fold.cases():
-        if (loop_id, offer_id, kind) == (loop, oid, "claim") and str(rec.get("to", "")).lower() == me.lower():
-            what = f"the claim to me on {oid[:12]} in loop {loop[:16]}…"
-            claim = _opened(rec, signer, what)
-            frm = str(rec.get("from", ""))
-            if frm.lower() != wanter.lower() or str(claim.get("claimant", "")).lower() != wanter.lower():
-                raise ValueError(f"{what} is from {frm}, not the reservation's wanter {wanter}")
-            return claim
-    raise ValueError(f"no claim to me on {oid[:12]} in loop {loop[:16]}…")
+    rec = fold.case_record(loop, oid, "claim", me, wanter)
+    what = f"the claim to me on {oid[:12]} in loop {loop[:16]}…"
+    if rec is None:
+        raise ValueError(f"no claim to me on {oid[:12]} in loop {loop[:16]}… from the reservation's wanter {wanter}")
+    claim = _opened(rec, signer, what)
+    frm = str(rec.get("from", ""))
+    if frm.lower() != wanter.lower() or str(claim.get("claimant", "")).lower() != wanter.lower():
+        raise ValueError(f"{what} is from {frm}, not the reservation's wanter {wanter}")
+    return claim
 
 
 def cmd_answer(args, session, out):
@@ -353,11 +354,11 @@ def cmd_cure(args, session, out):
     from ..notice import cure_record, ref, sealed
     fold, me = session.fold(), session.maker
     oid, loop = _reservation_ref(session, args.offer, args.loop)
-    side = fold.notice(loop, oid)
-    if side is None or side.get("to") != me:
-        raise ValueError(f"no notice to me on {oid[:12]} in loop {loop[:16]}…")
     leg = _leg_with(fold, loop, oid)
     wanter = fold.get(leg.want).maker
+    side = fold.notice(loop, oid, wanter)            # only the leg's wanter's is read
+    if side is None or side.get("to") != me:
+        raise ValueError(f"no notice to me on {oid[:12]} in loop {loop[:16]}… from this leg's wanter {wanter}")
     if side.get("from") != wanter:
         raise ValueError(f"the notice to me on {oid[:12]} in loop {loop[:16]}… is from {side.get('from')}, "
                          f"not this leg's wanter {wanter}")

@@ -315,7 +315,7 @@ def test_a_sealed_record_that_does_not_read_never_stops_a_reader(cleared, monkey
     out = c.run.ok("rule", c.ride, "all", "--loop", c.loop, "--reason", "no show")
     assert "ruled    1 to the wanter" in out
     from loopmarket.case import read
-    assert read(c.book.case_record(c.loop, c.ride, "ruling", A), c.key["amara"])["claim_ref"] == ""
+    assert read(c.book.case_record(c.loop, c.ride, "ruling", A, J), c.key["amara"])["claim_ref"] == ""
     c.as_("amara")
     code, out, err = c.run("watch", "--once")
     assert code == 0 and f"cured    by {B} {where}: cannot be read (TypeError)" in out
@@ -325,12 +325,12 @@ def test_a_notice_cure_or_claim_counts_only_from_the_legs_party(cleared, monkeyp
     """Mallory, no party to the loop, seals a notice to Bruno on his ride,
     a cure to Amara on the same leg, and a claim to Bruno naming herself the
     claimant. A notice is the leg's wanter's and a cure its giver's, by the
-    fold's loop record; a claim is the escrow reservation's wanter's. So
-    Bruno's and Amara's `watch` set them aside on stderr with the reason,
-    `cure` refuses, and `answer` refuses rather than seal Bruno's answer to
-    Mallory; the judge's ruling cites no claim of hers. (Until 2026-10-10
-    `watch` reported her notice as one and `cure` answered it, and `answer`
-    sealed the giver's answer to whoever the claim's plaintext named.)"""
+    fold's loop record; a claim is the escrow reservation's wanter's. Each
+    is kept under its writer's own key, and a reader asks for the party's
+    (review item 23), so Bruno's and Amara's `watch` never read hers,
+    `cure` finds no notice from the wanter, and `answer` no claim from the
+    reservation's wanter, rather than seal Bruno's answer to Mallory; the
+    judge's ruling cites no claim of hers."""
     c = cleared
     M = c.who["mallory"]
     _notice(c, "notice", sender="mallory", to="bruno", notifier=c.who["amara"])   # her plaintext names Amara
@@ -340,21 +340,22 @@ def test_a_notice_cure_or_claim_counts_only_from_the_legs_party(cleared, monkeyp
     _case(c, "claim", {"claimant": M, "amount": 5}, sender="mallory", to="judge")
     c.as_("bruno")
     code, out, err = c.run("watch", "--once")
-    assert f"notice   from {M}" not in out and "not this leg's wanter" in err
+    assert f"notice   from {M}" not in out and "not this leg's wanter" not in err   # never read
     code, out, err = c.run("cure", c.ride, "--loop", c.loop)
-    assert code == 1 and "not this leg's wanter" in err
+    assert code == 1 and f"from this leg's wanter {c.who['amara']}" in err
     monkeypatch.setattr(cli.clients, "_escrow_client", lambda session: _Escrow(c, "bruno"))
     code, out, err = c.run("answer", c.ride, "--loop", c.loop, "--text", "the gate code is 4711")
-    assert code == 1 and "the reservation's wanter" in err
+    assert code == 1 and f"from the reservation's wanter {c.who['amara']}" in err
     assert not any(rec["to"].lower() == M.lower() for _, _, kind, rec in c.book.cases() if kind == "answer")
     c.as_("judge")
     monkeypatch.setattr(cli.clients, "_escrow_client", lambda session: _Escrow(c, "judge"))
     c.run.ok("rule", c.ride, "all", "--loop", c.loop, "--reason", "no show")
     from loopmarket.case import read
-    assert read(c.book.case_record(c.loop, c.ride, "ruling", c.who["amara"]), c.key["amara"])["claim_ref"] == ""
+    ruling = c.book.case_record(c.loop, c.ride, "ruling", c.who["amara"], c.who["judge"])
+    assert read(ruling, c.key["amara"])["claim_ref"] == ""
     c.as_("amara")
     code, out, err = c.run("watch", "--once")
-    assert f"cured    by {M}" not in out and "not this leg's giver" in err
+    assert f"cured    by {M}" not in out and "not this leg's giver" not in err      # never read
 
 
 @pytest.mark.xfail(strict=True, reason="`watch` reports a case record from whoever wrote it: a case's "
@@ -374,14 +375,14 @@ def test_a_case_record_counts_only_from_the_reservations_party(cleared):
     assert f"case     {M}" not in c.run("watch", "--once")[1]
 
 
-@pytest.mark.xfail(strict=True, reason="the fold keeps the first-merged value of a key two books write, and "
-                   "it merges books in owner order (or_set_resolver): a stranger whose address sorts first "
-                   "displaces a party's notice, cure or case record in every reader's fold. Keeping the "
-                   "party's needs the fold to know a leg's parties when it admits a record, or one key per "
-                   "writer")
 def test_a_strangers_record_never_displaces_a_partys():
-    """The wanter's notice and claim and the giver's cure, each displaced by
-    a record Mallory writes under the same key in her own book."""
+    """Mallory, whose address sorts before the parties', writes a notice, a
+    cure and a claim of her own on the same leg in her own book. Each is
+    kept under its writer's key (review item 23, decided by Peter
+    2026-10-10), so the wanter's notice and claim and the giver's cure are
+    each what a reader asking for the party's key gets. Until then the
+    keys named no writer and the fold, keeping the first-merged value of a
+    key, kept hers in every reader's fold."""
     from loopmarket.case import claim_record, sealed as case_sealed
     from loopmarket.notice import cure_record, notice_record, sealed
     loop, offer = "1f" * 32, "2e" * 32
@@ -413,6 +414,7 @@ def test_a_strangers_record_never_displaces_a_partys():
         book.commit()
     folded, rejected = _fold(blobs, {W: wanter, G: giver, M: mallory})
     assert not rejected                                                  # each is its writer's own speech
-    assert folded.notice(loop, offer)["from"] == W
-    assert folded.cure(loop, offer)["from"] == G
-    assert folded.case_record(loop, offer, "claim", J)["from"] == W
+    assert folded.notice(loop, offer, W)["from"] == W
+    assert folded.cure(loop, offer, G)["from"] == G
+    assert folded.case_record(loop, offer, "claim", J, W)["from"] == W
+    assert folded.notice(loop, offer, M)["from"] == M          # hers is kept, under her key, unread

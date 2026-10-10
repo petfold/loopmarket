@@ -25,6 +25,24 @@ solver apart from the rest of loopmarket.
 
 ### Changed
 
+- **A notice, a cure and a case record are kept under their writer's own
+  key** (ontodag's review item 23, question 26, decided by Peter
+  2026-10-10: one key per writer, a clean break):
+  `notice/<loop>/<offer>/<writer>`, `cure/<loop>/<offer>/<writer>` and
+  `case/<loop>/<offer>/<kind>/<to>/<writer>`. Under one key per loop and
+  offer, anyone could write a record of their own under the key a party's
+  used, and the fold, keeping the first-merged value of a key, kept the
+  stranger's in every reader's fold when the stranger's address sorted
+  first. The fold now admits such a record only under its writer's key in
+  its writer's own book, as it admits contact cards; `notice`, `cure` and
+  `case_record` take the writer, and `watch`, `cure`, `claim`, `answer` and
+  `rule` ask for the party's key (the leg's wanter's notice, its giver's
+  cure, the reservation's wanter's claim), so a stranger's record is
+  stored and never read. Records under the old keys are not read: the
+  fold rejects them with the reason. `watch` still reports a case record
+  sealed to me from anyone (a ruling's author is the escrow reservation's
+  resolver, which `watch` does not read), pinned as before by a strict
+  expected failure.
 - **The index files an older offer's bare cell under its current spelling
   when ontodag writes cells by their own name** (ontodag 0.31, its review
   question 14: in a role of geo a cell is `from(geo(u2e4x))` and a bare

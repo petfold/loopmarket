@@ -277,7 +277,7 @@ Writing:
 | `.attach_signature(offer_id, sig_hex)` | store a detached signature; `ValueError` unless it recovers to the offer's maker; needs `[sig]` |
 | `.mark_filled(fills, loop_id, loop_record, extra=None)` | clearing's stroke: fills (whole, or per loop for a divisible give taken in part) + the loop record + `extra` records (holds, exercises, item claims) under one commit; **no wall clock** — a pure function of the decision |
 | `.publish_contact_card(address, sig_hex)` | `key/<address>`: a signature over sha256(`b"loopmarket contact card\n"` + address) from which anyone recovers the key's public key (`sigs.sign_contact_card`) — how a key with no signed offer, an arbitrator, is sealed to |
-| `.write_case(loop_id, offer_id, kind, side) -> key` | a sealed claim, answer or ruling (`case.sealed`) at `case/<loop>/<offer>/<kind>/<to>`; the fold admits it only as its writer's speech |
+| `.write_case(loop_id, offer_id, kind, side) -> key` | a sealed claim, answer or ruling (`case.sealed`) at `case/<loop>/<offer>/<kind>/<to>/<writer>`; the fold admits it only as its writer's speech under its writer's key |
 | `.commit(*, reconcile=True) -> root` | land staged changes; reconciled commits three-way-merge with concurrent writers under `or_set_resolver`, then run `verify_loop_atomicity` |
 
 Reading:
@@ -290,14 +290,14 @@ Reading:
 | `.signature(offer_id) -> str | None` | |
 | `.loop_of(offer_id) -> str | None` / `.loops_of(offer_id)` | the loop that filled the offer whole; every loop with a fill on it (a divisible give taken in part) |
 | `.taken(offer_id)` / `.availability(offers, now=None)` | what the fills have taken; `{offer id: available}` for many — what the solver passes as `available=` |
-| `.contact_card(address)` / `.case_record(loop_id, offer_id, kind, to)` / `.cases()` | read the `key/` and `case/` sidecars; `cases()` yields `(loop, offer, kind, record)` |
-| `.notice(loop_id, offer_id)` / `.cure(loop_id, offer_id)` | read the notice and the cure |
+| `.contact_card(address)` / `.case_record(loop_id, offer_id, kind, to, writer)` / `.cases()` | read the `key/` and `case/` sidecars (a case record by its writer, the party a reader expects); `cases()` yields `(loop, offer, kind, record)` |
+| `.notice(loop_id, offer_id, writer)` / `.cure(loop_id, offer_id, writer)` | read one writer's notice or cure: a reader names the party it expects (the leg's wanter, its giver), so a stranger's record is never read |
 | `.exercise_records(offer_id, holder, taken, now, loop_id)` | the records an exercise writes with its fill: what it took of the holder's holds |
 | `.attach_handoff(loop_id, offer_id, record, *, fold=None)` | store a sealed handoff (`handoff.seal` + `from`/`to`) beside my *filled* offer, `handoff/<loop_id>/<offer_id>`; the fill is checked against `fold` (the clearing book) when given; `ValueError` otherwise |
 | `.handoff(loop_id, offer_id) -> dict | None`, `.handoffs()` | read the sidecars |
 | `.present(statement, presentation=None) -> statement_id` | a statement about a key, `cred/<subject>/<id>` (R2); the fold admits it only in its subject's own book |
 | `.statements(subject=None)` | `(Statement, presentation)` pairs presented here |
-| `.send_notice(loop_id, offer_id, side)` / `.send_cure(...)` | a sealed notice to the giver, `notice/<loop>/<offer>`, and the giver's cure, `cure/<loop>/<offer>` (R6, `notice.sealed`) |
+| `.send_notice(loop_id, offer_id, side)` / `.send_cure(...)` | a sealed notice to the giver, `notice/<loop>/<offer>/<writer>`, and the giver's cure, `cure/<loop>/<offer>/<writer>` (R6, `notice.sealed`) |
 | `.holds(offer_id)` | `(option loop, hold record)` pairs on an offer, key order (C2): `{option, holder, until, qty}` |
 | `.held(offer_id, now)` / `.held_by(offer_id, holder, now)` / `.exercisable(offer_id, now)` / `.hold_left(offer_id, option_loop)` | what active holds keep (a function of time: expiry needs no write); what a holder may take now (its window open); what all holders may; what exercises left of one hold |
 | `.available(offer_id, now=None)` | what a fill may still take: the quantity less fills and, given `now`, less active holds |
@@ -737,7 +737,8 @@ case, sealed like a notice to each recipient beside a salted commitment.
 | `case.answer_record(author, claim_ref, *, time, evidence_ref="", text="")` | the giver's answer, naming the claim by its reference |
 | `case.ruling_record(arbitrator, claim_ref, to_wanter, *, time, reason)` | the arbitrator's reasons; the money moves by the escrow's `resolve` |
 | `case.sealed(record, *, sender, recipient, recipient_public_key) -> (side, opening)` / `case.read(side, private_key_hex)` | seal to one recipient (the claim to the arbitrator and the giver, the answer to the arbitrator and the claimant, the ruling to both parties); open |
-| `case.key(loop_id, offer_id, kind, to)` / `case.fault(owner, key, rec)` / `KINDS` | `case/<loop>/<offer>/<kind>/<to>`; why a record is not `owner`'s speech (the fold's admission); `("claim", "answer", "ruling")` |
+| `case.key(loop_id, offer_id, kind, to, writer)` / `case.fault(owner, key, rec)` / `KINDS` | `case/<loop>/<offer>/<kind>/<to>/<writer>`; why a record is not `owner`'s speech under `owner`'s key (the fold's admission); `("claim", "answer", "ruling")` |
+| `notice.key(prefix, loop_id, offer_id, writer)` / `notice.fault(owner, rec, key=None)` | `notice/<loop>/<offer>/<writer>` (or `cure/…`); why a record is not `owner`'s speech, and with `key`, why the key is not `owner`'s to write |
 | `reputation.view(reserved, settled, deposited, *, me, trusted=(), posted=None) -> [Arbitrator]` | from the escrow's `Reserved`, `Settled` and `Deposited` events (`EscrowClient.events(name, from_block=0)`): every arbitrator named on a reservation where I or a trusted maker was a party — its legs, its rulings, and who of us lost a ruling under it and chose it again on an offer *posted* after the loss (`posted(maker, offer, loop)`); sorted by key (U6). Never a score the protocol reads |
 | `reputation.Arbitrator(key, legs, rulings, chosen_again)` | one row of the view |
 
@@ -898,7 +899,7 @@ attributed `reject/` record):
 | `fill/`, `loop/`, `option/`, `exercise/`, `item/` | **rejected** ("clearing keys in a maker book") | staged |
 | `handoff/` | only beside an offer the owner made, `from` the owner | silently skipped |
 | `cred/` | only in its subject's own book, under its own content address (R2) | silently skipped |
-| `notice/`, `cure/`, `case/` | only as the writer's sealed speech (`from` the owner, a readable sealed record and commitment) | silently skipped |
+| `notice/`, `cure/`, `case/` | only as the writer's sealed speech under the writer's own key (`from` the owner, the key's last segment the owner, a readable sealed record and commitment); a key that names no writer, the shape before 2026-10-10, is rejected | silently skipped |
 | `key/` | only the owner's own contact card, recovering to the owner | silently skipped |
 | anything else | rejected ("unknown keyspace") | silently skipped |
 
@@ -967,13 +968,13 @@ fill/<offer_id>         {"loop": <loop_id>} — pure function of the decision (a
 loop/<loop_id>          the cleared proposal record (v2 since 2026-09-29 with its register_roots)
 handoff/<loop_id>/<offer_id>  sealed settlement text, the place-owner's own filled offer (maker books; folded only for the owner)
 cred/<subject>/<statement_id>  {"statement", "presentation"} — a statement about a key, in its subject's own book (R2)
-notice/<loop_id>/<offer_id>    a sealed notice to the giver, the claimant's own speech (R6)
-cure/<loop_id>/<offer_id>      the giver's sealed cure (R6)
+notice/<loop_id>/<offer_id>/<writer>    a sealed notice to the giver, the claimant's own speech (R6)
+cure/<loop_id>/<offer_id>/<writer>      the giver's sealed cure (R6)
 option/<offer_id>/<loop_id>    {"option", "holder", "until", "qty"} — a hold written with an option's fill (C2; clearing books)
 exercise/<offer_id>/<option_loop>/<loop_id>  {"qty"} — what an exercise took of a hold (clearing books)
 item/<h>/<maker>/<loop_id>     {"offer", "until"} — a maker's claim on an item (I2; clearing books)
 key/<address>                  a contact card: the signature its public key is recovered from (the owner's own book)
-case/<loop_id>/<offer_id>/<kind>/<to>  a sealed claim, answer or ruling to one recipient (kind: claim | answer | ruling; the writer's own book)
+case/<loop_id>/<offer_id>/<kind>/<to>/<writer>  a sealed claim, answer or ruling to one recipient (kind: claim | answer | ruling; the writer's own book)
 auction/<beat>                 {"beat", "book_root", "revealed_set", "winners"} — a sealed beat's recorded outcome (the clearing's own book; not folded)
 origin/<offer_id>       {"owner", "root"}        (provenance store)
 reject/<owner>/<key>    {"owner", "reason"}      (provenance store)

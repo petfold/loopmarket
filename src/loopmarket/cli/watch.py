@@ -265,24 +265,27 @@ def _check_lapsed(session, fold, out, seen: list) -> bool:
 
 def _notices_in(session, fold, out, seen: list) -> bool:
     """Notices sealed to me on my gives, and cures sealed to me on my
-    notices, opened with bee_signer and reported once. Anyone may seal a
-    record to me, so one that does not open with my key, or whose plaintext
-    is not the record its kind names, is reported as unreadable and the
-    pass goes on; and a notice counts only from the leg's wanter, a cure
-    only from its giver (R6), so anyone else's is set aside, said once on
-    stderr."""
+    notices, opened with bee_signer and reported once. A notice counts only
+    from the leg's wanter, a cure only from its giver (R6), so only their
+    keys are read: anyone else's record is stored in its writer's book and
+    never read. One that does not open with my key, or whose plaintext is
+    not the record its kind names, is reported as unreadable and the pass
+    goes on; one whose `from` is not the key's writer (a raw write into a
+    shared book) is set aside, said once on stderr."""
     from ..notice import read
     signer, me, news = _configured("bee_signer"), session.maker, False
     rows = []
     for loop, leg, give_ in _my_legs(session, fold, "give"):
-        side = fold.notice(loop, give_.offer_id)
+        wanter = _maker_of(fold, leg.want)
+        side = fold.notice(loop, give_.offer_id, wanter) if wanter else None
         if side is not None and side.get("to") == me:
-            rows.append(("notice", loop, give_.offer_id, side, "wanter", _maker_of(fold, leg.want)))
+            rows.append(("notice", loop, give_.offer_id, side, "wanter", wanter))
     for loop, leg, _want in _my_legs(session, fold, "want"):
         for g in leg.gives:
-            side = fold.cure(loop, g)
+            giver = _maker_of(fold, g)
+            side = fold.cure(loop, g, giver) if giver else None
             if side is not None and side.get("to") == me:
-                rows.append(("cure", loop, g, side, "giver", _maker_of(fold, g)))
+                rows.append(("cure", loop, g, side, "giver", giver))
     for kind, loop, oid, side, role, party in rows:
         key = f"{kind}/{loop}/{oid}/{side['commitment']}"
         if key in seen:

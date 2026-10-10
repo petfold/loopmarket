@@ -306,7 +306,7 @@ months for a course certificate.
 - The leg becomes the giver's non-performance: bond, the wanter's point, the
   solver's repair (the wanter free to refuse).
 - **Notices:** whoever watches (an insurer, the register, the `watch` client)
-  writes `notice/<loop>/<offer>` in its own book — timestamped, provable —
+  writes `notice/<loop>/<offer>/<writer>` in its own book — timestamped, provable —
   and the counterparty's client reads it. Notification moves the risk: a
   wanter who proceeds after notice bears it; harm before notice is the
   watcher's (the insurer's, when cover exists — hansa).
