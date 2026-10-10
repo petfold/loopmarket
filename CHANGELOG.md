@@ -75,10 +75,16 @@ solver apart from the rest of loopmarket.
   `rule` ask for the party's key (the leg's wanter's notice, its giver's
   cure, the reservation's wanter's claim), so a stranger's record is
   stored and never read. Records under the old keys are not read: the
-  fold rejects them with the reason. `watch` still reports a case record
-  sealed to me from anyone (a ruling's author is the escrow reservation's
-  resolver, which `watch` does not read), pinned as before by a strict
-  expected failure.
+  fold rejects them with the reason.
+- **`watch` reports a case record only from the reservation's party**
+  (ontodag's review item 25, question 28, decided by Peter 2026-10-10: A).
+  It reported every claim, answer and ruling sealed to me, whoever wrote
+  it, so a stranger's forged ruling looked like the arbitrator's. Now it
+  reads the escrow reservation each record names: a claim counts only from
+  its wanter, an answer from its deposit's giver, a ruling from its
+  resolver, as `answer` and `rule` already required; anyone else's is set
+  aside, said once on stderr. Without an escrow none can be checked, so
+  none is reported as a claim or a ruling, and stderr says how many wait.
 - **The index files an older offer's bare cell under its current spelling
   when ontodag writes cells by their own name** (ontodag 0.31, its review
   question 14: in a role of geo a cell is `from(geo(u2e4x))` and a bare

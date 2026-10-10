@@ -401,8 +401,10 @@ built, each is kept under its writer's own key
 (`notice/<loop>/<offer>/<writer>`, `cure/…/<writer>`,
 `case/<loop>/<offer>/<kind>/<to>/<writer>`), the fold admits one only
 under its writer's key, readers ask for the party's, and the old keys are
-not read. One strict expected failure there still pins an open fault:
-`watch` reports a case record from anyone. The same tests found that a
+not read. They also found that `watch` reported a case record from
+anyone: decided as question 28 and built, it counts a claim only from
+the escrow reservation's wanter, an answer from its deposit's giver and
+a ruling from its resolver. The same tests found that a
 self-bonded statement passed every gate step naming another maker's
 deposit: decided as question 27 and built, step 6 takes a deposit only
 from the statement's subject or issuer and counts only what the escrow
