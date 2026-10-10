@@ -41,7 +41,13 @@ not what they find (below); none changes a record byte or an id.
   category as well as under its cell), since the move may answer it.
   `candidate_matches_indexed` is now the older name of `candidate_matches`.
   `candidate_matches` also takes a one-shot iterator of offers now: the
-  product read `offers` twice and so found nothing in one.
+  product read `offers` twice and so found nothing in one. Measured with
+  the engine wired (gate G3, `docs/plans/ontodag-coupling.md` §5, both
+  orders, fresh interpreters): matching alone at 200 offers a side, 3,292
+  against 305 ms on a 300-category tree and 3,285 against 400 ms on the
+  core pack; building the index costs 96 ms on the core pack, so below
+  about 40 offers a side there the product was faster (a whole step at 10
+  a side: 21 against 105 ms).
 - **The baseline solver is kept apart from the rest of loopmarket** (the
   review's item 2, decided by Peter 2026-10-10, with the engine). Nothing
   but the command line imports `loopmarket.solver` now, and a new boundary

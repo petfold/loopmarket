@@ -398,10 +398,11 @@ outside a wanted cone cannot satisfy the want, and yielded in the order
 the give × want product yields (gives in `offers` order, then wants), so
 a caller keeping the first of equal edges keeps the same one. The product
 survives only as the tests' oracle (`tests/oracle.py`,
-`tests/test_one_engine.py`). `index`: the `DimensionIndex` to ask — a
-solver builds one per step and hands it to all four searches (this,
-`aggregate_legs`, `parts_legs`, `composed_legs`) — else a fresh one; only
-the gives in `offers` are ever candidates.
+`tests/test_one_engine.py`). `index`: the `DimensionIndex` to ask, built
+over the same catalogue — a solver builds one per step and hands it to
+all four searches (this, `aggregate_legs`, `parts_legs`,
+`composed_legs`) — else a fresh one; only the gives in `offers` are ever
+candidates.
 
 ### `check_parts(want, gives, ontology, *, now, available=None, held=None, gate=None) -> Leg | None`
 The exact check of a composed want's leg (v4): give `i` serves part `i` —

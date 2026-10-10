@@ -576,8 +576,9 @@ def check_aggregate(want: Offer, gives: Iterable[Offer], quantities: Iterable,
 
 
 def _index(ontology: Ontology, index):
-    """The `DimensionIndex` a search asks: the caller's — a solver builds one
-    per step and hands it to all four searches — or a fresh one."""
+    """The `DimensionIndex` a search asks: the caller's, built over the same
+    catalogue — a solver builds one per step and hands it to all four
+    searches — or a fresh one."""
     from .dimensions import DimensionIndex      # dimensions imports this module
     return index if index is not None else DimensionIndex(ontology)
 
