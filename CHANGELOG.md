@@ -78,6 +78,17 @@ does anything different, and no record byte or id changes.
   read), and a stranger whose address sorts first displaces a party's
   notice, cure or case record in every reader's fold (the fold keeps the
   first-merged value of a key two books write, and merges in owner order).
+- **`watch` end to end on composed and aggregated legs**
+  (`tests/test_watch.py`, the review's §7 suggestion 9): makers who each
+  sign with their own key and run their own client type their offers,
+  `loop clearing` clears them, and the running daemon, which reopens the
+  book between passes while another session clears, reports the fill to
+  the courier of the delivery's composed leg and to the third of three
+  lifters on one aggregated leg; every other party's pass reports its own
+  fills with all its counterparties, and the handoffs are sealed and
+  opened. A wanter's handoff goes to the leg's first give alone (the
+  grocer, not the courier, gets the door): sealing to several givers is an
+  open protocol question, and the tests pin today's behaviour.
 
 ### Fixed
 
@@ -103,6 +114,11 @@ does anything different, and no record byte or id changes.
   names them, setting anyone else's aside on stderr; `answer` takes a claim
   only from the escrow reservation's wanter and seals the answer to that
   wanter, and `rule` cites no claim from anyone else.
+- **`watch` names what an operator's give gives.** Its fill line named the
+  thing by its bare categories, as the price memory keys it, and a
+  courier's `transport(...)` give has none, so the courier read `gives  to`
+  and the name of the buyer. It now names such a give by its terms
+  (`gives from(sp3) to(sp3) transport(small-item) to …`).
 
 ### Removed
 

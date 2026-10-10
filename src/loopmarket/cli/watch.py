@@ -160,7 +160,10 @@ def _watch_pass(session: Session, out) -> bool:
             continue
         loop_id, leg, side = found
         other = fold.get(leg.want if side == "give" else leg.gives[0])
-        thing = " ".join(_bare_key(tuple(c for p in (offer if side == "give" else other).parts for c in p.concepts)))
+        concepts = tuple(c for p in (offer if side == "give" else other).parts for c in p.concepts)
+        # the bare categories, as the price memory keys them; an operator's give
+        # (a courier's transport(...) and its ends) has none, and is named by its terms
+        thing = " ".join(_bare_key(concepts) or concepts)
         verb = f"gives {thing} to" if side == "give" else f"receives {thing} from"
         counterparties = other.maker if side == "give" else ", ".join(
             sorted({fold.get(g).maker for g in leg.gives}))
