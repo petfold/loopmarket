@@ -143,7 +143,7 @@ PYTHONPATH=src python3 examples/demo_triangle.py    # must find and clear 1 loop
 LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples/triangle.od < examples/triangle.loop
 ```
 
-- With every extra installed: about 350 tests in about 11 minutes, most of
+- With every extra installed: about 420 tests in about 12 minutes, most of
   it the chain tests on a local EVM (the `evm` extra). Without `evm` they
   skip.
 - Extras: `[test]` for development; `[sig]` signatures and sealed

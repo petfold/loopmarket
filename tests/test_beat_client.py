@@ -510,7 +510,7 @@ def test_a_v5_book_posts_and_verifies(chain):
 
 def test_a_loop_another_clearing_never_posts_keeps_nobody_off_its_offers(chain, tmp_path, monkeypatch):
     """Question 25 (decided by Peter 2026-10-10: A). Someone clears the
-    farm's loop in a clearing book of their own and never posts a beat.
+    orchard's loop in a clearing book of their own and never posts a beat.
     Under a chain the chain decides what is filled, so `loop propose`
     bases my book on the makers' records in the fold, not on that book's
     loop and fills, and posts the loop itself. Before, it absorbed the
@@ -546,10 +546,11 @@ def test_a_loop_another_clearing_never_posts_keeps_nobody_off_its_offers(chain, 
         code = cli.dispatch(list(argv), cli.Session(), out, err)
         return code, out.getvalue(), err.getvalue()
 
-    monkeypatch.setenv("LOOP_MAKER", "farm")
+    # makers of its own: the module's chain already filled the farm's offers
+    monkeypatch.setenv("LOOP_MAKER", "orchard")
     assert run("give", "100kg:5", "apple", "200")[0] == 0
     assert run("want", "lesson", "85")[0] == 0
-    monkeypatch.setenv("LOOP_MAKER", "b1")
+    monkeypatch.setenv("LOOP_MAKER", "b2")
     assert run("want", "40kg", "apple", "90")[0] == 0
     assert run("give", "lesson", "80")[0] == 0
     session = cli.Session()
