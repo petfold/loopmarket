@@ -43,7 +43,6 @@ Raises `ValueError` unless `end > start`.
 
 | member | meaning |
 |---|---|
-| `TimeWindow.from_iso(start, end)` | classmethod; ISO-8601 strings, naive = UTC |
 | `.contains(other)` | fits-within: `other` entirely inside `self` |
 | `.overlaps(other)` | non-empty intersection |
 | `.intersection(other)` | `TimeWindow` or `None` |
@@ -141,10 +140,10 @@ offer v6; every requirement the build cannot check fails closed (U7), and
 
 v7 (2026-09-29, C5): `Bond(asset, value, escrow, deductible=0)` — the
 deductible an amount of the deposit's own asset for the give's whole
-quantity (`deductible_share(taken, whole)`, `payable(taken, whole)` = the
-reserved share less it), `0 <= deductible < asset.qty`; a ruled claim pays
-at most the share less the deductible, and a deposit counts against a
-wanter's point only up to `payable`. A deductible is the only v7 form.
+quantity (`deductible_share(taken, whole)`, its share for a fill),
+`0 <= deductible < asset.qty`; a ruled claim pays at most the reserved
+share less the deductible's, and a deposit counts against a wanter's point
+only up to that. A deductible is the only v7 form.
 
 ### `Statement(subject, category, issuer, kind, as_of, until, evidence, path, paid_by, deposit=None, scheme="", issuance="", v=1)` — frozen
 
@@ -218,7 +217,6 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 
 | member | meaning |
 |---|---|
-| `.assert_edge(sub, supers, *, bond=0.0)` | assert fits-within; missing supers created under the root; `bond` recorded intent (P3) |
 | `.load({sub: [supers, ...]})` | bulk, order-independent declaration; returns self |
 | `.known(concept)` | vocabulary membership: a node, or a parametric term of a declared head the DAG can order — incl. a role term naming a place, region or floor node (ontodag #15); a name outside the head's dimension fails closed |
 | `.covers(wanted, offered)` | `offered` fits within `wanted` (equal or descendant); **False for unknown names** (U7) |
@@ -380,12 +378,13 @@ Is `mine`'s `requires` met by `other`'s declarations (v5+, admissibility
 by declaration)? The witness type and escrow kind accepted; a neutral
 point covered by the share of `other`'s deposit reserved for this fill
 (`taken` of `whole`), its category under an accepted one through the
-catalogue, at the acceptance's price, counted up to `held` and to
-`Bond.payable`; each `counterparty` credential through `gate.faults`; an
-`Accept` of resolvers through `arbitrators.admits`; a want's `legs` left to
-the composed leg when `legs_checked` (`legs_faults(want, gives, ontology,
-*, gate=None)` lists what a composed leg's operator gives fail of them).
-No requirement: `True`; a requirement nothing can check: `False` (U7).
+catalogue, at the acceptance's price, counted up to `held` and less the
+fill's share of the deductible; each `counterparty` credential through
+`gate.faults`; an `Accept` of resolvers through `arbitrators.admits`; a
+want's `legs` left to the composed leg when `legs_checked`
+(`legs_faults(want, gives, ontology, *, gate=None)` lists what a composed
+leg's operator gives fail of them). No requirement: `True`; a requirement
+nothing can check: `False` (U7).
 
 ### `candidate_matches(offers, ontology, *, now, available=None, held=None, gate=None) -> Iterator[Match]`
 The exact check over the full give × want product. The recall baseline.
@@ -626,7 +625,7 @@ defaults to the contract's `filled`. The receipt's reason names the beat
 
 | name | one line |
 |---|---|
-| `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder=(), claim_only=False, min_challenge=0, min_ruling=0, deductible=0)`, `.cancel`, `.countersign`, `.cover_of(offer_id, loop_id)` (what a cover covers, what a reservation paid its wanter), `.settle(offer_id, loop_id, to_wanter=None)` (no split: the quiet path after the claim period; a split: this party's signature, the second pays it out), `.assign(offer_id, loop_id, to)` (the wanter's), `.extend_claim(offer_id, loop_id, seconds)` (the giver's), `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.collect(token=None)` (a refused payout credited to `owed`), `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.owed(to, token=None)`, `.subject(offer_id, loop_id)` (the reservation's key, factbond's subject), `.ladder_at`, `.deposit_of`, `.events(name, from_block=0)` (the contract's `Reserved`, `Settled`, `Deposited`, … log, what `reputation.view` reads); web3 lazy (`chain` extra) |
+| `EscrowClient(rpc_url, address, *, key=None, client=None)` | `.deposit(offer_id, amount, token=None)`, `.reserve(offer_id, loop_id, wanter, resolver, amount, *, window, claim_seconds, ladder=(), claim_only=False, min_challenge=0, min_ruling=0, deductible=0)`, `.cancel`, `.countersign`, `.cover_of(offer_id, loop_id)` (what a cover covers, what a reservation paid its wanter), `.settle(offer_id, loop_id, to_wanter=None)` (no split: the quiet path after the claim period; a split: this party's signature, the second pays it out), `.assign(offer_id, loop_id, to)` (the wanter's), `.extend_claim(offer_id, loop_id, seconds)` (the giver's), `.hold`, `.resolve(offer_id, loop_id, to_wanter)`, `.collect(token=None)` (a refused payout credited to `owed`), `.notice`, `.withdraw`; reads `.held`, `.free`, `.reservation`, `.owed(to, token=None)`, `.subject(offer_id, loop_id)` (the reservation's key, factbond's subject), `.deposit_of`, `.events(name, from_block=0)` (the contract's `Reserved`, `Settled`, `Deposited`, … log, what `reputation.view` reads); web3 lazy (`chain` extra) |
 | `to_wei(qty, decimals=18)` / `floor_wei` | an exact quantity as the asset's smallest unit — refused when not representable (U9) / rounded down (the ladder) |
 | `held_units(client)` | offer id → what the escrow holds, in the asset's unit: the `escrow_held` the agent and the clearing take |
 | `reservations_for(proposal, *, escrow, resolver, claim_seconds, now, span=None, decimals=18, claim_only=None, min_challenge=0, min_ruling=0)` | pure: one reservation per give whose bond names `escrow` — the share in smallest units, the wanter's key, the give's `arbitrator` or `resolver` (never a party, and one the want's `resolvers` admit), the want's `time(...)` term as the window (through `span`), the claim period per leg (the want's `claim_period`, else `claim_seconds`, never past the give's `claim_max`), the ladder converted at the wanter's acceptance price; `claim_only` for cover (`cover_predicate`) |
@@ -718,7 +717,6 @@ A register's own recordstore keyspace — `status/<id>`, `revoked/<id>`
 | function | meaning |
 |---|---|
 | `named_registers(offers) -> set[str]` | the trust roots the offers' requirements name: what a proposal must pin |
-| `newest_reader(pointer_for, blobs)` | the gate's `latest` over registers' feed tips: `pointer_for(register id)` → its feed pointer |
 
 ## 8h. `loopmarket.items` — item identity (I1–I2, 2026-09-29)
 
@@ -753,7 +751,6 @@ refused.
 |---|---|
 | `.find_loops(*, now=None) -> (book_root, [Loop \| Circulation])` | snapshot → offers (the chain's fills and the escrow's holdings subtracted) → matches → every simple cycle (`enumerate_cycles`) plus the composed legs → `selection.pack` |
 | `.step(*, now=None) -> [Receipt]` | find, then propose each loop (pinning the snapshot root and `ontology.root`); appends to `.receipts` |
-| `.run(*, interval_s=5.0, max_steps=None)` | poll loop for live operation |
 
 `registers` (register id → `Register`), `span`, `register_latest` and
 `resolver_profile` build the `CounterpartyGate` over each snapshot, and
@@ -1172,7 +1169,7 @@ it is set. Radii: `5km`, `500m`, bare metres.
 | | `mine` | my offers, all states |
 | | `place NAME LAT,LON,RADIUS [ADDRESS...]` | a place node under the cell containing that radius, written to odag's active store (temporary bridge; adopts the prelude there if absent); the address is settlement text on the node, shown in the block of an offer naming the place and sealed to the cleared counterparty |
 | | `handoff ID TEXT...` | what my offer's cleared counterparty may read (replaces the place text for this offer); kept in `$LOOP_HOME/handoffs`, sealed by `watch` once filled |
-| | `watch [--once]` | poll the fold every `interval`: report my fills, seal pending handoffs to the counterparty's key (from the signature on their offer), open incoming ones with `bee_signer`; `--once` is one pass, exit 1 when nothing new |
+| | `watch [--once]` | poll the fold every `interval`: report my fills, seal pending handoffs to the counterparty's key (from the signature on their offer), open incoming ones with `bee_signer`, and the notices, cures and case records sealed to me (a notice only from the leg's wanter and a cure only from its giver, anyone else's set aside on stderr; a record that does not open with my key, or does not read as its kind, reported as unreadable); `--once` is one pass, exit 1 when nothing new |
 | | `handoffs` | every handoff sealed to me, opened (exit 1: none) |
 | | `want PART + PART... PRICE` | a composed want on one line: every part resolved, one price for the lot, published as one v4 offer — all the parts or nothing |
 | | `draft [NAME] want\|give ...` | stage one resolved offer (price optional) or part in `$LOOP_HOME/drafts` (a file, never the book; no id); re-drafting a name replaces it; numbers name the unnamed |
@@ -1206,12 +1203,12 @@ it is set. Radii: `5km`, `500m`, bare metres.
 | | `register issue SUBJECT CATEGORY --until T --evidence HASH --paid-by subject\|relier [--kind K] [--path ROOT]... [--deposit OFFER@ESCROW] [--scheme HASH]` | run a register in this session's book (`-f SPEC`, announced with `announce --role register`): issue a statement, its record printed for the subject; `revoke`/`suspend`/`reinstate STATEMENT`, `accredit ISSUER CATEGORY --until T`, `transfer ITEM KEY` (a title register's holder, I4), `heartbeat`, `status` — each write heartbeats and commits a root naming its predecessor |
 | | `contact-card` | write my contact card into my book, so anyone may seal to me (a claim to me as arbitrator, a notice when I have no signed offer) |
 | | `claim OFFER AMOUNT [--evidence R] [--text T]` | as a reservation's wanter, when its resolver is one named arbitrator (a key): the claim — `all`, `N%`, `NxDAI` or on my scale — sealed to the arbitrator and the giver |
-| | `answer OFFER [--evidence R] [--text T]` | as the giver: answer the claim, sealed to the arbitrator and the claimant |
+| | `answer OFFER [--evidence R] [--text T]` | as the giver: answer the claim of the reservation's wanter, sealed to the arbitrator and the wanter (a claim anyone else sealed to me is refused, never answered) |
 | | `hold OFFER` / `rule OFFER AMOUNT --reason TEXT` | as the arbitrator: the escrow's `hold` (the timeout stops), and the final ruling — the escrow pays it less any deductible, the reasons sealed to both parties |
 | | `cases` | the claims, answers and rulings involving me |
 | | `arbitrators [--trust KEYS]` | a personal view, never a gate: the arbitrators named on escrow reservations where I or a maker I trust was a party, their rulings, who among us lost under one and chose it again with an offer posted after the loss, and the accreditation each presents |
 | | `notice OFFER --cure DURATION [--fact STATEMENT]` | as the wanter of a cleared leg: factbond's `Notice` to the giver, sealed to its key beside a commitment, in my book; the opening kept locally for a claim |
-| | `cure OFFER [--evidence REF]` | as the giver: answer a notice on my give, sealed back to the claimant |
+| | `cure OFFER [--evidence REF]` | as the giver: answer the leg's wanter's notice on my give, sealed back to the wanter (a notice from anyone else is refused) |
 | discovery | `announce [--role maker\|clearing\|register]` / `announced` / `fold` | say "my book is here" on `registry` (role `maker` by default; a clearing book says `clearing`, a register `register`); the standing set; fold the announced books myself, print the root, and on stderr what the fold rejected and why (a loop of a clearing book that fails the re-check among them) |
 
 The escrow verbs name a reservation by its offer's id prefix and, when the

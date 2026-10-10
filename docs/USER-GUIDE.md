@@ -638,8 +638,10 @@ cite in `~/.loopmarket/notices/`; `--fact STATEMENT` names a statement the
 giver presented, the give itself otherwise. The cure period is yours to
 state. The giver's `loop watch` opens it (`notice   from …: cure by …`), and
 `loop cure OFFER [--evidence REF]` answers, sealed back; your `watch`
-reports the cure. A cured matter leaves nothing readable in any book. An
-arbitrator may refuse a claim the giver had no chance to cure.
+reports the cure. A notice counts only from the leg's wanter and a cure
+only from its giver: anyone may write one into their own book, and `watch`
+sets a stranger's aside. A cured matter leaves nothing readable in any
+book. An arbitrator may refuse a claim the giver had no chance to cure.
 
 **A case before the arbitrator** runs through the book, sealed the same
 way. The arbitrator writes its contact card once (`loop contact-card`: a
@@ -647,7 +649,9 @@ card that carries nothing but its public key, signed), so it can be reached
 without an offer of its own. The wanter claims (`loop claim OFFER 40%
 --evidence REF --text "never came"`): the claim goes sealed to the
 arbitrator and to the giver, who sees it in `watch` and answers (`loop
-answer OFFER --text …`), sealed to the arbitrator and the claimant. The
+answer OFFER --text …`), sealed to the arbitrator and the claimant — the
+reservation's wanter, the only one who may claim; `answer` refuses a
+claim anyone else sealed to the giver rather than send them the answer. The
 arbitrator holds the reservation (`loop hold OFFER`, the quiet timeout
 stops) and rules (`loop rule OFFER 0.004xDAI --reason "came late: half"`):
 final; the escrow pays the ruling less any deductible and returns the

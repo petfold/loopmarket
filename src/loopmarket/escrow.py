@@ -414,9 +414,6 @@ class EscrowClient:
         `Assertions`) names in a claim about this fill."""
         return self.contract().functions.key(offer_key(offer_id), offer_key(loop_id)).call()
 
-    def ladder_at(self, offer_id: str, loop_id: str, lead: int) -> int:
-        return self.contract().functions.ladderAt(offer_key(offer_id), offer_key(loop_id), int(lead)).call()
-
     def deposit_of(self, offer_id: str) -> dict:
         giver, token, amount, released = self.contract().functions.deposits(offer_key(offer_id)).call()
         return {"giver": giver, "token": token, "amount": amount, "released": released}

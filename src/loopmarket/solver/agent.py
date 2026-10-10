@@ -211,11 +211,3 @@ class SolverAgent:
             receipts.append(receipt)
         self.receipts.extend(receipts)
         return receipts
-
-    def run(self, *, interval_s: float = 5.0, max_steps: int | None = None) -> None:
-        """Poll loop for long-running operation against a live book."""
-        steps = 0
-        while max_steps is None or steps < max_steps:
-            self.step()
-            steps += 1
-            _time.sleep(interval_s)

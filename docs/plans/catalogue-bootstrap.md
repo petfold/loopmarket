@@ -125,10 +125,10 @@ with an economic upgrade path (decided 2026-08):
   *before the first dispute* — the Croatian Wikipedia capture (2011–2020,
   ~10 admins) was diagnosed as missing constitutional constraints on
   administrators, a rules-about-rulers failure (TeBlunthuis et al., CSCW
-  2024). With P3 the gate becomes economic: `assert_edge(sub, supers,
-  bond=)` already carries the argument, and a factbond bond is the
-  economic form of Wikidata's property-creator right — anyone may assert,
-  but assertion has a price and a dispute path (§6).
+  2024). With P3 the gate becomes economic: a bond on an assertion (since
+  2026-09-25 a coverage give, `counterparty-gate.md` §1) is the economic
+  form of Wikidata's property-creator right — anyone may assert, but
+  assertion has a price and a dispute path (§6).
 - **Offers stay permissionless.** An offer is an instance, not schema; its
   spam floor is postage and fees (`P1-federated-book.md` §8, THREATS.md
   T2), never an admissions committee. The importer and any LLM authoring

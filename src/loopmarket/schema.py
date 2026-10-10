@@ -37,7 +37,6 @@ withdrawn.
 from __future__ import annotations
 
 import hashlib
-import json
 import math
 import re
 import time as _time
@@ -46,6 +45,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from fractions import Fraction
 from typing import Any
+
+from recordstore import canonical_bytes as _canonical_bytes
 
 
 # ------------------------------------------------------------------- numbers
@@ -96,14 +97,6 @@ def rat(x) -> str:
     f = q(x)
     return str(f.numerator) if f.denominator == 1 else f"{f.numerator}/{f.denominator}"
 
-try:  # canonical encoding shared with the persistence layer when available
-    from recordstore import canonical_bytes as _canonical_bytes
-except Exception:  # pragma: no cover - fallback keeps the core dependency-light
-    def _canonical_bytes(value: Any) -> bytes:
-        return json.dumps(
-            value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-        ).encode("utf-8")
-
 
 # --------------------------------------------------------------------------- time
 
@@ -122,16 +115,6 @@ class TimeWindow:
     def __post_init__(self) -> None:
         if self.end is not None and self.end <= self.start:
             raise ValueError("TimeWindow end must be after start")
-
-    @classmethod
-    def from_iso(cls, start: str, end: str | None = None) -> "TimeWindow":
-        def _parse(s: str) -> int:
-            dt = datetime.fromisoformat(s)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return int(dt.timestamp())
-
-        return cls(_parse(start), None if end is None else _parse(end))
 
     @property
     def open_ended(self) -> bool:
@@ -372,7 +355,7 @@ class Bond:
     claim pays what it is, at most the reservation, less the deductible.
     Like the deposit it is for the give's whole quantity, and a fill takes
     its share. A deposit counts against a wanter's neutral point only up to
-    what it can pay (`payable`)."""
+    what a claim on the fill can pay: its share less the deductible's."""
 
     asset: Thing
     value: Fraction = Fraction(0)
@@ -397,10 +380,6 @@ class Bond:
         """The deductible's share for a fill, in proportion as the deposit's."""
         whole = q(whole)
         return self.deductible if whole <= 0 else self.deductible * q(taken) / whole
-
-    def payable(self, taken, whole) -> Fraction:
-        """The most a ruled claim on this fill's reservation can pay."""
-        return self.reserved(taken, whole) - self.deductible_share(taken, whole)
 
     def to_record(self, v: int = 5) -> dict[str, Any]:
         rec = {"asset": self.asset.to_record(v), "value": rat(self.value), "escrow": self.escrow}

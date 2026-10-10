@@ -9,13 +9,17 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
-The 2026-10 review's items 10, 11, 4, 9 and 12 (ontodag's
+The 2026-10 review's items 10, 11, 4, 9, 12 and 17 (ontodag's
 `docs/plans/REVIEW_2026-10.md` §8): the command line split by area, with
 a `Reads` object and a `LegRecord` type; durations in ontodag's units;
 offers of another ontodag major refused; every loop of a clearing book
-re-checked by the fold; and v1/v2 offers retired, made and matched no
-more, their records read as before. No record byte or id changes, which
-a golden corpus now pins.
+re-checked by the fold; v1/v2 offers retired, made and matched no more,
+their records read as before; and the phase gates restated. No record
+byte or id changes, which a golden corpus now pins. Beside them, the
+tests the review suggested (§7) found faults, fixed below: what `watch`,
+`cure`, `answer` and `rule` do with a sealed record they cannot read or
+that comes from someone who is not the leg's party, and `watch`'s fill
+line for an operator's give.
 
 ### Changed
 
@@ -155,6 +159,33 @@ a golden corpus now pins.
   records the merges touch (64 books: within 2 × records × log2 64, where
   the old fold touched 4,158 against a bound of 1,536) and checks the
   fold of clean books is the union of their records.
+- **A sealed record that does not read no longer stops its reader.**
+  Anyone may seal a notice, a cure or a case record to anyone. `watch`
+  read such a record's fields outside its error handling, so one whose
+  plaintext was not the record its kind names ended the pass, and a
+  ruling whose `to_wanter` was not a number raised `TypeError` past the
+  command line; the watch daemon stopped, and stopped again on every
+  restart. `cure`, `answer` and `rule` let cryptography's `InvalidTag`
+  escape for a record sealed to another key. Now `watch` reports such a
+  record as unreadable, with the reason, and goes on; `cure` and `answer`
+  refuse with the reason; `rule` rules citing no claim, as it does when
+  the claim was made outside the book. An answer that does not open is no
+  longer reported as one.
+- **A notice, a cure or a claim counts only from the leg's party.** The
+  fold admits a notice or a cure as its writer's speech, whoever the writer
+  is, and `watch` reported a stranger's notice on my give as a notice, with
+  `loop cure` to answer it. `answer` sealed the giver's answer, its
+  evidence and its text, to whoever the claim's plaintext named as
+  claimant. Now `watch` and `cure` take a notice only from the leg's
+  wanter and `watch` a cure only from its giver, as the fold's loop record
+  names them, setting anyone else's aside on stderr; `answer` takes a claim
+  only from the escrow reservation's wanter and seals the answer to that
+  wanter, and `rule` cites no claim from anyone else.
+- **`watch` names what an operator's give gives.** Its fill line named the
+  thing by its bare categories, as the price memory keys it, and a
+  courier's `transport(...)` give has none, so the courier read `gives  to`
+  and the name of the buyer. It now names such a give by its terms
+  (`gives from(sp3) to(sp3) transport(small-item) to …`).
 
 ### Removed
 
@@ -179,6 +210,33 @@ a golden corpus now pins.
   an old record's `where`. And an option whose underlying is a retired
   offer is refused by the gate (`option_fault`): it would clear a hold
   that no exercise could ever take.
+- **Dead code** (the review's §3.2). Nothing calls any of it: not
+  loopmarket, its tests, examples or scripts, nor circulator, factbond,
+  categorio or ontodag-fs. `TimeWindow.from_iso`; `Bond.payable` (`meets`
+  computes the payable share itself, from what the escrow holds);
+  `Ontology.assert_edge`, whose `bond` argument was never enforced (bonded
+  assertions became coverage gives on 2026-09-25); `register.newest_reader`
+  (the command line reads every register at its head);
+  `EscrowClient.ladder_at` (the contract's `ladderAt` stays: `cancel` reads
+  it); `SolverAgent.run`; and the two fallback copies of `canonical_bytes`
+  in `schema` and `auction`. Those ran only if recordstore, a base
+  dependency, failed to import, and differed from it: neither refused NaN,
+  and the auction's escaped every non-ASCII character, so a bundle whose
+  loop has a maker named `Čeh` would have been sealed as other bytes than
+  the canonical ones.
+
+### Documentation
+
+- **P3 went ahead of its gates, and the gates are restated** (the review's
+  item 17, decided by Peter 2026-10-10). The README, ROADMAP and
+  ARCHITECTURE record that the guarantee fabric was built on Peter's
+  decisions from 2026-09-19 (nine modules, 1,853 lines, contracts live on
+  Gnosis) while neither gate had passed, and say what the gates guard now:
+  the P2 record-format freeze gates a public launch, and factbond's scored
+  Phase-0 run gates selling insurance from a pool. They also list what P1
+  lacks before that launch: a second machine folding live books, and
+  ontodag accepting coordinates and relative times. factbond's roadmap and
+  `loopmarket-coupling.md` §5 say the same.
 
 ### Tests
 
@@ -232,6 +290,41 @@ a golden corpus now pins.
   Tests that made the v2 field form or matched v2 offers among themselves
   now read the corpus or are covered by these; the index's mixed-version
   book mixes v3 and v4.
+- **Hostile records that are well formed** (`tests/test_hostile_records.py`,
+  the review's §7 suggestion 3): throwaway keys, valid signatures over the
+  wrong content, and payloads sealed for another party. A maker's genuine
+  signature replayed beside an offer forged in its name, a forgery signed
+  by the forger, an own offer carrying its maker's signature over another
+  offer, a contact card that is another key's card or a signature over an
+  offer, a door response for another offer or another challenge, an issued
+  statement re-keyed to another subject, a handoff sealed to someone else:
+  each reader refuses or ignores each one, with its reason. They found
+  four faults (two fixed below); two tests pin the rest as strict expected
+  failures with the reason: `watch` reports a case record from anyone (a
+  case's parties are the escrow reservation's, which `watch` does not
+  read), and a stranger whose address sorts first displaces a party's
+  notice, cure or case record in every reader's fold (the fold keeps the
+  first-merged value of a key two books write, and merges in owner order).
+- **`watch` end to end on composed and aggregated legs**
+  (`tests/test_watch.py`, the review's §7 suggestion 9): makers who each
+  sign with their own key and run their own client type their offers,
+  `loop clearing` clears them, and the running daemon, which reopens the
+  book between passes while another session clears, reports the fill to
+  the courier of the delivery's composed leg and to the third of three
+  lifters on one aggregated leg; every other party's pass reports its own
+  fills with all its counterparties, and the handoffs are sealed and
+  opened. A wanter's handoff goes to the leg's first give alone (the
+  grocer, not the courier, gets the door): sealing to several givers is an
+  open protocol question, and the tests pin today's behaviour.
+- **The examples run with the suite, so in CI** (`tests/test_examples.py`,
+  the review's §7 suggestion 9): `examples/demo_federation.py`, with
+  ontodag's core pack, in memory, and `examples/delivery.loop` fed to
+  `python -m loopmarket`, each in a subprocess from this checkout's source,
+  with no Bee node or key in its environment, and their output checked
+  for what each example claims: byte-identical manifests, the censoring
+  aggregator convicted by two absence proofs, the forgery refused, one
+  loop cleared and none on a second pass; the grocer's box and the
+  courier's run cleared as one composed leg, at 104.08%.
 
 ## [0.14.5] — 2026-10-09
 

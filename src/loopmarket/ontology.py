@@ -75,10 +75,6 @@ Offers pin the catalogue version they were written against
 `RecordStore` gives every committed catalogue state a canonical root
 reference, so "the semantic ground cannot move under a committed loop" is a
 string comparison. `Ontology.root` exposes it.
-
-Bonded catalogue assertions (staking money on "X fits within Y") are roadmap
-P3 — the `assert_edge` signature carries the bond argument already so call
-sites don't churn.
 """
 
 from __future__ import annotations
@@ -127,19 +123,6 @@ class Ontology:
         self.dag = dag if dag is not None else OntoDAG()
 
     # -- building -------------------------------------------------------------
-
-    def assert_edge(self, sub: str, supers: Iterable[str], *, bond: float = 0.0) -> None:
-        """Assert `sub` fits within every category in `supers`.
-
-        Missing supercategories are created under the root first, so
-        ontologies can be declared top-down in one pass. `bond` is recorded
-        intent (P3): assertions will carry stakes scaled to their centrality.
-        """
-        del bond  # carried for API stability; not yet enforced (roadmap P3)
-        for s in supers:
-            if s not in self.dag.nodes:
-                self.dag.put(s, [])
-        self.dag.put(sub, list(supers))
 
     def load(self, edges: dict[str, list[str]]) -> "Ontology":
         """Bulk declaration: {sub: [supers...]}, order-independent."""
