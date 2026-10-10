@@ -11,6 +11,7 @@ import pytest
 from loopmarket import Bond, Reads, SolverAgent, Statement, Thing, give
 from loopmarket.escrow import reservations_for, statement_slot, to_wei
 
+from test_escrow import _HAVE_EVM
 from test_gate import ATTESTER, CHAMBER, D, JUDGE, NOW, P, SPANS, T, V, WINDOW, World, _cat
 
 M, KOVAC = "0x" + "e1" * 20, D          # Mallory, and Dr Kovač, the dentist of the World
@@ -133,14 +134,12 @@ def test_the_slot_is_one_per_loop_leg_and_statement():
     assert len(slots) == 4 and all(len(s) == 64 for s in slots)
 
 
+@pytest.mark.skipif(not _HAVE_EVM, reason="needs the evm extra: pip install 'loopmarket[evm]'")
 def test_the_escrow_takes_the_share_and_the_floor_and_frees_neither_twice(chain):
     """On a local EVM: Kovač deposits his 500, and the clearing reserves
     what `reservations_for` lists — his fill's share, 50, under the loop,
     and the patient's floor, 20, under its slot. Both stand, for their own
     wanter, and 430 is left free: what the next leg's step 6 reads."""
-    from test_escrow import _HAVE_EVM
-    if not _HAVE_EVM:
-        pytest.skip("needs the evm extra")
     from web3 import Web3
     w3, escrow, _coin, clearing = chain
     w = World()
