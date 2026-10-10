@@ -454,9 +454,9 @@ def test_place_under_a_pinned_rs_catalogue_gets_its_cell_edge(env, tmp_path,
                                                              monkeypatch):
     """rs: catalogue with the prelude: the place hangs under its geo cell
     and the metadata survives the commit; offers pin the root."""
-    from ontodag import __main__ as odag
+    import ontodag
     spec = f"rs:{tmp_path / 'cat'}"
-    session = odag.Session(odag._normalize_spec(spec))
+    session = ontodag.open(spec)
     apply_prelude(session.dag)
     for name, parents in CATALOGUE.items():
         for p in parents:
@@ -549,12 +549,17 @@ def test_role_terms_carry_the_name_and_match_by_the_graph(
     assert rec["gives"]["concepts"] == ["from(my_home)", "my_home", "ride"]
     # a want anywhere in the parent cell matches by the graph's order
     monkeypatch.setenv("LOOP_MAKER", "bruno")
-    run.ok("want", "ride", f"from({cell[:2]})", "my_home", "6")
+    run.ok("want", "ride", f"from(geo({cell[:2]}))", "my_home", "6")
     code, out, err = run("matches")
     assert code == 0 and "amara gives" in out and "bruno" in out
-    # a literal value that is not a name passes through unchanged...
-    assert f"from({cell[:3]})" in run.ok("want", "ride", f"from({cell[:3]})",
-                                         "my_home", "6")
+    # a cell written by its own name passes through unchanged...
+    assert f"from(geo({cell[:3]}))" in run.ok("want", "ride", f"from(geo({cell[:3]}))",
+                                              "my_home", "6")
+    # ...a bare word that is no place is refused, naming both ways out
+    # (ontodag 0.31: in a role of geo a bare word is a place)...
+    code, out, err = run("want", "ride", f"from({cell[:3]})", "my_home", "6")
+    assert code == 1 and "no place the catalogue" in err \
+        and f"from(geo({cell[:3]}))" in err
     # ...an undeclared role head is an unknown category (U7)...
     code, out, err = run("want", "ride", "via(my_home)", "my_home", "6")
     assert code == 1 and "unknown category: via(my_home)" in err
@@ -563,8 +568,14 @@ def test_role_terms_carry_the_name_and_match_by_the_graph(
     code, out, err = run("want", "ride", "from(ride)", "my_home", "6")
     assert code == 1 and "names a category outside the 'geo' dimension" in err
     # `offers` filters through the same order
-    assert len(run.ok("offers", f"from({cell[:2]})", "--raw").splitlines()) == 3
+    assert len(run.ok("offers", f"from(geo({cell[:2]}))", "--raw").splitlines()) == 3
     assert run.ok("offers", "from(zzzz)", "--raw") == ""
+    # coordinates in a role become the cell by its own name, and a cell is
+    # a geohash: `london` is none
+    assert "from(geo(" in run.ok("want", "ride", "from(46.05,14.50,5km)",
+                                 "my_home", "6")
+    code, out, err = run("want", "ride", "from(geo(london))", "my_home", "6")
+    assert code == 1 and "geohash" in err
 
 
 def test_regions_and_floors_are_names_in_role_terms(env, tmp_path, monkeypatch):
@@ -832,9 +843,9 @@ def test_drafts_named_numbered_canonical_and_never_in_the_book(stage):
     stage.ok("draft", "ride", "want", *RIDE)
     stage.ok("draft", "want", "hamlet", "5")                # unnamed, priced
     listing = stage.ok("drafts")
-    assert f"ride  want from({home}) geo({home}) person time(" in listing
+    assert f"ride  want from(geo({home})) geo({home}) person time(" in listing
     assert "   typed ride want transport person from(home) to(venue)" in listing
-    assert f"   note  from(home) → from({home})" in listing   # a private place
+    assert f"   note  from(home) → from(geo({home}))" in listing   # a private place
     assert re.search(r"^3  want geo\(.*\) hamlet 5$", listing, re.M)  # price last
     assert stage.ok("mine", "--raw") == "" and stage.ok("offers", "--raw") == ""
     assert os.path.exists(os.path.join(os.environ["LOOP_HOME"], "drafts"))
@@ -968,7 +979,7 @@ def test_offer_line_is_pythons_offer_literal(loop):
 
 
 def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, monkeypatch):
-    """`give transport(small-item mass(..8kg)) from(u2e4) to(u2e4)`: the
+    """`give transport(small-item mass(..8kg)) from(geo(u2e4)) to(geo(u2e4))`: the
     line splits on spaces, the tokens rejoin while a parenthesis is open,
     the constituents are stored sorted (one offer id, U2), and the wanter
     who names the bicycle matches the courier who names the class — the
@@ -983,18 +994,18 @@ def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, m
                       ("piano", [])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "city.od"))
     run = Runner()
-    out = run.ok("give", "transport(small-item", "mass(..8000g))", "from(u2e4)", "to(u2e4)", "5")
+    out = run.ok("give", "transport(small-item", "mass(..8000g))", "from(geo(u2e4))", "to(geo(u2e4))", "5")
     assert "transport(mass(..8kg) small-item)" in out   # the catalogue's spelling, constituents included
     code, out, err = run("give", "transport(small-item", "5")
     assert code == 1 and "unbalanced" in err
-    code, out, err = run("give", "transport(unicorn)", "from(u2e4)", "to(u2e4)", "5")
+    code, out, err = run("give", "transport(unicorn)", "from(geo(u2e4))", "to(geo(u2e4))", "5")
     assert code == 1 and "'unicorn' is neither a category" in err   # ontodag's reason; fails closed, U7
     monkeypatch.setenv("LOOP_MAKER", "bruno")
-    run.ok("want", "transport(bicycle mass(5kg))", "from(u2e4x)", "to(u2e4y)", "6")
+    run.ok("want", "transport(bicycle mass(5kg))", "from(geo(u2e4x))", "to(geo(u2e4y))", "6")
     out = run.ok("matches")
-    assert "amara gives from(u2e4) to(u2e4) transport(mass(..8kg) small-item) to bruno" in out
+    assert "amara gives from(geo(u2e4)) to(geo(u2e4)) transport(mass(..8kg) small-item) to bruno" in out
     monkeypatch.setenv("LOOP_MAKER", "chen")
-    run.ok("want", "transport(piano)", "from(u2e4x)", "to(u2e4y)", "6")
+    run.ok("want", "transport(piano)", "from(geo(u2e4x))", "to(geo(u2e4y))", "6")
     assert "chen" not in run.ok("matches")                  # the courier takes no pianos
 
 

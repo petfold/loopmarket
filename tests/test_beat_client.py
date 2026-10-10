@@ -251,7 +251,7 @@ def test_the_cli_posts_lists_challenges_and_finalizes(chain, tmp_path, monkeypat
     lists it; `challenge 1` finds the loop record in my own book (the
     clearing book, no registry set), re-derives, asks the contract, sends
     nothing on a sound beat; after the window `finalize 1` records the fills."""
-    from ontodag import __main__ as odag
+    import ontodag
     from ontodag.prelude import apply as apply_prelude
     from loopmarket import cli
     w3, address, key = chain
@@ -266,7 +266,7 @@ def test_the_cli_posts_lists_challenges_and_finalizes(chain, tmp_path, monkeypat
     monkeypatch.setenv("BEE_SIGNER", key)              # sending a challenge needs a key
     cli._OVERRIDES.clear()
     spec = f"rs:{tmp_path / 'cat'}"
-    cat = odag.Session(odag._normalize_spec(spec))
+    cat = ontodag.open(spec)
     apply_prelude(cat.dag)
     for name in ("apple", "lesson"):
         cat.dag.put(name, [])
@@ -315,7 +315,7 @@ def test_finalize_reports_a_beat_cancelled_by_a_race(chain, tmp_path, monkeypatc
     `finalize` records the fills; the second finds the offers taken, the
     contract cancels it and returns the bond, and the CLI says so — it
     neither claims the fills nor reserves anything behind them (exit 1)."""
-    from ontodag import __main__ as odag
+    import ontodag
     from ontodag.prelude import apply as apply_prelude
     from loopmarket import cli
     w3, address, key = chain
@@ -330,7 +330,7 @@ def test_finalize_reports_a_beat_cancelled_by_a_race(chain, tmp_path, monkeypatc
     monkeypatch.setenv("BEE_SIGNER", key)
     cli._OVERRIDES.clear()
     spec = f"rs:{tmp_path / 'cat'}"
-    cat = odag.Session(odag._normalize_spec(spec))
+    cat = ontodag.open(spec)
     apply_prelude(cat.dag)
     for name in ("apple", "lesson"):
         cat.dag.put(name, [])

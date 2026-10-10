@@ -16,6 +16,8 @@ import os
 import sys
 from collections import namedtuple
 
+from ontodag import settings as _odag_settings
+
 
 _Setting = namedtuple("_Setting", "env default flag help secret odag",
                       defaults=(False, None))
@@ -267,47 +269,28 @@ def _home_dir() -> str:
 
 
 def _odag_home_dir() -> str:
-    return os.environ.get("ONTODAG_HOME") or os.path.join(
-        os.path.expanduser("~"), ".ontodag")
+    return _odag_settings.home_dir()
 
 
 def _config_path() -> str:
     return os.path.join(_home_dir(), "config")
 
 
-def _read_kv(path: str) -> dict[str, str]:
-    """odag's config format: `key = value` lines, `#` comments."""
-    cfg: dict[str, str] = {}
-    if not os.path.exists(path):
-        return cfg
-    with open(path, encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, value = line.partition("=")
-            cfg[key.strip()] = value.strip()
-    return cfg
-
+# The config file's format, reader and owner-only writer are odag's own
+# (`ontodag.settings`, ontodag 0.31: the review's item 10, the settings
+# half); loopmarket keeps only its table and its two-file precedence.
 
 def _read_config() -> dict[str, str]:
-    return _read_kv(_config_path())
+    return _odag_settings.read_config(_config_path())
 
 
 def _read_odag_config() -> dict[str, str]:
-    return _read_kv(os.path.join(_odag_home_dir(), "config"))
+    return _odag_settings.read_config()
 
 
 def _write_config(cfg: dict[str, str]) -> None:
-    """Owner-readable only: the file can hold `bee_signer` (odag's reasoning
-    and its explicit chmod, which also repairs a file written before)."""
-    os.makedirs(_home_dir(), mode=0o700, exist_ok=True)
-    path = _config_path()
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        for key in sorted(cfg):
-            fh.write(f"{key} = {cfg[key]}\n")
-    os.chmod(path, 0o600)
+    """Owner-readable only: the file can hold `bee_signer`."""
+    _odag_settings.write_config(cfg, _config_path())
 
 
 def _configured(key: str, flag=None) -> str:

@@ -323,7 +323,7 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
             elif "," in c and c.count(",") == 2:
                 lat, lon, radius = parse_coords(c)
                 head = _handover_base(ontology, _dims.KIND_PREFIX, c)
-                term = f"{head}({cell_for_coords(lat, lon, radius)})"
+                term = ontology.cell_term(head, cell_for_coords(lat, lon, radius))
             elif _looks_like_time(c):
                 w = window(c, session.now)
                 end = "" if w.end is None else _iso(w.end - 1)
@@ -355,10 +355,23 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
                     f"value to publish in its place — `loop place {param} "
                     f"LAT,LON,RADIUS` gives a place its cell; a region or a "
                     f"floor must be in the catalogue to be named in an offer")
-            term = f"{head}({value})"
+            term = ontology.cell_term(head, value) if kind == _dims.KIND_PREFIX \
+                else f"{head}({value})"
         elif kind == _dims.KIND_PREFIX and "," in param:
             lat, lon, radius = parse_coords(param)
-            term = f"{head}({cell_for_coords(lat, lon, radius)})"
+            term = ontology.cell_term(head, cell_for_coords(lat, lon, radius))
+        elif kind == _dims.KIND_PREFIX and "(" not in param \
+                and ontology.is_geo_role(head):
+            # ontodag 0.31 (its review question 14): in a role of geo a bare
+            # word names a place, and a cell is written by its own name.
+            # Before, `from(sydney)` was read as a cell in southern Turkey.
+            hint = (f", or, for the geohash cell {param!r}, write "
+                    f"{head}({_dims.GEO_HEAD}({param}))"
+                    if _dims.GEOHASH_RE.match(param) else "")
+            raise ValueError(
+                f"{c}: {param!r} is no place the catalogue or your names "
+                f"know — `loop place {param} LAT,LON,RADIUS` files it under "
+                f"its cell{hint}")
         elif kind == _dims.KIND_CALENDAR and not ontology.known(c):
             w = window(param, session.now)
             end = "" if w.end is None else _iso(w.end - 1)
@@ -370,6 +383,13 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
         if term != c:
             notes.append(f"{c} → {term}")
             c = term
+        cell = _dims.cell_value(c) if kind == _dims.KIND_PREFIX else None
+        if cell is not None and not _dims.GEOHASH_RE.match(cell):
+            raise ValueError(
+                f"{c}: a geo cell is a geohash, written with digits and the "
+                f"lowercase letters other than a, i, l and o, and {cell!r} is "
+                f"none — a named place is filed under its cell: `loop place "
+                f"{cell} LAT,LON,RADIUS`")
         if not ontology.known(c):
             try:                        # ontodag's own reason, when it has one
                 dag.is_below(c, c)

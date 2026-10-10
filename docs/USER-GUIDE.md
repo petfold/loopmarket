@@ -254,15 +254,21 @@ Things to notice:
 
   ```console
   $ loop want ride 'from(home)' 'time(today..+7d)' 5
-  want     from(u24) geo(u24) ride time(2026-10-01T00:00:00Z..2026-10-08T05:59:59Z)
+  want     from(geo(u24)) geo(u24) ride time(2026-10-01T00:00:00Z..2026-10-08T05:59:59Z)
   ...
-    note     from(home) → from(u24)
+    note     from(home) → from(geo(u24))
     note     time(today..+7d) → time(2026-10-01T00:00:00Z..2026-10-08T05:59:59Z)
   publish? [y/N] n
   ```
 
-  `home` hangs under its geo cell, so the published term is `from(u24)` —
-  public vocabulary — and the approval block says so. Your private name
+  `home` hangs under its geo cell, so the published term is
+  `from(geo(u24))`, the cell by its own name — public vocabulary — and the
+  approval block says so. In a role of `geo` a bare word is a *place*: type
+  a cell there by its name, `from(geo(u24))`, or as coordinates,
+  `from(46.05,14.50,5km)`; a bare word that is neither a place the
+  catalogue knows nor one of your own (`from(sydney)`, `from(ljubljna)`) is
+  refused, naming both ways out, where before it was read as a cell
+  (`sydney` is spelled with geohash letters and lies in southern Turkey). Your private name
   never leaves your machine; its value does. (`home` was declared as 5 km
   around a point that lies near a cell edge, so its cell is the coarser
   one containing the whole radius: a cell is what the offer *says*.)
@@ -1224,7 +1230,7 @@ $ loop place venue 46.051,14.506,200m
 $ loop draft ticket want theatre-ticket hamlet 'time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)' venue
 ticket  want geo(u24mfp) hamlet theatre-ticket time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)
 $ loop draft ride want ride 'from(home)' 'to(venue)' 'time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z)'
-ride  want from(u24) geo(u24) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(u24mfp)
+ride  want from(geo(u24)) geo(u24) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(geo(u24mfp))
 $ loop draft evening ticket + ride       # compose: the same + as on a one-line want
 $ loop drafts                             # canonical lines; what you typed as notes beneath
 $ loop offer evening 60                   # the draft becomes an offer, one price for the lot
@@ -1232,7 +1238,7 @@ want     hamlet theatre-ticket + ride
   maker    amara
   part 1   geo(u24mfp) hamlet theatre-ticket time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)
            quantity 1 unit — 1, indivisible
-  part 2   from(u24) geo(u24) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(u24mfp)
+  part 2   from(geo(u24)) geo(u24) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(geo(u24mfp))
            quantity 1 unit — 1, indivisible
   price    60 (the lot, on amara's scale; split across the parts at clearing)
   ...

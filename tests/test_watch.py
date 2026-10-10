@@ -105,7 +105,7 @@ def test_the_courier_of_a_composed_leg_hears_of_its_fill_from_the_daemon(env, tm
     run.ok("give", "piano-lesson", at_door, "4")
     run.ok("give", "piano-lesson", at_door, "4")
     run = town.as_("courier")
-    ride = run.ok("give", "transport(small-item)", "from(sp3)", "to(sp3)", "2").strip().splitlines()[-1]
+    ride = run.ok("give", "transport(small-item)", "from(geo(sp3))", "to(geo(sp3))", "2").strip().splitlines()[-1]
     run.ok("want", "piano-lesson", "geo(sp3)", "5")
     run = town.as_("mechanic")
     run.ok("give", "bicycle-repair", "geo(sp3)", "5")
@@ -120,7 +120,7 @@ def test_the_courier_of_a_composed_leg_hears_of_its_fill_from_the_daemon(env, tm
     assert first == ""                                                  # nothing cleared yet
     assert second.count("filled   ") == 2
     assert f"filled   {ride[:12]} in loop" in second
-    assert f"{C} gives from(sp3) to(sp3) transport(small-item) to {B}" in second
+    assert f"{C} gives from(geo(sp3)) to(geo(sp3)) transport(small-item) to {B}" in second
     assert f"{C} receives piano-lesson from {B}" in second
     book = town.book()
     leg = next(l for l in book.loop_legs(book.loop_of(box)) if l.want == box)

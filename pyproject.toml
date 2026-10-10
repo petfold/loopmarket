@@ -25,7 +25,8 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "ontodag>=0.30.6",        # catalogue: subsumption, dimensions, is_below, role heads
+    "ontodag>=0.31.0",        # catalogue: subsumption, dimensions, is_below, role heads;
+                              # 0.31: cells in roles of geo by their own name, ontodag.open
                               # taking nodes, overlaps, get(items_only=) (issues #14/#15/#16,
                               # 0.25.0); prelude v4 (mass, not weight); the CLI leans on
                               # odag's store backends, prelude and surface;
