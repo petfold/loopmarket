@@ -134,3 +134,26 @@ def test_a_book_of_old_offers_clears_nothing(golden):
     loop = Loop((Match(amara, chen_w), Match(chen, bruno_w), Match(bruno, amara_w)))
     receipt = clearing.submit(LoopProposal(loop, book.store.root, ont.root, "t", now))
     assert not receipt.accepted and "re-verification" in receipt.reason
+
+
+def test_an_option_on_an_old_offer_clears_nowhere(golden):
+    """A v6 option whose underlying is a v1/v2 give would clear a hold on an
+    offer nothing matches any more, a hold no exercise could ever take: the
+    gate refuses it with the retirement's reason (closing what the
+    retirement left open, item 12)."""
+    from recordstore import MemoryBytesStore, RecordStore
+    from loopmarket.gate import CounterpartyGate
+    from loopmarket.schema import GIVE, Offer
+    old = next(o for o in (Offer.from_record(r) for k, r in sorted(golden.items())
+                           if k.startswith("offer/") and r["v"] == 2)
+               if o.kind == GIVE)
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    book.publish(old)
+    option = give(old.maker, Thing(("option(x)",), old.thing.qty, old.thing.unit), 5,
+                  valid=old.valid, nonce=99, underlying=old.offer_id,
+                  exercise=TimeWindow(old.valid.start + 1, old.valid.start + 2))
+    book.publish(option)
+    book.commit()
+    gate = CounterpartyGate.over(book, {}, now=old.valid.start)
+    assert gate.option_fault(option) == \
+        "the underlying is a retired v1/v2 offer: read, never matched"

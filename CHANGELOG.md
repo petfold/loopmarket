@@ -176,7 +176,9 @@ a golden corpus now pins.
   Gone with them: `GeoDisc.contains`, `GeoDisc.intersects`, `haversine_m`
   and the float tolerance in the disc gates, and the `service` and
   `where` parameters of `give` and `want`. `GeoDisc` stays, the type of
-  an old record's `where`.
+  an old record's `where`. And an option whose underlying is a retired
+  offer is refused by the gate (`option_fault`): it would clear a hold
+  that no exercise could ever take.
 
 ### Tests
 

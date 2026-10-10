@@ -119,9 +119,10 @@ class CounterpartyGate:
 
     def option_fault(self, option: Offer) -> str:
         """Why an option give cannot clear now, or "" (§3.4): its underlying
-        is in the book, made by the option's own writer, not withdrawn,
-        valid through the exercise window, in the option's unit, and has the
-        held quantity free after fills and active holds."""
+        is in the book, made by the option's own writer, not withdrawn, not
+        a retired v1/v2 offer, valid through the exercise window, in the
+        option's unit, and has the held quantity free after fills and
+        active holds."""
         p = self.offer(option.underlying)
         if p is None:
             return "option on an offer not in the book"
@@ -131,6 +132,10 @@ class CounterpartyGate:
             return "the underlying is withdrawn"
         if p.kind != GIVE:
             return "an option holds a give: its underlying is a want"
+        if p.v < 3:
+            # nothing matches a retired offer, so no exercise could take
+            # the hold this option would write (item 12)
+            return "the underlying is a retired v1/v2 offer: read, never matched"
         if not p.valid.contains(option.exercise):
             return "the underlying is not valid through the exercise window"
         if option.thing.unit != p.thing.unit:
