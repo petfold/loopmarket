@@ -754,6 +754,17 @@ is believed (settlement re-derives). `run()` polls a live book. Multiple
 agents against one book are safe by construction: first valid proposal
 wins, the rest are rejected on the `fill/` check.
 
+**Kept apart (the 2026-10 review's item 2, decided by Peter 2026-10-10).**
+Solvers should be separate, some hopefully outside loopmarket entirely and
+run by others; so the baseline is built like any outside solver would be,
+against the same public interfaces (names in `loopmarket.__all__` or
+documented in the reference manual, by their absolute paths), and nothing
+in loopmarket but the command line imports it. The clearing, the beat and
+the auction never load it: the auction's outcome takes the reserve bid
+from its caller, who computes it with `solver.baseline_proposals`, and
+`loopmarket.SolverAgent` is loaded on first use. Boundary B3 tests both
+rules.
+
 ## 10. What is deliberately absent
 
 Bonds/oracles/arbitrators (carried, unenforced — P3; the mechanism design

@@ -13,7 +13,10 @@ pinning one book root. After the beat closes anyone derives the outcome:
   1. every revealed loop is re-derived against the beat's snapshot with
      the clearing checklist (U3) — the solver is not trusted here either;
   2. the deterministic baseline's loops on the same snapshot enter as the
-     reserve bid (§8: a ring never wins with less than the free solution);
+     reserve bid (§8: a ring never wins with less than the free solution),
+     handed in by whoever derives the outcome
+     (`loopmarket.solver.baseline_proposals`): the clearing side never
+     runs a solver (the 2026-10 review's item 2);
   3. the fairness filter (§5, CIP-67 generalized to cycles): an offer's
      reference outcome is the best gain any candidate through it offers —
      the baseline's included — and a loop giving some member less than its
@@ -237,7 +240,9 @@ def outcome(beat: int, revealed, snapshot: OfferRegistry, ontology, *, now: int,
     """Derive a closed beat's outcome from `revealed` ([(solver, bytes)]) over
     the beat's snapshot: rebuild and re-derive every loop (U3, the chain's
     fills subtracted when `reads.chain_fills` answers them; `chain_fills=`
-    is its older spelling), add the baseline's loops as the reserve bid,
+    is its older spelling), add the baseline's loops as the reserve bid
+    (`baseline`, the proposals `loopmarket.solver.baseline_proposals`
+    computes on the same snapshot; they are re-derived like any other),
     filter, select."""
     root = snapshot.store.root
     clearing = BookClearing(snapshot, ontology, min_surplus=min_surplus, clock=lambda: now,
@@ -275,18 +280,6 @@ def outcome(beat: int, revealed, snapshot: OfferRegistry, ontology, *, now: int,
     survivors, dropped = fairness_filter(list(unique.values()), capacity)
     winners = select(survivors, capacity)
     return Outcome(beat, root, revealed_set_hash(revealed), winners, rejected, dropped, len(unique))
-
-
-def baseline_proposals(snapshot: OfferRegistry, ontology, *, now: int, solver="baseline",
-                       min_surplus=0, chain_fills=None, reads: Reads | None = None) -> list[LoopProposal]:
-    """The deterministic baseline's loops on the snapshot — the reserve bid
-    every replica can compute (U6) — past what the chain has filled
-    (`reads.chain_fills`, or its older spelling `chain_fills=`)."""
-    from .solver.agent import SolverAgent
-    agent = SolverAgent(snapshot, ontology, clearing=None, solver_id=solver, min_surplus=min_surplus,
-                        reads=reads_of(reads, chain_fills=chain_fills))
-    root, loops = agent.find_loops(now=now)
-    return [LoopProposal(loop, root, ontology.root, solver, now) for loop in loops]
 
 
 # --------------------------------------------------------------------------- #

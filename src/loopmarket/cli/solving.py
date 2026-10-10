@@ -11,7 +11,7 @@ from ..clearing import BookClearing
 from ..reads import Reads
 from ..registry import LegRecord
 from ..schema import q
-from ..solver.agent import SolverAgent
+from ..solver import SolverAgent, baseline_proposals
 from . import clients
 from .clients import _chain_fills, _clearing_reads, _escrow_held, _gate_reads, _reads, _sealed_client
 from .render import _leg_line, _print_loop
@@ -154,7 +154,7 @@ def cmd_outcome(args, session, out):
     the fairness filter, deterministic selection. The beat's snapshot is
     this session's fold. Exit 0 with winners, 1 with none, 2 when the beat
     is still open."""
-    from ..auction import CLOSED, PHASES, baseline_proposals, outcome
+    from ..auction import CLOSED, PHASES, outcome
     from ..clearing import ChainClearing
     sealed = _sealed_client(session)
     beat = int(args.beat) if args.beat is not None else max(sealed.current() - 1, 0)

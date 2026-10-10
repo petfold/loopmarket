@@ -42,6 +42,21 @@ not what they find (below); none changes a record byte or an id.
   `candidate_matches_indexed` is now the older name of `candidate_matches`.
   `candidate_matches` also takes a one-shot iterator of offers now: the
   product read `offers` twice and so found nothing in one.
+- **The baseline solver is kept apart from the rest of loopmarket** (the
+  review's item 2, decided by Peter 2026-10-10, with the engine). Nothing
+  but the command line imports `loopmarket.solver` now, and a new boundary
+  test, B3, holds it so: `import loopmarket` no longer loads the solver
+  (`from loopmarket import SolverAgent` still works, loading it on first
+  use), and no module of the clearing side imports it, even inside a
+  function. `auction.baseline_proposals`, which the auction's module
+  imported the solver for, is `loopmarket.solver.baseline_proposals`;
+  `auction.outcome` takes the reserve bid from its caller as before
+  (`baseline=`). The solver imports only names `loopmarket.__all__`
+  exports or the reference manual documents, by absolute path, as an
+  outside solver would; the manual now documents the four it used
+  without them: `matching.independence_faults`, `selection.item_of`,
+  `reads.NO_READS` and `reads.authorities` (with `Reads` and `reads_of`,
+  in a new section), and `Thing.exhausted`.
 - **Durations and relative times are ontodag's** (the review's item 11,
   decided by Peter 2026-10-10). `loop` reads a duration (`valid(...)`,
   the duration settings, `--until`, `extend-claim`, `notice --cure`,

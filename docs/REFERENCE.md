@@ -84,7 +84,9 @@ apples out of a thousand, `25` for 25 kg sacks; `divisible` is the v1–v3
 field and a shorthand (`True` is `step=0`, `False` `step=qty`) and is
 derived from `step`. `min` is the give-side floor, the least one fill may
 take (0: none), a multiple of `step`. `.takes(qty)` is the matching rule:
-within `qty`, not below `min`, a positive multiple of `step`. Raises
+within `qty`, not below `min`, a positive multiple of `step`;
+`.exhausted(available)` says what is left is too little for any fill
+(nothing, below the floor, or under one step). Raises
 `ValueError` on empty concepts, non-positive qty, a step or floor outside
 `[0, qty]`, a floor off the step, or `divisible` disagreeing with `step`.
 `.to_record(v)`: v1–v3 `{"concepts","qty","unit","divisible"}` with the
@@ -455,7 +457,24 @@ a wanted term some operator's output coordinate lies under (a place filed
 under a category as well as under its cell) is left out of that want's
 query, since the move may answer it.
 
+### `independence_faults(legs, ontology, *, head="inspect") -> list[str]`
+Inspector independence (E2): an inspection give — an operator give under
+the catalogue's `inspect` — is admissible only if its giver is no party
+to a leg of the loop naming an item the inspected thing names, its own
+leg included. What clearing refuses a loop for, and what the baseline
+solver drops a circulation for before proposing it; `[]` when the
+catalogue has no `inspect`.
+
 ---
+
+## 5b. `loopmarket.reads` — what a check reads beyond the offers
+
+| name | meaning |
+|---|---|
+| `Reads(available=None, held=None, gate=None, chain_fills=None, escrow_held=None)` | frozen; what fills have left of an offer (`OfferRegistry.availability`), what the escrow holds behind a deposit, the counterparty gate (§8f), the chain's fills (`BeatClient.filled`) and the escrow's holdings asked one offer at a time (`escrow.held_units`); an absent field asks nothing beyond the book. `.replace(**changes)` |
+| `NO_READS` | `Reads()`: the checks see the offers and the catalogue alone |
+| `reads_of(reads=None, *, available=None, held=None, gate=None, chain_fills=None, escrow_held=None) -> Reads` | `reads` with the reads passed as keywords folded in, the spelling every public check also takes; a read given both ways is a `TypeError` unless it is the same object |
+| `authorities(reads=None, *, chain_fills=None, escrow_held=None, taker) -> Reads` | the reads a solver or a clearing is constructed with: the chain's fills and the escrow's holdings, by either spelling; `available`, `held` and a gate, which each pass derives from its snapshot, are refused with a `TypeError` naming `taker` |
 
 ## 6. `loopmarket.dimensions` — the candidate engine
 
@@ -635,7 +654,7 @@ defaults to the contract's `filled`. The receipt's reason names the beat
 | name | one line |
 |---|---|
 | `bundle_bytes(proposals)` / `seal(bytes, salt)` | a proposal is a bundle of loop records pinning one root; sealed as keccak(bytes ‖ salt) |
-| `outcome(beat, revealed, snapshot, ontology, *, now, chain_fills=None, baseline=...)` | re-derive every revealed loop (U3), add the baseline's loops as the reserve bid, the fairness filter, select the set worth most under the offers' capacities (`selection.pack`), ties by loop_id then bundle hash |
+| `outcome(beat, revealed, snapshot, ontology, *, now, chain_fills=None, baseline=...)` | re-derive every revealed loop (U3), add the baseline's loops as the reserve bid (`baseline`: what `loopmarket.solver.baseline_proposals` finds on the same snapshot, computed by the caller and re-derived like any other — the clearing side never runs a solver, B3), the fairness filter, select the set worth most under the offers' capacities (`selection.pack`), ties by loop_id then bundle hash |
 | `SealedBeatClient` / `MemorySealedBeat` (`open_sealed(spec)`) | commit, reveal, read a beat's phase and reveals, record the outcome; `SealedBeat.sol` |
 
 ## 8d. `loopmarket.selection` — loop selection (P2, 2026-09-18)
@@ -644,6 +663,7 @@ defaults to the contract's `filled`. The receipt's reason names the beat
 |---|---|
 | `Item(key, takes, legs, gain, payload=None)` | a candidate loop: what it takes from each offer (`{offer id: quantity}` — a want whole, a give by the leg's quantity), its leg count and uniform gain, the loop itself as `payload` |
 | `pack(items, capacity, *, prior=0, factor=None, exact_up_to=24, budget=200_000) -> Packing` | the set worth most under per-offer capacities (`{offer id: what is left}`): exact branch and bound up to `exact_up_to` items within a node `budget`, greedy beyond, `order_key`'s total order (U6); `Packing(chosen, exact, infeasible)` |
+| `item_of(loop, key_extra="") -> Item` | the packer's view of a `Loop` or `Circulation`: a want taken whole (a composed want counts as one), a give by what its leg takes; the loop itself as `payload` |
 | `weight(item, prior=0, factor=None)` | the objective per loop: Π(1+gain) exactly, or (1−p)^legs·ln(1+gain) in fixed-precision decimal with a failure prior; `factor` the risk-weight hook nobody sets |
 
 ## 8e. `loopmarket.escrow` — the crypto escrow (P3 §5a/§5e, 2026-09-19)
@@ -769,13 +789,20 @@ refused.
 | `notice.notice_record(...)` / `cure_record(...)` / `sealed(record, *, sender, recipient, recipient_public_key)` / `read(side, private_key_hex)` / `opens(side, opening)` | a notice before a claim and its cure, factbond's shape, sealed to the other party beside a salted commitment anyone checks once opened |
 | `notice.lapsed(gives, statements_of, registers)` / `gives_of(loop_record, book)` | the relied-on statements revoked or suspended since clearing — the watch's re-check |
 
-## 9. `loopmarket.solver.agent` — the baseline species
+## 9. `loopmarket.solver` — the baseline species
+
+Kept apart from the rest of loopmarket (the 2026-10 review's item 2,
+decided by Peter 2026-10-10; boundary B3): built the way an outside solver
+would be, it imports only names `loopmarket.__all__` exports or this
+manual documents, and nothing in loopmarket but the command line imports
+it. `import loopmarket` does not load it; `from loopmarket import
+SolverAgent` does, on first use.
 
 ### `SolverAgent(registry, ontology, clearing, solver_id="solver-0", min_surplus=0.005, max_loops_per_step=10, chain_fills=None, escrow_held=None, max_legs=5, cycle_limit=2000, exact_up_to=24, pack_budget=200_000, failure_prior=0, registers={}, span=None, register_latest=None, resolver_profile=None)`
 
 | member | meaning |
 |---|---|
-| `.find_loops(*, now=None) -> (book_root, [Loop \| Circulation])` | snapshot → offers (the chain's fills and the escrow's holdings subtracted) → matches → every simple cycle (`enumerate_cycles`) plus the composed legs → `selection.pack` |
+| `.find_loops(*, now=None) -> (book_root, [Loop \| Circulation])` | snapshot → offers (the chain's fills and the escrow's holdings subtracted) → one `DimensionIndex` for the pass → matches → every simple cycle (`enumerate_cycles`) plus the composed, parts and aggregated legs, all four searches asking the one index → `selection.pack` |
 | `.step(*, now=None) -> [Receipt]` | find, then propose each loop (pinning the snapshot root and `ontology.root`); appends to `.receipts` |
 | `.run(*, interval_s=5.0, max_steps=None)` | poll loop for live operation |
 
@@ -784,6 +811,13 @@ refused.
 every register a requirement names is pinned in the proposal.
 Deterministic and exact by design — the species smarter solvers must
 beat, and the sealed beat's reserve bid.
+
+### `baseline_proposals(snapshot, ontology, *, now, solver="baseline", min_surplus=0, chain_fills=None, reads=None) -> [LoopProposal]`
+The baseline's loops on a beat's snapshot as proposals pinning its root —
+the reserve bid every replica computes and hands to `auction.outcome` as
+`baseline=` — past what the chain has filled (`reads.chain_fills`, or
+`chain_fills=`). It was `auction.baseline_proposals` until the clearing
+side was kept from importing the solver.
 
 ---
 

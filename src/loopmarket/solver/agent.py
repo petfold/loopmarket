@@ -30,7 +30,16 @@ the hard combinatorial optimization belongs to professional solvers
 wins — whose internals are not loopmarket's concern and may stay secret
 for competitive edge. That is healthy: U3 means cleverness can be
 trusted because it is never trusted. This baseline exists to demo the
-pipeline and (P2) to floor the auction as its reserve bid.
+pipeline and (P2) to floor the auction as its reserve bid
+(`baseline_proposals`).
+
+So it is kept apart from the rest of loopmarket (the 2026-10 review's
+item 2, decided by Peter 2026-10-10): it is built the way an outside
+solver would be, against the same public interfaces, and nothing in
+loopmarket but the command line imports it — not the clearing, not the
+beat, not the auction, whose outcome takes the reserve bid from its
+caller. `import loopmarket` does not load it; `loopmarket.SolverAgent`
+does, on first use. Both rules are tests (tests/test_boundaries.py, B3).
 """
 
 from __future__ import annotations
@@ -41,16 +50,19 @@ import logging
 import time as _time
 from dataclasses import dataclass, field
 
-from ..graph import Circulation, ExchangeGraph, Loop, find_circulations, enumerate_cycles
-from ..dimensions import DimensionIndex
-from ..gate import CounterpartyGate
-from ..matching import Leg, aggregate_legs, candidate_matches, composed_legs, independence_faults, parts_legs
-from ..schema import q
-from ..selection import item_of, pack, weight
-from ..ontology import Ontology
-from ..reads import NO_READS, Reads, authorities
-from ..registry import OfferRegistry, taken_on_chain
-from ..clearing import LoopProposal, Receipt, Clearing
+# What any solver outside loopmarket would import, and nothing else: public
+# names only (in `loopmarket.__all__` or documented in docs/REFERENCE.md),
+# by their absolute module path (tests/test_boundaries.py, B3).
+from loopmarket.clearing import Clearing, LoopProposal, Receipt
+from loopmarket.dimensions import DimensionIndex
+from loopmarket.gate import CounterpartyGate
+from loopmarket.graph import Circulation, ExchangeGraph, Loop, enumerate_cycles, find_circulations
+from loopmarket.matching import Leg, aggregate_legs, candidate_matches, composed_legs, independence_faults, parts_legs
+from loopmarket.ontology import Ontology
+from loopmarket.reads import NO_READS, Reads, authorities
+from loopmarket.registry import OfferRegistry, taken_on_chain
+from loopmarket.schema import q
+from loopmarket.selection import item_of, pack, weight
 
 log = logging.getLogger("loopmarket.solver")
 
@@ -226,3 +238,17 @@ class SolverAgent:
             self.step()
             steps += 1
             _time.sleep(interval_s)
+
+
+def baseline_proposals(snapshot: OfferRegistry, ontology, *, now: int, solver="baseline",
+                       min_surplus=0, chain_fills=None, reads: Reads | None = None) -> list[LoopProposal]:
+    """The deterministic baseline's loops on the snapshot — the sealed beat's
+    reserve bid every replica can compute (U6), passed to
+    `auction.outcome(baseline=)` by whoever derives the outcome — past what
+    the chain has filled (`reads.chain_fills`, or its older spelling
+    `chain_fills=`). It lives here, not in the auction, so the clearing side
+    never runs a solver."""
+    agent = SolverAgent(snapshot, ontology, clearing=None, solver_id=solver, min_surplus=min_surplus,
+                        chain_fills=chain_fills, reads=reads if reads is not None else NO_READS)
+    root, loops = agent.find_loops(now=now)
+    return [LoopProposal(loop, root, ontology.root, solver, now) for loop in loops]

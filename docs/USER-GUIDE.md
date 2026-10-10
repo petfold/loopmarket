@@ -1274,7 +1274,11 @@ AI, LLMs, whatever wins. Their internals are not loopmarket's concern,
 and they may well be kept secret for competitive edge: that is by
 design, and healthy. The protocol's only demand is the one clearing
 enforces — whatever a solver proposes gets re-verified from scratch, so
-cleverness can be trusted *because* it is never trusted. The same
+cleverness can be trusted *because* it is never trusted. The baseline is
+built the way such a solver is: it uses only loopmarket's public
+interfaces, and nothing in the clearing imports it (`loopmarket.solver`;
+the sealed auction takes its reserve bid from whoever derives the
+outcome). The same
 boundary holds above the command line: an assistant that drafts offers
 for you produces the same `loop` lines a person would, and the approval
 block is identical whichever typed them.

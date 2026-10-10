@@ -64,6 +64,13 @@ loopmarket  →  ontodag (>=0.30.6)  →  recordstore (>=0.22.2)  →  swarmfs  
 - **B2** One-way dependencies: loopmarket imports ontodag and recordstore,
   never the reverse. Swarm's clients (swarmfs, aiohttp, coincurve) and
   web3 load only inside the call paths that need them.
+- **B3** The baseline solver is kept apart (review item 2, decided by
+  Peter 2026-10-10): nothing in loopmarket but the command line imports
+  `loopmarket.solver` (the clearing, the beat and the auction never do;
+  `import loopmarket` loads it only when `SolverAgent` is first used), and
+  the solver imports only loopmarket's public interfaces, names in
+  `loopmarket.__all__` or documented in `docs/REFERENCE.md`, as a solver
+  outside loopmarket would.
 
 ## Invariants (do not weaken; add tests when touching them)
 
@@ -196,8 +203,9 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
 - `selection.py`: `pack`, the set of loops worth most under the offers'
   capacities (exact up to `EXACT_UP_TO` items, greedy beyond).
 - `solver/agent.py`: `SolverAgent`: snapshot, match, candidates, select,
-  propose. The baseline species and the beat's reserve bid; smarter
-  species live outside this repo.
+  propose; `baseline_proposals`, the beat's reserve bid. The baseline
+  species, kept apart from the rest of loopmarket (B3); smarter species
+  live outside this repo.
 - `clearing.py`: `LoopProposal`, `Receipt`, `BookClearing` (the production
   verifier, despite its name; `recheck` re-derives a cleared loop record
   with the same steps, for the fold), `ChainClearing` (`BookClearing` plus
@@ -353,7 +361,7 @@ The joint review is in ontodag (`docs/plans/REVIEW_2026-10.md`;
 so far: it is in ontodag's release gate, its chain tests run nightly and
 before releases, and pyflakes runs in CI (item 5, built); one matching
 engine, ontodag's index, with the default solver kept apart from the rest
-of loopmarket (item 2, the engine built); matching and clearing refuse an offer whose
+of loopmarket (item 2, built: boundary B3); matching and clearing refuse an offer whose
 registry or contract major differs from the installed ontodag's (item
 4, built); every reader's fold re-checks a clearing book's loops, and where a
 chain is configured only on-chain fills hide an offer (item 9, built:
@@ -367,8 +375,7 @@ records stay readable), and `BookClearing` renamed `BookClearing` (item
 12); the
 phase gates restated for what they still guard (item 17, under "Roadmap
 (state)"). Every review item for loopmarket is decided, and the decided
-items are being built: items 5, 10, 11, 4 and 9 so far, and item 2's
-engine.
+items are being built: items 5, 10, 11, 4, 9 and 2 so far.
 
 ## Conventions
 
