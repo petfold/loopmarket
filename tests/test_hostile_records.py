@@ -321,9 +321,6 @@ def test_a_sealed_record_that_does_not_read_never_stops_a_reader(cleared, monkey
     assert code == 0 and f"cured    by {B} {where}: cannot be read (TypeError)" in out
 
 
-@pytest.mark.xfail(strict=True, reason="a notice or a cure counts from whoever wrote it: `watch` reports "
-                   "Mallory's notice on Bruno's give as a notice, `cure` answers it, and `answer` seals the "
-                   "giver's answer to whoever the claim's plaintext names as claimant")
 def test_a_notice_cure_or_claim_counts_only_from_the_legs_party(cleared, monkeypatch):
     """Mallory, no party to the loop, seals a notice to Bruno on his ride,
     a cure to Amara on the same leg, and a claim to Bruno naming herself the
@@ -331,7 +328,9 @@ def test_a_notice_cure_or_claim_counts_only_from_the_legs_party(cleared, monkeyp
     fold's loop record; a claim is the escrow reservation's wanter's. So
     Bruno's and Amara's `watch` set them aside on stderr with the reason,
     `cure` refuses, and `answer` refuses rather than seal Bruno's answer to
-    Mallory; the judge's ruling cites no claim of hers."""
+    Mallory; the judge's ruling cites no claim of hers. (Until 2026-10-10
+    `watch` reported her notice as one and `cure` answered it, and `answer`
+    sealed the giver's answer to whoever the claim's plaintext named.)"""
     c = cleared
     M = c.who["mallory"]
     _notice(c, "notice", sender="mallory", to="bruno", notifier=c.who["amara"])   # her plaintext names Amara

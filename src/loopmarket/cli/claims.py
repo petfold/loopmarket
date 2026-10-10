@@ -160,30 +160,39 @@ def cmd_claim(args, session, out):
     return 0
 
 
-def _claim_to_me(session, fold, loop: str, oid: str) -> dict:
-    """The claim on (offer, loop) sealed to me, opened with bee_signer."""
+def _claim_to_me(session, fold, loop: str, oid: str, *, wanter: str) -> dict:
+    """The claim on (offer, loop) sealed to me, opened with bee_signer. Only
+    the reservation's wanter may claim (`loop claim` refuses anyone else),
+    so a claim someone else sealed to me is refused, never answered or
+    cited: answering it would seal the giver's answer to its writer."""
     signer = _configured("bee_signer")
     if not signer:
         raise ValueError("opening a case record needs my key: set bee_signer")
     me = session.maker
     for loop_id, offer_id, kind, rec in fold.cases():
         if (loop_id, offer_id, kind) == (loop, oid, "claim") and str(rec.get("to", "")).lower() == me.lower():
-            return _opened(rec, signer, f"the claim to me on {oid[:12]} in loop {loop[:16]}…")
+            what = f"the claim to me on {oid[:12]} in loop {loop[:16]}…"
+            claim = _opened(rec, signer, what)
+            frm = str(rec.get("from", ""))
+            if frm.lower() != wanter.lower() or str(claim.get("claimant", "")).lower() != wanter.lower():
+                raise ValueError(f"{what} is from {frm}, not the reservation's wanter {wanter}")
+            return claim
     raise ValueError(f"no claim to me on {oid[:12]} in loop {loop[:16]}…")
 
 
 def cmd_answer(args, session, out):
     """As the giver: answer the claim on my reservation — `--evidence`,
-    `--text` — sealed to the arbitrator and to the claimant."""
+    `--text` — sealed to the arbitrator and to the claimant, the
+    reservation's wanter."""
     from ..case import answer_record, ref
     client = clients._escrow_client(session)
     oid, loop = _reservation_ref(session, args.offer, args.loop)
     r = client.reservation(oid, loop)
     fold = session.fold()
-    claim = _claim_to_me(session, fold, loop, oid)
+    claim = _claim_to_me(session, fold, loop, oid, wanter=r["wanter"])
     record = answer_record(session.maker, ref(claim), time=session.now, evidence_ref=args.evidence or "",
                            text=args.text or "")
-    sent = _case_to(session, fold, loop, oid, "answer", record, [r["resolver"], claim["claimant"]])
+    sent = _case_to(session, fold, loop, oid, "answer", record, [r["resolver"], r["wanter"]])
     print(f"answer   on {oid[:12]} in loop {loop[:16]}… sent to {', '.join(sent)}", file=out)
     return 0
 
@@ -222,9 +231,9 @@ def cmd_rule(args, session, out):
         raise ValueError(f"a ruling is at most the reservation ({_num(Fraction(r['amount'], 10 ** 18))})")
     fold = session.fold()
     try:
-        claim_ref = ref(_claim_to_me(session, fold, loop, oid))
+        claim_ref = ref(_claim_to_me(session, fold, loop, oid, wanter=r["wanter"]))
     except ValueError:
-        claim_ref = ""                       # a claim made outside the book: rule on it all the same
+        claim_ref = ""                       # no claim from the wanter in the book: rule on it all the same
     if not r["held"]:
         client.hold(oid, loop)
     receipt = client.resolve(oid, loop, amount)
@@ -347,16 +356,19 @@ def cmd_cure(args, session, out):
     side = fold.notice(loop, oid)
     if side is None or side.get("to") != me:
         raise ValueError(f"no notice to me on {oid[:12]} in loop {loop[:16]}…")
+    leg = _leg_with(fold, loop, oid)
+    wanter = fold.get(leg.want).maker
+    if side.get("from") != wanter:
+        raise ValueError(f"the notice to me on {oid[:12]} in loop {loop[:16]}… is from {side.get('from')}, "
+                         f"not this leg's wanter {wanter}")
     signer = _configured("bee_signer")
     if not signer:
         raise ValueError("opening the notice needs my key: set bee_signer")
     notice = _opened(side, signer, f"the notice on {oid[:12]} in loop {loop[:16]}…")
-    leg = _leg_with(fold, loop, oid)
     cure = cure_record(ref(notice), me, session.now, args.evidence or "")
-    back, opening = sealed(cure, sender=me, recipient=notice["notifier"],
-                           recipient_public_key=_public_key_of(fold, leg.want))
+    back, opening = sealed(cure, sender=me, recipient=wanter, recipient_public_key=_public_key_of(fold, leg.want))
     session.book.send_cure(loop, oid, back)
     session.book.commit()
     _write_json(_notices_path(loop, oid, "cure"), opening)
-    print(f"cure     sent to {notice['notifier']} on {oid[:12]} in loop {loop[:16]}…", file=out)
+    print(f"cure     sent to {wanter} on {oid[:12]} in loop {loop[:16]}…", file=out)
     return 0

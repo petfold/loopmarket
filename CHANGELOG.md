@@ -72,12 +72,12 @@ does anything different, and no record byte or id changes.
   offer, a door response for another offer or another challenge, an issued
   statement re-keyed to another subject, a handoff sealed to someone else:
   each reader refuses or ignores each one, with its reason. They found
-  four faults (one fixed below); three tests pin the rest as strict
-  expected failures with the reason: a notice or cure counts from whoever
-  wrote it, and `answer` seals the giver's answer to whoever a claim's
-  plaintext names; `watch` reports a case record from anyone; and a
-  stranger whose address sorts first displaces a party's notice, cure or
-  case record in every reader's fold.
+  four faults (two fixed below); two tests pin the rest as strict expected
+  failures with the reason: `watch` reports a case record from anyone (a
+  case's parties are the escrow reservation's, which `watch` does not
+  read), and a stranger whose address sorts first displaces a party's
+  notice, cure or case record in every reader's fold (the fold keeps the
+  first-merged value of a key two books write, and merges in owner order).
 
 ### Fixed
 
@@ -93,6 +93,16 @@ does anything different, and no record byte or id changes.
   refuse with the reason; `rule` rules citing no claim, as it does when
   the claim was made outside the book. An answer that does not open is no
   longer reported as one.
+- **A notice, a cure or a claim counts only from the leg's party.** The
+  fold admits a notice or a cure as its writer's speech, whoever the writer
+  is, and `watch` reported a stranger's notice on my give as a notice, with
+  `loop cure` to answer it. `answer` sealed the giver's answer, its
+  evidence and its text, to whoever the claim's plaintext named as
+  claimant. Now `watch` and `cure` take a notice only from the leg's
+  wanter and `watch` a cure only from its giver, as the fold's loop record
+  names them, setting anyone else's aside on stderr; `answer` takes a claim
+  only from the escrow reservation's wanter and seals the answer to that
+  wanter, and `rule` cites no claim from anyone else.
 
 ### Removed
 

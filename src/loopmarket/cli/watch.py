@@ -265,24 +265,30 @@ def _notices_in(session, fold, out, seen: list) -> bool:
     notices, opened with bee_signer and reported once. Anyone may seal a
     record to me, so one that does not open with my key, or whose plaintext
     is not the record its kind names, is reported as unreadable and the
-    pass goes on."""
+    pass goes on; and a notice counts only from the leg's wanter, a cure
+    only from its giver (R6), so anyone else's is set aside, said once on
+    stderr."""
     from ..notice import read
     signer, me, news = _configured("bee_signer"), session.maker, False
     rows = []
     for loop, leg, give_ in _my_legs(session, fold, "give"):
         side = fold.notice(loop, give_.offer_id)
         if side is not None and side.get("to") == me:
-            rows.append(("notice", loop, give_.offer_id, side))
+            rows.append(("notice", loop, give_.offer_id, side, "wanter", _maker_of(fold, leg.want)))
     for loop, leg, _want in _my_legs(session, fold, "want"):
         for g in leg.gives:
             side = fold.cure(loop, g)
             if side is not None and side.get("to") == me:
-                rows.append(("cure", loop, g, side))
-    for kind, loop, oid, side in rows:
+                rows.append(("cure", loop, g, side, "giver", _maker_of(fold, g)))
+    for kind, loop, oid, side, role, party in rows:
         key = f"{kind}/{loop}/{oid}/{side['commitment']}"
         if key in seen:
             continue
         seen.append(key)
+        if side.get("from") != party:
+            print(f"{kind:8} from {side.get('from')} on {oid[:12]} in loop {loop[:16]}…: set aside, "
+                  f"not this leg's {role} ({party})", file=_err())
+            continue
         news = True
         hint = f" — `loop cure {oid[:12]} --loop {loop[:12]}` answers it" if kind == "notice" else ""
         if not signer:
@@ -295,6 +301,14 @@ def _notices_in(session, fold, out, seen: list) -> bool:
         who = f"notice   from {side['from']}" if kind == "notice" else f"cured    by {side['from']}"
         print(f"{who} on {oid[:12]} in loop {loop[:16]}…: {text}{hint}", file=out)
     return news
+
+
+def _maker_of(fold, offer_id: str) -> str | None:
+    """The maker of an offer in the fold, or None when the fold lacks it."""
+    try:
+        return fold.get(offer_id).maker
+    except KeyError:
+        return None
 
 
 def _sealed_text(kind: str, rec: dict) -> str:

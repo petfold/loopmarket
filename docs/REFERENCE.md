@@ -1090,7 +1090,7 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `mine` | my offers, all states |
 | | `place NAME LAT,LON,RADIUS [ADDRESS...]` | a place node under the cell containing that radius, written to odag's active store (temporary bridge; adopts the prelude there if absent); the address is settlement text on the node, shown in the block of an offer naming the place and sealed to the cleared counterparty |
 | | `handoff ID TEXT...` | what my offer's cleared counterparty may read (replaces the place text for this offer); kept in `$LOOP_HOME/handoffs`, sealed by `watch` once filled |
-| | `watch [--once]` | poll the fold every `interval`: report my fills, seal pending handoffs to the counterparty's key (from the signature on their offer), open incoming ones with `bee_signer`; `--once` is one pass, exit 1 when nothing new |
+| | `watch [--once]` | poll the fold every `interval`: report my fills, seal pending handoffs to the counterparty's key (from the signature on their offer), open incoming ones with `bee_signer`, and the notices, cures and case records sealed to me (a notice only from the leg's wanter and a cure only from its giver, anyone else's set aside on stderr; a record that does not open with my key, or does not read as its kind, reported as unreadable); `--once` is one pass, exit 1 when nothing new |
 | | `handoffs` | every handoff sealed to me, opened (exit 1: none) |
 | | `want PART + PART... PRICE` | a composed want on one line: every part resolved, one price for the lot, published as one v4 offer — all the parts or nothing |
 | | `draft [NAME] want\|give ...` | stage one resolved offer (price optional) or part in `$LOOP_HOME/drafts` (a file, never the book; no id); re-drafting a name replaces it; numbers name the unnamed |
@@ -1124,12 +1124,12 @@ Durations: `30d`, `2h`, `90m`, or ontodag's (`155min`). Radii: `5km`,
 | | `register issue SUBJECT CATEGORY --until T --evidence HASH --paid-by subject\|relier [--kind K] [--path ROOT]... [--deposit OFFER@ESCROW] [--scheme HASH]` | run a register in this session's book (`-f SPEC`, announced with `announce --role register`): issue a statement, its record printed for the subject; `revoke`/`suspend`/`reinstate STATEMENT`, `accredit ISSUER CATEGORY --until T`, `transfer ITEM KEY` (a title register's holder, I4), `heartbeat`, `status` — each write heartbeats and commits a root naming its predecessor |
 | | `contact-card` | write my contact card into my book, so anyone may seal to me (a claim to me as arbitrator, a notice when I have no signed offer) |
 | | `claim OFFER AMOUNT [--evidence R] [--text T]` | as a reservation's wanter, when its resolver is one named arbitrator (a key): the claim — `all`, `N%`, `NxDAI` or on my scale — sealed to the arbitrator and the giver |
-| | `answer OFFER [--evidence R] [--text T]` | as the giver: answer the claim, sealed to the arbitrator and the claimant |
+| | `answer OFFER [--evidence R] [--text T]` | as the giver: answer the claim of the reservation's wanter, sealed to the arbitrator and the wanter (a claim anyone else sealed to me is refused, never answered) |
 | | `hold OFFER` / `rule OFFER AMOUNT --reason TEXT` | as the arbitrator: the escrow's `hold` (the timeout stops), and the final ruling — the escrow pays it less any deductible, the reasons sealed to both parties |
 | | `cases` | the claims, answers and rulings involving me |
 | | `arbitrators [--trust KEYS]` | a personal view, never a gate: the arbitrators named on escrow reservations where I or a maker I trust was a party, their rulings, who among us lost under one and chose it again with an offer posted after the loss, and the accreditation each presents |
 | | `notice OFFER --cure DURATION [--fact STATEMENT]` | as the wanter of a cleared leg: factbond's `Notice` to the giver, sealed to its key beside a commitment, in my book; the opening kept locally for a claim |
-| | `cure OFFER [--evidence REF]` | as the giver: answer a notice on my give, sealed back to the claimant |
+| | `cure OFFER [--evidence REF]` | as the giver: answer the leg's wanter's notice on my give, sealed back to the wanter (a notice from anyone else is refused) |
 | discovery | `announce [--role maker\|clearing\|register]` / `announced` / `fold` | say "my book is here" on `registry` (role `maker` by default; a clearing book says `clearing`, a register `register`); the standing set; fold the announced books myself |
 
 The escrow verbs name a reservation by its offer's id prefix and, when the
