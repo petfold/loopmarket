@@ -12,7 +12,11 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 The 2026-10 review's item 10 (ontodag's `docs/plans/REVIEW_2026-10.md`
 §8): the command line split by area, with a `Reads` object and a
 `LegRecord` type. On every record the code writes, no command prints or
-does anything different, and no record byte or id changes.
+does anything different, and no record byte or id changes. Beside it, the
+tests the review suggested (§7) found faults, fixed below: what `watch`,
+`cure`, `answer` and `rule` do with a sealed record they cannot read or
+that comes from someone who is not the leg's party, and `watch`'s fill line
+for an operator's give.
 
 ### Changed
 
@@ -89,6 +93,15 @@ does anything different, and no record byte or id changes.
   opened. A wanter's handoff goes to the leg's first give alone (the
   grocer, not the courier, gets the door): sealing to several givers is an
   open protocol question, and the tests pin today's behaviour.
+- **The examples run with the suite, so in CI** (`tests/test_examples.py`,
+  the review's §7 suggestion 9): `examples/demo_federation.py`, with
+  ontodag's core pack, in memory, and `examples/delivery.loop` fed to
+  `python -m loopmarket`, each in a subprocess from this checkout's source,
+  with no Bee node or key in its environment, and their output checked
+  for what each example claims: byte-identical manifests, the censoring
+  aggregator convicted by two absence proofs, the forgery refused, one
+  loop cleared and none on a second pass; the grocer's box and the
+  courier's run cleared as one composed leg, at 104.08%.
 
 ### Fixed
 
