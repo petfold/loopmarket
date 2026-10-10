@@ -297,6 +297,7 @@ def test_a_sealed_record_that_does_not_read_never_stops_a_reader(cleared, monkey
     c = cleared
     A, B, J = c.who["amara"], c.who["bruno"], c.who["judge"]
     where = f"on {c.ride[:12]} in loop {c.loop[:16]}…"
+    monkeypatch.setattr(cli.clients, "_escrow_client", lambda session: _Escrow(c, "bruno"))
     _notice(c, "notice", sender="amara", to="bruno", sealed_to="carol")
     _case(c, "claim", {"claimant": A, "amount": 5}, sender="amara", to="bruno", sealed_to="carol")
     _case(c, "ruling", {"arbitrator": J, "to_wanter": "half", "reason": "late"}, sender="judge", to="bruno")
@@ -362,21 +363,47 @@ def test_a_notice_cure_or_claim_counts_only_from_the_legs_party(cleared, monkeyp
     assert f"cured    by {M}" not in out and "not this leg's giver" not in err      # never read
 
 
-@pytest.mark.xfail(strict=True, reason="`watch` reports a case record from whoever wrote it: a case's "
-                   "parties are the escrow reservation's (its wanter, its deposit's giver, its resolver), "
-                   "and watch does not read the escrow")
-def test_a_case_record_counts_only_from_the_reservations_party(cleared):
-    """Mallory seals a claim to Bruno and a ruling to Amara on their leg.
-    Neither is hers to make, and neither should be reported as a claim or a
-    ruling."""
+def test_a_case_record_counts_only_from_the_reservations_party(cleared, monkeypatch):
+    """Mallory seals a claim to Bruno and a ruling to Amara on their leg;
+    Amara seals her claim to Bruno and the judge his ruling to her. The
+    escrow's reservation names the parties (question 28, decided by Peter
+    2026-10-10: A): its wanter claims, its deposit's giver answers, its
+    resolver rules. So `watch` reports Amara's claim and the judge's
+    ruling, and sets Mallory's aside, said once on stderr. (Until then
+    `watch` reported a case record from whoever wrote it.)"""
     c = cleared
-    M = c.who["mallory"]
+    A, J, M = c.who["amara"], c.who["judge"], c.who["mallory"]
     _case(c, "claim", {"claimant": M, "amount": 5}, sender="mallory", to="bruno")
     _case(c, "ruling", {"arbitrator": M, "to_wanter": 10 ** 18, "reason": "pay her"}, sender="mallory", to="amara")
+    _case(c, "claim", {"claimant": A, "amount": 5 * 10 ** 17}, sender="amara", to="bruno")
+    _case(c, "ruling", {"arbitrator": J, "to_wanter": 10 ** 17, "reason": "late"}, sender="judge", to="amara")
     c.as_("bruno")
-    assert f"case     {M}" not in c.run("watch", "--once")[1]
+    monkeypatch.setattr(cli.clients, "_escrow_client", lambda session: _Escrow(c, "bruno"))
+    code, out, err = c.run("watch", "--once")
+    assert f"case     {A} claims 0.5" in out and f"case     {M}" not in out
+    assert f"case     {M} claim" in err and f"not the reservation's wanter ({A})" in err
+    code, out, err = c.run("watch", "--once")
+    assert M not in out + err                                         # said once
     c.as_("amara")
-    assert f"case     {M}" not in c.run("watch", "--once")[1]
+    monkeypatch.setattr(cli.clients, "_escrow_client", lambda session: _Escrow(c, "amara"))
+    code, out, err = c.run("watch", "--once")
+    assert f"case     {J} rules 0.1 to the wanter: late" in out and f"case     {M}" not in out
+    assert f"case     {M} ruling" in err and f"not the reservation's resolver ({J})" in err
+
+
+def test_without_an_escrow_no_case_record_is_reported(cleared):
+    """Only the escrow says who a case's parties are, so without one `watch`
+    reports no claim or ruling as one, and says on stderr how many wait,
+    once until the number changes."""
+    c = cleared
+    _case(c, "claim", {"claimant": c.who["amara"], "amount": 5}, sender="amara", to="bruno")
+    c.as_("bruno")
+    code, out, err = c.run("watch", "--once")
+    assert "case     " not in out
+    assert "1 case record sealed to me not checked: no escrow set" in err
+    assert "not checked" not in c.run("watch", "--once")[2]
+    _case(c, "ruling", {"arbitrator": c.who["judge"], "to_wanter": 1, "reason": "x"}, sender="judge", to="bruno")
+    assert "2 case records sealed to me not checked" in c.run("watch", "--once")[2]
 
 
 def test_a_strangers_record_never_displaces_a_partys():

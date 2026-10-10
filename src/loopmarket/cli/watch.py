@@ -236,7 +236,7 @@ def _watch_pass(session: Session, out) -> bool:
     news = _check_lapsed(session, fold, out, seen.setdefault("lapsed", [])) or news
     news = _notices_in(session, fold, out, seen.setdefault("notices", [])) or news
     news = _transfers_shown(session, fold, out, seen.setdefault("transfers", [])) or news
-    news = _cases_in(session, fold, out, seen.setdefault("cases", [])) or news
+    news = _cases_in(session, fold, out, seen.setdefault("cases", []), seen) or news
     _write_json(_seen_path(), seen)
     return news
 
@@ -371,27 +371,79 @@ def _sealed_text(kind: str, rec: dict) -> str:
     return f"at {_iso(rec['time'])}{evidence}"
 
 
-def _cases_in(session, fold, out, seen: list) -> bool:
-    """Claims, answers and rulings sealed to me, opened and reported once;
-    one that does not open with my key, or whose plaintext is not the
-    record its kind names, is reported as unreadable and the pass goes on."""
+_ROLES = {"claim": "wanter", "answer": "deposit's giver", "ruling": "resolver"}
+
+
+def _case_parties(client, offer_id: str, loop_id: str) -> dict | None:
+    """Who may write each kind of case record on the reservation (offer,
+    loop), as the escrow names them — its wanter claims, its deposit's
+    giver answers, its resolver rules — or None when the escrow holds no
+    such reservation."""
+    r = client.reservation(offer_id, loop_id)
+    if not r.get("wanter") or int(r["wanter"], 16) == 0:
+        return None
+    return {"claim": r["wanter"], "answer": client.deposit_of(offer_id)["giver"], "ruling": r["resolver"]}
+
+
+def _cases_in(session, fold, out, seen: list, notes: dict) -> bool:
+    """Claims, answers and rulings sealed to me, checked against the escrow
+    reservation each names and reported once (question 28, decided by Peter
+    2026-10-10: A): the reservation names a case's parties, so a claim
+    counts only from its wanter, an answer from its deposit's giver, a
+    ruling from its resolver — what `answer` and `rule` accept — and anyone
+    else's is set aside, said once on stderr. Without an escrow nothing can
+    be checked, so nothing is reported as a claim or a ruling, and stderr
+    says how many records wait (once until the number changes). One that
+    does not open with my key, or whose plaintext is not the record its
+    kind names, is reported as unreadable and the pass goes on."""
     from ..case import read
+    from . import clients
     signer, me, news = _configured("bee_signer"), session.maker, False
+    client, parties, waiting = False, {}, 0
     for loop, oid, kind, rec in fold.cases():
         if str(rec.get("to", "")).lower() != me.lower():
             continue
         k = f"{kind}/{loop}/{oid}/{rec['commitment']}"
         if k in seen:
             continue
+        if client is False:
+            try:
+                client = clients._escrow_client(session)
+            except ValueError:               # no escrow set: no case can be checked
+                client = None
+        if client is None:
+            waiting += 1
+            continue
+        frm, where = str(rec.get("from", "")), f"on {oid[:12]} in loop {loop[:16]}…"
+        if (oid, loop) not in parties:
+            try:
+                parties[(oid, loop)] = _case_parties(client, oid, loop)
+            except Exception as exc:  # noqa: BLE001 — the chain unreachable: asked again next pass
+                print(f"case     {frm} {kind} {where}: the escrow cannot be read now "
+                      f"({exc.__class__.__name__})", file=_err())
+                continue
+        named = parties[(oid, loop)]
         seen.append(k)
+        if named is None:
+            print(f"case     {frm} {kind} {where}: set aside, no such reservation on the escrow", file=_err())
+            continue
+        if frm.lower() != named[kind].lower():
+            print(f"case     {frm} {kind} {where}: set aside, not the reservation's {_ROLES[kind]} "
+                  f"({named[kind]})", file=_err())
+            continue
         news = True
-        frm, where = rec.get("from"), f"on {oid[:12]} in loop {loop[:16]}…"
         try:
             what, hint = _case_text(kind, read(rec, signer) if signer else None)
         except Exception as exc:  # noqa: BLE001 — sealed to another key, or not a record of its kind
             print(f"case     {frm} {kind} {where}: cannot be read ({exc.__class__.__name__})", file=out)
             continue
         print(f"case     {frm} {what} {where}{hint}", file=out)
+    if waiting != notes.get("cases_unchecked", 0):
+        notes["cases_unchecked"] = waiting
+        if waiting:
+            print(f"case     {waiting} case record{'' if waiting == 1 else 's'} sealed to me not checked: no "
+                  f"escrow set, and only the escrow names a case's parties (`loop set escrow "
+                  f"chain:RPC_URL@CONTRACT`)", file=_err())
     return news
 
 
