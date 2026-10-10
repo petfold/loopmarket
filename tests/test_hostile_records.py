@@ -146,7 +146,9 @@ def test_a_statement_re_keyed_to_another_subject_has_no_status():
     """Mallory takes the dentist's genuine statement, which the attester's
     register has issued, and re-keys it to herself. It is her speech about
     her own key, so the fold admits it, but its id is new and the register
-    has no status for it: the gate refuses it at step 3. The genuine
+    has no status for it: the gate refuses it at step 3, and at step 6, as
+    its deposit is still the dentist's, neither her own nor the issuer's
+    (question 27). The genuine
     statement copied into her book is rejected by the fold, and read under
     her key all the same (a peer's book is not folded) the gate refuses it
     as a statement about someone else."""
@@ -171,7 +173,9 @@ def test_a_statement_re_keyed_to_another_subject_has_no_status():
     assert [s.statement_id for s, _ in folded.statements(M)] == [forged.statement_id]
     gate = CounterpartyGate.over(folded, w.registers, now=NOW, span=SPANS.get)
     faults = gate.faults(w.patient, impostor, _cat(), window=WINDOW, taken=1, whole=10)
-    assert faults == [f"dentist-licensed: 3 {w.statement.issuer}'s register has no status for the statement"]
+    assert faults == [f"dentist-licensed: 3 {w.statement.issuer}'s register has no status for the statement; "
+                      f"6 the deposit {w.dentist.offer_id[:12]} is {w.dentist.maker}'s, not the statement's "
+                      f"subject's or issuer's"]
     assert gate.faults(w.patient, w.dentist, _cat(), window=WINDOW, taken=1, whole=10) == []   # the genuine one
     entry = w.patient.requires.counterparty[0]
     assert gate.statement_faults(entry, w.statement, w.patient, impostor, _cat(), window=WINDOW) == \
