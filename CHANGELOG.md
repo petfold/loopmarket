@@ -23,6 +23,26 @@ line for an operator's give. Item 2 changes how the searches
 find their candidates, not what they find, and keeps the baseline
 solver apart from the rest of loopmarket.
 
+### Changed (needs ontodag 0.31)
+
+- **A cell in a role of geo is written by its own name, `from(geo(u2e4x))`**
+  (ontodag's review question 14, decided by Peter 2026-10-10: in a role
+  of geo a bare word names a place). `loop` publishes a cell that way —
+  from coordinates (`from(46.05,14.50,5km)`), a private place's cell, or a
+  cell typed by its name — and refuses a bare word that is neither a
+  catalogue place nor one of your own, naming both ways out
+  (`from(sydney)` used to be read as a block in southern Turkey), and a
+  `geo(...)` cell outside the geohash alphabet. New offers therefore get
+  new ids where an older offer spelled the same cell bare; those older
+  offers keep their ids and still match (the index's respelling, below).
+- **ontodag's public layer instead of its CLI's private names.** `loop`
+  opens a catalogue with `ontodag.open` and puts its Bee flags in
+  `ontodag.settings.OVERRIDES`, where it reached into `ontodag.__main__`;
+  its config file is read and written by `ontodag.settings`'s
+  `read_config(path)` and `write_config(cfg, path)` (the review's item 10,
+  the settings half), where it carried copies. The floor is
+  `ontodag>=0.31.0`.
+
 ### Changed
 
 - **Under a chain, the chain decides proposals too** (ontodag's review

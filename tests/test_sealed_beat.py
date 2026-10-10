@@ -232,7 +232,7 @@ def test_the_cli_commits_reveals_and_derives_the_outcome(chain, tmp_path, monkey
     `loop outcome` derives the winners once the beat closes and posts them
     to the clearing contract; `loop sealed` shows the phases throughout."""
     import io
-    from ontodag import __main__ as odag
+    import ontodag
     from ontodag.prelude import apply as apply_prelude
     from loopmarket import cli
     from loopmarket.auction import MemorySealedBeat
@@ -250,7 +250,7 @@ def test_the_cli_commits_reveals_and_derives_the_outcome(chain, tmp_path, monkey
         monkeypatch.delenv(var, raising=False)
     cli._OVERRIDES.clear()
     spec = f"rs:{tmp_path / 'cat'}"
-    cat = odag.Session(odag._normalize_spec(spec))
+    cat = ontodag.open(spec)
     apply_prelude(cat.dag)
     for name in ("apple", "lesson"):
         cat.dag.put(name, [])

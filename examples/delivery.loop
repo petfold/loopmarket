@@ -20,7 +20,7 @@ matches
 give piano-lesson door 4
 give piano-lesson door 4
 set maker courier
-give transport(small-item) from(sp3) to(sp3) 2
+give transport(small-item) from(geo(sp3)) to(geo(sp3)) 2
 want piano-lesson geo(sp3) 5
 set maker mechanic
 give bicycle-repair geo(sp3) 5

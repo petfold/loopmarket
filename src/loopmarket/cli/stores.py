@@ -23,21 +23,17 @@ def _open_catalogue(spec: str | None):
     """An odag `Session` for a store spec (`.od` file, `rs:PATH`,
     `swarm:NAME`); `None` opens odag's active store.
 
-    Private use of ontodag's CLI, isolated here on purpose (cli.md §11.3;
-    `Session._open` also normalizes a spec through it): opening a catalogue
-    from an odag store spec
-    should be a public ontodag call, and this function is deleted the day it
-    is. Copying `_load_native` and the backends would drift; importing them
-    keeps the two tools on one store layout. Bee settings loopmarket got as
-    flags are pushed into odag's flag layer so the same node is used."""
-    from ontodag import __main__ as odag
+    Through ontodag's public layer (0.31, its issue #13): `ontodag.open`
+    opens a store exactly as `odag` does, so the two tools share one store
+    layout, and the Bee settings loopmarket got as flags go into ontodag's
+    flag layer (`ontodag.settings.OVERRIDES`) so the same node is used."""
+    import ontodag
+    from ontodag import settings as odag_settings
 
     for key in ("bee_api", "bee_batch", "bee_signer"):
         if _OVERRIDES.get(key):
-            odag._OVERRIDES[key] = _OVERRIDES[key]
-    if spec is None:
-        return odag.Session(odag._resolve_store())
-    return odag.Session(odag._normalize_spec(spec))
+            odag_settings.OVERRIDES[key] = _OVERRIDES[key]
+    return ontodag.open(spec)
 
 
 def _open_book(spec: str) -> OfferRegistry:
@@ -228,8 +224,8 @@ class Session:
         self._personal = _open_catalogue(None)
         spec = _configured("catalogue")
         if spec:
-            from ontodag import __main__ as odag
-            if odag._normalize_spec(spec) != self._personal.spec:
+            from ontodag.settings import normalize_spec
+            if normalize_spec(spec) != self._personal.spec:
                 self._catalogue = _open_catalogue(spec)
                 return
         self._catalogue = self._personal
