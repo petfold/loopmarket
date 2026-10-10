@@ -7,7 +7,7 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
-## [Unreleased]
+## [0.15.0] — 2026-10-10
 
 The 2026-10 review's items 10, 11, 4, 9, 12, 17 and 2 (ontodag's
 `docs/plans/REVIEW_2026-10.md` §8): the command line split by area, with
@@ -23,7 +23,7 @@ line for an operator's give. Item 2 changes how the searches
 find their candidates, not what they find, and keeps the baseline
 solver apart from the rest of loopmarket.
 
-### Changed (needs ontodag 0.31)
+### Changed (with ontodag 0.31; the floor is `ontodag>=0.31.0`)
 
 - **A cell in a role of geo is written by its own name, `from(geo(u2e4x))`**
   (ontodag's review question 14, decided by Peter 2026-10-10: in a role

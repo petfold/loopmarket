@@ -35,7 +35,7 @@ Economy essay (`docs/loop-economy.md`).
 ## The stack
 
 ```
-loopmarket  →  ontodag (>=0.30.6)  →  recordstore (>=0.22.2)  →  swarmfs  →  Swarm (optional)
+loopmarket  →  ontodag (>=0.31.0)  →  recordstore (>=0.22.2)  →  swarmfs  →  Swarm (optional)
 ```
 
 - **ontodag** (`../ontodag`): the shared catalogue. A want's terms are one
@@ -43,9 +43,9 @@ loopmarket  →  ontodag (>=0.30.6)  →  recordstore (>=0.22.2)  →  swarmfs  
   containment: a want is the wider cone, a give the narrower. `Ontology`
   (`ontology.py`) is the facade (`covers`, `satisfies`, `accepts` over
   `is_below`) where pinned catalogue roots surface. Names are the identity
-  at its boundary. `cli/stores.py` still opens stores through ontodag's
-  CLI module (`_open_catalogue`) and reads recordstore's private
-  `_addressing_name`; ontodag 0.31 will have the public `ontodag.open`.
+  at its boundary. `cli/stores.py` opens the catalogue through ontodag's
+  public layer (`ontodag.open`, `ontodag.settings`, since 0.31) and still
+  reads recordstore's private `_addressing_name`.
 - **recordstore**: the book's kernel: canonical roots, snapshots
   (`RecordStore.at(root, blobs)`; the attribute is `.blobs`), three-way
   merge, `commit(reconcile=True, resolver=...)`, proofs, extension proofs.
@@ -346,8 +346,8 @@ word.
   Open, and needed before a public launch: announced books folded live
   from a second machine, and two upstream asks to ontodag
   (`docs/plans/cli.md` §11): coordinates for `geo`, and relative times in
-  `time(...)`. The third ask, a public store opener, is in ontodag's
-  unreleased 0.31.
+  `time(...)`. The third ask, a public store opener, came with ontodag
+  0.31.
 - **P2**, verifiable clearing: the contracts, the challenger, Swarm
   addressing on chain and the sealed beat are built. Open: Shutter, solver
   bonds and the spread leg, chains and netting (G4, G5), priors from data
@@ -384,11 +384,10 @@ offers retired after circulator's benchmark and the tests moved to v4+
 `MockClearing` renamed `BookClearing` (item 12, built); the
 phase gates restated for what they still guard (item 17, under "Roadmap
 (state)"). Every review item for loopmarket is decided and built
-(items 5, 10, 11, 4, 9, 12, 17 and 2); what needs ontodag 0.31 (the CLI
-writing a cell in a role of geo by its own name, ontodag's public layer
-for the catalogue and the config) waits on the branch `ontodag-0.31`,
-while the index's respelling of older offers' bare cells is on main,
-version tolerant, so ontodag 0.31's release gate finds them. Of the
+(items 5, 10, 11, 4, 9, 12, 17 and 2); what needed ontodag 0.31 (the
+CLI writing a cell in a role of geo by its own name, ontodag's public
+layer for the catalogue and the config) is merged into main since that
+release, with the floor `ontodag>=0.31.0`. Of the
 tests the review suggested (§7, question 23), loopmarket's half of
 suggestions 3, 4 and 9 is built: the golden corpus of record bytes
 (`tests/test_golden_records.py`), well-formed hostile records

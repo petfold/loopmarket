@@ -36,10 +36,9 @@ Design rules this module obeys (cli.md, settled with Peter 2026-09-11/12):
 
 Lifted from `ontodag/__main__.py` (attribution: the settings table with its
 single precedence rule, the 0600 config writer, the stdin batch / REPL
-runner, the tty-versus-pipe rendering switch). Two places still reach into
-odag's CLI module: `_open_catalogue` (odag's `Session` opens a store spec)
-and `Session._open` (`_normalize_spec`), both in `stores`, until ontodag
-ships a public opener (cli.md §11.3).
+runner, the tty-versus-pipe rendering switch). The catalogue is opened
+through ontodag's public layer (`ontodag.open`, `ontodag.settings`), in
+`stores`.
 
 The package has one module per area: `settings` (the settings table, the
 config files, the output streams), `stores` (the session and the stores

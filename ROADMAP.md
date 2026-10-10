@@ -79,8 +79,8 @@ aggregator that cannot lie about what it folded.
 - [ ] **Before a public launch** (the review's item 17, 2026-10-10): announced
       books folded live from a second machine, and ontodag accepting
       coordinates for `geo` and relative times in `time(...)`, the first two
-      asks above (the third, a public store opener, is in ontodag's
-      unreleased 0.31). The P2 record-format freeze gates the launch too
+      asks above (the third, a public store opener, came with ontodag
+      0.31). The P2 record-format freeze gates the launch too
       (P3, below).
 
 ## P2 — verifiable clearing
