@@ -7,7 +7,7 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
-## [Unreleased]
+## [0.17.1] — 2026-10-11
 
 ### Added
 
@@ -16,6 +16,13 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   stays where it is, and a reader who names it as a peer still reads it.
   With nothing standing it is refused, so no transaction is sent for
   nothing. Until now, only the API could retract.
+
+### Changed
+
+- **The install script asks for `loopmarket>=0.17.0`**, the first release
+  with `loop setup`. Right after the 0.17.0 release a fresh install met a
+  lagging index, got 0.16.1, and failed at its setup step; now a lagging
+  index fails at the install, with uv's message.
 
 ## [0.17.0] — 2026-10-11
 
