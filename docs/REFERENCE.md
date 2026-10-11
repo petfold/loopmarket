@@ -1267,7 +1267,8 @@ is required).
 | | `drafts` | every draft in canonical spelling — the line `offer` will speak — with the typed spelling and notes beneath (exit 1: none) |
 | | `offer NAME [PRICE]` | a draft becomes an offer: its own price, the given one, or the price memory; block, question, publish, draft removed; a composed draft publishes as one v4 offer |
 | | `discard [NAME\|N ...]` | drop drafts; alone, empty the list |
-| reader | `offers [CATEGORY...]` | open offers in the fold, filtered through `satisfies` |
+| reader | `categories [WORD]` | what is above and below WORD in the catalogue, each word below with how many are below it (alone: the catalogue's top); in a pipe, `above\tNAME` and `below\tNAME\tCOUNT` lines; an unknown word is an error naming the near ones (question 36) |
+| | `offers [CATEGORY...]` | open offers in the fold, filtered through `satisfies` |
 | | `show ID` | one offer as the approval block, plus `state` |
 | | `matches` | every feasible handoff in the fold (exit 1: none) |
 | | `status` | book and catalogue specs and roots, counts, settings in force |

@@ -69,7 +69,8 @@ No `sudo`. It installs `loop` and `odag` through
 [uv](https://docs.astral.sh/uv/), on a Python you already have when one
 fits. If a Bee node answers at `localhost:1633` it installs the Swarm
 version. Then it starts the setup: the ontology, your key and your book,
-each with a default. After that, `loop give apple 5` makes an offer. The
+each with a default. After that, `loop give apple 5` makes an offer, and
+`loop categories` shows the words offers are written in. The
 [User Guide](docs/USER-GUIDE.md) §1 says what the setup asks and how to
 install by hand.
 
@@ -77,7 +78,7 @@ install by hand.
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 451 tests (three need a live Bee node, sixty-two the evm extra, one swarmfs — skipped per test without them)
+python3 -m pytest tests/ -v           # 455 tests (three need a live Bee node, sixty-two the evm extra, one swarmfs — skipped per test without them)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower

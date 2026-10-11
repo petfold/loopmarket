@@ -393,7 +393,8 @@ def run_setup(out, *, defaults: bool = False, read=None) -> dict:
     chosen["at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with open(os.path.join(home, _RECORD), "w", encoding="utf-8") as fh:
         json.dump(chosen, fh, indent=1, sort_keys=True)
-    d.say("Setup is done. Try:  loop give apple 5     (and `loop help` for the rest)")
+    d.say("Setup is done. Try:  loop give apple 5")
+    d.say("`loop categories` shows the words offers are written in, `loop help` the rest.")
     return chosen
 
 

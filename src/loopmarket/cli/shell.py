@@ -29,6 +29,7 @@ from .settings import (_ERR, _OUT, _OVERRIDES, _SETTINGS, _book_spec, _configure
 from .solving import cmd_clearing, cmd_commit, cmd_loops, cmd_outcome, cmd_propose, cmd_reveal, cmd_sealed
 from .spellings import _looks_like_time, _seconds_or_zero, coords, looks_like_coords, parse_now, validity
 from .stores import Session
+from .categories import cmd_categories
 from .setup import cmd_setup, first_start, run_setup
 from .watch import cmd_handoff, cmd_handoffs, cmd_watch
 
@@ -132,6 +133,9 @@ loop — the loopmarket command line (docs/plans/cli.md)
 
   loop setup [--defaults]    the first start's questions, again: the ontology, your
                              identity, where your offers live, the Swarm node's wallet
+
+  loop categories [WORD]     what is above and below WORD in the catalogue (alone: its
+                             top), the words offers are written in; near words if unknown
 
   loop give  [QTY] CATEGORY|TERM... [PRICE]   I give this, priced on my scale
   loop want  [QTY] CATEGORY|TERM... [PRICE]   I want this, priced on my scale
@@ -433,6 +437,11 @@ def build_parser():
     p.add_argument("categories", nargs="*")
     _add_output_flags(p)
     p.set_defaults(func=cmd_offers)
+
+    p = sub.add_parser("categories", add_help=False)
+    p.add_argument("word", nargs="?")
+    _add_output_flags(p)
+    p.set_defaults(func=cmd_categories)
 
     p = sub.add_parser("show", add_help=False)
     p.add_argument("id")

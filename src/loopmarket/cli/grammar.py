@@ -175,7 +175,8 @@ _FIELD_KINDS = frozenset({_dims.KIND_LINEAR, _dims.KIND_COUNT})
 
 
 def _unknown_hint(term: str, dag: OntoDAG) -> str:
-    """How to make an unknown concept known. A term of a prelude head the
+    """What to do about an unknown concept: the catalogue's words near it, or
+    a word of one's own in the catalogue loop reads (question 36). A term of a prelude head the
     catalogue lacks means its prelude predates the head (ontodag 0.30's
     prelude v4 brought `mass`, `in`, `about`, `shared-with`); `weight(...)`
     is no prelude term at all since v4, which says `mass`."""
@@ -190,7 +191,14 @@ def _unknown_hint(term: str, dag: OntoDAG) -> str:
                     f"`odag prelude` merges the current one (it moves the "
                     f"catalogue root, so offers pinned to the old root stop "
                     f"matching)")
-    return f"`odag put {term} PARENT` adds it to the catalogue"
+    from .categories import near_words
+    near = near_words(dag, term)
+    spec = _configured("catalogue")
+    put = f"odag -f {spec} put {term} PARENT" if spec else f"odag put {term} PARENT"
+    return ((f"near it: {', '.join(near)}" if near else "nothing near it")
+            + f" (`loop categories` looks through the catalogue); `{put}` adds it "
+            f"to your catalogue alone, whose root then differs from everyone "
+            f"else's, so no offer of yours matches theirs")
 
 
 def _head_kind(dag: OntoDAG, head: str) -> str | None:

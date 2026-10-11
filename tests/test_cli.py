@@ -399,6 +399,46 @@ def test_unknown_category_fails_closed(loop):
     assert code == 1 and "unknown category: durian" in err and "U7" in err
 
 
+def test_the_unknown_word_hint_names_loops_catalogue_and_the_near_words(loop, env):
+    """Question 36 (Peter, 2026-10-11): after the setup, loop's catalogue is
+    not odag's active store, so `odag put WORD PARENT` added the word where
+    loop never looks. The hint names the catalogue loop reads, the words
+    near the unknown one, `loop categories`, and what a word of one's own
+    costs: a root no one else has, so no offer matches theirs."""
+    code, out, err = loop("give", "aple", "home", "5")
+    assert code == 1 and "unknown category: aple" in err
+    assert "near it: apple" in err and "`loop categories`" in err
+    assert f"`odag -f {env / 'cat.od'} put aple PARENT`" in err
+    assert "no offer of yours matches theirs" in err
+
+
+def test_categories_shows_what_is_above_and_below_a_word(loop):
+    out = loop.ok("categories", "fruit")
+    assert out.splitlines() == ["above\tfood", "below\tapple\t0"]
+    rendered = loop.ok("categories", "food", "--render")
+    assert "food is at the top of the catalogue" in rendered
+    assert "  fruit  (1 below)" in rendered and "  produce  (1 below)" in rendered
+
+
+def test_categories_alone_is_the_top_of_the_catalogue(env, monkeypatch):
+    from ontodag import native
+    from loopmarket import Ontology
+    # built by put, as the setup's catalogue is: a hand-written line with no
+    # parents loads unattached to the root, as ontodag always loaded it
+    native.save(Ontology().load(dict(CATALOGUE)).dag, str(env / "put.od"))
+    monkeypatch.setenv("LOOP_CATALOGUE", str(env / "put.od"))
+    out = Runner().ok("categories")
+    assert {"below\tfood\t4", "below\tservice\t5"} <= set(out.splitlines())
+    assert not any(line.startswith("above") for line in out.splitlines())
+
+
+def test_categories_of_an_unknown_word_names_the_near_ones(loop):
+    code, out, err = loop("categories", "frut")
+    assert code == 1 and "frut is not in the catalogue; near it: fruit" in err
+    code, out, err = loop("categories", "zzzz")
+    assert code == 1 and "nothing near it" in err
+
+
 # ---------------------------------------------------------------- price memory
 
 def test_omitted_price_is_my_last_unit_price_scaled_and_marked(loop):
@@ -1701,7 +1741,8 @@ def test_an_unknown_prelude_term_says_how_to_get_it():
     dag = OntoDAG()
     apply_prelude(dag)
     assert "spell it mass(3kg)" in _unknown_hint("weight(3kg)", dag)
-    assert _unknown_hint("durian", dag).startswith("`odag put durian PARENT`")
+    plain = _unknown_hint("durian", dag)          # no catalogue set: odag's own store
+    assert "`odag put durian PARENT`" in plain and "no offer of yours matches theirs" in plain
     old = OntoDAG()
     for name, parents in [("dimension", []), ("linear-dimension", ["dimension"]),
                           ("weight", ["linear-dimension"])]:

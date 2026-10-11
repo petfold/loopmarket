@@ -30,6 +30,20 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   asked, with a dated copy of `config.yaml`) and the announcement.
   `--defaults` spends nothing. A `loop` started on a terminal before any
   setup runs it first; `setup.json` records what was chosen, never a key.
+- **`loop categories [WORD]`** (question 36, Peter, 2026-10-11): what is
+  above and below a word in loop's catalogue, and its top when no word is
+  given. For an unknown word it names the near ones (`lawnmower`: near it
+  `lawn-mower`).
+
+### Fixed
+
+- **The unknown-word hint pointed at the wrong store.** It said "`odag put
+  WORD PARENT` adds it to the catalogue", but after the setup loop's
+  catalogue is `~/.loopmarket/catalogue`, not odag's own store, so the
+  word landed where loop never looks. The hint now names the near words,
+  `loop categories`, and `odag -f CATALOGUE put WORD PARENT`. It also warns
+  that a word of your own gives your catalogue a root no one else has, so
+  none of your offers match theirs.
 
 ### Changed
 

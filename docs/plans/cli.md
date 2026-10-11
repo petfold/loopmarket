@@ -717,7 +717,7 @@ one step back only), resolving by content (an id position taking a query
 is ambiguous) and a shell script for the example (leaves the `.loop`
 form).
 
-## 16. Installation and the first start (question 34, decided 2026-10-11, not built)
+## 16. Installation and the first start (questions 34–36, decided 2026-10-11, built)
 
 Peter, 2026-10-11: a new user runs one install script and is ready to
 make offers; with nothing else, offers stay local (a demo), and if a Bee
@@ -765,6 +765,28 @@ pay the few cents of xDAI from the Bee wallet (Bee pays out only to an
 address its config whitelists; setup checks, and shows the line to add
 when it is not) and does it when the user says yes, or shows the address
 to fund from any wallet.
+
+**Built (2026-10-11).** `install.sh` and `loop setup` as above, except
+that the script uses a Python already installed when one can run loop (any
+from 3.11; the Swarm version below 3.14 while coincurve has no 3.14
+release) and has uv fetch one only when none can (Peter: install Python
+only if a usable one is not installed); and that setup, when Bee refuses
+to pay a key it does not list, offers to add the key to Bee's
+`config.yaml` itself (a dated copy of the old file kept) and asks for a
+restart, rather than only showing the line.
+
+**Question 36, decided (Peter, 2026-10-11): what `odag` sees after the
+setup.** The setup builds loop's catalogue at `~/.loopmarket/catalogue`
+and leaves odag's own store alone, since that store is where `loop place`
+keeps private places, which must stay out of the shared catalogue (they
+would move its root, and offers pinned to different roots never match).
+So `odag put WORD PARENT`, which the unknown-word hint used to suggest,
+added the word where loop never looks. Decided: **B**: `loop categories
+[WORD]` shows what is above and below a word in loop's catalogue (alone,
+its top; for an unknown word, the near ones), and the hint names the near
+words, `loop categories`, and the catalogue loop reads
+(`odag -f SPEC put WORD PARENT`), warning that a word of one's own gives
+a root no one else has, so no offer of one's own matches theirs.
 
 ## Open problems
 

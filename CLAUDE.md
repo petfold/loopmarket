@@ -265,7 +265,8 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
   guarantee settings as offer fields), `entry` (give, want, offer,
   withdraw, option, exercise, place), `drafts`, `options` (windows,
   premiums, demand; `holds`), `book` (offers, show, matches, mine,
-  status, announce, fold, export, import), `clients` (the clearing
+  status, announce, fold, export, import), `categories` (looking through
+  the catalogue, near words), `setup` (the first start), `clients` (the clearing
   contract, the escrow, the sealed beat, the registers, and the `Reads`
   they supply), `solving` (loops, clearing, propose, the sealed beat),
   `beats` (beats, challenge, finalize), `deposits` (deposit,
@@ -462,14 +463,18 @@ finalized beat recorded its loop; without a chain U11 stays.
   (it can carry a key). Throwaway signers come from
   `python3 -c 'import secrets;print(secrets.token_hex(32))'`.
 
-## Installation (question 34, decided 2026-10-11, not built)
+## Installation (questions 34–36, decided and built 2026-10-11)
 
-One install script, then a first-start setup dialog: local first (a
-demo), and live when a Bee node runs and the user lets setup use its
-wallet. The identity is loop's own key by default, the Bee node's key an
-option, and setup offers to fund loop's key from the Bee wallet (question
-35). The flow is in `docs/plans/cli.md` §16. The default registry is on
-main (d079d7d), unreleased, waiting to ship with it.
+`install.sh` (one line in the README), then `loop setup` (`cli/setup.py`),
+which a first `loop` on a terminal also starts: local first (a demo), and
+live when a Bee node runs and the user lets setup use its wallet. The
+script uses an installed Python that can run loop and fetches one through
+uv only when none can. The identity is loop's own key by default, the Bee
+node's key an option, and setup offers to fund loop's key from the Bee
+wallet (question 35). odag's own store is left alone (it holds private
+places); `loop categories` looks through loop's catalogue, and the
+unknown-word hint names it (question 36). The flow is in
+`docs/plans/cli.md` §16.
 
 ## Upstream to watch
 

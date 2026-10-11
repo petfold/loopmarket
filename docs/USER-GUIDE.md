@@ -85,6 +85,27 @@ you can make an offer at once:
 loop give apple 5
 ```
 
+Offers are written in the catalogue's words, and `loop categories` looks
+through them: alone it shows the catalogue's top, and with a word, what is
+above and below it:
+
+```console
+$ loop categories fruit
+fruit is below: botanical-fruit, food, produce
+below fruit:
+  apple
+  avocado
+  banana
+  berry  (8 below)
+  ...
+```
+
+A word the catalogue lacks is refused, and `loop` names the near ones
+(`loop give lawnmower 20`: "near it: lawn-mower, landowner"). You can add
+a word of your own to your catalogue (the message says how). Then your
+catalogue's root is one no one else has, and none of your offers match
+theirs.
+
 `loop` reads the registry of announced books on Gnosis by default (§8),
 so `loop offers` shows others' offers too. To uninstall:
 
@@ -1415,8 +1436,11 @@ does.
 Everything above runs unchanged against a real network; only the store
 changes. You need a Bee node (a **light node suffices** for all of this)
 and a **postage batch** — prefer a *mutable* one for feed-heavy work
-(immutable batches reject writes once a bucket fills). Configure the node
-once, in odag; `loop` inherits it:
+(immutable batches reject writes once a bucket fills). If you installed
+with the script while a node was running, `loop setup` (§1.1) already did
+the equivalent: a key, a book on Swarm, the node's batch. The steps below
+are the manual way, here with this tutorial's own catalogue. Configure the
+node once, in odag; `loop` inherits it:
 
 ```console
 $ curl -s http://localhost:1633/stamps        # find a usable batch id
