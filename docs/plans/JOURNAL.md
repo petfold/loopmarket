@@ -236,3 +236,6 @@ registry stands as before the run (one more transaction, about 2.5×10⁻¹³
 xDAI). The missing-extra traceback fixed: every such error is a
 `MissingExtra` (a `RuntimeError`), and `loop` prints it as one line.
 
+**0.16.1 released** (Peter's word): the missing-extra fix; verified from
+PyPI (one line for a missing `chain` extra, both examples clear).
+
