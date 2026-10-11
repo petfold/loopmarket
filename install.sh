@@ -76,7 +76,9 @@ fi
 if [ -n "${LOOPMARKET_REF:-}" ]; then
     SPEC="loopmarket${EXTRAS} @ git+https://github.com/petfold/loopmarket@${LOOPMARKET_REF}"
 else
-    SPEC="loopmarket${EXTRAS}"
+    # 0.17.0 brought `loop setup`: an index that lags just after a release
+    # then fails here, instead of installing a loop without it
+    SPEC="loopmarket${EXTRAS}>=0.17.0"
 fi
 # A Python already installed that can run loop is used; uv fetches one only
 # when none can.
