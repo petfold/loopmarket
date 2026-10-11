@@ -30,7 +30,7 @@ they were more efficient, safer and produced fewer conflicts
 ```console
 $ odag -f market.od put piano-lesson music-lesson   # the catalogue is ontodag's
 $ loop set catalogue market.od
-$ loop set maker amara; loop place home 46.05,14.50±5km; loop set terms home
+$ loop set maker amara; loop place home 46.05,14.50+-5km; loop set terms home
 $ loop give piano-lesson 100                # I give this, priced on my scale
 $ loop want produce local weekly 104        # I want this, priced on my scale
 $ loop loops && loop clearing               # hunt profitable loops; run the clearing house

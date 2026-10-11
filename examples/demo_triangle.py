@@ -75,9 +75,9 @@ season = f"time({iso(now)}..{iso(now + 120 * 86_400 - 1)})"   # four months
 standing = TimeWindow(now - 3_600)                          # until withdrawn
 
 town = dict(valid=standing)
-amara_flat = ontology.dag.canonical("geo(46.05,14.50±5km)")
-bruno_farm = ontology.dag.canonical("geo(46.10,14.55±15km)")   # covers the town
-chen_shop = ontology.dag.canonical("geo(46.06,14.51±3km)")
+amara_flat = ontology.dag.canonical("geo(46.05,14.50+-5km)")
+bruno_farm = ontology.dag.canonical("geo(46.10,14.55+-15km)")   # covers the town
+chen_shop = ontology.dag.canonical("geo(46.06,14.51+-3km)")
 
 offers = [
     # Amara: piano for amara-tokens; amara-tokens for a vegetable box

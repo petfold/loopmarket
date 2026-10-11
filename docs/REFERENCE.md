@@ -205,10 +205,10 @@ A `geo` value is ontodag's (its questions 29 and 30, registry 5.0): a
 rectangle in degrees with exact bounds, latitude first, written as bounds
 (`geo(46.0..46.1,14.4..14.6)`), as a position (`geo(46.05,14.50)`, the
 rectangle its written precision covers) or as a square around one
-(`geo(46.05,14.50±5km)`, the size either way, `+-` in plain ASCII), turned
+(`geo(46.05,14.50+-5km)`, the size either way, or `±`), turned
 into bounds when the term is read. loopmarket has no geometry of its own:
 a coordinate literal at the prompt is that parameter typed bare
-(`46.05,14.50±5km`), and `cli.coords(text)` checks one — it names the fix
+(`46.05,14.50+-5km`), and `cli.coords(text)` checks one — it names the fix
 for the spelling taken before, `LAT,LON,RADIUS`, and leaves the rest to
 ontodag. Handover places match when one rectangle contains the other, so
 two squares that only partly overlap do not match.
@@ -1211,11 +1211,11 @@ name — one only the personal store holds, which the pinned root cannot
 carry — publishes as the dimension term it hangs under (`home` →
 `geo(46.005033..46.094967,14.435157..14.564843)`) and is printed as a
 note; a private name with no such term is refused, never read as a
-literal. A bare coordinate literal (`46.05,14.50±5km`, `46.05,14.50`, or
+literal. A bare coordinate literal (`46.05,14.50+-5km`, `46.05,14.50`, or
 bounds; §2) becomes the rectangle ontodag reads it as, in its canonical
 bounds, under the rectangle head the catalogue marks as a handover
 coordinate, and in a role of geo it is written by geo's name
-(`from(46.05,14.50±5km)` → `from(geo(…))`); the old `LAT,LON,RADIUS` is
+(`from(46.05,14.50+-5km)` → `from(geo(…))`); the old `LAT,LON,RADIUS` is
 refused with the fix named; a bare relative time
 (`today..+7d`) is elaborated to fixed UTC under the calendar one. A term of a *linear* or
 *count* head (`mass(...)`, `count(...)`) is accepted by the parser and
@@ -1236,7 +1236,7 @@ largest unit the value is whole in (`90min`, `36h`, `2wk`). A bare `m` or
 `w` is refused with the fix named (`90m is metres in ontodag; write
 90min`; ontodag has no `w`, `W` is watts), never read as minutes or a
 week (review item 11), and `set` refuses one in a duration setting when
-it is set. Sizes after `±` are ontodag's lengths: `5km`, `500m` (a unit
+it is set. Sizes after `+-` (or `±`) are ontodag's lengths: `5km`, `500m` (a unit
 is required).
 
 ### Commands
@@ -1250,7 +1250,7 @@ is required).
 | | `exercise OPTION... PRICE` | as the options' holder, want their offers (the quantities held) at PRICE while the windows are open; anyone else is refused; several options: one composed want of their offers, all or nothing, open until the first window closes (2026-09-29) |
 | | `holds` | every hold in the fold: offer, option, holder, until, what is left, active (named `options` until 2026-09-29) |
 | | `mine` | my offers, all states |
-| | `place NAME LAT,LON±SIZE [ADDRESS...]` | a place node under the rectangle a coordinate literal spells (§2; the square SIZE either way, or a position, or bounds), written to odag's active store (adopts the prelude there if absent); the address is settlement text on the node, shown in the block of an offer naming the place and sealed to the cleared counterparty |
+| | `place NAME LAT,LON+-SIZE [ADDRESS...]` | a place node under the rectangle a coordinate literal spells (§2; the square SIZE either way, or a position, or bounds), written to odag's active store (adopts the prelude there if absent); the address is settlement text on the node, shown in the block of an offer naming the place and sealed to the cleared counterparty |
 | | `handoff ID TEXT...` | what my offer's cleared counterparty may read (replaces the place text for this offer); kept in `$LOOP_HOME/handoffs`, sealed by `watch` once filled |
 | | `watch [--once]` | poll the fold every `interval`: report my fills, seal pending handoffs to the counterparty's key (from the signature on their offer; under a chain only once a finalized beat recorded the loop, question 25), open incoming ones with `bee_signer`, and the notices, cures and case records sealed to me (a notice only from the leg's wanter and a cure only from its giver, anyone else's never read; a claim only from the escrow reservation's wanter, an answer from its deposit's giver, a ruling from its resolver, anyone else's set aside on stderr, and without an escrow none reported, stderr saying how many wait; a record that does not open with my key, or does not read as its kind, reported as unreadable); `--once` is one pass, exit 1 when nothing new |
 | | `handoffs` | every handoff sealed to me, opened (exit 1: none) |

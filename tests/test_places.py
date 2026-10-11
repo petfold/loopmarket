@@ -4,6 +4,8 @@ position (the rectangle its written precision covers) or as a square
 around one (`46.05,14.50±5km`), and in a role of geo it is written by geo's
 name, `from(geo(47..48,13..14))`, while a bare word there names a place."""
 
+import re
+
 import pytest
 
 from loopmarket import Thing, give, want
@@ -72,11 +74,11 @@ def test_coordinate_literals_are_ontodags_geo_typed_bare(text):
     assert looks_like_coords(text) and coords(text) == text
 
 
-@pytest.mark.parametrize("text, fix", [("46.05,14.50,5km", "46.05,14.50±5km"),
-                                       ("46.05,14.50,250", "46.05,14.50±250m")])
+@pytest.mark.parametrize("text, fix", [("46.05,14.50,5km", "46.05,14.50+-5km"),
+                                       ("46.05,14.50,250", "46.05,14.50+-250m")])
 def test_the_old_radius_spelling_is_refused_with_the_fix(text, fix):
     assert looks_like_coords(text)
-    with pytest.raises(ValueError, match=f"`{fix}`"):
+    with pytest.raises(ValueError, match=re.escape(f"`{fix}`")):
         coords(text)
 
 

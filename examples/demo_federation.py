@@ -175,9 +175,9 @@ now = int(time.time())
 # place a square around a point, see demo_triangle.py); offers stand a month.
 season = f"time({iso(now)}..{iso(now + 120 * 86_400 - 1)})"
 town = dict(valid=TimeWindow(now - 3_600, now + 30 * 86_400), **pins)
-places = {"amara": catalogue.dag.canonical("geo(46.05,14.50±5km)"),
-          "bruno": catalogue.dag.canonical("geo(46.10,14.55±15km)"),
-          "chen": catalogue.dag.canonical("geo(46.06,14.51±3km)")}
+places = {"amara": catalogue.dag.canonical("geo(46.05,14.50+-5km)"),
+          "bruno": catalogue.dag.canonical("geo(46.10,14.55+-15km)"),
+          "chen": catalogue.dag.canonical("geo(46.06,14.51+-3km)")}
 
 books, name_of = {}, {}
 for name in ("amara", "bruno", "chen"):

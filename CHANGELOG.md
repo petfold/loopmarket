@@ -19,13 +19,13 @@ major (review item 4) until their makers re-post them.
 
 - **A place is a rectangle, typed as ontodag types it.** At the prompt a
   coordinate literal is ontodag's `geo` parameter typed bare:
-  `46.05,14.50±5km` (the square 5 km either way, `+-` in plain ASCII),
+  `46.05,14.50+-5km` (the square 5 km either way; `±` works too),
   `46.05,14.50` (the rectangle its digits cover) or bounds
   `46.0..46.1,14.4..14.6`; offers carry ontodag's canonical bounds,
   `geo(46.005033..46.094967,14.435157..14.564843)`, and a role writes one
-  by geo's name, `from(geo(…))`. `loop place NAME LAT,LON±SIZE [ADDRESS]`
+  by geo's name, `from(geo(…))`. `loop place NAME LAT,LON+-SIZE [ADDRESS]`
   files a private place under its rectangle. The old `LAT,LON,RADIUS` is
-  refused with the fix named (`46.05,14.50±5km`); its radius is the size
+  refused with the fix named (`46.05,14.50+-5km`); its radius is the size
   either way of the square that holds its circle.
 - **Exact squares match less often than cells did.** A cell rounded a place
   outwards to a coarse grid, so nearby places often shared one; handover

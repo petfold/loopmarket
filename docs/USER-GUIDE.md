@@ -166,12 +166,12 @@ pinned.pins   # {'ontology_root': '…', 'registry_version': '5.0', 'contract_ve
 ## 3. Your first offer
 
 Tell `loop` who you are and where you are. A place is given by its
-coordinates and a size — `±5km` is the square 5 km either way of the
-point, ontodag's spelling (`+-` in plain ASCII) — and named from then on:
+coordinates and a size — `+-5km` is the square 5 km either way of the
+point, ontodag's spelling (`±` works too) — and named from then on:
 
 ```console
 $ loop set maker amara
-$ loop place home 46.05,14.50±5km
+$ loop place home 46.05,14.50+-5km
 $ loop set terms home
 ```
 
@@ -268,7 +268,7 @@ Things to notice:
   `from(geo(…))`, the rectangle by geo's name — public vocabulary — and the
   approval block says so. In a role of `geo` a bare word is a *place*: type
   a rectangle there by geo's name, `from(geo(46.0..46.1,14.4..14.6))`, or
-  as coordinates, `from(46.05,14.50±5km)`; a bare word that is neither a
+  as coordinates, `from(46.05,14.50+-5km)`; a bare word that is neither a
   place the catalogue knows nor one of your own (`from(sydney)`,
   `from(ljubljna)`) is refused, naming the way to file it. Your private
   name never leaves your machine; its value does: the square 5 km either
@@ -387,7 +387,7 @@ so for this tutorial we speak as him with a flag (in life he has his own
 book, own machine, own key — §8):
 
 ```console
-$ loop --maker bruno place farm 46.10,14.55±15km
+$ loop --maker bruno place farm 46.10,14.55+-15km
 $ loop --maker bruno give vegetable-box farm 50
 $ loop --maker bruno want bicycle-repair farm 52
 $ loop matches
@@ -435,7 +435,7 @@ real, distributable surplus. Chen fixes bicycles, and her daughter wants
 piano lessons:
 
 ```console
-$ loop --maker chen place shop 46.06,14.51±3km
+$ loop --maker chen place shop 46.06,14.51+-3km
 $ loop --maker chen give bicycle-repair shop 80
 $ loop --maker chen want music-lesson shop 83
 $ loop matches
@@ -536,7 +536,7 @@ text, never vocabulary: give it to the place, and it never enters an
 offer, an id or the catalogue.
 
 ```console
-$ loop place home 46.05,14.50±5km Trubarjeva 12, 4th floor, ring twice
+$ loop place home 46.05,14.50+-5km Trubarjeva 12, 4th floor, ring twice
 $ loop want ride 'from(home)' 5
 ...
   note     handoff from(home): Trubarjeva 12, 4th floor, ring twice — sealed to the counterparty at clearing
@@ -943,9 +943,9 @@ LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle
 ```
 set confirm off
 set now 2026-09-12T00:00:00Z
-place amara_flat 46.05,14.50±5km
-place bruno_farm 46.10,14.55±15km
-place chen_shop 46.06,14.51±3km
+place amara_flat 46.05,14.50+-5km
+place bruno_farm 46.10,14.55+-15km
+place chen_shop 46.06,14.51+-3km
 set maker amara
 give piano-lesson amara_flat 100
 want produce local weekly amara_flat 104
@@ -1178,7 +1178,7 @@ tombstone survives federation folds, so the closure reaches everyone.
 A gym class holds fifteen. One offer says so — a quantity with a step:
 
 ```console
-$ loop --maker gym place gym 46.05,14.52±1km
+$ loop --maker gym place gym 46.05,14.52+-1km
 $ loop --maker gym give 15seat:1 spin-class gym 'time(2026-10-07T18:00:00Z..2026-10-07T18:59:59Z)' 150
 give     geo(46.041006..46.058994,14.507039..14.532961) spin-class time(2026-10-07T18:00:00Z..2026-10-07T18:59:59Z)
   quantity 15 seat — up to 15 seat, in steps of 1 seat
@@ -1204,8 +1204,8 @@ agent publishes it as **spacetime tubes**: several (window, place) pairs
 along the planned route, priced accordingly —
 
 ```console
-$ loop --maker courier place station 46.05,14.50±2km
-$ loop --maker courier place eastside 46.02,14.55±2km
+$ loop --maker courier place station 46.05,14.50+-2km
+$ loop --maker courier place eastside 46.02,14.55+-2km
 $ loop --maker courier give parcel-run station  'time(now..+1h)'  5   # near the station, cheap
 $ loop --maker courier give parcel-run eastside 'time(+2h..+3h)'  8   # across town, later, dearer
 ```
@@ -1228,7 +1228,7 @@ is never the book.
 
 ```console
 $ odag -f market.od put to geo; odag -f market.od put theatre-ticket; odag -f market.od put hamlet
-$ loop place venue 46.051,14.506±200m
+$ loop place venue 46.051,14.506+-200m
 $ loop draft ticket want theatre-ticket hamlet 'time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)' venue
 ticket  want geo(46.049201..46.052799,14.503408..14.508592) hamlet theatre-ticket time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)
 $ loop draft ride want ride 'from(home)' 'to(venue)' 'time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z)'

@@ -192,12 +192,12 @@ def coords(text: str) -> str:
     if old:
         size = old[3] if re.search(r"[A-Za-z]", old[3]) else f"{old[3]}m"
         raise ValueError(
-            f"{text!r}: a place is LAT,LON±SIZE, the square SIZE either way, as "
-            f"ontodag writes geo — `{old[1]},{old[2]}±{size}` (`+-` in plain ASCII)")
+            f"{text!r}: a place is LAT,LON+-SIZE, the square SIZE either way, as "
+            f"ontodag writes geo — `{old[1]},{old[2]}+-{size}` (or ±)")
     if not _COORDS_RE.match(text):
         raise ValueError(
-            f"{text!r}: coordinates are LAT,LON (46.05,14.50), LAT,LON±SIZE "
-            f"(46.05,14.50±5km) or bounds (46.0..46.1,14.4..14.6)")
+            f"{text!r}: coordinates are LAT,LON (46.05,14.50), LAT,LON+-SIZE "
+            f"(46.05,14.50+-5km) or bounds (46.0..46.1,14.4..14.6)")
     _dims.canonicalize(f"{_dims.GEO_HEAD}({text})", _dims.KIND_RECT)   # ontodag's reason
     return text
 

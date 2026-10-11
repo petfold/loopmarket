@@ -7,9 +7,9 @@
 # federated one-book-per-maker shape (docs/plans/cli.md §8).
 set confirm off
 set now 2026-09-12T00:00:00Z
-place amara_flat 46.05,14.50±5km
-place bruno_farm 46.10,14.55±15km
-place chen_shop 46.06,14.51±3km
+place amara_flat 46.05,14.50+-5km
+place bruno_farm 46.10,14.55+-15km
+place chen_shop 46.06,14.51+-3km
 set maker amara
 give piano-lesson amara_flat 100
 want produce local weekly amara_flat 104

@@ -351,7 +351,7 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
                     f"{c}: `{param}` is a private name (your personal store, "
                     f"not the catalogue offers pin) with no single {head} "
                     f"value to publish in its place — `loop place {param} "
-                    f"LAT,LON±SIZE` gives a place its rectangle; a region or a "
+                    f"LAT,LON+-SIZE` gives a place its rectangle; a region or a "
                     f"floor must be in the catalogue to be named in an offer")
             term = ontology.geo_term(head, value) if kind == _dims.KIND_RECT \
                 else f"{head}({value})"
@@ -363,7 +363,7 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
             # question 14), and a value is written by geo's name.
             raise ValueError(
                 f"{c}: {param!r} is no place the catalogue or your names "
-                f"know — `loop place {param} LAT,LON±SIZE` files it under "
+                f"know — `loop place {param} LAT,LON+-SIZE` files it under "
                 f"its rectangle")
         elif kind == _dims.KIND_CALENDAR and not ontology.known(c):
             w = window(param, session.now)

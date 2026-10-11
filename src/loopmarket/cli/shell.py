@@ -139,7 +139,7 @@ loop — the loopmarket command line (docs/plans/cli.md)
                              several: one composed want, all or nothing
   loop holds                 every hold in the fold, its holder and what is left of it
   loop mine                  my offers, all states
-  loop place NAME LAT,LON±SIZE [ADDRESS...]  a place node under that square; the
+  loop place NAME LAT,LON+-SIZE [ADDRESS...]  a place node under that square; the
                              address is settlement text, sealed to the cleared counterparty
   loop handoff ID TEXT...    what my offer's cleared counterparty may read
   loop watch [--once]        poll the fold: my fills, seal handoffs, open incoming
@@ -200,15 +200,15 @@ shell; a bare number FIRST is the quantity — [MIN..]QTY[UNIT][:STEP]:
 the piece, 50kg..100kg:25 = a hundred kilos in 25 kg sacks, fifty at least
 (a give's floor) — and a bare number LAST is the price. An omitted price
 is your last unit price for the same thing, scaled, and marked.
-Every term is the catalogue's. A bare place (PLACE, LAT,LON±SIZE) is where
+Every term is the catalogue's. A bare place (PLACE, LAT,LON+-SIZE) is where
 the offer holds and a bare window (A..B, today..+7d) is when; from(), to(),
 depart(), arrive() are a route's or a transport's two ends. Place and time
 match when one side contains the other (a seller delivering anywhere in the
 city serves a want at a door); omit them on a want and it does not care,
 omit them on a give and it says nothing. The one head the
 CLI interprets is valid(DURATION|A..B|A..) — how long the offer stands
-(A.. is until withdrawn). LAT,LON±SIZE is ontodag's geo, the square SIZE
-either way (+- in ASCII); LAT,LON alone is the rectangle its digits cover.
+(A.. is until withdrawn). LAT,LON+-SIZE is ontodag's geo, the square SIZE
+either way (± works too); LAT,LON alone is the rectangle its digits cover.
 Relative time is an input spelling.
 A composed want (`+` between parts, one price last) is one v4 offer: all
 the parts or nothing, one price (docs/plans/cli.md §13).
