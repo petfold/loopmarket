@@ -9,6 +9,7 @@ import importlib.util
 import pytest
 
 from ontodag import OntoDAG
+from ontodag.dimensions import REGISTRY_VERSION
 from recordstore import DirBytesStore, MemoryBytesStore, RecordStore
 
 from loopmarket import (
@@ -16,6 +17,10 @@ from loopmarket import (
 )
 from loopmarket.beat import BeatClient, submission
 from loopmarket.clearing import ChainClearing
+
+#: The installed registry's major: an offer pinned to another one is
+#: refused (review item 4), so the pins here follow it.
+MAJOR = REGISTRY_VERSION.split(".")[0]
 
 
 # The contract tests need the `evm` extra (py-solc-x, eth-tester, web3). They
@@ -375,7 +380,7 @@ def test_a_beat_the_contract_would_convict_is_never_posted(chain):
     w3, address, key = chain
     cat = Ontology(OntoDAG()).load({"apple": [], "lesson": []})
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
-    pins = dict(ontology_root="", registry_version="4.2", contract_version="0.1")
+    pins = dict(ontology_root="", registry_version=f"{MAJOR}.2", contract_version="0.1")
     book.publish_many([give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins),
                        want("b1", Thing(("apple",), 40, "kg"), 90, **V, **pins),
                        give("b1", Thing(("lesson",)), 80, **V, **pins),

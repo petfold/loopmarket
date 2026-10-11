@@ -30,7 +30,7 @@ they were more efficient, safer and produced fewer conflicts
 ```console
 $ odag -f market.od put piano-lesson music-lesson   # the catalogue is ontodag's
 $ loop set catalogue market.od
-$ loop set maker amara; loop place home 46.05,14.50,5km; loop set terms home
+$ loop set maker amara; loop place home 46.05,14.50±5km; loop set terms home
 $ loop give piano-lesson 100                # I give this, priced on my scale
 $ loop want produce local weekly 104        # I want this, priced on my scale
 $ loop loops && loop clearing               # hunt profitable loops; run the clearing house
@@ -40,7 +40,7 @@ $ loop loops && loop clearing               # hunt profitable loops; run the cle
 plus two conventions — a bare number first is the quantity, last is the
 price — and `+` between the parts of a want that must clear together;
 every term the catalogue's (your own places stay private and publish as
-their cell), an omitted price your last unit price, and nothing published
+their rectangle), an omitted price your last unit price, and nothing published
 before the fully resolved offer is shown.
 Type `loop` alone for a prompt, pipe it a script for a batch. The same in
 Python:
@@ -63,7 +63,7 @@ agent.step()                          # snapshot → match → candidates → se
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 423 tests (three need a live Bee node, sixty-two the evm extra, one swarmfs — skipped per test without them)
+python3 -m pytest tests/ -v           # 436 tests (three need a live Bee node, sixty-two the evm extra, one swarmfs — skipped per test without them)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
@@ -100,8 +100,8 @@ one-screen version; the design record with its reasons is
 
 Candidates come from one engine, ontodag's **parametric dimensions**:
 `DimensionIndex` files gives under exactly the terms they carry
-(`geo(u24)`, `ljubljana`, `time(...)`, `from(my_home)` — cells, places,
-regions and floors, ordered by the graph), and every search — simple
+(`geo(46.0..46.1,14.4..14.6)`, `ljubljana`, `time(...)`, `from(my_home)` —
+rectangles, places, regions and floors, ordered by the graph), and every search — simple
 matches, aggregation, composed wants, composition — asks it **one**
 ontodag `get` per wanted thing: the want's categories as the query, items
 only; where and when are the exact check's, since a give that contains
@@ -240,7 +240,7 @@ And two pairs more: **clearing** is the atomic commit that fixes obligations; **
 | Document | One line |
 |---|---|
 | [`P1-federated-book.md`](docs/plans/P1-federated-book.md) | Per-maker books under own feeds/signers; announcement, aggregation, merge discipline, lifecycle, postage economics, spam floors. |
-| [`P1-spacetime-terms.md`](docs/plans/P1-spacetime-terms.md) | Place and time leave the offer's fields for its conjunction (decided and built through the v3 record 2026-09-12): where/when a thing changes hands are terms like its categories, cells and region nodes the exact geo truth, the disc retired; since 2026-09-13 handover coordinates match when one side contains the other, categories one way (the overlap rule of 2026-09-12 superseded). |
+| [`P1-spacetime-terms.md`](docs/plans/P1-spacetime-terms.md) | Place and time leave the offer's fields for its conjunction (decided and built through the v3 record 2026-09-12): where/when a thing changes hands are terms like its categories, cells (rectangles since ontodag's registry 5.0) and region nodes the exact geo truth, the disc retired; since 2026-09-13 handover coordinates match when one side contains the other, categories one way (the overlap rule of 2026-09-12 superseded). |
 | [`P2-batch-auction.md`](docs/plans/P2-batch-auction.md) | The beat: sealed proposals, numeraire-free scoring, the fairness floor, the baseline as reserve bid, collusion resistance; no protocol fees (the fee-funded solver rewards were struck 2026-08-21). §2–§6 built 2026-09-18 (`SealedBeat.sol`, `auction.py`). |
 | [`P2-clearing-pricing.md`](docs/plans/P2-clearing-pricing.md) | Turning a winning loop's surplus into per-leg prices: equal log-surplus split under uniform directional clearing; clearing prices as node potentials (§10). |
 | [`P2-loop-selection.md`](docs/plans/P2-loop-selection.md) | Clearing as optimization: flow LP vs packing ILP, chains, failure-aware objective, pre-commit compression; composition on the want side (§10); the cleared object is a circulation, clearing prices its node potentials (§11). |

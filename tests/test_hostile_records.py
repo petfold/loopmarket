@@ -57,9 +57,9 @@ def test_a_signature_over_another_offer_vouches_for_nothing_else():
     recovers to a key nobody holds."""
     kb, B = _key()
     km, M = _key()
-    real = give(B, Thing(("ride", "geo(u24)")), 4, **V)
-    forged = give(B, Thing(("ride", "geo(u24)")), 1, **V)                  # "Bruno rides for 1"
-    forged2 = give(B, Thing(("ride", "geo(u24)")), 2, **V)
+    real = give(B, Thing(("ride", "geo(45.5..46.5,14..15)")), 4, **V)
+    forged = give(B, Thing(("ride", "geo(45.5..46.5,14..15)")), 1, **V)                  # "Bruno rides for 1"
+    forged2 = give(B, Thing(("ride", "geo(45.5..46.5,14..15)")), 2, **V)
     sig_real = sign_offer(real, kb)
     assert verify_offer_sig(real, sig_real)
     assert not verify_offer_sig(forged, sig_real)                           # valid, over other bytes
@@ -74,8 +74,8 @@ def test_a_signature_over_another_offer_vouches_for_nothing_else():
     mallory.store.put(f"sig/{forged.offer_id}", sig_real)
     mallory.publish(forged2)
     mallory.store.put(f"sig/{forged2.offer_id}", sign_offer(forged2, km))
-    mine = give(M, Thing(("ride", "geo(u24)")), 3, **V)
-    other = give(M, Thing(("ride", "geo(u24)")), 5, **V)
+    mine = give(M, Thing(("ride", "geo(45.5..46.5,14..15)")), 3, **V)
+    other = give(M, Thing(("ride", "geo(45.5..46.5,14..15)")), 5, **V)
     mallory.publish(mine)
     mallory.store.put(f"sig/{mine.offer_id}", sign_offer(other, km))       # her key, other bytes
     for book in (bruno, mallory):
@@ -201,11 +201,11 @@ def cleared(env, tmp_path, monkeypatch):
         monkeypatch.setenv("BEE_SIGNER", keys[name][0])
 
     as_("amara")
-    run.ok("place", "home", "46.05,14.50,5km")
+    run.ok("place", "home", "46.05,14.50±5km")
     ride_want = run.ok("want", "ride", "home", "5").strip().splitlines()[-1]
     run.ok("give", "piano-lesson", "home", "4")
     as_("bruno")
-    run.ok("place", "depot", "46.05,14.50,5km")
+    run.ok("place", "depot", "46.05,14.50±5km")
     ride = run.ok("give", "ride", "geo(depot)", "4").strip().splitlines()[-1]
     run.ok("want", "piano-lesson", "geo(depot)", "5")
     assert "cleared" in run.ok("clearing")

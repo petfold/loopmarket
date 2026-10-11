@@ -13,12 +13,18 @@ from fractions import Fraction
 
 import pytest
 from ontodag import OntoDAG
+from ontodag.dimensions import REGISTRY_VERSION
 
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
     BookClearing, OfferRegistry, Ontology, SolverAgent, Thing, TimeWindow, give, want,
 )
+
+#: The installed registry's major: an offer pinned to another one is
+#: refused (review item 4), so the pins here follow it.
+MAJOR = REGISTRY_VERSION.split(".")[0]
+OTHER = str(int(MAJOR) + 1).encode()   # a major no offer here pins
 
 
 # The contract tests need the `evm` extra (py-solc-x, eth-tester, web3). They
@@ -58,11 +64,11 @@ def face():
 def _cleared_book(newer=False):
     """A book with pins, a cleared triangle including a partial fill of a
     divisible give, and the loop record clearing wrote. `newer`: b1's
-    offers are pinned to a later minor (registry 4.3, contract 0.4) than
-    farm's, as offers written either side of an ontodag upgrade are."""
+    offers are pinned to later minors (the registry's next, contract 0.4)
+    than farm's, as offers written either side of an ontodag upgrade are."""
     cat = Ontology(OntoDAG()).load({"apple": [], "lesson": [], "repair": []})
-    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
-    later = dict(pins, registry_version="4.3", contract_version="0.4") if newer else pins
+    pins = dict(ontology_root="ab" * 32, registry_version=f"{MAJOR}.2", contract_version="0.1")
+    later = dict(pins, registry_version=f"{MAJOR}.3", contract_version="0.4") if newer else pins
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
     offers = [
         give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins),        # 2/kg, by 5 kg
@@ -136,11 +142,11 @@ def test_offers_pinned_either_side_of_a_minor_upgrade_verify_together(face):
                                      [_rat(rec["potentials"][m])[0] for m in makers],
                                      [_rat(rec["potentials"][m])[1] for m in makers]).transact()
     beat = _beat(root, pins)
-    assert beat[2:4] == (b"4", b"0")
+    assert beat[2:4] == (MAJOR.encode(), b"0")
     for leg in rec["legs"]:
         assert verifier.functions.verifyLeg(beat, _leg_args(snapshot, rec, leg)).call()
     leg = rec["legs"][0]
-    for other, match in (((b"5", b"0"), "registry pin"), ((b"4", b"1"), "contract pin")):
+    for other, match in (((OTHER, b"0"), "registry pin"), ((MAJOR.encode(), b"1"), "contract pin")):
         with pytest.raises(Exception) as exc:
             verifier.functions.verifyLeg(beat[:2] + other + beat[4:], _leg_args(snapshot, rec, leg)).call()
         assert match in str(exc.value), str(exc.value)
@@ -179,10 +185,10 @@ def test_every_structural_fault_is_refused(face):
     refused(_L(want_p, gives_p, taken), match="left")
     verifier.functions.setFilled(gid, 0, 1).transact()
     # pins: the beat names another catalogue root, registry, contract
-    refused(good, beat_=(bytes.fromhex(root), bytes(32), b"4", b"0", 0), match="ontology pin")
-    refused(good, beat_=(bytes.fromhex(root), bytes.fromhex("ab" * 32), b"5", b"0", 0), match="registry pin")
+    refused(good, beat_=(bytes.fromhex(root), bytes(32), MAJOR.encode(), b"0", 0), match="ontology pin")
+    refused(good, beat_=(bytes.fromhex(root), bytes.fromhex("ab" * 32), OTHER, b"0", 0), match="registry pin")
     # another book root: the proof does not hash there
-    refused(good, beat_=(bytes(32), bytes.fromhex("ab" * 32), b"4", b"0", 0))
+    refused(good, beat_=(bytes(32), bytes.fromhex("ab" * 32), MAJOR.encode(), b"0", 0))
     # potentials that do not balance: the buyer's potential too small
     verifier.functions.setPotentials([b"b1", b"farm"], [1, 1], [10, 1]).transact()
     refused(good, match="balance")
@@ -194,7 +200,7 @@ def test_every_structural_fault_is_refused(face):
 
 def _cleared_book_v3():
     cat = Ontology(OntoDAG()).load({"apple": [], "lesson": []})
-    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    pins = dict(ontology_root="ab" * 32, registry_version=f"{MAJOR}.2", contract_version="0.1")
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
     offers = [give("farm", Thing(("apple",), 40, "kg"), 80, v=3, **V, **pins),
               want("b1", Thing(("apple",), 40, "kg"), 90, v=3, **V, **pins),
@@ -219,7 +225,7 @@ def _cleared_composed():
     through two lessons — cleared, with the pre-clearing snapshot."""
     from loopmarket import Parts
     cat = Ontology(OntoDAG()).load({"ticket": [], "transport": [], "lesson": []})
-    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    pins = dict(ontology_root="ab" * 32, registry_version=f"{MAJOR}.2", contract_version="0.1")
     book = OfferRegistry(RecordStore(MemoryBytesStore()))
     offers = [
         want("buyer", Parts((Thing(("ticket",), 2), Thing(("transport",), 1, "run"))), 60, **V, **pins),
@@ -288,7 +294,7 @@ def _v5_book():
     EUR or BTC at 1/2000 per sat, held by a contract; sellers with a 60 EUR
     deposit (covers), 30 000 sat (15: does not), none, or an unheld one."""
     from loopmarket import Acceptance, Bond, Requires
-    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    pins = dict(ontology_root="ab" * 32, registry_version=f"{MAJOR}.2", contract_version="0.1")
     EUR, SAT = Acceptance(("stablecoin-eur",), "EUR", 1), Acceptance(("btc",), "sat", "1/2000")
     def dep(concepts, qty, unit, escrow="0xE"):
         return Bond(Thing(concepts, qty, unit), 45, escrow)
@@ -326,7 +332,7 @@ def test_the_share_reserved_for_a_partial_fill_is_what_the_chain_compares(face):
     want: a point of 4 verifies, a point of 5 is convicted."""
     from loopmarket import Acceptance, Bond, Requires
     w3, verifier = face
-    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    pins = dict(ontology_root="ab" * 32, registry_version=f"{MAJOR}.2", contract_version="0.1")
     for point, ok in ((4, True), (5, False)):
         book = OfferRegistry(RecordStore(MemoryBytesStore()))
         farm = give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins,
@@ -353,7 +359,7 @@ def test_a_v7_deposit_counts_on_chain_only_as_far_as_it_can_pay(face):
     read like a v6 one."""
     from loopmarket import Acceptance, Bond, Requires
     w3, verifier = face
-    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    pins = dict(ontology_root="ab" * 32, registry_version=f"{MAJOR}.2", contract_version="0.1")
     for point, ok in ((3, True), (4, False)):
         book = OfferRegistry(RecordStore(MemoryBytesStore()))
         farm = give("farm", Thing(("apple",), 100, "kg", step=5), 200, **V, **pins,
@@ -383,7 +389,7 @@ def test_a_door_requirement_verifies_on_chain_as_the_types_it_lists(face):
     `registry-transfer(ID)` passes the same way."""
     from loopmarket import Requires
     w3, verifier = face
-    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    pins = dict(ontology_root="ab" * 32, registry_version=f"{MAJOR}.2", contract_version="0.1")
     H = "ab" * 32
     cases = [(("photo-match", "possession"), "possession", True), (("photo-match", "possession"), "countersign", False),
              (("photo-match",), "possession", False), (("door-at-least-possession",), "possession", False),

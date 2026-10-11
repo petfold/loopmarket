@@ -27,8 +27,8 @@ def city():
     cat.load({"vegetable-box": [], "transport": [], "bicycle-repair": [],
               "piano-lesson": [], "g1": [], "g2": [], "g3": []})
     cat.dag.put("barcelona", ["geo"])
-    cat.dag.put("geo(sp3e)", ["barcelona"]); cat.dag.put("geo(sp3g)", ["barcelona"])
-    cat.dag.put("shop", ["geo(sp3e3)"]); cat.dag.put("door", ["geo(sp3g7)"])
+    cat.dag.put("geo(41.3..41.48,2.1..2.45)", ["barcelona"]); cat.dag.put("geo(41.3..41.48,2.5..2.8)", ["barcelona"])
+    cat.dag.put("shop", ["geo(41.36..41.39,2.16..2.19)"]); cat.dag.put("door", ["geo(41.36..41.39,2.6..2.63)"])
     return cat
 
 
@@ -77,10 +77,10 @@ def test_check_composition_moves_the_thing_along_the_operator():
     leg = check_composition(at_door, (box, run), cat, now=NOW)
     assert leg is not None and leg.tails == ("grocer", "courier") and not leg.simple
     # the operator must be able to pick the thing up where it is...
-    far = give("courier", Thing(("transport", "from(u2e)", "to(barcelona)")), 2, **V)
+    far = give("courier", Thing(("transport", "from(geo(48..49,16..17))", "to(barcelona)")), 2, **V)
     assert check_composition(at_door, (box, far), cat, now=NOW) is None
     # ...and put it down where the want is
-    short = give("courier", Thing(("transport", "from(barcelona)", "to(geo(sp3e))")), 2, **V)
+    short = give("courier", Thing(("transport", "from(barcelona)", "to(geo(41.3..41.48,2.1..2.45))")), 2, **V)
     assert check_composition(at_door, (box, short), cat, now=NOW) is None
     # a give that moves nothing is not an operator; the thing alone does not reach
     assert check_composition(at_door, (box, give("x", Thing(("transport",)), 2, **V)), cat, now=NOW) is None
@@ -97,14 +97,14 @@ def test_a_thing_that_describes_nothing_composes_into_nothing():
     lost both and composed into a leg all the same; the composition now
     asks of the thing what every other check asks of a give."""
     cat = city()
-    nowhere = give("grocer", Thing(("vegetable-box", "geo(sp3e)", "geo(sp3g)")), 5, **V)
-    east = give("c1", Thing(("transport", "from(sp3e)", "to(door)")), 2, **V)
-    west = give("c2", Thing(("transport", "from(sp3g)", "to(door)")), 2, **V)
+    nowhere = give("grocer", Thing(("vegetable-box", "geo(41.3..41.48,2.1..2.45)", "geo(41.3..41.48,2.5..2.8)")), 5, **V)
+    east = give("c1", Thing(("transport", "from(geo(41.3..41.48,2.1..2.45))", "to(door)")), 2, **V)
+    west = give("c2", Thing(("transport", "from(geo(41.3..41.48,2.5..2.8))", "to(door)")), 2, **V)
     at_door = want("buyer", Thing(("vegetable-box", "door")), 8, **V)
     assert not cat.consistent(nowhere.thing.concepts)
     assert check_composition(at_door, (nowhere, east, west), cat, now=NOW) is None
     assert list(composed_legs([nowhere, east, west, at_door], cat, now=NOW)) == []
-    somewhere = give("grocer", Thing(("vegetable-box", "geo(sp3e)")), 5, **V)
+    somewhere = give("grocer", Thing(("vegetable-box", "geo(41.3..41.48,2.1..2.45)")), 5, **V)
     assert cat.consistent(somewhere.thing.concepts)
     assert check_composition(at_door, (somewhere, east), cat, now=NOW) is not None
 
@@ -161,7 +161,7 @@ def test_clearing_re_derives_a_composed_leg():
     clearing = BookClearing(book, cat, clock=lambda: NOW)
     # a tampered composed leg: the solver claims the courier moved the box
     # but names a courier who only runs elsewhere — refused on re-derivation
-    elsewhere = give("courier", Thing(("transport", "from(u2e)", "to(u2e)")), 2, valid=TimeWindow(0))
+    elsewhere = give("courier", Thing(("transport", "from(geo(48..49,16..17))", "to(geo(48..49,16..17))")), 2, valid=TimeWindow(0))
     book.publish(elsewhere); book.commit()
     bad_legs = tuple(Leg(l.want, (l.gives[0], elsewhere)) if not l.simple else l for l in circ.legs)
     receipt = clearing.submit(LoopProposal(Circulation(bad_legs), book.store.root, "", "t", NOW))
@@ -182,7 +182,7 @@ def test_two_composed_legs_in_one_circulation():
     already reach (a lesson at the door already serves a want anywhere in
     the city — moving it is not a leg)."""
     cat = city()
-    cat.dag.put("flat", ["geo(sp3e9)"]); cat.dag.put("bicycle", [])
+    cat.dag.put("flat", ["geo(41.4..41.43,2.16..2.19)"]); cat.dag.put("bicycle", [])
     s = dict(valid=TimeWindow(0))
     offers = [
         give("grocer", Thing(("vegetable-box", "shop")), 5, **s),
@@ -227,10 +227,10 @@ def test_two_couriers_carry_one_packet():
     to two hops; the whole ring clears, with the custody chain across the
     hub being P3's business (`P3-guarantee-coupling.md` §4a)."""
     cat = city()
-    cat.dag.put("hub", ["geo(sp3e7)"]); cat.dag.put("geo(sp3e7)", ["barcelona"])
+    cat.dag.put("hub", ["geo(41.36..41.39,2.25..2.28)"]); cat.dag.put("geo(41.36..41.39,2.25..2.28)", ["barcelona"])
     box = give("grocer", Thing(("vegetable-box", "shop")), 5, **V)
-    a = give("courierA", Thing(("transport", "from(sp3e3)", "to(hub)")), 1, **V)
-    b = give("courierB", Thing(("transport", "from(hub)", "to(sp3g)")), 1, **V)
+    a = give("courierA", Thing(("transport", "from(geo(41.36..41.39,2.16..2.19))", "to(hub)")), 1, **V)
+    b = give("courierB", Thing(("transport", "from(hub)", "to(geo(41.3..41.48,2.5..2.8))")), 1, **V)
     at_door = want("buyer", Thing(("vegetable-box", "door")), 12, **V)
     assert check_composition(at_door, (box, a), cat, now=NOW) is None      # neither alone
     assert check_composition(at_door, (box, b), cat, now=NOW) is None

@@ -4,6 +4,8 @@ from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import Ontology
 
+from places import square
+
 
 def test_root_reflects_the_committed_catalogue():
     # regression: EagerOntoDAG carries its store as `.store`; reading a
@@ -24,16 +26,16 @@ def test_known_accepts_terms_ontodag_can_interpret_and_nothing_else():
     from ontodag.prelude import apply as apply_prelude
     dag = OntoDAG()
     apply_prelude(dag)
-    dag.put("from", ["prefix-dimension"])
+    dag.put("from", ["geo"])                       # a role of geo
     dag.put("ride", [])
     ont = Ontology(dag)
-    assert ont.known("ride") and ont.known("from(u2e4x)") and ont.known("mass(..11kg)")
-    assert not ont.known("bogus(u2e)") and not ont.known("durian")
+    assert ont.known("ride") and ont.known("from(geo(48.2..48.25,16.2..16.25))") and ont.known("mass(..11kg)")
+    assert not ont.known("bogus(geo(48..49,16..17))") and not ont.known("durian")
     assert not ont.known("mass(11 kg)")             # malformed value
-    assert ont.covers("from(u2e)", "from(u2e4x)")
-    assert not ont.covers("from(u2e4x)", "from(u2e)")
-    assert ont.satisfies(["ride", "from(u2e4x)"], ["ride", "from(u2e)"])
-    assert not ont.satisfies(["ride", "from(u2e4x)"], ["ride", "to(u2e)"])
+    assert ont.covers("from(geo(48..49,16..17))", "from(geo(48.2..48.25,16.2..16.25))")
+    assert not ont.covers("from(geo(48.2..48.25,16.2..16.25))", "from(geo(48..49,16..17))")
+    assert ont.satisfies(["ride", "from(geo(48.2..48.25,16.2..16.25))"], ["ride", "from(geo(48..49,16..17))"])
+    assert not ont.satisfies(["ride", "from(geo(48.2..48.25,16.2..16.25))"], ["ride", "to(geo(48..49,16..17))"])
 
 
 # ---------------------------------------------------------------- roles
@@ -61,8 +63,8 @@ def _roles_catalogue():
 def test_declare_roles_adopts_the_prelude_and_pins_kinds():
     ont = _roles_catalogue()
     assert ont.head_kind("time") == "calendar-dimension"
-    assert ont.head_kind("from") == ont.head_kind("made_in") == "prefix-dimension"
-    assert ont.head_kind("geo") and ont.head_kind("prefix-dimension") is None
+    assert ont.head_kind("from") == ont.head_kind("made_in") == "rectangle-dimension"
+    assert ont.head_kind("geo") and ont.head_kind("rectangle-dimension") is None
     assert "service-role" not in ont.dag.nodes
     ont.declare_roles(ROLES)                    # idempotent, like the prelude
     import pytest
@@ -75,48 +77,49 @@ def test_descriptive_terms_the_amphora():
     offered one must be at least as specific as the wanted one, exactly
     like a category — and not the other way round."""
     ont = _roles_catalogue()
-    corinthian = ["amphora", "made_in(u2e4x)", "made(1850)"]
-    greek = ["amphora", "made_in(u2e)", "made(1800..1899)"]
+    corinthian = ["amphora", "made_in(geo(48.2..48.25,16.2..16.25))", "made(1850)"]
+    greek = ["amphora", "made_in(geo(48..49,16..17))", "made(1800..1899)"]
     assert ont.satisfies(corinthian, greek)
     assert not ont.satisfies(greek, corinthian)
-    assert not ont.satisfies(["amphora", "made_in(u2e5)"], ["amphora", "made_in(u2e4)"])
+    assert not ont.satisfies(["amphora", "made_in(geo(48.5..48.7,16.1..16.3))"], ["amphora", "made_in(geo(48.1..48.3,16.1..16.3))"])
 
 
 def test_handover_terms_match_either_way_the_ride():
-    """A give from `u2e4x` serves a want from anywhere in `u2e`, and a give
-    from anywhere in `u2e` serves a want at `u2e4x` — whichever side is
-    the flexible one (Peter, 2026-09-13). Siblings refuse; roles are never
-    confused; a bare cell is the handover place with no head at all."""
+    """A give from a small rectangle serves a want from anywhere in a wider
+    one holding it, and a give from anywhere in the wider one serves a want
+    at the small one — whichever side is the flexible one (Peter,
+    2026-09-13). Disjoint rectangles refuse; roles are never confused; a
+    bare rectangle is the handover place with no head at all."""
     ont = _roles_catalogue()
-    assert ont.satisfies(["ride", "from(u2e4x)"], ["ride", "from(u2e)"])
-    assert ont.satisfies(["ride", "from(u2e)"], ["ride", "from(u2e4x)"])
-    assert not ont.satisfies(["ride", "from(u2e4)"], ["ride", "from(u2e5)"])
-    assert ont.satisfies(["ride", "geo(u2e)"], ["ride", "geo(u2e4x)"])
-    assert ont.satisfies(["ride", "geo(u2e4x)"], ["ride", "geo(u2e)"])
-    assert not ont.satisfies(["ride", "geo(u2e4)"], ["ride", "geo(u2e5)"])
+    assert ont.satisfies(["ride", "from(geo(48.2..48.25,16.2..16.25))"], ["ride", "from(geo(48..49,16..17))"])
+    assert ont.satisfies(["ride", "from(geo(48..49,16..17))"], ["ride", "from(geo(48.2..48.25,16.2..16.25))"])
+    assert not ont.satisfies(["ride", "from(geo(48.1..48.3,16.1..16.3))"], ["ride", "from(geo(48.5..48.7,16.1..16.3))"])
+    assert ont.satisfies(["ride", "geo(48..49,16..17)"], ["ride", "geo(48.2..48.25,16.2..16.25)"])
+    assert ont.satisfies(["ride", "geo(48.2..48.25,16.2..16.25)"], ["ride", "geo(48..49,16..17)"])
+    assert not ont.satisfies(["ride", "geo(48.1..48.3,16.1..16.3)"], ["ride", "geo(48.5..48.7,16.1..16.3)"])
     # roles are never confused: the give's `to` is what answers a `to`
-    assert not ont.satisfies(["ride", "from(u2e4x)", "to(u2e5)"], ["ride", "to(u2e4x)"])
+    assert not ont.satisfies(["ride", "from(geo(48.2..48.25,16.2..16.25))", "to(geo(48.5..48.7,16.1..16.3))"], ["ride", "to(geo(48.2..48.25,16.2..16.25))"])
     # a route: both places, independently
-    give = ["ride", "from(u2e4x)", "to(u2e5m)"]
-    assert ont.satisfies(give, ["ride", "from(u2e4)", "to(u2e5)"])
-    assert not ont.satisfies(give, ["ride", "from(u2e4)", "to(u2e4)"])
+    give = ["ride", "from(geo(48.2..48.25,16.2..16.25))", "to(geo(48.55..48.6,16.15..16.2))"]
+    assert ont.satisfies(give, ["ride", "from(geo(48.1..48.3,16.1..16.3))", "to(geo(48.5..48.7,16.1..16.3))"])
+    assert not ont.satisfies(give, ["ride", "from(geo(48.1..48.3,16.1..16.3))", "to(geo(48.1..48.3,16.1..16.3))"])
 
 
 def test_silence_and_vocabulary():
     ont = _roles_catalogue()
-    assert ont.satisfies(["ride", "from(u2e)"], ["ride"])       # want: don't care
-    assert not ont.satisfies(["ride"], ["ride", "from(u2e4x)"])  # give: says nothing
+    assert ont.satisfies(["ride", "from(geo(48..49,16..17))"], ["ride"])       # want: don't care
+    assert not ont.satisfies(["ride"], ["ride", "from(geo(48.2..48.25,16.2..16.25))"])  # give: says nothing
     # an extra unknown *category* only narrows the give: ignorable ...
     assert ont.satisfies(["ride", "mystery"], ["ride"])
     # ... a term the want names that nobody can interpret never matches
     assert not ont.satisfies(["ride"], ["ride", "time(garbage)"])
-    assert not ont.satisfies(["ride", "at(u2e)"], ["ride", "at(u2e)"])  # no head
+    assert not ont.satisfies(["ride", "at(geo(48..49,16..17))"], ["ride", "at(geo(48..49,16..17))"])  # no head
     # provably disjoint same-head terms describe nothing, on either side
-    assert not ont.satisfies(["ride", "from(u2e4)", "from(u2e5)"], ["ride"])
-    assert not ont.satisfies(["ride", "from(u2e4x)"], ["ride", "from(u2e4)", "from(u2e5)"])
+    assert not ont.satisfies(["ride", "from(geo(48.1..48.3,16.1..16.3))", "from(geo(48.5..48.7,16.1..16.3))"], ["ride"])
+    assert not ont.satisfies(["ride", "from(geo(48.2..48.25,16.2..16.25))"], ["ride", "from(geo(48.1..48.3,16.1..16.3))", "from(geo(48.5..48.7,16.1..16.3))"])
     # two same-head terms that do meet are their intersection
-    assert ont.satisfies(["ride", "from(u2e4x)"], ["ride", "from(u2e)", "from(u2e4)"])
-    assert not ont.satisfies(["ride", "from(u2e5)"], ["ride", "from(u2e)", "from(u2e4)"])
+    assert ont.satisfies(["ride", "from(geo(48.2..48.25,16.2..16.25))"], ["ride", "from(geo(48..49,16..17))", "from(geo(48.1..48.3,16.1..16.3))"])
+    assert not ont.satisfies(["ride", "from(geo(48.5..48.7,16.1..16.3))"], ["ride", "from(geo(48..49,16..17))", "from(geo(48.1..48.3,16.1..16.3))"])
 
 
 def test_time_terms_match_when_one_window_contains_the_other():
@@ -160,8 +163,8 @@ def _operators():
     cat.load({"goods": [], "small-item": ["goods"], "bicycle": ["small-item"],
               "racing-bicycle": ["bicycle"], "piano": ["goods"],
               "bicycle-courier": ["transport"]})
-    cat.dag.put("barcelona", ["geo"]); cat.dag.put("geo(sp3e)", ["barcelona"])
-    cat.dag.put("flat", ["geo(sp3e3)"]); cat.dag.put("shop", ["geo(sp3e7)"])
+    cat.dag.put("barcelona", ["geo"]); cat.dag.put("geo(41.3..41.48,2.1..2.45)", ["barcelona"])
+    cat.dag.put("flat", ["geo(41.36..41.39,2.16..2.19)"]); cat.dag.put("shop", ["geo(41.36..41.39,2.25..2.28)"])
     return cat
 
 
@@ -300,21 +303,20 @@ def test_load_takes_typed_parents():
 
 def test_declare_place_is_the_write_loop_place_makes():
     """`loop place` writes through `declare_place`: ontodag's prelude
-    adopted where `geo` is not yet a prefix head (said once, through
-    `adopted`), the place under its cell, the address on the node — the
+    adopted where `geo` is not yet a rectangle head (said once, through
+    `adopted`), the place under its rectangle, the address on the node — the
     same catalogue, root for root, as the command's own writes made it."""
     from ontodag.prelude import apply as apply_prelude
-    from loopmarket.spacetime import cell_for_coords
 
     def by_hand(dag, name, cell, address):
-        if not ("geo" in dag.nodes and "prefix-dimension" in dag.nodes
-                and dag.is_below("geo", "prefix-dimension")):
+        if not ("geo" in dag.nodes and "rectangle-dimension" in dag.nodes
+                and dag.is_below("geo", "rectangle-dimension")):
             apply_prelude(dag)
         dag.put(name, [f"geo({cell})"])
         if address:
             dag.nodes[name].metadata["address"] = address
 
-    home, shop = cell_for_coords(46.05, 14.50, 5_000), cell_for_coords(46.06, 14.51, 400)
+    home, shop = square('46.05,14.50±5000m'), square('46.06,14.51±400m')
     old = Ontology.persistent(RecordStore(MemoryBytesStore()))
     new = Ontology.persistent(RecordStore(MemoryBytesStore()))
     said = []

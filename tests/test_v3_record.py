@@ -54,7 +54,7 @@ def test_v3_is_the_default_record_and_carries_no_fields():
     """v3 was the default record 2026-09-12 to 2026-09-14; since v4 it is
     asked for with `v=3` and re-encodes byte for byte (U2)."""
     assert give("a", Thing(("ride",)), 5, **V).v == 4
-    o = give("a", Thing(("ride", "geo(u2e4)", SEASON)), 5, nonce=7, v=3, **V)
+    o = give("a", Thing(("ride", "geo(48.1..48.3,16.1..16.3)", SEASON)), 5, nonce=7, v=3, **V)
     assert o.v == 3 and o.service is None and o.where is None
     rec = o.to_record()
     assert "service" not in rec and "where" not in rec and rec["v"] == 3
@@ -93,27 +93,27 @@ def test_open_ended_valid_is_a_v3_form():
 
 def test_v3_matches_through_the_conjunction():
     """Place and time are bare terms, and handover coordinates match when
-    one contains the other: the ride serving all of `u2e` serves the want
-    at `u2e4x`, and the ride at `u2e4x` serves a want anywhere in `u2e`."""
+    one contains the other: the ride serving a whole region serves the want
+    at a small rectangle in it, and the reverse."""
     ont = catalogue()
-    broad = give("bruno", Thing(("ride", "geo(u2e)", SEASON)), 5, **V)
-    near = want("amara", Thing(("ride", "geo(u2e4x)", SEASON)), 6, **V)
+    broad = give("bruno", Thing(("ride", "geo(48..49,16..17)", SEASON)), 5, **V)
+    near = want("amara", Thing(("ride", "geo(48.2..48.25,16.2..16.25)", SEASON)), 6, **V)
     assert check_match(broad, near, ont, now=NOW) is not None  # the give is wider
-    assert check_match(give("bruno", Thing(("ride", "geo(u2e4x)", SEASON)), 5, **V),
-                       want("amara", Thing(("ride", "geo(u2e)", SEASON)), 6, **V),
-                       ont, now=NOW) is not None               # u2e4x lies inside u2e
-    sibling = want("amara", Thing(("ride", "geo(u2e5)", SEASON)), 6, **V)
-    assert check_match(give("bruno", Thing(("ride", "geo(u2e4)", SEASON)), 5, **V),
-                       sibling, ont, now=NOW) is None          # siblings share no cell
-    at_cell = give("bruno", Thing(("ride", "geo(u2e4x)", SEASON)), 5, **V)
-    late = want("amara", Thing(("ride", "geo(u2e4x)", time(200_000, 300_000))), 6, **V)
-    assert check_match(at_cell, late, ont, now=NOW) is None    # the season is not inside
-    slot = give("bruno", Thing(("ride", "geo(u2e4x)", time(2_000, 3_000))), 5, **V)
+    assert check_match(give("bruno", Thing(("ride", "geo(48.2..48.25,16.2..16.25)", SEASON)), 5, **V),
+                       want("amara", Thing(("ride", "geo(48..49,16..17)", SEASON)), 6, **V),
+                       ont, now=NOW) is not None               # the small one lies inside
+    sibling = want("amara", Thing(("ride", "geo(48.5..48.7,16.1..16.3)", SEASON)), 6, **V)
+    assert check_match(give("bruno", Thing(("ride", "geo(48.1..48.3,16.1..16.3)", SEASON)), 5, **V),
+                       sibling, ont, now=NOW) is None          # disjoint rectangles share nothing
+    at_rect = give("bruno", Thing(("ride", "geo(48.2..48.25,16.2..16.25)", SEASON)), 5, **V)
+    late = want("amara", Thing(("ride", "geo(48.2..48.25,16.2..16.25)", time(200_000, 300_000))), 6, **V)
+    assert check_match(at_rect, late, ont, now=NOW) is None    # the season is not inside
+    slot = give("bruno", Thing(("ride", "geo(48.2..48.25,16.2..16.25)", time(2_000, 3_000))), 5, **V)
     assert check_match(slot, near, ont, now=NOW) is not None   # a slot inside the season
     silent = give("bruno", Thing(("ride",)), 5, **V)
     assert check_match(silent, near, ont, now=NOW) is None     # says nothing about where/when
     dont_care = want("amara", Thing(("ride",)), 6, **V)
-    assert check_match(at_cell, dont_care, ont, now=NOW) is not None
+    assert check_match(at_rect, dont_care, ont, now=NOW) is not None
     expired = want("amara", Thing(("ride",)), 6, valid=TimeWindow(0, 100))
     assert check_match(silent, expired, ont, now=NOW) is None
     standing = want("amara", Thing(("ride",)), 6, valid=TimeWindow(0))
@@ -124,7 +124,7 @@ def test_v3_matches_through_the_conjunction():
 
 # --------------------------------------------------------- index and registry
 
-CELLS = ["u2e", "u2e4", "u2e4x", "u2e5", "u2f"]
+RECTANGLES = ["geo(48..49,16..17)", "geo(48.1..48.3,16.1..16.3)", "geo(48.2..48.25,16.2..16.25)", "geo(48.5..48.7,16.1..16.3)", "geo(49.5..50.5,14..15)"]
 
 
 def _mixed_book(seed, n=80):
@@ -136,7 +136,7 @@ def _mixed_book(seed, n=80):
         terms = list(rng.sample(concepts, rng.randint(1, 2)))
         side = give if rng.random() < 0.5 else want
         if rng.random() < 0.8:
-            terms.append(f"geo({rng.choice(CELLS)})")
+            terms.append(rng.choice(RECTANGLES))
         if rng.random() < 0.8:
             a = 1_000 + rng.randrange(0, 90_000)
             terms.append(time(a, a + rng.randrange(600, 60_000)))
@@ -168,7 +168,7 @@ def test_index_is_recall_exact_on_a_mixed_version_book():
 def test_registry_files_v3_offers_and_nothing_else():
     store = RecordStore(MemoryBytesStore())
     book = OfferRegistry(store)
-    o = give("a", Thing(("ride", "geo(u2e4)")), 5, valid=TimeWindow(100))
+    o = give("a", Thing(("ride", "geo(48.1..48.3,16.1..16.3)")), 5, valid=TimeWindow(100))
     book.publish(o)
     book.commit()
     assert [x.offer_id for x in book.offers(now=10**9)] == [o.offer_id]
@@ -180,14 +180,14 @@ def test_registry_files_v3_offers_and_nothing_else():
 # ------------------------------------------------------------------ the loop
 
 def test_the_v3_triangle_clears():
-    """The demo's triangle in the v3 form: places as cells in the
+    """The demo's triangle in the v3 form: places as rectangles in the
     conjunction, the season as `when`, offers standing until withdrawn."""
     ont = catalogue()
     registry = OfferRegistry(RecordStore(MemoryBytesStore()))
     town = dict(valid=TimeWindow(0), v=3)
-    # each give hands over inside the cell the receiving want names: the
-    # want is the wider cone (bruno takes his repair anywhere in u2e4)
-    flat, shop, area = "geo(u2e4x)", "geo(u2e4x)", "geo(u2e4)"
+    # each give hands over inside the rectangle the receiving want names:
+    # the want is the wider cone (bruno takes his repair anywhere in `area`)
+    flat, shop, area = "geo(48.2..48.25,16.2..16.25)", "geo(48.2..48.25,16.2..16.25)", "geo(48.1..48.3,16.1..16.3)"
     offers = [
         give("amara", Thing(("piano-lesson", flat, SEASON), unit="course"), 100, **town),
         want("amara", Thing(("produce", "local", "weekly", flat, SEASON), unit="course"), 104, **town),

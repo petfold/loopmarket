@@ -24,7 +24,7 @@ pytest.importorskip("coincurve", reason="sealed handoffs need the sig extra")
 
 from loopmarket import cli  # noqa: E402
 from loopmarket.sigs import maker_address  # noqa: E402
-from loopmarket.spacetime import cell_for_coords  # noqa: E402
+from places import square  # noqa: E402
 from test_cli import Runner, _od_with_prelude  # noqa: E402
 
 DELIVERY = [("operator", []), ("graph-dimension", ["dimension"]),
@@ -95,21 +95,21 @@ def test_the_courier_of_a_composed_leg_hears_of_its_fill_from_the_daemon(env, tm
     give, who opens it, and the courier gets none (the open question)."""
     town = Town(tmp_path, monkeypatch, DELIVERY, ("grocer", "buyer", "courier", "mechanic"))
     run = town.as_("grocer")
-    run.ok("place", "shop", "41.3874,2.1686,20m")
+    run.ok("place", "shop", "41.3874,2.1686±20m")
     run.ok("give", "vegetable-box", "shop", "5")
     run.ok("want", "bicycle-repair", "shop", "6")
     run = town.as_("buyer")
-    run.ok("place", "door", "41.4036,2.1744,20m", "Carrer", "de", "Verdi", "12")
+    run.ok("place", "door", "41.4036,2.1744±20m", "Carrer", "de", "Verdi", "12")
     box = run.ok("want", "vegetable-box", "door", "8").strip().splitlines()[-1]
-    at_door = f"geo({cell_for_coords(41.4036, 2.1744, 20)})"         # the door's cell, without its address
+    at_door = f"geo({square('41.4036,2.1744±20m')})"         # the door's rectangle, without its address
     run.ok("give", "piano-lesson", at_door, "4")
     run.ok("give", "piano-lesson", at_door, "4")
     run = town.as_("courier")
-    ride = run.ok("give", "transport(small-item)", "from(geo(sp3))", "to(geo(sp3))", "2").strip().splitlines()[-1]
-    run.ok("want", "piano-lesson", "geo(sp3)", "5")
+    ride = run.ok("give", "transport(small-item)", "from(geo(41..42,1.5..2.8))", "to(geo(41..42,1.5..2.8))", "2").strip().splitlines()[-1]
+    run.ok("want", "piano-lesson", "geo(41..42,1.5..2.8)", "5")
     run = town.as_("mechanic")
-    run.ok("give", "bicycle-repair", "geo(sp3)", "5")
-    run.ok("want", "piano-lesson", "geo(sp3)", "5")
+    run.ok("give", "bicycle-repair", "geo(41..42,1.5..2.8)", "5")
+    run.ok("want", "piano-lesson", "geo(41..42,1.5..2.8)", "5")
 
     def clearing_elsewhere():
         out = town.as_("mechanic").ok("clearing")
@@ -120,7 +120,7 @@ def test_the_courier_of_a_composed_leg_hears_of_its_fill_from_the_daemon(env, tm
     assert first == ""                                                  # nothing cleared yet
     assert second.count("filled   ") == 2
     assert f"filled   {ride[:12]} in loop" in second
-    assert f"{C} gives from(geo(sp3)) to(geo(sp3)) transport(small-item) to {B}" in second
+    assert f"{C} gives from(geo(41..42,1.5..2.8)) to(geo(41..42,1.5..2.8)) transport(small-item) to {B}" in second
     assert f"{C} receives piano-lesson from {B}" in second
     book = town.book()
     leg = next(l for l in book.loop_legs(book.loop_of(box)) if l.want == box)

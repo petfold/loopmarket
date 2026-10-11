@@ -1,5 +1,5 @@
 # ontodag store v1 — the delivery example's catalogue (examples/delivery.loop)
-# ontodag's prelude v4 (what `odag prelude` merges), so roles can hang under geo/time
+# ontodag's prelude v5 (what `odag prelude` merges), so roles can hang under geo/time
 dimension
 linear-dimension dimension
 calendar-dimension dimension
@@ -10,6 +10,7 @@ graph-dimension dimension
 transitive-dimension dimension
 enclosing-dimension dimension
 reversed-dimension dimension
+rectangle-dimension dimension
 'linear-dimension(mass)' linear-dimension
 'linear-dimension(length)' linear-dimension
 'linear-dimension(duration)' linear-dimension
@@ -31,13 +32,13 @@ energy 'linear-dimension(energy)'
 count count-dimension
 handover
 time calendar-dimension handover
-geo prefix-dimension handover
+geo rectangle-dimension handover
 size dominance-dimension
 in transitive-dimension
 about enclosing-dimension
 shared-with reversed-dimension
 # handover coordinates (docs/plans/P1-spacetime-terms.md §3, 2026-09-13): geo
-# and time hang under `handover` above, so a bare cell, place or window says
+# and time hang under `handover` above, so a bare rectangle, place or window says
 # where/when the offer holds, and a route's `from`/`to` and a transport's
 # `depart`/`arrive` — roles under them — are the two ends of one kind; all
 # match when one side contains the other (a descriptive head would opt out

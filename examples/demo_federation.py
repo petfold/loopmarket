@@ -95,7 +95,6 @@ def committed(writer, attempts=8, pause=20):
 print(f"\n=== the federated book — "
       f"{'LIVE on ' + BEE_API if LIVE else 'in memory'} ===\n")
 
-from loopmarket.spacetime import cell_for_coords
 
 
 def iso(t: int) -> str:
@@ -173,13 +172,12 @@ print(f"offers will pin it: registry v{pins['registry_version']}, "
 
 now = int(time.time())
 # v3 offers: the season and the place are terms in the conjunction (each
-# place is the cell containing its radius — here all `u24`, see
-# demo_triangle.py); offers stand a month.
+# place a square around a point, see demo_triangle.py); offers stand a month.
 season = f"time({iso(now)}..{iso(now + 120 * 86_400 - 1)})"
 town = dict(valid=TimeWindow(now - 3_600, now + 30 * 86_400), **pins)
-places = {"amara": f"geo({cell_for_coords(46.05, 14.50, 5_000)})",
-          "bruno": f"geo({cell_for_coords(46.10, 14.55, 15_000)})",
-          "chen": f"geo({cell_for_coords(46.06, 14.51, 4_000)})"}
+places = {"amara": catalogue.dag.canonical("geo(46.05,14.50±5km)"),
+          "bruno": catalogue.dag.canonical("geo(46.10,14.55±15km)"),
+          "chen": catalogue.dag.canonical("geo(46.06,14.51±3km)")}
 
 books, name_of = {}, {}
 for name in ("amara", "bruno", "chen"):

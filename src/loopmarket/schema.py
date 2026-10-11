@@ -21,10 +21,10 @@ the logical id stays the key at the application layer.
 
 Time and place. The v3 record (2026-09-12, decided in
 `docs/plans/P1-spacetime-terms.md`) carries them *in the conjunction*:
-bare geo and time terms (`geo(cell)`, a place or region node,
-`time(a..b)`), and role heads only for two coordinates of one kind (a
+bare geo and time terms (`geo(46.0..46.1,14.4..14.6)`, a place or region
+node, `time(a..b)`), and role heads only for two coordinates of one kind (a
 route's `from`/`to`, a transport's `depart`/`arrive`), matched when one
-side contains the other; cells and region nodes are the exact truth. The
+side contains the other; rectangles and region nodes are the exact truth. The
 v1/v2 records carried them as fields, a `service` window and a `where`
 disc (`GeoDisc`). Those offers are retired (the 2026-10 review's item 12,
 decided 2026-10-10): `Offer.from_record` reads their records, so their
@@ -150,9 +150,8 @@ class GeoDisc:
     """A disc on the sphere: radius (meters) around a lat/lon centre — the
     `where` of a v1/v2 record, kept so that those records read back to
     their bytes. No offer is made with one and nothing matches on one:
-    since the v3 record a place is a cell or region term in the
-    conjunction, and `spacetime.cell_for_coords` gives the cell that
-    contains a disc.
+    since the v3 record a place is a rectangle or region term in the
+    conjunction, and `geo(LAT,LON±RADIUS)` is the square that holds a disc.
     """
 
     lat: float
@@ -1057,15 +1056,19 @@ def _iso(t: int) -> str:
 
 def _retired(service=None, where=None) -> str:
     """The error a v1/v2 offer gets, naming the terms that say the same in
-    the current record: the finest cell containing the disc (what `loop`
-    makes of `LAT,LON,R`) and the window's seconds as a `time` term."""
+    the current record: the square that holds the disc, in ontodag's
+    canonical bounds (what `loop` makes of `LAT,LON±RADIUS`), and the
+    window's seconds as a `time` term."""
     terms = []
     if isinstance(where, GeoDisc):
-        from .spacetime import cell_for_coords
-        terms.append(f"geo({cell_for_coords(where.lat, where.lon, where.radius_m)})")
+        from ontodag import dimensions as _dims
+        r = where.radius_m
+        size = f"{int(r) if r == int(r) else r}m"
+        terms.append(_dims.canonicalize(f"geo({where.lat},{where.lon}±{size})", _dims.KIND_RECT))
     if isinstance(service, TimeWindow) and service.end is not None:
         terms.append(f"time({_iso(service.start)}..{_iso(service.end - 1)})")
-    shown = ", ".join(repr(t) for t in terms or ("geo(u2e4x)", "time(2026-10-10..2026-10-12)"))
+    shown = ", ".join(repr(t) for t in terms or ("geo(46.0..46.1,14.4..14.6)",
+                                                 "time(2026-10-10..2026-10-12)"))
     return ("v1 and v2 offers are retired: their records are read, but no new one is made. "
             f"Say where and when as terms of the thing, Thing((..., {shown})), and leave "
             "out service=, where= and v=1 or v=2.")

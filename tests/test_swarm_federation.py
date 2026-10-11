@@ -42,9 +42,9 @@ def _iso(t: int) -> str:
 
 
 def _place(lat, lon, radius_m) -> str:
-    """v3: a place is the cell containing the radius (all three `u24`)."""
-    from loopmarket.spacetime import cell_for_coords
-    return f"geo({cell_for_coords(lat, lon, radius_m)})"
+    """v3: a place is the square around a point, in ontodag's bounds."""
+    from places import square
+    return f"geo({square(f'{lat},{lon}±{radius_m}m')})"
 
 
 @unittest.skipUnless(
@@ -78,7 +78,7 @@ class TestFederatedBookOnLiveSwarm(unittest.TestCase):
         season = f"time({_iso(now)}..{_iso(now + 120 * 86_400 - 1)})"   # v3 terms
         town = dict(valid=TimeWindow(now - 3_600, now + 30 * 86_400), **pins)
         places = [_place(46.05, 14.50, 5_000), _place(46.10, 14.55, 15_000),
-                  _place(46.06, 14.51, 4_000)]
+                  _place(46.06, 14.51, 3_000)]
         gives_wants = [("piano-lesson", ("produce", "local", "weekly")),
                        ("vegetable-box", ("bicycle-repair",)),
                        ("bicycle-repair", ("music-lesson",))]

@@ -709,7 +709,7 @@ def composed_legs(offers: Iterable[Offer], ontology: Ontology, *, now: int, max_
     inside its wanted cones: moving a thing changes where it is, never what
     it is. One exception keeps the search exact: a wanted term an
     operator's output coordinate lies under (a place filed under a category
-    as well as under its cell) may be answered by the move rather than by
+    as well as under its rectangle) may be answered by the move rather than by
     the thing, so it is left out of that want's query. Polynomial in the
     book with the exponent `max_hops`, which the baseline accepts as the
     recall benchmark composing species must beat. Deterministic order.

@@ -66,7 +66,7 @@ the repo front page (`README.md`).
 
 Every offer exchanges a **Thing** (a conjunction of catalogue categories —
 since the v3 record, 2026-09-12, including the bare geo and time terms that
-say where and when it changes hands, `geo(u24)`, `shop`, `time(a..b)`, and a
+say where and when it changes hands, `geo(46.0..46.1,14.4..14.6)`, `shop`, `time(a..b)`, and a
 route's `from`/`to` —
 plus quantity) against **Tokens** of the maker's personal numéraire, while a
 validity window stands (open-ended since v3: until withdrawn). The v1/v2
@@ -126,7 +126,7 @@ collide on one `loop/` key). One scope rule enters schema validation now: flat r
 only for one filler per role per offer (ontodag `BINDING` §1) — composite
 offers are separate legs joined by the solver, never bundles.
 
-## 3. Time and place are catalogue dimensions (spacetime.py)
+## 3. Time and place are catalogue dimensions
 
 Interval containment, region containment and category subsumption are the
 same partial order — *fits-within*. The prototype kept exact geometry in
@@ -299,6 +299,25 @@ matching, the haversine and the float tolerance in the disc gates go.
 Measured before deciding: about 65 lines across the package served the
 v1/v2 forms, which matched nothing current (a v1/v2 offer never matched a
 v3+ one, and the chain's verifier takes only v4–v7).
+
+**Update 2026-10-11 — places are ontodag's rectangles.** ontodag's
+questions 29, 30 and 33, decided by Peter: a `geo` value is a rectangle in
+degrees with exact bounds, typed as bounds, as a position (the rectangle
+its written precision covers) or as a square around one,
+`geo(46.05,14.50±5km)`, turned into bounds when it is read; geohash names
+are gone (ontodag's registry 5.0). So loopmarket's own geometry goes:
+`spacetime.py` (the geohash encoder and the finest cell holding a radius)
+is deleted, a coordinate literal at the prompt is ontodag's parameter
+typed bare (`46.05,14.50±5km`; the old `LAT,LON,RADIUS` is refused with
+the fix named), a private place hangs under a rectangle, and a role writes
+a value by geo's name, `from(geo(…))`. `loop place` stays, as the way to
+name a private place and give it the address a handoff seals; it no longer
+computes anything. One effect to know: a cell rounded a place outwards to
+a coarse grid, so places near each other often shared a cell and matched;
+exact squares match only when one holds the other, and the triangle
+example's shop moved from 4 km to 3 km around its point to lie inside the
+flat's square. Offers written under registry 4 keep their records and
+ids and are refused for their major (review item 4) until re-posted.
 
 ## 4. The catalogue (ontology.py)
 

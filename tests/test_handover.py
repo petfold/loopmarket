@@ -30,11 +30,11 @@ def city():
     cat.declare_operator({"transport": ("from", "to")})
     cat.load({"vegetable-box": [], "transport": [], "bicycle-repair": [],
               "piano-lesson": []})
-    cat.dag.put("barcelona", ["geo"])                # a region above its cells
-    cat.dag.put("geo(sp3e)", ["barcelona"])
-    cat.dag.put("geo(sp3g)", ["barcelona"])
-    cat.dag.put("shop", ["geo(sp3e3)"])              # places under cells
-    cat.dag.put("door", ["geo(sp3g7)"])
+    cat.dag.put("barcelona", ["geo"])                # a region above its rectangles
+    cat.dag.put("geo(41.3..41.48,2.1..2.45)", ["barcelona"])
+    cat.dag.put("geo(41.3..41.48,2.5..2.8)", ["barcelona"])
+    cat.dag.put("shop", ["geo(41.36..41.39,2.16..2.19)"])              # places under rectangles
+    cat.dag.put("door", ["geo(41.36..41.39,2.6..2.63)"])
     return cat
 
 
@@ -64,8 +64,8 @@ def test_the_courier_matches_a_transport_want_either_way():
     fixed = give("courier", Thing(("transport", "from(shop)", "to(door)")), 2, **V)
     any_run = want("buyer", Thing(("transport", "from(barcelona)", "to(barcelona)")), 3, **V)
     assert check_match(fixed, any_run, cat, now=NOW) is not None   # the want is wider
-    elsewhere = want("buyer", Thing(("transport", "from(shop)", "to(u2e4)")), 3, **V)
-    assert check_match(courier, elsewhere, cat, now=NOW) is None   # u2e4 is not in the city
+    elsewhere = want("buyer", Thing(("transport", "from(shop)", "to(geo(48.1..48.3,16.1..16.3))")), 3, **V)
+    assert check_match(courier, elsewhere, cat, now=NOW) is None   # that rectangle is not in the city
     # roles are never confused: a `to` answers a `to`
     assert check_match(give("c", Thing(("transport", "from(barcelona)")), 2, **V),
                        want("b", Thing(("transport", "to(door)")), 3, **V), cat, now=NOW) is None

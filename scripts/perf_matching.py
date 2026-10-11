@@ -11,8 +11,8 @@ any category, a want of one of a hundred from the broad end (the first
 third of the tree, the core pack's hundred categories with the most below
 them). Fifty makers, prices from 10 to 99, every quantity 1. The `places`
 books are the tree's with geo and time declared: every give hands over in
-one of eight cells within a window of a few hours, half the wants name
-one of the two parent cells and a third a window of days.
+one of eight rectangles within a window of a few hours, half the wants
+name one of the two regions holding them and a third a window of days.
 
 Matching is `candidate_matches` (the index, what the solver runs) against
 the product the tests keep as their oracle (`tests/oracle.py`), checked to
@@ -71,18 +71,25 @@ def catalogue(kind):
     return cat, plain, broad[:100]
 
 
+#: Two regions, each holding four rectangles a give may hand over in.
+_REGIONS = {"46..50,12..20": ["47..48,13..14", "47..48,15..16", "48.5..49.5,13..14",
+                              "48.5..49.5,15..16"],
+            "51..54,22..28": ["51.5..52,23..24", "51.5..52,25..26", "53..53.5,23..24",
+                              "53..53.5,25..26"]}
+
+
 def _where_and_when(rng, wanted):
-    """For the `places` books: a give hands over in one of eight cells in a
-    window of a few hours; a want names one of their two parent cells half
-    the time and a window of days a third of the time."""
+    """For the `places` books: a give hands over in one of eight rectangles
+    in a window of a few hours; a want names one of the two regions holding
+    them half the time and a window of days a third of the time."""
     terms = []
     if not wanted:
-        terms.append(f"geo(u2{rng.choice('ef')}{rng.choice('4567')})")
+        terms.append(f"geo({rng.choice(_REGIONS[rng.choice(sorted(_REGIONS))])})")
         day, hour = rng.randrange(10, 20), rng.randrange(6, 18)
         terms.append(f"time(2026-10-{day}T{hour:02d}:00:00Z..2026-10-{day}T{hour + rng.randrange(2, 6):02d}:00:00Z)")
     else:
         if rng.random() < 0.5:
-            terms.append(f"geo(u2{rng.choice('ef')})")
+            terms.append(f"geo({rng.choice(sorted(_REGIONS))})")
         if rng.random() < 0.33:
             day = rng.randrange(10, 17)
             terms.append(f"time(2026-10-{day}..2026-10-{day + 3})")

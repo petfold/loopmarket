@@ -7,6 +7,54 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
+## [Unreleased] — on the branch `ontodag-0.32`
+
+Places are ontodag's rectangles (its questions 29, 30 and 33, decided by
+Peter 2026-10-11; ontodag's registry 5.0 and contract 0.7, unreleased).
+Offers that name a place get new spellings and so new ids; offers written
+under registry 4 keep their records and ids and are refused for their
+major (review item 4) until their makers re-post them.
+
+### Changed (needs ontodag's registry 5.0; the floor rises to `ontodag>=0.32.0` at its release)
+
+- **A place is a rectangle, typed as ontodag types it.** At the prompt a
+  coordinate literal is ontodag's `geo` parameter typed bare:
+  `46.05,14.50±5km` (the square 5 km either way, `+-` in plain ASCII),
+  `46.05,14.50` (the rectangle its digits cover) or bounds
+  `46.0..46.1,14.4..14.6`; offers carry ontodag's canonical bounds,
+  `geo(46.005033..46.094967,14.435157..14.564843)`, and a role writes one
+  by geo's name, `from(geo(…))`. `loop place NAME LAT,LON±SIZE [ADDRESS]`
+  files a private place under its rectangle. The old `LAT,LON,RADIUS` is
+  refused with the fix named (`46.05,14.50±5km`); its radius is the size
+  either way of the square that holds its circle.
+- **Exact squares match less often than cells did.** A cell rounded a place
+  outwards to a coarse grid, so nearby places often shared one; handover
+  places match only when one holds the other, and partial overlap is no
+  match. The triangle example's shop is now 3 km around its point (it was
+  4 km), inside the flat's square.
+- `examples/*.od` carry ontodag's prelude 5 (`geo` under
+  `rectangle-dimension`), and the examples' Barcelona is
+  `geo(41.3..41.5,2.0..2.3)`.
+- `Ontology.cell_term` is `Ontology.geo_term`; `declare_place(name, where)`
+  takes any parameter of `geo`.
+
+### Removed
+
+- `loopmarket.spacetime` (`geohash`, `cell_bounds`, `cell_for_coords`), and
+  `cli.radius_m` and `cli.parse_coords` (`cli.coords` checks a coordinate
+  literal).
+- `Ontology.current_spelling` and the index's respelling of a pre-0.31
+  offer's bare cell in a role: such offers pin registry 4 and are refused.
+
+### Tests
+
+- The tests' cells are readable rectangles that nest as the cells did,
+  with gaps between siblings (exact cells touch, and touching rectangles
+  share an edge); `tests/test_places.py` replaces `test_cells.py` and
+  `test_spacetime.py`.
+- The chain tests' registry pins follow the installed registry's major
+  instead of naming 4, so they survive a major.
+
 ## [0.15.0] — 2026-10-10
 
 The 2026-10 review's items 10, 11, 4, 9, 12, 17 and 2 (ontodag's

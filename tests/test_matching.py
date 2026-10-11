@@ -1,6 +1,7 @@
 """Exact pairwise matching: meaning, time, space, quantity, version pins."""
 
 from ontodag import OntoDAG
+from ontodag.dimensions import REGISTRY_VERSION
 
 from loopmarket import Ontology, Thing, TimeWindow, give, want
 from loopmarket.matching import check_match
@@ -11,6 +12,10 @@ ONT = Ontology().load({
     "produce": [], "local": [], "weekly": [],
     "vegetable-box": ["produce", "local", "weekly"],
 })
+
+#: The installed registry's major: an offer pinned to another one is
+#: refused (review item 4), so the pins here follow it.
+MAJOR = REGISTRY_VERSION.split(".")[0]
 
 
 def test_subsumption_match():
@@ -39,12 +44,12 @@ def test_time_space_and_validity_gates():
     cat.declare_handover(["geo", "time"])
     cat.load({"produce": [], "local": [], "weekly": [],
               "vegetable-box": ["produce", "local", "weekly"]})
-    season, here = "time(2026-10-01..2026-12-31)", "geo(u2e4x)"
+    season, here = "time(2026-10-01..2026-12-31)", "geo(48.2..48.25,16.2..16.25)"
     a = give("x", Thing(("vegetable-box", here, season)), 50, **W)
     assert check_match(a, want("y", Thing(("produce", here, season)), 60, **W), cat, now=NOW) is not None
     late = want("y", Thing(("produce", here, "time(2027-01)")), 60, **W)
     assert check_match(a, late, cat, now=NOW) is None
-    far = want("y", Thing(("produce", "geo(u2f)", season)), 60, **W)
+    far = want("y", Thing(("produce", "geo(49.5..50.5,14..15)", season)), 60, **W)
     assert check_match(a, far, cat, now=NOW) is None
     expired = want("y", Thing(("produce", here, season)), 60, valid=TimeWindow(0, 100))
     assert check_match(a, expired, cat, now=NOW) is None
@@ -69,9 +74,9 @@ def test_registry_and_contract_pins_refuse_major_skew():
     # major skew = the registry's canonical reduction changed order: refuse;
     # minor skew = vocabulary-additive: interoperates (ontodag D10)
     pins = dict(ontology_root="r", contract_version="0.1")
-    a = give("x", Thing(("vegetable-box",)), 50, registry_version="4.1", **pins, **W)
-    skewed = want("y", Thing(("produce",)), 60, registry_version="5.0", **pins, **W)
-    minor = want("y", Thing(("produce",)), 60, registry_version="4.2", **pins, **W)
+    a = give("x", Thing(("vegetable-box",)), 50, registry_version=f"{MAJOR}.1", **pins, **W)
+    skewed = want("y", Thing(("produce",)), 60, registry_version=f"{int(MAJOR) + 1}.0", **pins, **W)
+    minor = want("y", Thing(("produce",)), 60, registry_version=f"{MAJOR}.2", **pins, **W)
     assert check_match(a, skewed, ONT, now=NOW) is None
     assert check_match(a, minor, ONT, now=NOW) is not None
 
@@ -108,7 +113,7 @@ def test_mixed_pinning_refuses_even_under_an_unpinned_catalogue():
     # cannot be confirmed, so the pair is refused (proof-fabric gate G2) —
     # even when the verifier's own catalogue is a dev-mode in-memory one
     pinned = give("x", Thing(("vegetable-box",)), 50, ontology_root="r",
-                 registry_version="4.1", contract_version="0.1", **W)
+                 registry_version=f"{MAJOR}.1", contract_version="0.1", **W)
     unpinned = want("y", Thing(("produce",)), 60, **W)
     assert check_match(pinned, unpinned, ONT, now=NOW) is None
 
@@ -132,9 +137,10 @@ def test_pinned_catalogue_refuses_unpinned_offers():
 
 
 def test_handover_terms_match_when_one_contains_the_other():
-    """A give at `u2e4x` serves a want from anywhere in `u2e`, and a give
-    from anywhere in `u2e` serves a want at `u2e4x` — whichever side is
-    the flexible one (Peter, 2026-09-13); siblings share nothing. `from`
+    """A give in a small rectangle serves a want from anywhere in a wider one
+    holding it, and a give from anywhere in the wider one serves a want in
+    the small one — whichever side is the flexible one (Peter,
+    2026-09-13); disjoint rectangles share nothing. `from`
     is a role of `geo`, so it is a handover coordinate with `geo`; a
     descriptive head under `geo` would opt out."""
     cat = Ontology(OntoDAG())
@@ -142,27 +148,27 @@ def test_handover_terms_match_when_one_contains_the_other():
     cat.declare_handover(["geo"])
     cat.declare_descriptive(["made_in"])
     cat.load({"ride": [], "amphora": []})
-    narrow = give("bruno", Thing(("ride", "from(u2e4x)")), 5, **W)
-    wide = give("bruno", Thing(("ride", "from(u2e)")), 5, **W)
-    assert check_match(narrow, want("amara", Thing(("ride", "from(u2e)")), 6, **W),
+    narrow = give("bruno", Thing(("ride", "from(geo(48.2..48.25,16.2..16.25))")), 5, **W)
+    wide = give("bruno", Thing(("ride", "from(geo(48..49,16..17))")), 5, **W)
+    assert check_match(narrow, want("amara", Thing(("ride", "from(geo(48..49,16..17))")), 6, **W),
                        cat, now=NOW) is not None
-    assert check_match(wide, want("amara", Thing(("ride", "from(u2e4x)")), 6, **W),
+    assert check_match(wide, want("amara", Thing(("ride", "from(geo(48.2..48.25,16.2..16.25))")), 6, **W),
                        cat, now=NOW) is not None
-    assert check_match(give("bruno", Thing(("ride", "from(u2e4)")), 5, **W),
-                       want("amara", Thing(("ride", "from(u2e5)")), 6, **W),
+    assert check_match(give("bruno", Thing(("ride", "from(geo(48.1..48.3,16.1..16.3))")), 5, **W),
+                       want("amara", Thing(("ride", "from(geo(48.5..48.7,16.1..16.3))")), 6, **W),
                        cat, now=NOW) is None
     # descriptive stays one-way: made somewhere in Greece is not Corinthian
-    assert check_match(give("bruno", Thing(("amphora", "made_in(u2e4x)")), 5, **W),
-                       want("amara", Thing(("amphora", "made_in(u2e)")), 6, **W),
+    assert check_match(give("bruno", Thing(("amphora", "made_in(geo(48.2..48.25,16.2..16.25))")), 5, **W),
+                       want("amara", Thing(("amphora", "made_in(geo(48..49,16..17))")), 6, **W),
                        cat, now=NOW) is not None
-    assert check_match(give("bruno", Thing(("amphora", "made_in(u2e)")), 5, **W),
-                       want("amara", Thing(("amphora", "made_in(u2e4x)")), 6, **W),
+    assert check_match(give("bruno", Thing(("amphora", "made_in(geo(48..49,16..17))")), 5, **W),
+                       want("amara", Thing(("amphora", "made_in(geo(48.2..48.25,16.2..16.25))")), 6, **W),
                        cat, now=NOW) is None
 
 
 def test_places_regions_and_floors_match_through_the_graph():
     """ontodag #15 (2026-09-12): a bare place term may be a *node* of the
-    geo dimension — a place under a cell, a region above cells, a floor
+    geo dimension — a place under a rectangle, a region above rectangles, a floor
     under a building — and containment is the graph's. Handover
     coordinates match when one contains the other: the region serves the
     place inside it and the place serves a buyer collecting anywhere in the
@@ -170,12 +176,12 @@ def test_places_regions_and_floors_match_through_the_graph():
     cat = Ontology(OntoDAG())
     cat.declare_handover(["geo", "time"])
     cat.load({"ride": [], "delivery": []})
-    cat.dag.put("my_home", ["geo(u2e4x)"])
+    cat.dag.put("my_home", ["geo(48.2..48.25,16.2..16.25)"])
     cat.dag.put("my_home_4th", ["my_home"])
     cat.dag.put("my_home_ground", ["my_home"])
-    cat.dag.put("ljubljana", ["geo"])                 # a region: above cells
-    cat.dag.put("geo(u2e4)", ["ljubljana"])
-    cat.dag.put("geo(u2e5)", ["ljubljana"])
+    cat.dag.put("ljubljana", ["geo"])                 # a region: above rectangles
+    cat.dag.put("geo(48.1..48.3,16.1..16.3)", ["ljubljana"])
+    cat.dag.put("geo(48.5..48.7,16.1..16.3)", ["ljubljana"])
     V = dict(valid=TimeWindow(0, 1_000_000))
 
     def pair(give_terms, want_terms):
@@ -188,13 +194,13 @@ def test_places_regions_and_floors_match_through_the_graph():
     assert pair(["my_home_4th"], ["my_home"])     # floor ⊑ building
     assert pair(["my_home"], ["my_home_4th"])     # the building serves its floor
     assert not pair(["my_home_ground"], ["my_home_4th"])  # siblings
-    assert pair(["my_home_4th"], ["geo(u2e)"])         # up through the cell
-    assert pair(["geo(u2e)"], ["my_home_4th"])         # and down to it
-    assert not pair(["ljubljana"], ["geo(u2)"])        # covering: lower bound
-    assert not pair(["my_home"], ["geo(u2f)"])
+    assert pair(["my_home_4th"], ["geo(48..49,16..17)"])         # up through the rectangle
+    assert pair(["geo(48..49,16..17)"], ["my_home_4th"])         # and down to it
+    assert not pair(["ljubljana"], ["geo(45..51,11..23)"])        # covering: lower bound
+    assert not pair(["my_home"], ["geo(49.5..50.5,14..15)"])
     # the stored spelling is the name; ontodag orders it (`known` passes)
     assert cat.known("my_home_4th") and cat.known("ljubljana")
     # a give with two same-head terms sits in their meet; a provably empty
     # meet describes nothing
-    assert pair(["my_home", "geo(u2e)"], ["geo(u2e4)"])
-    assert not pair(["my_home", "geo(u2f)"], ["geo(u2e4)"])
+    assert pair(["my_home", "geo(48..49,16..17)"], ["geo(48.1..48.3,16.1..16.3)"])
+    assert not pair(["my_home", "geo(49.5..50.5,14..15)"], ["geo(48.1..48.3,16.1..16.3)"])

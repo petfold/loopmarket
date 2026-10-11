@@ -18,7 +18,8 @@ from loopmarket import (
 )
 from loopmarket.dimensions import DimensionIndex, candidate_matches_indexed
 from loopmarket.matching import candidate_matches, check_match
-from loopmarket.spacetime import cell_for_coords
+
+from places import square
 
 V = dict(valid=TimeWindow(0))
 AUG = 1_785_542_400            # 2026-08-01T00:00Z, the corpus's v1 triangle
@@ -50,9 +51,9 @@ def test_the_constructors_refuse_v1_and_v2_naming_the_terms_to_write():
     with pytest.raises(ValueError) as refused:
         give("amara", Thing(("piano-lesson",)), 100, service=service, where=where, **month)
     text = str(refused.value)
-    assert f"'geo({cell_for_coords(46.05, 14.50, 5_000)})'" in text
+    assert f"'geo({square('46.05,14.50±5000m')})'" in text
     assert "'time(2026-08-01T00:00:00Z..2026-08-01T23:59:59Z)'" in text
-    with pytest.raises(ValueError, match=r"'geo\(u2"):
+    with pytest.raises(ValueError, match=r"'geo\(46\.005033\.\."):
         want("amara", Thing(("produce",)), 100, service=service, where=where, **month)
     for v in (1, 2):
         with pytest.raises(ValueError, match="retired"):
@@ -63,9 +64,9 @@ def test_the_constructors_refuse_v1_and_v2_naming_the_terms_to_write():
     with pytest.raises(ValueError, match="retired"):            # the fields on a later record
         give("amara", Thing(("piano-lesson",)), 100, service=service, where=where, v=3, **month)
     # what replaces them is an ordinary v4 offer; v3 can still be asked for
-    assert give("amara", Thing(("piano-lesson", f"geo({cell_for_coords(46.05, 14.50, 5_000)})",
+    assert give("amara", Thing(("piano-lesson", f"geo({square('46.05,14.50±5000m')})",
                                 "time(2026-08-01T00:00:00Z..2026-08-01T23:59:59Z)")), 100, **V).v == 4
-    assert give("amara", Thing(("piano-lesson", "geo(u2e4)")), 100, v=3, **V).v == 3
+    assert give("amara", Thing(("piano-lesson", "geo(48.1..48.3,16.1..16.3)")), 100, v=3, **V).v == 3
 
 
 def test_old_records_read_under_their_ids_and_copies_are_not_new_offers(golden):

@@ -53,9 +53,9 @@ Raises `ValueError` unless `end > start`.
 Frozen. A disc on the sphere: the `where` of a v1/v2 record, kept so that
 old records read back to their bytes. No offer is made with one and
 nothing matches on one (v1/v2 offers are retired, the 2026-10 review's
-item 12): since the v3 record a place is a cell or region term in the
-conjunction, and `spacetime.cell_for_coords(lat, lon, radius_m)` gives the
-cell that contains a disc. Raises `ValueError` for out-of-range centre or
+item 12): since the v3 record a place is a rectangle or region term in
+the conjunction, and `geo(LAT,LON±RADIUS)` is the square that holds a
+disc. Raises `ValueError` for out-of-range centre or
 negative radius. `.to_record()` → `[lat, lon, radius_m]`.
 
 ### `q(x) -> Fraction` / `rat(x) -> str`
@@ -188,8 +188,8 @@ The current record by default — v4, or the version its fields need: a
 `requires` or a `Bond` deposit v5, a v6 requirement field, `claim_max`
 or an option v6, a deductible v7 — unless `v=` says otherwise (3 to 7).
 `service=`, `where=`, `v=1` and `v=2` raise `ValueError` naming the terms
-that say the same thing: the finest cell containing the disc and the
-window's seconds as a `time` term.
+that say the same thing: the square holding the disc, in ontodag's
+canonical bounds, and the window's seconds as a `time` term.
 Convenience constructors; `**kw` passes through (`nonce=`, pins, etc.).
 Splat `**Ontology.pins` to pin the catalogue.
 
@@ -199,17 +199,19 @@ Order-book synonyms, kept indefinitely: `ask = give`, `bid = want`
 
 ---
 
-## 2. `loopmarket.spacetime` — geohash cells
+## 2. Places: ontodag's rectangles
 
-The spelling of a place: input vocabulary only, the cell is the stored
-name and ontodag's prefix kind orders it. (The day-bucket and cell-prefix
-chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
-
-| function | meaning |
-|---|---|
-| `geohash(lat, lon, precision=6)` | plain geohash, no dependencies |
-| `cell_bounds(cell)` | `(lat_lo, lat_hi, lon_lo, lon_hi)` — the bit interleaving run backwards |
-| `cell_for_coords(lat, lon, radius_m, max_precision=6)` | the finest cell that **contains** the whole radius — what a bare `LAT,LON,R` (or `loop place NAME LAT,LON,R`) becomes |
+A `geo` value is ontodag's (its questions 29 and 30, registry 5.0): a
+rectangle in degrees with exact bounds, latitude first, written as bounds
+(`geo(46.0..46.1,14.4..14.6)`), as a position (`geo(46.05,14.50)`, the
+rectangle its written precision covers) or as a square around one
+(`geo(46.05,14.50±5km)`, the size either way, `+-` in plain ASCII), turned
+into bounds when the term is read. loopmarket has no geometry of its own:
+a coordinate literal at the prompt is that parameter typed bare
+(`46.05,14.50±5km`), and `cli.coords(text)` checks one — it names the fix
+for the spelling taken before, `LAT,LON,RADIUS`, and leaves the rest to
+ontodag. Handover places match when one rectangle contains the other, so
+two squares that only partly overlap do not match.
 
 ---
 
@@ -231,8 +233,9 @@ chains that fed the `idx/{t,g}` index retired with it, 2026-09-12.)
 | `.declare_operator({category: (input_head, output_head)})` | `{"transport": ("from", "to"), "storage": ("depart", "arrive")}`: the category under the `operator` marker (created if absent), the two ends — roles of one dimension — under `operator-input`/`operator-output`; a give naming the category and both ends moves a thing along that dimension (composition, `P2-loop-selection.md` §10); the category's parenthesised argument is what it accepts. 0.5.0's `{base: (in, out)}` shape raises |
 | `.operator_of(term)` / `.argument(term)` | the operator category a term names (`transport(bicycle)` and bare `transport` → `transport`; None otherwise); the constraints of its argument in ontodag's canonical spelling (`transport(small-item mass(..8000g))` → `("mass(..8kg)", "small-item")`; bare → `()`; a term the catalogue refuses → `()`, and `known` is False) — the term is ontodag's graph kind (#19, 0.26.1) |
 | `.ends(concepts)` / `.accepts(concepts, operator_terms)` | the moves an operator give states, `[(base, input_term, output_term)]`; whether a thing fits every constraint of the operator terms' arguments (the payload check of `check_composition`; a term whose argument the catalogue cannot read accepts nothing, U7) |
-| `.base_head(head)` / `.coordinate(concepts, base)` / `.bare(term)` | a role's base head; the bare coordinate of `base` a conjunction states; a role term respelled as the bare coordinate it denotes (`to(geo(u2e4))` → `geo(u2e4)`, and an offer's from before ontodag 0.31, `to(u2e4)`, the same; `from(shop)` → `shop`) |
-| `.is_geo_role(head)` / `.cell_term(head, cell)` / `.current_spelling(term)` | whether a head is a role of `geo`; `head`'s term for a cell (`from(geo(u2e4))` in a role, `geo(u2e4)` under `geo`; ontodag 0.31 writes a cell in a role by its own name and reads a bare word as a place); `term` as ontodag 0.31 writes it (an older offer's bare cell `from(sp3)` → `from(geo(sp3))`, which is what the index files; the offer and its id are untouched) |
+| `.base_head(head)` / `.coordinate(concepts, base)` / `.bare(term)` | a role's base head; the bare coordinate of `base` a conjunction states; a role term respelled as the bare coordinate it denotes (`to(geo(47..48,13..14))` → `geo(47..48,13..14)`; `from(shop)` → `shop`; `depart(2026-10-05)` → `time(2026-10-05)`) |
+| `.is_geo_role(head)` / `.geo_term(head, value)` | whether a head is a role of `geo`, in which a bare word names a place; `head`'s term for a geo value (`from(geo(47..48,13..14))` in a role, `geo(47..48,13..14)` under `geo`) |
+| `.declare_place(name, where, *, address="", adopted=None)` | the write `loop place` makes: `name` under `geo(where)`, `where` any parameter `geo` takes; ontodag's prelude adopted first where `geo` is not a rectangle head (`adopted()` called to say so; a store from before registry 5.0 is refused there, naming its migration); `address` kept on the node as settlement text |
 | `.head_kind(head)` | the registry kind a declared head orders values by, else `None` |
 | `.root` | canonical root of the last committed state, `''` if in-memory/uncommitted |
 | `.pins` | `{"ontology_root", "registry_version", "contract_version"}` — splat into `give`/`want` (U10) |
@@ -457,7 +460,7 @@ a chain only where a shorter one does not reach; deterministic order. The
 thing gives a want is tried with are those the index holds in its wanted
 cones (moving a thing changes where it is, never what it is), except that
 a wanted term some operator's output coordinate lies under (a place filed
-under a category as well as under its cell) is left out of that want's
+under a category as well as under its rectangle) is left out of that want's
 query, since the move may answer it.
 
 ### `independence_faults(legs, ontology, *, head="inspect") -> list[str]`
@@ -1009,7 +1012,7 @@ announcement stores.
 
 **Offer, v3** (2026-09-12, `docs/plans/P1-spacetime-terms.md`): no
 `service`/`where` — where and when the thing changes hands are terms in
-`concepts`: a bare geo or time term (`geo(u24)`, a place node, a region, a
+`concepts`: a bare geo or time term (`geo(46.0..46.1,14.4..14.6)`, a place node, a region, a
 window `time(a..b)`, a named time) and, for a route or a transport, the
 two ends `from`/`to`, `depart`/`arrive`. Handover coordinates match when
 one side contains the other (the seller delivering anywhere in the city
@@ -1022,7 +1025,7 @@ v3 record:
 ```json
 {"v": 3, "maker": "amara",
  "gives": {"type": "thing",
-           "concepts": ["geo(u24)", "piano-lesson",
+           "concepts": ["geo(46.0..46.1,14.4..14.6)", "piano-lesson",
                         "time(2026-10-01T00:00:00Z..2026-12-31T23:59:59Z)"],
            "qty": 1.0, "unit": "course", "divisible": false},
  "wants": {"type": "tokens", "issuer": "amara", "amount": 100},
@@ -1194,7 +1197,7 @@ for byte.
 offer's `valid` window (`A..` stands until withdrawn). A startup check
 refuses a catalogue that declares `valid` as a dimension head. Everything
 else is a catalogue term. Where and when the offer holds are **bare**
-terms (2026-09-13: no `where`/`when` head): a place name, a cell, a
+terms (2026-09-13: no `where`/`when` head): a place name, a rectangle, a
 window — `give vegetable-box shop 5`, `want vegetable-box door 6`. Omit
 them on a want and it does not care; omit them on a give and it says
 nothing about where or when. A route's ends keep their heads,
@@ -1206,11 +1209,14 @@ line that does not already state that coordinate (`set terms home`).
 `ljubljana`, `my_home_4th`, `autumn`): ontodag orders it. A *private*
 name — one only the personal store holds, which the pinned root cannot
 carry — publishes as the dimension term it hangs under (`home` →
-`geo(u24)`) and is printed as a note; a private name with no such term is
-refused, never read as a literal. A bare `LAT,LON,R` becomes the finest
-cell containing that radius around the point (the spelling `place` takes;
-a place near a cell edge names the coarser cell) under the prefix head the
-catalogue marks as a handover coordinate; a bare relative time
+`geo(46.005033..46.094967,14.435157..14.564843)`) and is printed as a
+note; a private name with no such term is refused, never read as a
+literal. A bare coordinate literal (`46.05,14.50±5km`, `46.05,14.50`, or
+bounds; §2) becomes the rectangle ontodag reads it as, in its canonical
+bounds, under the rectangle head the catalogue marks as a handover
+coordinate, and in a role of geo it is written by geo's name
+(`from(46.05,14.50±5km)` → `from(geo(…))`); the old `LAT,LON,RADIUS` is
+refused with the fix named; a bare relative time
 (`today..+7d`) is elaborated to fixed UTC under the calendar one. A term of a *linear* or
 *count* head (`mass(...)`, `count(...)`) is accepted by the parser and
 **refused at publish** with the coupling plan named: quantities are
@@ -1230,7 +1236,8 @@ largest unit the value is whole in (`90min`, `36h`, `2wk`). A bare `m` or
 `w` is refused with the fix named (`90m is metres in ontodag; write
 90min`; ontodag has no `w`, `W` is watts), never read as minutes or a
 week (review item 11), and `set` refuses one in a duration setting when
-it is set. Radii: `5km`, `500m`, bare metres.
+it is set. Sizes after `±` are ontodag's lengths: `5km`, `500m` (a unit
+is required).
 
 ### Commands
 
@@ -1243,7 +1250,7 @@ it is set. Radii: `5km`, `500m`, bare metres.
 | | `exercise OPTION... PRICE` | as the options' holder, want their offers (the quantities held) at PRICE while the windows are open; anyone else is refused; several options: one composed want of their offers, all or nothing, open until the first window closes (2026-09-29) |
 | | `holds` | every hold in the fold: offer, option, holder, until, what is left, active (named `options` until 2026-09-29) |
 | | `mine` | my offers, all states |
-| | `place NAME LAT,LON,RADIUS [ADDRESS...]` | a place node under the cell containing that radius, written to odag's active store (temporary bridge; adopts the prelude there if absent); the address is settlement text on the node, shown in the block of an offer naming the place and sealed to the cleared counterparty |
+| | `place NAME LAT,LON±SIZE [ADDRESS...]` | a place node under the rectangle a coordinate literal spells (§2; the square SIZE either way, or a position, or bounds), written to odag's active store (adopts the prelude there if absent); the address is settlement text on the node, shown in the block of an offer naming the place and sealed to the cleared counterparty |
 | | `handoff ID TEXT...` | what my offer's cleared counterparty may read (replaces the place text for this offer); kept in `$LOOP_HOME/handoffs`, sealed by `watch` once filled |
 | | `watch [--once]` | poll the fold every `interval`: report my fills, seal pending handoffs to the counterparty's key (from the signature on their offer; under a chain only once a finalized beat recorded the loop, question 25), open incoming ones with `bee_signer`, and the notices, cures and case records sealed to me (a notice only from the leg's wanter and a cure only from its giver, anyone else's never read; a claim only from the escrow reservation's wanter, an answer from its deposit's giver, a ruling from its resolver, anyone else's set aside on stderr, and without an escrow none reported, stderr saying how many wait; a record that does not open with my key, or does not read as its kind, reported as unreadable); `--once` is one pass, exit 1 when nothing new |
 | | `handoffs` | every handoff sealed to me, opened (exit 1: none) |
@@ -1372,7 +1379,7 @@ one command with captured streams; `Session()` opens stores lazily;
 Python's literal:** `offer_from_line(line, session=None) -> Offer` resolves
 an offer line under the session's settings without publishing (a composed
 line is one v4 want); `line_for(offer) -> str` renders an `Offer` to its
-canonical line, `want 2kg apple geo(CELL) time(A..B) valid(A..B) 9`,
+canonical line, `want 2kg apple geo(BOUNDS) time(A..B) valid(A..B) 9`,
 and the two round-trip. `parse_offer_tokens`, `parse_want_line`, `window`,
-`duration_s`, `radius_m`, `render_offer` are the pure pieces.
+`duration_s`, `coords`, `render_offer` are the pure pieces.
 Gates G1–G6 (`docs/plans/cli.md`) are `tests/test_cli.py`.

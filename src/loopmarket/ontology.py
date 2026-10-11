@@ -7,9 +7,9 @@ covered by some offered concept — equal to it, or an ancestor of it in the
 DAG (the offered concept fits within the wanted one).
 
 Since 2026-09-12 a conjunction also carries where and when a thing changes
-hands, as **bare terms of the geo and time dimensions**: a cell
-(`geo(u2e4x)`), a place node under a cell (`my_shop`), a region above cells
-(`barcelona`), a window (`time(2026-10-05T19:00:00Z..)`), a named time. No
+hands, as **bare terms of the geo and time dimensions**: a rectangle
+(`geo(48.25..48.29,15.75..15.8)`), a place node under one (`my_shop`), a
+region above rectangles (`barcelona`), a window (`time(2026-10-05T19:00:00Z..)`), a named time. No
 head: "at this place" is what a geo term in a conjunction already means
 (Peter, 2026-09-13 — the `where`/`when` heads of the day before were
 unnecessary and are gone). A head is kept only where something has two
@@ -23,7 +23,7 @@ besides the dimensions'):
 
 - **containment, give within want**, for categories and descriptive
   terms — the offered thing is at least as specific as asked (a Corinthian
-  amphora for "Greek amphora", `made_in(u2e4x)` for `made_in(u2e)`), never
+  amphora for "Greek amphora", `made_in(corinth)` for `made_in(greece)`), never
   the reverse (a thing made somewhere in Greece is not known to be
   Corinthian);
 - **one contains the other**, for handover coordinates — a seller who
@@ -93,7 +93,7 @@ except Exception:  # pragma: no cover
 #: Marker nodes, the only names this module knows besides the dimensions'.
 #: `handover`: the base heads under it (`geo`, `time`) are the
 #: dimensions whose terms say where or when the thing changes hands and
-#: match when one side contains the other — a bare cell, place or window,
+#: match when one side contains the other — a bare rectangle, place or window,
 #: and every role head under them (`from`/`to`, `depart`/`arrive`), since a
 #: head under a head inherits the marker by transitive reduction anyway.
 #: `descriptive`: a geo or time head whose terms describe the thing instead
@@ -321,25 +321,26 @@ class Ontology:
             self._mark(OPERATOR_INPUT, [inp])
             self._mark(OPERATOR_OUTPUT, [out])
 
-    def declare_place(self, name: str, cell: str, *, address: str = "", adopted=None) -> None:
-        """A place: `name` under the cell of the prelude's `geo` head it lies
-        in — `my_home` under `geo(u2e4x)`, the cell of a radius around a
-        point (`spacetime.cell_for_coords`). That edge is what lets ontodag
-        interpret the name: order `from(my_home)` by the graph, or give a
-        place only a personal store holds the cell it publishes as. Where
-        `geo` is not yet a prefix head here, ontodag's prelude is adopted
-        first, and `adopted()` is called to say so before the place is
-        written. `address` is settlement text kept on the node
+    def declare_place(self, name: str, where: str, *, address: str = "", adopted=None) -> None:
+        """A place: `name` under the rectangle of the prelude's `geo` head
+        it lies in — `my_home` under `geo(46.05,14.50±500m)`, which ontodag
+        turns into bounds; `where` is any parameter `geo` takes. That edge
+        is what lets ontodag interpret the name: order `from(my_home)` by
+        the graph, or give a place only a personal store holds the
+        rectangle it publishes as. Where `geo` is not yet a rectangle head
+        here, ontodag's prelude is adopted first, and `adopted()` is called
+        to say so before the place is written (a store from before
+        ontodag's registry 5.0 is refused there, naming its migration). `address` is settlement text kept on the node
         (P1-spacetime-terms.md §4): never vocabulary, never in a record.
         The write `loop place` makes; on a persistent catalogue it moves the
         root."""
         dag = self.dag
-        if not ("geo" in dag.nodes and _dims.KIND_PREFIX in dag.nodes
-                and dag.is_below("geo", _dims.KIND_PREFIX)):
+        if not (_dims.GEO_HEAD in dag.nodes and _dims.KIND_RECT in dag.nodes
+                and dag.is_below(_dims.GEO_HEAD, _dims.KIND_RECT)):
             self._adopt_prelude()
             if adopted is not None:
                 adopted()
-        dag.put(name, [f"geo({cell})"])
+        dag.put(name, [f"{_dims.GEO_HEAD}({where})"])
         if address:
             dag.nodes[name].metadata["address"] = address
 
@@ -416,9 +417,8 @@ class Ontology:
 
     def bare(self, term: str) -> str:
         """A role term respelled as the bare coordinate it denotes:
-        `from(my_home)` → `my_home` (a node), `to(u2e4)` → `geo(u2e4)`, and
-        `to(geo(u2e4))`, a cell written by its own name (ontodag 0.31), the
-        same."""
+        `from(my_home)` → `my_home` (a node), `to(geo(47..48,13..14))` →
+        `geo(47..48,13..14)`, `depart(2026-10-05)` → `time(2026-10-05)`."""
         split = _dims.split_term(term)
         if split is None:
             return term
@@ -432,33 +432,17 @@ class Ontology:
         return f"{base}({param})"
 
     def is_geo_role(self, head: str) -> bool:
-        """Is `head` a role of `geo` (`from`, `to`, `where`) under an
-        ontodag that writes a cell in such a role by its own name,
-        `from(geo(u2e4x))`, and reads a bare word there as a place (0.31,
-        its review question 14)? Under an older ontodag, never: it writes
-        cells bare, and nothing here respells them."""
-        geo = getattr(_dims, "GEO_HEAD", None)
-        return geo is not None and head != geo and self.base_head(head) == geo
+        """Is `head` a role of `geo` (`from`, `to`)? In one a bare word
+        names a place and a value is written by geo's name,
+        `from(geo(47..48,13..14))` (ontodag's review question 14)."""
+        return head != _dims.GEO_HEAD and self.base_head(head) == _dims.GEO_HEAD
 
-    def cell_term(self, head: str, cell: str) -> str:
-        """`head`'s term for the geo cell `cell`: `from(geo(u2e4x))` in a
-        role of geo (ontodag 0.31), else `head(cell)`."""
+    def geo_term(self, head: str, value: str) -> str:
+        """`head`'s term for the geo value `value` (a parameter of `geo`):
+        `from(geo(47..48,13..14))` in a role of geo, else `head(value)`."""
         if self.is_geo_role(head):
-            return f"{head}({_dims.GEO_HEAD}({cell}))"
-        return f"{head}({cell})"
-
-    def current_spelling(self, term: str) -> str:
-        """`term` as the installed ontodag writes it. An offer made before
-        ontodag 0.31 may spell a cell in a role of geo as a bare word
-        (`from(sp3)`), which its id hashes and which still means the cell,
-        but which 0.31 refuses to file as a new name; the index files
-        `from(geo(sp3))` instead, so the offer is still found. Any other
-        term, and any term under an older ontodag, is returned as it is."""
-        split = _dims.split_term(term)
-        if split is None or "(" in split[1] or split[1] in self.dag.nodes \
-                or not self.is_geo_role(split[0]):
-            return term
-        return self.cell_term(split[0], split[1])
+            return f"{head}({_dims.GEO_HEAD}({value}))"
+        return f"{head}({value})"
 
     def handover_heads(self) -> set[str]:
         """The base heads directly under the `handover` marker."""
@@ -471,8 +455,9 @@ class Ontology:
         when `concept` is a category or a descriptive term. A term
         `head(param)` states a coordinate iff its head is under `handover`
         (a marked base head, or a role under one) and not under
-        `descriptive`; a bare node — a place under a cell, a region above
-        cells, a named time — states the coordinate of the marked base head
+        `descriptive`; a bare node — a place under a rectangle, a region
+        above rectangles, a named time — states the coordinate of the marked
+        base head
         it is filed in."""
         marked = self.handover_heads()
         if not marked:
@@ -500,10 +485,10 @@ class Ontology:
         """Is `concept` vocabulary of this catalogue?
 
         A node is. So is a *parametric term of a declared dimension head*
-        — `from(u2e4x)`, `mass(..11kg)` — although no such node exists:
-        the head is pinned by the catalogue root, the value grammar by the
-        registry version, and ontodag orders these terms by computation
-        (prefix containment, interval arithmetic). Asking the DAG to order
+        — `from(geo(47..48,13..14))`, `mass(..11kg)` — although no such
+        node exists: the head is pinned by the catalogue root, the value
+        grammar by the registry version, and ontodag orders these terms by
+        computation (rectangle containment, interval arithmetic). Asking the DAG to order
         the term against itself is the public test that it can interpret
         it: an undeclared head answers False, a malformed value raises —
         both fail closed (U7). Entered 2026-09-12 so role terms in offers
@@ -639,8 +624,9 @@ class Ontology:
 
     def consistent(self, concepts: Iterable[str]) -> bool:
         """Can the conjunction be held at all? Two coordinates of one head
-        that provably share no point — `from(u2e4)` and `from(u2e5)`, a
-        place under `u2e4x` and the cell `u2f` — describe nothing: ontodag
+        that provably share no point — `from(geo(47..48,13..14))` and
+        `from(geo(47..48,15..16))`, a place under the first and the second
+        — describe nothing: ontodag
         refuses to file such an item, so the index never holds it, and the
         exact checks agree by matching it against nothing (recall-exactness
         both ways): `satisfies` asks it of both sides, `check_composition`

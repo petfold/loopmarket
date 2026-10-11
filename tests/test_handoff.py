@@ -37,8 +37,8 @@ def test_public_key_recovers_from_an_offer_signature():
 
 
 def _cleared_pair(blobs):
-    w = want(A, Thing(("ride", "geo(u24)")), 5, **V)
-    g = give(B, Thing(("ride", "geo(u24)")), 4, **V)
+    w = want(A, Thing(("ride", "geo(45.5..46.5,14..15)")), 5, **V)
+    g = give(B, Thing(("ride", "geo(45.5..46.5,14..15)")), 4, **V)
     book_a, book_b = OfferRegistry(RecordStore(blobs)), OfferRegistry(RecordStore(blobs))
     book_a.publish(w); book_a.attach_signature(w.offer_id, sign_offer(w, KEY_A)); book_a.commit()
     book_b.publish(g); book_b.attach_signature(g.offer_id, sign_offer(g, KEY_B)); book_b.commit()
@@ -132,14 +132,14 @@ def test_watch_reports_fills_seals_and_opens_handoffs(env, tmp_path, monkeypatch
 
     run = Runner()
     as_(KEY_A)
-    run.ok("place", "home", "46.05,14.50,5km", "Trubarjeva", "12,", "4th", "floor")
+    run.ok("place", "home", "46.05,14.50±5km", "Trubarjeva", "12,", "4th", "floor")
     out = run.ok("want", "ride", "home", "5")
     assert "note     handoff home: Trubarjeva 12, 4th floor — sealed" in out
     out = run.ok("give", "piano-lesson", "home", "4")
     give_id = out.strip().splitlines()[-1]
     run.ok("handoff", give_id[:12], "Ring", "twice")   # overrides the place text
     as_(KEY_B)
-    run.ok("place", "depot", "46.05,14.50,5km")         # no address
+    run.ok("place", "depot", "46.05,14.50±5km")         # no address
     run.ok("give", "ride", "geo(depot)", "4")
     run.ok("want", "piano-lesson", "geo(depot)", "5")
     assert run("watch", "--once")[0] == 1               # nothing cleared yet
@@ -206,11 +206,11 @@ def test_under_a_chain_watch_seals_a_handoff_only_after_a_finalized_beat(env, tm
 
     run = Runner()
     as_(KEY_A)
-    run.ok("place", "home", "46.05,14.50,5km", "Trubarjeva", "12")
+    run.ok("place", "home", "46.05,14.50±5km", "Trubarjeva", "12")
     run.ok("want", "ride", "home", "5")
     run.ok("give", "piano-lesson", "home", "4")
     as_(KEY_B)
-    run.ok("place", "depot", "46.05,14.50,5km")
+    run.ok("place", "depot", "46.05,14.50±5km")
     run.ok("give", "ride", "geo(depot)", "4")
     run.ok("want", "piano-lesson", "geo(depot)", "5")
     run.ok("clearing")
