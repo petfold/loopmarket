@@ -259,3 +259,34 @@ commands; and on a fresh install, nothing works yet without settings (no
 registry, no catalogue, no identity), which the install script Peter
 asked for next is to fix.
 
+
+**The installer, the setup and 0.17.0 (2026-10-11).** Peter: "very easy,
+work straight away with the default installation, ready to make offers",
+"ideally an install script should do everything". Questions 34 and 35
+decided, then built: `install.sh` and `loop setup` (cli.md §16). Peter
+then asked that Python be installed only when no usable one is: the
+script asks uv for `>=3.11` (`>=3.11,<3.14` for the Swarm version) with
+the system preferred. In sandboxes: this laptop's 3.12 was used and
+nothing was fetched; on a PATH like Ubuntu 26.04's (only 3.14), the local
+version ran on 3.14 and the Swarm version fetched 3.13. Asked whether it
+installs and configures ontodag too, the answer found question 36: after
+the setup, odag's own store is not loop's catalogue, so the unknown-word
+hint's `odag put WORD PARENT` led nowhere (followed in a sandbox: odag did
+not know `tool`, loop still refused the word). Decided B: `loop
+categories`, and a hint that names the near words and the catalogue loop
+reads. The wheel's smoke test then found `loop --version` printing 0.14.5,
+stale in `__init__.py` since 0.15.0; a test now pins it to pyproject.toml.
+Released on Peter's word ("B, then release 0.17.0"): the full suite 456
+(450 passed and 4 skipped, then the one hint test whose old wording
+changed, and the new version test), CI green, `publish.yml` green. From
+PyPI, as a new user (the install script downloaded from GitHub into fresh
+homes; the safety check refused piping it into `bash -c`): without a node,
+0.17.0 on the system's Python, the setup's defaults, an offer, `loop
+categories fruit`; with this laptop's node, the first run got 0.16.1 from
+a lagging index and failed at the setup, the second got 0.17.0, made its
+own key and a Swarm book on the node's batch, spent nothing, and `loop
+announced` read the registry on Gnosis by default (the test maker's book
+and the v5-gate clearing book). The script now asks for `>=0.17.0`, so a
+lagging index fails at the install instead. Lessons: run anything that
+prints the version after a bump (the release step says so; a test now
+does it); and a release's first install can meet the old index.
