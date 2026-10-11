@@ -195,3 +195,18 @@ place, and the catalogue and config through ontodag's public layer. The
 index's respelling of older offers' bare cells is on main, version
 tolerant, so ontodag 0.31's release gate (which runs this main) finds
 those offers.
+
+## 2026-10-11: places as rectangles, relative times, 0.16.0
+
+ontodag's questions 29–33 (decided by Peter) taken on the branch
+`ontodag-0.32`: the geohash code deleted, the prompt's coordinate literal
+ontodag's `geo` parameter typed bare (`46.05,14.50+-5km`; the old
+`LAT,LON,R` refused with its fix), `loop place` kept for the handoff
+address, computing nothing, and time terms read by ontodag's code (`..`
+an open end; `valid(..B)` still from now). Exact squares match less often
+than cells did, so the triangle's shop is 3 km around its point; the
+chain tests' registry pins now follow the installed major; the user guide
+was re-executed. The branch merged into main just before ontodag 0.32.0's
+tag (its gate ran this main green against the candidate); 0.16.0 followed
+with the floor `ontodag>=0.32.0`, every publish job green, the chain
+tests included, and both examples clear from the PyPI install.
