@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "loopmarket"
-version = "0.15.0"
+version = "0.16.0"
 description = "Universal combinatorial marketplace: uniform offers over an OntoDAG catalogue, a versioned offer book on recordstore/Swarm, and solver agents hunting profitable loops"
 readme = "README.md"
 license = { text = "BSD-3-Clause" }
@@ -25,8 +25,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "ontodag>=0.31.0",        # catalogue: subsumption, dimensions, is_below, role heads;
-                              # 0.31: cells in roles of geo by their own name, ontodag.open
+    "ontodag>=0.32.0",        # catalogue: subsumption, dimensions, is_below, role heads;
+                              # 0.32: geo as rectangles, relative times in time(...);
+                              # 0.31: a value in a role of geo by its base's name, ontodag.open
                               # taking nodes, overlaps, get(items_only=) (issues #14/#15/#16,
                               # 0.25.0); prelude v4 (mass, not weight); the CLI leans on
                               # odag's store backends, prelude and surface;

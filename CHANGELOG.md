@@ -7,15 +7,16 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
-## [Unreleased] — on the branch `ontodag-0.32`
+## [0.16.0] — 2026-10-11
 
 Places are ontodag's rectangles (its questions 29, 30 and 33, decided by
-Peter 2026-10-11; ontodag's registry 5.0 and contract 0.7, unreleased).
+Peter 2026-10-11; ontodag 0.32's registry 5.0 and contract 0.7), and time
+terms read ontodag's relative times (its question 31).
 Offers that name a place get new spellings and so new ids; offers written
 under registry 4 keep their records and ids and are refused for their
 major (review item 4) until their makers re-post them.
 
-### Changed (needs ontodag's registry 5.0; the floor rises to `ontodag>=0.32.0` at its release)
+### Changed (with ontodag 0.32; the floor is `ontodag>=0.32.0`)
 
 - **A place is a rectangle, typed as ontodag types it.** At the prompt a
   coordinate literal is ontodag's `geo` parameter typed bare:

@@ -426,15 +426,15 @@ blocks `loop` shipping, each removes a loopmarket-only behaviour.
    2026-10-11; registry 5.0): a `geo` value is a rectangle with exact
    bounds, and `geo(LAT,LON±SIZE)` is the square SIZE either way, turned
    into bounds when read. loopmarket's literal is that parameter typed
-   bare (`46.05,14.50±5km`) and its geohash code is gone (branch
-   `ontodag-0.32`). `loop place` stays, computing nothing: it names a
+   bare (`46.05,14.50±5km`) and its geohash code is gone (loopmarket
+   0.16.0). `loop place` stays, computing nothing: it names a
    private place and keeps the address a handoff seals (§14).
 2. ~~**Relative time spellings in `time(...)`.**~~ — **built** in ontodag
    (its question 31, decided by Peter 2026-10-11: read where a person or
    an agent types, `today` the UTC day, `..` an open end). `loop` reads
    time terms with ontodag's code, so the superset is gone; `..+90d` in a
    time term is now everything up to 90 days from now, and `now..+90d` the
-   next 90 days (branch `ontodag-0.32`).
+   next 90 days (loopmarket 0.16.0).
 3. **A public opener for store specs.** `ontodag.open(spec)` or similar
    over `.od` / `rs:` / `swarm:` so loopmarket's `catalogue` setting
    resolves through public API rather than a copy of `_load_native`.

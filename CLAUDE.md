@@ -35,7 +35,7 @@ Economy essay (`docs/loop-economy.md`).
 ## The stack
 
 ```
-loopmarket  →  ontodag (>=0.31.0)  →  recordstore (>=0.22.2)  →  swarmfs  →  Swarm (optional)
+loopmarket  →  ontodag (>=0.32.0)  →  recordstore (>=0.22.2)  →  swarmfs  →  Swarm (optional)
 ```
 
 - **ontodag** (`../ontodag`): the shared catalogue. A want's terms are one
@@ -45,11 +45,9 @@ loopmarket  →  ontodag (>=0.31.0)  →  recordstore (>=0.22.2)  →  swarmfs  
   `is_below`) where pinned catalogue roots surface. Names are the identity
   at its boundary. `cli/stores.py` opens the catalogue through ontodag's
   public layer (`ontodag.open`, `ontodag.settings`, since 0.31) and still
-  reads recordstore's private `_addressing_name`. The branch
-  `ontodag-0.32` takes ontodag's rectangles (registry 5.0, unreleased):
-  it merges into main just before ontodag's tag, since ontodag's release
-  gate runs this main against the candidate, and the floor rises to
-  `>=0.32.0` once 0.32 is on PyPI.
+  reads recordstore's private `_addressing_name`. Places are ontodag's
+  rectangles and time terms its relative times (0.32: registry 5.0,
+  contract 0.7, surface 0.2).
 - **recordstore**: the book's kernel: canonical roots, snapshots
   (`RecordStore.at(root, blobs)`; the attribute is `.blobs`), three-way
   merge, `commit(reconcile=True, resolver=...)`, proofs, extension proofs.
@@ -351,9 +349,8 @@ word.
   Open, and needed before a public launch: announced books folded live
   from a second machine. The upstream asks to ontodag (`docs/plans/cli.md`
   §11) are answered: coordinates for `geo` and relative times in
-  `time(...)` are built on ontodag's main (registry 5.0, surface 0.2,
-  unreleased) and taken here on the branch `ontodag-0.32`; a public store
-  opener came with ontodag 0.31.
+  `time(...)` came with ontodag 0.32 (loopmarket 0.16.0), a public store
+  opener with ontodag 0.31.
 - **P2**, verifiable clearing: the contracts, the challenger, Swarm
   addressing on chain and the sealed beat are built. Open: Shutter, solver
   bonds and the spread leg, chains and netting (G4, G5), priors from data
