@@ -29,6 +29,7 @@ from .settings import (_ERR, _OUT, _OVERRIDES, _SETTINGS, _book_spec, _configure
 from .solving import cmd_clearing, cmd_commit, cmd_loops, cmd_outcome, cmd_propose, cmd_reveal, cmd_sealed
 from .spellings import _looks_like_time, _seconds_or_zero, coords, looks_like_coords, parse_now, validity
 from .stores import Session
+from .setup import cmd_setup, first_start, run_setup
 from .watch import cmd_handoff, cmd_handoffs, cmd_watch
 
 
@@ -128,6 +129,9 @@ HELP_TEXT = """\
 User Guide: https://github.com/petfold/loopmarket/blob/main/docs/USER-GUIDE.md
 
 loop — the loopmarket command line (docs/plans/cli.md)
+
+  loop setup [--defaults]    the first start's questions, again: the ontology, your
+                             identity, where your offers live, the Swarm node's wallet
 
   loop give  [QTY] CATEGORY|TERM... [PRICE]   I give this, priced on my scale
   loop want  [QTY] CATEGORY|TERM... [PRICE]   I want this, priced on my scale
@@ -299,6 +303,10 @@ def build_parser():
     p = sub.add_parser("mine", add_help=False)
     _add_output_flags(p)
     p.set_defaults(func=cmd_mine)
+
+    p = sub.add_parser("setup", add_help=False)
+    p.add_argument("--defaults", action="store_true")
+    p.set_defaults(func=cmd_setup)
 
     p = sub.add_parser("place", add_help=False)
     p.add_argument("name")
@@ -560,6 +568,16 @@ def main(argv=None) -> None:
     if argv and argv[0] in ("-h", "--help"):
         cmd_help(None, None, sys.stdout)
         sys.exit(0)
+    if first_start() and sys.stdin.isatty() and sys.stdout.isatty() \
+            and (not argv or argv[0] not in ("setup", "help")):
+        # The first start at a terminal asks the setup questions once
+        # (cli.md §16); a script or a pipe is never stopped to ask.
+        print("loop: first start, so first the setup (Ctrl-C to skip it; "
+              "`loop setup` runs it any time)", file=_err())
+        try:
+            run_setup(sys.stdout)
+        except KeyboardInterrupt:
+            print("\nloop: setup skipped", file=_err())
     session = Session()
     if not argv:
         sys.exit(run_stream(session, sys.stdin, interactive=sys.stdin.isatty()))
