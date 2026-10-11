@@ -476,6 +476,17 @@ places); `loop categories` looks through loop's catalogue, and the
 unknown-word hint names it (question 36). The flow is in
 `docs/plans/cli.md` §16.
 
+## Browser (identity decided 2026-10-11, nothing built)
+
+`docs/plans/BROWSER.md`, over ontodag's `docs/plans/BROWSER.md`. The
+maker's key in a browser is one key derived from one wallet signature, the
+same in every client (Peter's option A). It owns the book's feed, signs
+offers as now and opens sealed records, so the protocol doesn't change;
+it needs a little xDAI to announce. Freedom pages can read now and publish
+once Freedom accepts page-signed chunks (their #647). Duties with
+deadlines need `loop` on a machine that stays on. The first page is
+read-only.
+
 ## Upstream to watch
 
 - **coincurve on Python 3.14.** coincurve 21.0.0 (March 2025) has no
