@@ -1535,6 +1535,27 @@ retired one takes no new beat.
 `docs/plans/proof-fabric.md`, `P2-batch-auction.md` and
 `P3-release-and-reclearing.md` §5a–§5e are the design records.
 
+### 11.2 The market in a browser
+
+The books announced on Gnosis can be read with nothing installed. The page
+in `browser/` runs loopmarket under Pyodide:
+
+- it reads the registry's events (through Freedom Browser's chain access,
+  or the public RPC);
+- it finds each book's newest root through its feed on Swarm;
+- it folds the books with the same `Aggregator` as `loop fold`;
+- it lists the open offers, which a box filters.
+
+In Freedom Browser, open
+`bzz://151f5739ec1d707c09bfc538606d709d6cec8dc71d04f6f8653f45586724f2e0/`;
+in any browser, serve the page's folder and add
+`?gateway=https://api.gateway.ethswarm.org`.
+
+It is read-only and needs no key. Clearing books are listed but not
+folded, since re-checking their loops needs the catalogue, and an offer
+naming a maker other than its book's owner is left out (the page has no
+signature check). Writing waits on the identity of BROWSER.md §3.
+
 ## 12. Where to go next
 
 - **`loop help`** — every command and setting on one screen; the design
