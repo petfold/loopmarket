@@ -7,7 +7,7 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
-## [Unreleased]
+## [0.16.1] — 2026-10-11
 
 ### Fixed
 
