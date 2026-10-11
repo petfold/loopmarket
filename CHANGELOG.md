@@ -7,6 +7,16 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
+## [Unreleased]
+
+### Added
+
+- **`loop retract`** (Peter, 2026-10-11): takes my standing announcement
+  off the registry, so its readers stop folding my book. The book itself
+  stays where it is, and a reader who names it as a peer still reads it.
+  With nothing standing it is refused, so no transaction is sent for
+  nothing. Until now, only the API could retract.
+
 ## [0.17.0] — 2026-10-11
 
 ### Added

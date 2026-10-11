@@ -1,5 +1,5 @@
 """Reading the book and the fold, and the announcement channel: `offers`,
-`show`, `matches`, `mine`, `status`, `announce`, `announced`, `fold`, and
+`show`, `matches`, `mine`, `status`, `announce`, `retract`, `announced`, `fold`, and
 the record streams `export` and `import`."""
 
 from __future__ import annotations
@@ -105,6 +105,21 @@ def cmd_announce(args, session, out):
     role = args.role or "maker"
     ann = session.announcements.announce(spec, role, owner=_owner_for_announcing(session))
     print(f"announced {ann.owner} {ann.book} ({ann.role})", file=out)
+    return 0
+
+
+def cmd_retract(args, session, out):
+    """Take my standing announcement back: readers of the channel stop
+    folding my book. The book itself stays where it is, and a reader who
+    names it among their peers still reads it. Nothing standing is refused
+    here, so no transaction is sent for nothing."""
+    channel = session.announcements
+    owner = _owner_for_announcing(session)
+    mine = [a for a in channel.announced() if a.owner.lower() == owner.lower()]
+    if not mine:
+        raise ValueError(f"nothing to retract: {owner} has no standing announcement")
+    channel.retract(owner=mine[0].owner)
+    print(f"retracted {mine[0].owner} {mine[0].book} ({mine[0].role})", file=out)
     return 0
 
 

@@ -265,7 +265,7 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
   guarantee settings as offer fields), `entry` (give, want, offer,
   withdraw, option, exercise, place), `drafts`, `options` (windows,
   premiums, demand; `holds`), `book` (offers, show, matches, mine,
-  status, announce, fold, export, import), `categories` (looking through
+  status, announce, retract, fold, export, import), `categories` (looking through
   the catalogue, near words), `setup` (the first start), `clients` (the clearing
   contract, the escrow, the sealed beat, the registers, and the `Reads`
   they supply), `solving` (loops, clearing, propose, the sealed beat),

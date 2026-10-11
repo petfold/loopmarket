@@ -16,7 +16,7 @@ from .._extras import MissingExtra
 from ..schema import q
 from .beats import cmd_beats, cmd_challenge, cmd_finalize
 from .book import (cmd_announce, cmd_announced, cmd_export, cmd_fold, cmd_import, cmd_matches, cmd_mine,
-                   cmd_offers, cmd_show, cmd_status)
+                   cmd_offers, cmd_retract, cmd_show, cmd_status)
 from .claims import (cmd_answer, cmd_arbitrators, cmd_cases, cmd_claim, cmd_contact_card, cmd_cure,
                      cmd_hold, cmd_notice, cmd_rule)
 from .deposits import _escrow_act, cmd_collect, cmd_deposit, cmd_reservations
@@ -160,6 +160,7 @@ loop — the loopmarket command line (docs/plans/cli.md)
   loop show ID               one offer, fully — the approval block
   loop matches               every feasible handoff in the fold
   loop announce [--role maker|clearing|register]  say "my book is here" on the registry
+  loop retract               take my announcement back: readers stop folding my book
   loop announced             the standing announcements: owner, book, role
   loop fold                  fold the announced books and peers myself; print the root
   loop loops                 profitable loops on a snapshot (exit 1: none)
@@ -429,6 +430,8 @@ def build_parser():
     p = sub.add_parser("announce", add_help=False)
     p.add_argument("--role", choices=("maker", "clearing", "register"), default=None)
     p.set_defaults(func=cmd_announce)
+    p = sub.add_parser("retract", add_help=False)
+    p.set_defaults(func=cmd_retract)
     p = sub.add_parser("announced", add_help=False)
     p.set_defaults(func=cmd_announced)
     p = sub.add_parser("fold", add_help=False)

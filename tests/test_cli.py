@@ -801,6 +801,31 @@ def test_every_advertised_flag_is_accepted(env, capsys):
     assert capsys.readouterr().out.strip() == "trust = 0xabc"
 
 
+def test_retract_takes_my_book_off_the_registry(tmp_path, env, monkeypatch):
+    """`loop retract` (Peter, 2026-10-11): announcing had no way back from
+    the command line. After it, readers of the registry no longer fold my
+    book; with nothing standing it refuses rather than send a transaction."""
+    monkeypatch.setenv("LOOP_REGISTRY", f"file:{tmp_path / 'registry'}")
+    for maker in ("amara", "bruno"):
+        monkeypatch.setenv("LOOP_MAKER", maker)
+        monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / maker}")
+        run = Runner()
+        run.ok("give", "piano-lesson" if maker == "amara" else "apple", "5")
+        run.ok("announce")
+    assert len(run.ok("offers", "--raw").splitlines()) == 2       # bruno folds amara's book
+    monkeypatch.setenv("LOOP_MAKER", "amara")
+    monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'amara'}")
+    out = Runner().ok("retract")
+    assert out.startswith("retracted amara rs:") and out.rstrip().endswith("(maker)")
+    code, _, err = Runner()("retract")
+    assert code == 1 and "nothing to retract: amara has no standing announcement" in err
+    monkeypatch.setenv("LOOP_MAKER", "bruno")
+    monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'bruno'}")
+    run = Runner()
+    assert [l.split()[0] for l in run.ok("announced").splitlines()] == ["bruno"]
+    assert len(run.ok("offers", "--raw").splitlines()) == 1       # amara's book is not folded
+
+
 def test_the_version_loop_prints_is_the_packages():
     """`loop --version` printed 0.14.5 from 0.15.0 to 0.16.1: the string in
     `__init__.py` was not bumped with pyproject.toml."""

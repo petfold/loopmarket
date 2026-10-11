@@ -1085,7 +1085,7 @@ reads by default — right after installation, with nothing to set
 registry cannot be read, without the `chain` extra or offline, `loop` says
 so once and answers from your book) — and every session folds the books
 announced there (`loop announce` says
-"my book is here", `loop announced` lists them, `loop fold` prints the
+"my book is here", `loop retract` takes that back, `loop announced` lists them, `loop fold` prints the
 root), each read as its owner's under the fold rules below. `peers`
 (`loop set peers rs:/path/to/bruno,swarm:chen-book@0x…`) are books you
 trust by spec, a plain union. `examples/demo_federation.py` runs this whole
