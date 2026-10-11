@@ -239,3 +239,23 @@ xDAI). The missing-extra traceback fixed: every such error is a
 **0.16.1 released** (Peter's word): the missing-extra fix; verified from
 PyPI (one line for a missing `chain` extra, both examples clear).
 
+**Two machines, two nodes: P1's last launch item passes (2026-10-11).**
+Peter started a second Bee light node on another laptop (Ubuntu 26.04,
+overlay `74f7e74f…`, funded by him; this laptop's node is `bd5da217…`).
+`loop` went on there with uv and its own Python 3.12 (Python 3.14 cannot
+install coincurve yet; CLAUDE.md, "Upstream to watch"). The maker, on this
+laptop's node: a test maker key `0x300f4daA2653102Abde4c66F75Ea512C0BB81571`
+(kept in `~/.loopmarket/test_maker_key`, funded with 0.01 xDAI from the
+chain key, tx `4ee776b3…`) published `give piano-lesson
+46.05,14.50+-5km 100` (`d7b5ba6a…`) to `swarm:loop-twonode-1791730596` and
+announced it, leaving the chain key's clearing announcement alone. The
+reader, on Peter's laptop with fresh homes and nothing but the registry
+setting: `announced` listed both books, `offers` showed the offer, and
+`fold` built book root `d24ec279e5334e84…`, the same root a reader on this
+laptop built, byte for byte. The first try printed "no registry": the
+setting had been exported in another terminal; one line in one terminal
+did it. Lessons: give a reader's settings on the same line as its
+commands; and on a fresh install, nothing works yet without settings (no
+registry, no catalogue, no identity), which the install script Peter
+asked for next is to fix.
+

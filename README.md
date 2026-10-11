@@ -206,14 +206,14 @@ they still guard:
   waits for the pre-registration, which Peter makes when Phase 0's answer
   is wanted.
 
-Before a public launch, P1 also still lacks a second machine, with its own
-Bee node, folding live books; a reader through the public gateway did on
-2026-10-11 (a maker's offer announced on Gnosis, folded by a clean session
-with nothing but the registry setting). ontodag's coordinates for `geo` and
-relative times in `time(...)` came with ontodag 0.32
-([`cli.md`](docs/plans/cli.md) §11). factbond's roadmap
-("Alignment with loopmarket") and its `loopmarket-coupling.md` §5 say the
-same.
+P1's last launch item passed on 2026-10-11: a second machine, with its own
+Bee node and nothing but the registry setting, folded a maker's offer
+announced on Gnosis from another, to the same book root byte for byte (a
+reader through the public gateway does too). ontodag's coordinates for
+`geo` and relative times in `time(...)` came with ontodag 0.32
+([`cli.md`](docs/plans/cli.md) §11). What still gates a public launch is
+the record-format freeze; factbond's roadmap ("Alignment with loopmarket")
+and its `loopmarket-coupling.md` §5 carry the P1 items too.
 
 **Designed (2026-08-07):** most of what loopmarket *is* now lives as a
 decided, research-grounded plan corpus under `docs/plans/` — one document
