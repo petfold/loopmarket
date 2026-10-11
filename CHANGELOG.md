@@ -7,7 +7,7 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
-## [Unreleased]
+## [0.17.0] — 2026-10-11
 
 ### Added
 
@@ -37,6 +37,9 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Fixed
 
+- **`loop --version` printed 0.14.5** from 0.15.0 to 0.16.1: the string in
+  `loopmarket/__init__.py` was not bumped with `pyproject.toml`. A test
+  now pins one to the other.
 - **The unknown-word hint pointed at the wrong store.** It said "`odag put
   WORD PARENT` adds it to the catalogue", but after the setup loop's
   catalogue is `~/.loopmarket/catalogue`, not odag's own store, so the
@@ -58,6 +61,9 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   The example scripts set `registry none`, and the suite runs with it.
 - **`loop help` starts with a link to the User Guide** (Peter,
   2026-10-11).
+- The `swarm` extra asks for `recordstore[bee,feeds]>=0.22.3`, whose
+  stores never ask for a postage batch only to read. So a fresh node with
+  no batch folds the books announced on the registry.
 
 ### Documentation
 

@@ -801,6 +801,16 @@ def test_every_advertised_flag_is_accepted(env, capsys):
     assert capsys.readouterr().out.strip() == "trust = 0xabc"
 
 
+def test_the_version_loop_prints_is_the_packages():
+    """`loop --version` printed 0.14.5 from 0.15.0 to 0.16.1: the string in
+    `__init__.py` was not bumped with pyproject.toml."""
+    import tomllib
+    import loopmarket
+    root = os.path.join(os.path.dirname(__file__), "..")
+    with open(os.path.join(root, "pyproject.toml"), "rb") as fh:
+        assert loopmarket.__version__ == tomllib.load(fh)["project"]["version"]
+
+
 def test_help_starts_with_the_user_guide(env):
     """Peter, 2026-10-11: the help page starts with a link to the User
     Guide, the place that explains what the commands below are for."""

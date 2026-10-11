@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "loopmarket"
-version = "0.16.1"
+version = "0.17.0"
 description = "Universal combinatorial marketplace: uniform offers over an OntoDAG catalogue, a versioned offer book on recordstore/Swarm, and solver agents hunting profitable loops"
 readme = "README.md"
 license = { text = "BSD-3-Clause" }
@@ -50,8 +50,10 @@ dependencies = [
 # reads in flight (was 16, a guess; measured against a Bee light node, reads
 # of chunks it must fetch scale about linearly to 32), so a follower
 # hydrating a book from the network reads about twice as fast. 0.22: Bee
-# only through swarmfs (no requests, no swarm-bee).
-swarm = ["recordstore[bee,feeds]>=0.22.2"]
+# only through swarmfs (no requests, no swarm-bee). 0.22.3: a store that
+# only reads never asks for a postage batch, so a fresh node with none, or a
+# gateway, folds the books announced on the registry.
+swarm = ["recordstore[bee,feeds]>=0.22.3"]
 # Detached offer signatures (U8's off-feed layer): the same secp256k1
 # identity that owns the maker's feed, recoverable without a node, signed
 # by swarmfs's shared signer (libsecp256k1 through coincurve; 0.14.0 signs
