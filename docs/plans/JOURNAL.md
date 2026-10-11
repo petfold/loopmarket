@@ -228,3 +228,11 @@ key's v5-gate clearing book (`swarm:loop-v5-gate-1789734484`); and a
 reader without the `chain` extra got a traceback where a one-line
 instruction belongs. Still open: a second machine with its own node.
 
+**Tidied after the gateway run (Peter's word).** The test offer withdrawn
+from `swarm:loop-gateway-1791724973` (a tombstone; followed through the
+gateway the book shows nothing open), and the v5-gate clearing book
+re-announced from the chain key under its role (`clearing`), so the
+registry stands as before the run (one more transaction, about 2.5×10⁻¹³
+xDAI). The missing-extra traceback fixed: every such error is a
+`MissingExtra` (a `RuntimeError`), and `loop` prints it as one line.
+
