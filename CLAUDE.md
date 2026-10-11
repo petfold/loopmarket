@@ -45,7 +45,11 @@ loopmarket  →  ontodag (>=0.31.0)  →  recordstore (>=0.22.2)  →  swarmfs  
   `is_below`) where pinned catalogue roots surface. Names are the identity
   at its boundary. `cli/stores.py` opens the catalogue through ontodag's
   public layer (`ontodag.open`, `ontodag.settings`, since 0.31) and still
-  reads recordstore's private `_addressing_name`.
+  reads recordstore's private `_addressing_name`. The branch
+  `ontodag-0.32` takes ontodag's rectangles (registry 5.0, unreleased):
+  it merges into main just before ontodag's tag, since ontodag's release
+  gate runs this main against the candidate, and the floor rises to
+  `>=0.32.0` once 0.32 is on PyPI.
 - **recordstore**: the book's kernel: canonical roots, snapshots
   (`RecordStore.at(root, blobs)`; the attribute is `.blobs`), three-way
   merge, `commit(reconcile=True, resolver=...)`, proofs, extension proofs.
@@ -174,11 +178,11 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
   `Statement`), canonical encoding and ids, record versions 1–7, exact
   numbers (`q`, `rat`). Where and when are terms in the thing's concepts
   (since v3); v1/v2 offers are read, never made or matched (`GeoDisc` is
-  an old record's `where`).
-- `spacetime.py`: geohash cells; `LAT,LON,R` becomes the finest cell
-  containing the radius. Input only; ontodag orders the stored names.
+  an old record's `where`). A place is ontodag's: a `geo` rectangle, typed
+  `46.05,14.50±5km` at the prompt; loopmarket has no geometry of its own.
 - `ontology.py`: the catalogue facade: build (`load`, the `declare_*`
-  methods, among them `declare_place`, the write `loop place` makes),
+  methods, among them `declare_place`, the write `loop place` makes: a
+  name under a geo rectangle, with its handoff address),
   query (`covers`, `satisfies`, `accepts`), pin
   (`persistent`, `commit`). The matching rules: handover coordinates
   (`geo`, `time` and roles under the `handover` marker) match when one side
@@ -317,10 +321,11 @@ word.
    the want's place sits above it, not in its cone. The ask upstream, when
    place pruning is worth having, is a "comparable to X" query term
    (`docs/plans/ontodag-coupling.md` §7).
-3. **Geo: cells.** A place is a cell, a place node under a cell, or a
-   region node above cells, and containment is exact; a region's
-   covering is a lower bound. Covering as a value
-   (`where(u24m+u24q)`) is deferred upstream (ontodag DIMENSIONS.md §14).
+3. **Geo: rectangles.** A place is a rectangle (ontodag's registry 5.0),
+   a place node under one, or a region node above rectangles, and
+   containment is exact; a region's covering is a lower bound, and two
+   squares that only partly overlap do not match. A union of rectangles
+   as one value is deferred upstream (ontodag DIMENSIONS.md §22).
 4. **Books.** One book per maker (its own feed and signer), folded by
    aggregators (`docs/plans/P1-federated-book.md`). A shared Swarm book is a
    development tool only: feed compare-and-set is best effort.
@@ -344,10 +349,11 @@ word.
 - **P1**, the Swarm book: done on one machine (books on Swarm, the
   announcement channel on Gnosis, folds as the default read path, the CLI).
   Open, and needed before a public launch: announced books folded live
-  from a second machine, and two upstream asks to ontodag
-  (`docs/plans/cli.md` §11): coordinates for `geo`, and relative times in
-  `time(...)`. The third ask, a public store opener, came with ontodag
-  0.31.
+  from a second machine. The upstream asks to ontodag (`docs/plans/cli.md`
+  §11) are answered: coordinates for `geo` and relative times in
+  `time(...)` are built on ontodag's main (registry 5.0, surface 0.2,
+  unreleased) and taken here on the branch `ontodag-0.32`; a public store
+  opener came with ontodag 0.31.
 - **P2**, verifiable clearing: the contracts, the challenger, Swarm
   addressing on chain and the sealed beat are built. Open: Shutter, solver
   bonds and the spread leg, chains and netting (G4, G5), priors from data

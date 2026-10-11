@@ -119,14 +119,14 @@ whose canonical root offers **pin**:
 $ odag -f rs:catalogue merge market.od
 $ odag -f rs:catalogue status
 store = rs:/home/you/catalogue
-root = 989ae9d1d52108cf1583a3aae1f1749c77992666dc75c160d3b36b652d4e32de
+root = 15bd12273eda41a179e65d5028a8d5ca09298986e2d6e5f89ed173e60baeab0d
 ...
 $ loop set catalogue rs:catalogue
 ```
 
 Offers written against it name its root, the dimension-registry version
-and the contract version (`pins catalogue 989ae9d1d52108cf registry 4.2
-contract 0.1` in the block of §3). **A pinned catalogue refuses unpinned
+and the contract version (`pins catalogue 15bd12273eda41a1 registry 5.0
+contract 0.7` in the block of §3). **A pinned catalogue refuses unpinned
 offers** during matching, and offers with mismatched pins never pair — the
 semantic ground cannot move under a committed loop. The rest of this guide
 uses the unpinned `market.od`.
@@ -134,7 +134,7 @@ uses the unpinned `market.od`.
 Your own **places** are not in that file. `loop place` (§3) files them in
 odag's active store — `~/.ontodag/store.od` by default, your *personal*
 store — which nobody else reads. A name only you know cannot stand in a
-public offer, so it is published as the cell it hangs under. A place
+public offer, so it is published as the rectangle it hangs under. A place
 everyone shares (a shop, a city) belongs in the catalogue and stands as
 spelled. (Without `set catalogue`, `loop` reads odag's active store as
 both: fine for one person, but then your places are catalogue vocabulary.)
@@ -160,17 +160,18 @@ catalogue.satisfies(("mystery-goods",), ("mystery-goods",))     # False (U7)
 from recordstore import MemoryBytesStore, RecordStore
 pinned = Ontology.persistent(RecordStore(MemoryBytesStore()))
 pinned.load({"service": [], "lesson": ["service"]}); pinned.commit()
-pinned.pins   # {'ontology_root': '…', 'registry_version': '4.2', 'contract_version': '0.1'}
+pinned.pins   # {'ontology_root': '…', 'registry_version': '5.0', 'contract_version': '0.7'}
 ```
 
 ## 3. Your first offer
 
 Tell `loop` who you are and where you are. A place is given by its
-coordinates and a radius, and named from then on:
+coordinates and a size — `+-5km` is the square 5 km either way of the
+point, ontodag's spelling (`±` works too) — and named from then on:
 
 ```console
 $ loop set maker amara
-$ loop place home 46.05,14.50,5km
+$ loop place home 46.05,14.50+-5km
 $ loop set terms home
 ```
 
@@ -184,26 +185,27 @@ last is the price, on your own scale:
 
 ```console
 $ loop give piano-lesson 100
-give     geo(u24) piano-lesson
+give     geo(46.005033..46.094967,14.435157..14.564843) piano-lesson
   maker    amara
   quantity 1 unit — 1, indivisible
   price    100 (100/unit, on amara's scale)
   valid    2026-10-01T06:00:00Z .. 2026-10-31T06:00:00Z
            local 2026-10-01 08:00 CEST .. 2026-10-31 07:00 CET
-  pins     catalogue -  registry 4.2  contract 0.1  v4
+  pins     catalogue -  registry 5.0  contract 0.7  v4
   terms    bond 0  oracle countersign  arbitrator -
   nonce    1790834400000
-  offer_id b7d0e7661d218a5fe50456324e594a8f0c00706ca4e9e3e499a1b5f8705ac7a1
+  offer_id c3c97515e0d2246a0607c3d594e3ebb92b6e541e5d6aa8130b9106a48597e5fa
   note     default home
-  note     home → geo(u24)
+  note     home → geo(46.005033..46.094967,14.435157..14.564843)
 publish? [y/N] y
-b7d0e7661d218a5fe50456324e594a8f0c00706ca4e9e3e499a1b5f8705ac7a1
+c3c97515e0d2246a0607c3d594e3ebb92b6e541e5d6aa8130b9106a48597e5fa
 ```
 
 **Nothing publishes unseen.** What you approve is the fully resolved
 offer: every default expanded, relative times made absolute in UTC *and*
-your local zone, your private `home` replaced by the public cell it hangs
-under (`geo(u24)`; a stale `home` would be visible here), and the id it
+your local zone, your private `home` replaced by the public rectangle it
+hangs under, in ontodag's bounds (`geo(46.005033..46.094967,14.435157..14.564843)`; a stale `home` would be visible
+here), and the id it
 will receive. `loop show ID` prints exactly this block later. The defaults
 it filled in are settings: `terms` (here `home`; add a `time(...)` if you
 mean a window — without one the offer is any time) and `valid` (how long
@@ -216,7 +218,7 @@ The second flavour:
 
 ```console
 $ loop want produce local weekly 104
-want     geo(u24) local produce weekly
+want     geo(46.005033..46.094967,14.435157..14.564843) local produce weekly
   maker    amara
   ...
   price    104 (104/unit, on amara's scale)
@@ -237,14 +239,15 @@ Things to notice:
   bare number *last* is the price. So `loop give 10kg apple 100` gives up
   to ten kilos, divisible, priced 100 the lot; `loop give 3 bicycle 900`
   gives three indivisible bicycles. Every term goes into the description.
-  A bare place, cell or `time(...)` window says where and when the thing
-  changes hands, and matches when one side contains the other: a give
-  anywhere in a cell serves a want at a point in it, and the reverse.
+  A bare place, rectangle or `time(...)` window says where and when the
+  thing changes hands, and matches when one side contains the other: a
+  give anywhere in a rectangle serves a want at a point in it, and the
+  reverse; two squares that only partly overlap do not match.
   Only `valid(...)` is the offer's own field, how long it stands:
 
   ```console
   $ loop give piano-lesson 'time(2026-10-05..2026-12-20)' 'valid(2h)' 100
-  give     geo(u24) piano-lesson time(2026-10-05T00:00:00Z..2026-12-20T23:59:59Z)
+  give     geo(46.005033..46.094967,14.435157..14.564843) piano-lesson time(2026-10-05T00:00:00Z..2026-12-20T23:59:59Z)
   ...
   ```
 
@@ -254,24 +257,23 @@ Things to notice:
 
   ```console
   $ loop want ride 'from(home)' 'time(today..+7d)' 5
-  want     from(geo(u24)) geo(u24) ride time(2026-10-01T00:00:00Z..2026-10-08T05:59:59Z)
+  want     from(geo(46.005033..46.094967,14.435157..14.564843)) geo(46.005033..46.094967,14.435157..14.564843) ride time(2026-10-01T00:00:00Z..2026-10-08T05:59:59Z)
   ...
-    note     from(home) → from(geo(u24))
+    note     from(home) → from(geo(46.005033..46.094967,14.435157..14.564843))
     note     time(today..+7d) → time(2026-10-01T00:00:00Z..2026-10-08T05:59:59Z)
   publish? [y/N] n
   ```
 
-  `home` hangs under its geo cell, so the published term is
-  `from(geo(u24))`, the cell by its own name — public vocabulary — and the
+  `home` hangs under its geo rectangle, so the published term is
+  `from(geo(…))`, the rectangle by geo's name — public vocabulary — and the
   approval block says so. In a role of `geo` a bare word is a *place*: type
-  a cell there by its name, `from(geo(u24))`, or as coordinates,
-  `from(46.05,14.50,5km)`; a bare word that is neither a place the
-  catalogue knows nor one of your own (`from(sydney)`, `from(ljubljna)`) is
-  refused, naming both ways out, where before it was read as a cell
-  (`sydney` is spelled with geohash letters and lies in southern Turkey). Your private name
-  never leaves your machine; its value does. (`home` was declared as 5 km
-  around a point that lies near a cell edge, so its cell is the coarser
-  one containing the whole radius: a cell is what the offer *says*.)
+  a rectangle there by geo's name, `from(geo(46.0..46.1,14.4..14.6))`, or
+  as coordinates, `from(46.05,14.50+-5km)`; a bare word that is neither a
+  place the catalogue knows nor one of your own (`from(sydney)`,
+  `from(ljubljna)`) is refused, naming the way to file it. Your private
+  name never leaves your machine; its value does: the square 5 km either
+  way of the point, rounded outwards to millionths of a degree, is what the
+  offer *says*.
 
   Durations, and the offsets of relative times (`+7d`, `-2h`), are
   ontodag's, in its units: `s`, `min`, `h`, `d`, `wk` — `valid(90min)`,
@@ -285,7 +287,7 @@ Things to notice:
 - **An omitted price is your last unit price** for the same side and the
   same bare categories, scaled by quantity, read from your own book, and
   marked in the block (`note price 100 reused: unit price 100/unit from
-  offer 23e1d080a2ea (0min ago)`). No earlier offer means an error, never a
+  offer bf8da45985e6 (0min ago)`). No earlier offer means an error, never a
   guess; in a script a reused price refuses the line unless `confirm` is
   `off`, because nobody saw it.
 - **Offers are immutable values with a content address.** Equal content
@@ -299,7 +301,7 @@ Things to notice:
 from loopmarket import Thing, TimeWindow, give, want
 
 NOW = 1_790_834_400                       # 2026-10-01T06:00:00Z; determinism is a feature
-here     = "geo(u24)"                     # the cell containing 5 km around the flat
+here     = "geo(46.005033..46.094967,14.435157..14.564843)"   # 5 km either way of the flat
 standing = TimeWindow(NOW - 1)            # the offer stands until withdrawn
 
 teach = give("amara", Thing(("piano-lesson", here)), 100, valid=standing)
@@ -322,22 +324,22 @@ book SPEC` (or `-f SPEC` for one run) moves it, and §11 puts it on Swarm.
 
 ```console
 $ loop mine
-id            side  maker  qty     thing                                                                   price  state
-23e1d080a2ea  give  amara  1 unit  geo(u24) piano-lesson time(2026-10-05T00:00:00Z..2026-12-20T23:59:59Z)  100    open
-a04ff4b6d207  want  amara  1 unit  geo(u24) local produce weekly                                           104    open
-b7d0e7661d21  give  amara  1 unit  geo(u24) piano-lesson                                                   100    open
+id            side  maker  qty     thing                                                                                                         price  state
+845f06b86d5f  want  amara  1 unit  geo(46.005033..46.094967,14.435157..14.564843) local produce weekly                                           104    open
+bf8da45985e6  give  amara  1 unit  geo(46.005033..46.094967,14.435157..14.564843) piano-lesson time(2026-10-05T00:00:00Z..2026-12-20T23:59:59Z)  100    open
+c3c97515e0d2  give  amara  1 unit  geo(46.005033..46.094967,14.435157..14.564843) piano-lesson                                                   100    open
 $ loop status
 book = rs:/home/you/.loopmarket/book
-book root = 0f427c97f954fa66a928cb651198e1fa091cc4679a2d9c8a0f4654194a8e9c15
+book root = 38f634d18b5b5b06a8d2389fcaa2cb37b83bdf058e83df5c4c4a989ce8e3c376
 offers = 3 (filled 0, withdrawn 0)
 catalogue = /home/you/market.od
 catalogue root = (unpinned)
-categories = 34
+categories = 49
 ...
 maker = amara
 terms = home
 ...
-$ loop withdraw 23e1d080a2ea                # the two-hour lesson: changed my mind
+$ loop withdraw bf8da45985e6                # the two-hour lesson: changed my mind
 ```
 
 Three operations you'll want:
@@ -385,16 +387,16 @@ so for this tutorial we speak as him with a flag (in life he has his own
 book, own machine, own key — §8):
 
 ```console
-$ loop --maker bruno place farm 46.10,14.55,15km
+$ loop --maker bruno place farm 46.10,14.55+-15km
 $ loop --maker bruno give vegetable-box farm 50
 $ loop --maker bruno want bicycle-repair farm 52
 $ loop matches
-bruno gives geo(u24) vegetable-box to amara (wants geo(u24) local produce weekly) rate 2.08  f6e70644bfac>a04ff4b6d207
+bruno gives geo(45.965101..46.234899,14.354977..14.745023) vegetable-box to amara (wants geo(46.005033..46.094967,14.435157..14.564843) local produce weekly) rate 2.08  4b08a35ec590>845f06b86d5f
 ```
 
 Bruno's box is a `vegetable-box`; Amara wants `produce local weekly`; the
-catalogue says the first fits within all three, the two places are the
-same cell (handover terms, matched when one contains the other), the
+catalogue says the first fits within all three, Bruno's farm holds
+Amara's home (handover terms, matched when one contains the other), the
 units agree — a match, at rate 104/50 = 2.08 (the want's unit price over
 the give's). `matches` exits 1 when there are none, so it reads as a
 predicate in scripts.
@@ -433,18 +435,18 @@ real, distributable surplus. Chen fixes bicycles, and her daughter wants
 piano lessons:
 
 ```console
-$ loop --maker chen place shop 46.06,14.51,4km
+$ loop --maker chen place shop 46.06,14.51+-3km
 $ loop --maker chen give bicycle-repair shop 80
 $ loop --maker chen want music-lesson shop 83
 $ loop matches
-amara gives geo(u24) piano-lesson to chen (wants geo(u24) music-lesson) rate 0.83  b7d0e7661d21>71a90da7111c
-bruno gives geo(u24) vegetable-box to amara (wants geo(u24) local produce weekly) rate 2.08  f6e70644bfac>a04ff4b6d207
-chen gives bicycle-repair geo(u24) to bruno (wants bicycle-repair geo(u24)) rate 0.65  a9665e2662c9>e784e7ae3e98
+amara gives geo(46.005033..46.094967,14.435157..14.564843) piano-lesson to chen (wants geo(46.03302..46.08698,14.4711..14.5489) music-lesson) rate 0.83  c3c97515e0d2>ec3f8610fd42
+bruno gives geo(45.965101..46.234899,14.354977..14.745023) vegetable-box to amara (wants geo(46.005033..46.094967,14.435157..14.564843) local produce weekly) rate 2.08  4b08a35ec590>845f06b86d5f
+chen gives bicycle-repair geo(46.03302..46.08698,14.4711..14.5489) to bruno (wants bicycle-repair geo(45.965101..46.234899,14.354977..14.745023)) rate 0.65  2671e0ebd2dc>e1f30a31b0ee
 $ loop loops
-loop ad562f631186fb01… surplus 12.22%
-  chen gives bicycle-repair geo(u24) to bruno (rate 0.65)
-  amara gives geo(u24) piano-lesson to chen (rate 0.83)
-  bruno gives geo(u24) vegetable-box to amara (rate 2.08)
+loop 06ac98260fe109e2… surplus 12.22%
+  chen gives bicycle-repair geo(46.03302..46.08698,14.4711..14.5489) to bruno (rate 0.65)
+  bruno gives geo(45.965101..46.234899,14.354977..14.745023) vegetable-box to amara (rate 2.08)
+  amara gives geo(46.005033..46.094967,14.435157..14.564843) piano-lesson to chen (rate 0.83)
 ```
 
 Amara teaches piano but wants vegetables; Bruno grows vegetables but wants
@@ -489,17 +491,17 @@ not clear it):
 
 ```console
 $ loop clearing
-cleared ad562f631186fb01… surplus 12.22%
-  chen gives bicycle-repair geo(u24) to bruno (rate 0.65)
-  amara gives geo(u24) piano-lesson to chen (rate 0.83)
-  bruno gives geo(u24) vegetable-box to amara (rate 2.08)
-book root 749fd71e37488373b8890722448b5b8b855625ad353e8fcc385c9a4f92083798
+cleared 06ac98260fe109e2… surplus 12.22%
+  chen gives bicycle-repair geo(46.03302..46.08698,14.4711..14.5489) to bruno (rate 0.65)
+  bruno gives geo(45.965101..46.234899,14.354977..14.745023) vegetable-box to amara (rate 2.08)
+  amara gives geo(46.005033..46.094967,14.435157..14.564843) piano-lesson to chen (rate 0.83)
+book root 3f73a29119639b26fd9f31a9c8dc44d18e65b417256edff837a8e32d4d9d9e4a
 $ loop loops; echo $?
 1
-$ loop show b7d0e7661d21 | tail -1
+$ loop show c3c97515e0d2 | tail -1
   state    filled
-$ loop withdraw b7d0e7661d21
-loop: b7d0e7661d21 is filled: a cleared leg is an obligation
+$ loop withdraw c3c97515e0d2
+loop: c3c97515e0d2 is filled: a cleared leg is an obligation
 ```
 
 Six fills and one loop record landed under one root; a second search
@@ -529,12 +531,12 @@ clearing.submit(proposal).reason             # 'already filled: …'
 
 ### 7.1 Getting the address to the courier
 
-Matching runs on cells; a delivery needs a door. The door is *settlement*
+Matching runs on rectangles; a delivery needs a door. The door is *settlement*
 text, never vocabulary: give it to the place, and it never enters an
 offer, an id or the catalogue.
 
 ```console
-$ loop place home 46.05,14.50,5km Trubarjeva 12, 4th floor, ring twice
+$ loop place home 46.05,14.50+-5km Trubarjeva 12, 4th floor, ring twice
 $ loop want ride 'from(home)' 5
 ...
   note     handoff from(home): Trubarjeva 12, 4th floor, ring twice — sealed to the counterparty at clearing
@@ -941,9 +943,9 @@ LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle
 ```
 set confirm off
 set now 2026-09-12T00:00:00Z
-place amara_flat 46.05,14.50,5km
-place bruno_farm 46.10,14.55,15km
-place chen_shop 46.06,14.51,4km
+place amara_flat 46.05,14.50+-5km
+place bruno_farm 46.10,14.55+-15km
+place chen_shop 46.06,14.51+-3km
 set maker amara
 give piano-lesson amara_flat 100
 want produce local weekly amara_flat 104
@@ -1176,9 +1178,9 @@ tombstone survives federation folds, so the closure reaches everyone.
 A gym class holds fifteen. One offer says so — a quantity with a step:
 
 ```console
-$ loop --maker gym place gym 46.05,14.52,1km
+$ loop --maker gym place gym 46.05,14.52+-1km
 $ loop --maker gym give 15seat:1 spin-class gym 'time(2026-10-07T18:00:00Z..2026-10-07T18:59:59Z)' 150
-give     geo(u24) spin-class time(2026-10-07T18:00:00Z..2026-10-07T18:59:59Z)
+give     geo(46.041006..46.058994,14.507039..14.532961) spin-class time(2026-10-07T18:00:00Z..2026-10-07T18:59:59Z)
   quantity 15 seat — up to 15 seat, in steps of 1 seat
   ...
 ```
@@ -1202,8 +1204,8 @@ agent publishes it as **spacetime tubes**: several (window, place) pairs
 along the planned route, priced accordingly —
 
 ```console
-$ loop --maker courier place station 46.05,14.50,2km
-$ loop --maker courier place eastside 46.02,14.55,2km
+$ loop --maker courier place station 46.05,14.50+-2km
+$ loop --maker courier place eastside 46.02,14.55+-2km
 $ loop --maker courier give parcel-run station  'time(now..+1h)'  5   # near the station, cheap
 $ loop --maker courier give parcel-run eastside 'time(+2h..+3h)'  8   # across town, later, dearer
 ```
@@ -1226,19 +1228,19 @@ is never the book.
 
 ```console
 $ odag -f market.od put to geo; odag -f market.od put theatre-ticket; odag -f market.od put hamlet
-$ loop place venue 46.051,14.506,200m
+$ loop place venue 46.051,14.506+-200m
 $ loop draft ticket want theatre-ticket hamlet 'time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)' venue
-ticket  want geo(u24mfp) hamlet theatre-ticket time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)
+ticket  want geo(46.049201..46.052799,14.503408..14.508592) hamlet theatre-ticket time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)
 $ loop draft ride want ride 'from(home)' 'to(venue)' 'time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z)'
-ride  want from(geo(u24)) geo(u24) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(geo(u24mfp))
+ride  want from(geo(46.005033..46.094967,14.435157..14.564843)) geo(46.005033..46.094967,14.435157..14.564843) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(geo(46.049201..46.052799,14.503408..14.508592))
 $ loop draft evening ticket + ride       # compose: the same + as on a one-line want
 $ loop drafts                             # canonical lines; what you typed as notes beneath
 $ loop offer evening 60                   # the draft becomes an offer, one price for the lot
 want     hamlet theatre-ticket + ride
   maker    amara
-  part 1   geo(u24mfp) hamlet theatre-ticket time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)
+  part 1   geo(46.049201..46.052799,14.503408..14.508592) hamlet theatre-ticket time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)
            quantity 1 unit — 1, indivisible
-  part 2   from(geo(u24)) geo(u24) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(geo(u24mfp))
+  part 2   from(geo(46.005033..46.094967,14.435157..14.564843)) geo(46.005033..46.094967,14.435157..14.564843) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(geo(46.049201..46.052799,14.503408..14.508592))
            quantity 1 unit — 1, indivisible
   price    60 (the lot, on amara's scale; split across the parts at clearing)
   ...

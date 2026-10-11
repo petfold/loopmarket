@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from fractions import Fraction
 
 from ontodag import dimensions as _dims
+from ontodag import surface as _surface
 
 from ..schema import TimeWindow
 
@@ -63,21 +64,14 @@ def _calendar_span(text: str) -> tuple[int, int]:
 
 
 def _side_span(text: str, now: int) -> tuple[int, int]:
-    """[lo, hi) of one side of a window expression: `now`, `today`,
-    `tomorrow`, `+90d`, `-2h`, or any absolute ontodag time literal. A
-    point has lo == hi."""
+    """[lo, hi) of one side of a window expression: a relative time as
+    ontodag reads it (`now`, `today`, `tomorrow`, `+90d`, `-2h`; its
+    question 31) or any absolute ontodag time literal. A point has
+    lo == hi."""
     text = text.strip()
-    if text == "now":
-        return now, now
-    if text in ("today", "tomorrow"):
-        day = now - now % 86_400 + (86_400 if text == "tomorrow" else 0)
-        return day, day + 86_400
-    if text[:1] in ("+", "-"):
-        delta = _seconds(text[1:], shown=text)
-        ts = int(now + delta if text[0] == "+" else now - delta)
-        return ts, ts
+    absolute = _surface.relative_calendar(text, now)   # its own error for a bad offset
     try:
-        return _calendar_span(text)
+        return _calendar_span(absolute)
     except ValueError as exc:
         raise ValueError(
             f"{text!r} is not a time: use now, today, tomorrow, +90d, -2h, "
@@ -164,30 +158,42 @@ def validity(text: str, now: int) -> TimeWindow:
     return TimeWindow(now, now + duration_s(text))
 
 
-def radius_m(text: str) -> float:
-    """`5km`, `500m`, or bare metres, via ontodag's length grammar."""
+#: A coordinate literal (cli.md §11.1) is ontodag's `geo` parameter typed
+#: bare: a position, `46.05,14.50`, the rectangle its written precision
+#: covers; a square SIZE either way around it, `46.05,14.50±5km` (`+-` in
+#: plain ASCII); or bounds, `46.0..46.1,14.4..14.6`.
+_COORDS_RE = re.compile(r"^[-+\d.]+,[-+\d.]+(?:(?:±|\+-)\S+)?$")
+#: The spelling loopmarket took before ontodag read coordinates, a radius
+#: after a second comma; refused with the fix, never read.
+_OLD_COORDS_RE = re.compile(r"^([-+\d.]+),([-+\d.]+),(\d[\d./]*[A-Za-z]*)$")
+
+
+def looks_like_coords(text: str) -> bool:
+    """Is `text` a coordinate literal (or the old `LAT,LON,RADIUS`, which
+    `coords` refuses with the fix)?"""
+    return bool(_COORDS_RE.match(text) or _OLD_COORDS_RE.match(text))
+
+
+def coords(text: str) -> str:
+    """A coordinate literal, checked: the spelling `place` takes, and a
+    place typed bare or in a role of geo (`from(46.05,14.50±5km)`).
+    ontodag reads it, turns a size into bounds and refuses what cannot be
+    (a latitude past 90); what is said here is only the fix for the old
+    spelling, whose radius is the size either way of the square that holds
+    its circle."""
     text = text.strip()
-    if re.match(r"^\d+(?:\.\d+)?$", text):
-        return _number(text)
-    canonical = _dims.canonicalize(f"length({text})", _dims.KIND_LINEAR)
-    value = _rational(re.match(r"^length\((.*)\)$", canonical).group(1))
-    return int(value) if value.denominator == 1 else float(value)
-
-
-def parse_coords(text: str) -> tuple[float, float, float]:
-    """`LAT,LON,RADIUS` — the spelling `place` takes, and the literal any
-    geo-kind term accepts, bare or as `from(46.05,14.50,5km)`; both become the cell
-    of that radius around that point (`spacetime.cell_for_coords`), which
-    is what the offer says — no disc anywhere since the v3 record. The day
-    odag accepts `geo(LAT,LON,R)` this maps onto it (cli.md §11.1)."""
-    parts = [p.strip() for p in text.split(",")]
-    if len(parts) != 3:
+    old = _OLD_COORDS_RE.match(text)
+    if old:
+        size = old[3] if re.search(r"[A-Za-z]", old[3]) else f"{old[3]}m"
         raise ValueError(
-            f"{text!r}: coordinates are LAT,LON,RADIUS (e.g. 46.05,14.50,5km)")
-    lat, lon, radius = float(parts[0]), float(parts[1]), radius_m(parts[2])
-    if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0) or radius < 0:
-        raise ValueError(f"{text!r}: coordinates out of range")
-    return lat, lon, radius
+            f"{text!r}: a place is LAT,LON+-SIZE, the square SIZE either way, as "
+            f"ontodag writes geo — `{old[1]},{old[2]}+-{size}` (or ±)")
+    if not _COORDS_RE.match(text):
+        raise ValueError(
+            f"{text!r}: coordinates are LAT,LON (46.05,14.50), LAT,LON+-SIZE "
+            f"(46.05,14.50+-5km) or bounds (46.0..46.1,14.4..14.6)")
+    _dims.canonicalize(f"{_dims.GEO_HEAD}({text})", _dims.KIND_RECT)   # ontodag's reason
+    return text
 
 
 def parse_now(text: str) -> int:

@@ -12,6 +12,7 @@ from fractions import Fraction
 
 import pytest
 from ontodag import OntoDAG
+from ontodag.dimensions import REGISTRY_VERSION
 
 from recordstore import MemoryBytesStore, RecordStore
 
@@ -36,7 +37,10 @@ def _evm():
 HERE = os.path.dirname(__file__)
 NOW = 5_000
 V = dict(valid=TimeWindow(0, 1_000_000))
-PINS = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+#: The installed registry's major: an offer pinned to another one is
+#: refused (review item 4), so the pins here follow it.
+MAJOR = REGISTRY_VERSION.split(".")[0]
+PINS = dict(ontology_root="ab" * 32, registry_version=f"{MAJOR}.2", contract_version="0.1")
 from loopmarket.beat import LEG_TYPE, NO_UNDERLYING, STATEMENTS_TYPE  # noqa: E402
 BOND = 10 ** 16
 WINDOW = 5
@@ -126,7 +130,7 @@ def _hashes(legs):
 
 
 def _pins(root):
-    return (bytes.fromhex(root), bytes.fromhex(PINS["ontology_root"]), b"4", b"0", 0)
+    return (bytes.fromhex(root), bytes.fromhex(PINS["ontology_root"]), MAJOR.encode(), b"0", 0)
 
 
 def _submit_fn(beat, root, hashes, fills, makers, potentials):

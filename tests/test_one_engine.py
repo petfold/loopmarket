@@ -41,7 +41,7 @@ CATEGORIES = {
 GIVE_THINGS = ["vegetable-box", "fruit-box", "apple", "piano", "parcel", "piano-lesson", "repair", "lifting"]
 BROAD = ["goods", "produce", "small-item", "service", "lesson"]
 WANT_THINGS = GIVE_THINGS + BROAD + ["venue"]
-CELLS = ["u2e", "u2e4", "u2e4x", "u2e5", "u2f", "u2f1"]
+RECTANGLES = ["geo(48..49,16..17)", "geo(48.1..48.3,16.1..16.3)", "geo(48.2..48.25,16.2..16.25)", "geo(48.5..48.7,16.1..16.3)", "geo(49.5..50.5,14..15)", "geo(49.6..49.7,14.1..14.2)"]
 PLACES = ["my_home", "ljubljana", "market"]
 ITEMS = [natural_id("serial", s) for s in ("a-1", "b-2")]
 MAKERS = [f"m{i}" for i in range(12)]
@@ -57,11 +57,11 @@ def catalogue() -> Ontology:
     cat.dag.put("made_in", ["geo"])
     cat.declare_descriptive(["made_in"])
     cat.load(dict(CATEGORIES))
-    cat.dag.put("my_home", ["geo(u2e4x)"])         # a place under a cell
-    cat.dag.put("ljubljana", ["geo"])              # a region above two cells
-    cat.dag.put("geo(u2e4)", ["ljubljana"])
-    cat.dag.put("geo(u2e5)", ["ljubljana"])
-    cat.dag.put("market", ["geo(u2f1)", "venue"])  # a place filed under a category as well
+    cat.dag.put("my_home", ["geo(48.2..48.25,16.2..16.25)"])         # a place under a rectangle
+    cat.dag.put("ljubljana", ["geo"])              # a region above two rectangles
+    cat.dag.put("geo(48.1..48.3,16.1..16.3)", ["ljubljana"])
+    cat.dag.put("geo(48.5..48.7,16.1..16.3)", ["ljubljana"])
+    cat.dag.put("market", ["geo(49.6..49.7,14.1..14.2)", "venue"])  # a place filed under a category as well
     return cat
 
 
@@ -71,9 +71,8 @@ def _iso(t: int) -> str:
 
 
 def _where(rng) -> str:
-    """A handover place: a bare cell, a place under one, or a region."""
-    pick = rng.choice(CELLS + PLACES)
-    return pick if pick in PLACES else f"geo({pick})"
+    """A handover place: a bare rectangle, a place under one, or a region."""
+    return rng.choice(RECTANGLES + PLACES)
 
 
 def _concepts(rng, wanted: bool) -> list[str]:
@@ -92,12 +91,12 @@ def _concepts(rng, wanted: bool) -> list[str]:
             terms.append(_where(rng))
     for head in ("from", "to"):
         if rng.random() < (0.05 if wanted else 0.15):
-            terms.append(f"{head}({rng.choice(CELLS + PLACES)})")
+            terms.append(f"{head}({rng.choice(RECTANGLES + PLACES)})")
     if rng.random() < (0.04 if wanted else 0.12):
         a = 1_800_000_000 + rng.randrange(0, 3600)
         terms.append(f"depart({_iso(a)}..{_iso(a + rng.randrange(60, 3600))})")
     if rng.random() < (0.04 if wanted else 0.15):
-        terms.append(f"made_in({rng.choice(CELLS)})")
+        terms.append(f"made_in({rng.choice(RECTANGLES)})")
     if rng.random() < 0.04:
         terms.append(f"item({rng.choice(ITEMS)})")
     if rng.random() < 0.04:
@@ -107,15 +106,15 @@ def _concepts(rng, wanted: bool) -> list[str]:
 
 def _operator(rng, wanted: bool) -> list[str]:
     """A courier's run (`transport`, maybe an argument, from and to: mostly
-    out of the u2e area into the u2f one), cover (`insure(...)`), or a want
+    out of one area into another), cover (`insure(...)`), or a want
     of either; an argument may be one the catalogue cannot read."""
     if rng.random() < 0.2:
         return [rng.choice(["insure(produce)", "insure(small-item)", "insure(piano)"])]
     terms = [rng.choice(["transport", "transport", "transport(small-item)", "transport(goods)",
                          "transport(produce)", "transport(piano)", "transport(mystery-goods)"])]
     if not wanted or rng.random() < 0.5:
-        terms += [f"from({rng.choice(['u2e', 'u2e4', 'my_home', 'ljubljana', 'u2f'])})",
-                  f"to({rng.choice(['u2f', 'u2f1', 'market', 'u2e', 'u2e5'])})"]
+        terms += [f"from({rng.choice([*RECTANGLES[:2], 'my_home', 'ljubljana', RECTANGLES[4]])})",
+                  f"to({rng.choice([RECTANGLES[4], RECTANGLES[5], 'market', RECTANGLES[0], RECTANGLES[3]])})"]
     return terms
 
 
@@ -293,18 +292,18 @@ def test_the_cases_where_the_index_and_the_product_once_differed():
     share no point is never filed, and the product composed it with two
     couriers until the composition refused a thing that describes nothing.
     A want of a `venue` is answered by a move to `market`, a place filed
-    under a cell and under `venue`: the thing is not inside `venue`, so the
+    under a rectangle and under `venue`: the thing is not inside `venue`, so the
     composed search leaves that term out of the want's query. And an offer
     listed twice is met twice, as the product meets it."""
     cat = catalogue()
     v = dict(valid=TimeWindow(0, 1_000_000))
-    anything = give("c1", Thing(("transport", "from(u2e)", "to(market)")), 2, **v)
-    east = give("c2", Thing(("transport", "from(u2e4)", "to(u2f1)")), 2, **v)
-    west = give("c3", Thing(("transport", "from(u2e5)", "to(u2f1)")), 2, **v)
+    anything = give("c1", Thing(("transport", "from(geo(48..49,16..17))", "to(market)")), 2, **v)
+    east = give("c2", Thing(("transport", "from(geo(48.1..48.3,16.1..16.3))", "to(geo(49.6..49.7,14.1..14.2))")), 2, **v)
+    west = give("c3", Thing(("transport", "from(geo(48.5..48.7,16.1..16.3))", "to(geo(49.6..49.7,14.1..14.2))")), 2, **v)
     unknown_word = want("w1", Thing(("transport(mystery-goods)",)), 5, **v)
-    nowhere = give("g1", Thing(("vegetable-box", "geo(u2e4)", "geo(u2e5)")), 5, **v)
-    at_cell = want("w2", Thing(("produce", "geo(u2f1)")), 9, **v)
-    piano = give("g2", Thing(("piano", "geo(u2e4x)")), 50, **v)
+    nowhere = give("g1", Thing(("vegetable-box", "geo(48.1..48.3,16.1..16.3)", "geo(48.5..48.7,16.1..16.3)")), 5, **v)
+    at_cell = want("w2", Thing(("produce", "geo(49.6..49.7,14.1..14.2)")), 9, **v)
+    piano = give("g2", Thing(("piano", "geo(48.2..48.25,16.2..16.25)")), 50, **v)
     at_venue = want("w3", Thing(("piano", "venue")), 70, **v)
     box = give("g3", Thing(("vegetable-box",)), 5, **v)
     produce = want("w4", Thing(("produce",)), 9, **v)

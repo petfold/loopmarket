@@ -15,9 +15,9 @@ Design rules this module obeys (cli.md, settled with Peter 2026-09-11/12):
   `+` separates the parts of a composed want. Nothing else bare is
   reserved; there is no alias mechanism; `key=value` was rejected as a
   second grammar.
-* **Names live in the catalogue.** A place is a node under the geo cell its
-  radius fits in; `place NAME LAT,LON,R [ADDRESS]` is the bridge until odag
-  accepts coordinates (cli.md §11.1). Private names are written to odag's *active*
+* **Names live in the catalogue.** A place is a node under a geo rectangle;
+  `place NAME LAT,LON±SIZE [ADDRESS]` names one (cli.md §11.1), and the
+  literal is ontodag's own geo spelling. Private names are written to odag's *active*
   store (the personal layer) and resolved through the composed view; only
   the `catalogue` store's root is pinned, so a private name never moves a
   root that offers pin.
@@ -66,8 +66,8 @@ from .render import reading, reading_for, render_offer
 from .settings import (_ERR, _OUT, _OVERRIDES, _SETTINGS, _config_path, _configured, _read_config,
                        _write_config)
 from .shell import _GLOBAL_FLAGS, HELP_TEXT, PARSER, build_parser, dispatch, main, run_stream
-from .spellings import (PART_SEP, _INTERPRETED_HEADS, _iso, duration_s, parse_coords, parse_now,
-                        radius_m, validity, window)
+from .spellings import (PART_SEP, _INTERPRETED_HEADS, _iso, coords, duration_s, parse_now,
+                        validity, window)
 from .stores import Session, _addressing_of, _open_book
 from .watch import _gives_of, _leg_of
 
@@ -75,7 +75,7 @@ __all__ = [
     # the public pieces (docs/REFERENCE.md §17)
     "dispatch", "run_stream", "main", "Session", "offer_from_line", "line_for",
     "parse_offer_tokens", "parse_want_line", "parse_part_tokens", "Parsed", "Composed", "Part",
-    "part_line", "PART_SEP", "window", "validity", "duration_s", "radius_m", "parse_coords",
+    "part_line", "PART_SEP", "window", "validity", "duration_s", "coords",
     "parse_now", "reading", "reading_for", "render_offer", "DEMAND_LOOKBACK", "HELP_TEXT",
     "build_parser", "PARSER", "__version__",
     # internals the tests read

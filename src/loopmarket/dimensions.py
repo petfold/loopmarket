@@ -108,11 +108,7 @@ class DimensionIndex:
             return False
         if offer.offer_id in self._filed:
             return True
-        # An offer from before ontodag 0.31 may spell a cell in a role of
-        # geo as a bare word; under 0.31 it is filed under the cell's own
-        # name, which ontodag accepts and which means the same (its id is
-        # untouched). Under an older ontodag the spelling stands.
-        known = [self.ontology.current_spelling(self.ontology.operator_of(c) or c)
+        known = [self.ontology.operator_of(c) or c
                  for c in offer.thing.concepts if self.ontology.known(c)]
         try:
             self._dag.put(offer.offer_id, [*known, _MARKER])

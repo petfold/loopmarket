@@ -25,7 +25,6 @@ from loopmarket import (
 
 logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")
 
-from loopmarket.spacetime import cell_for_coords
 
 
 def iso(t: int) -> str:
@@ -67,19 +66,18 @@ registry = OfferRegistry(RecordStore(MemoryBytesStore()))
 
 now = int(time.time())
 # The v3 record (2026-09-12): where and when are terms in the conjunction.
-# The season is one inclusive `time(a..b)`; a place is the cell containing
-# the radius the maker names — all three here sit within their radius of a
-# cell edge, so each honestly names the coarser cell `u24` (the exact
-# covering would be a region node above the few cells that matter — role
-# heads take nodes since ontodag #15 landed 2026-09-12; this demo keeps
-# the plain cells). Offers stand until withdrawn.
+# The season is one inclusive `time(a..b)`; a place is the square its
+# maker names, so many metres either way of a point, which ontodag turns
+# into bounds. Place and time match when one side contains the other:
+# Bruno's farm covers the town, and Chen's shop lies within Amara's square.
+# Offers stand until withdrawn.
 season = f"time({iso(now)}..{iso(now + 120 * 86_400 - 1)})"   # four months
 standing = TimeWindow(now - 3_600)                          # until withdrawn
 
 town = dict(valid=standing)
-amara_flat = f"geo({cell_for_coords(46.05, 14.50, 5_000)})"
-bruno_farm = f"geo({cell_for_coords(46.10, 14.55, 15_000)})"  # covers the town
-chen_shop = f"geo({cell_for_coords(46.06, 14.51, 4_000)})"
+amara_flat = ontology.dag.canonical("geo(46.05,14.50+-5km)")
+bruno_farm = ontology.dag.canonical("geo(46.10,14.55+-15km)")   # covers the town
+chen_shop = ontology.dag.canonical("geo(46.06,14.51+-3km)")
 
 offers = [
     # Amara: piano for amara-tokens; amara-tokens for a vegetable box

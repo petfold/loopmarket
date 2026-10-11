@@ -149,7 +149,7 @@ key lists everything; with a key shows it; unknown keys are errors
 | `catalogue` | the ontodag store spec offers pin (any odag spec) | odag's active store |
 | `peers` | read-only maker books / manifests folded into every answer | none |
 | `maker` | my identity; the signer's address when `sig` is installed | none — required to publish |
-| `terms` | terms added to every offer whose line does not already state that coordinate, e.g. `home ..+90d` (since v3, 2026-09-12: place and time are optional — unset, an offer is anywhere, any time) | none |
+| `terms` | terms added to every offer whose line does not already state that coordinate, e.g. `home now..+90d` (since v3, 2026-09-12: place and time are optional — unset, an offer is anywhere, any time) | none |
 | `valid` | how long my offers stand | `30d` |
 | `now` | the clock, for reproducible runs and tests | wall clock |
 | `confirm` | `auto` / `on` / `off` (§7) | `auto` |
@@ -194,7 +194,9 @@ fail-closed, and `my_home` is a bare word like any other.
   is exact bit interleaving on rationals; the determinism doctrine
   admits it. **Meanwhile:** a temporary `loop place NAME LAT,LON,R`
   writes the node through the `Ontology` facade and is deleted the day
-  odag accepts coordinates.
+  odag accepts coordinates. (2026-10-11: odag took rectangles instead of
+  cells, §11.1; `loop place NAME LAT,LON±SIZE` stays as the way to name a
+  private place with its address.)
 - **What the offer carries, today.** The exact geo truth is
   `GeoDisc.intersects` and discs are barred from the catalogue, so for
   P0 the place node carries its disc as node metadata beside its cell
@@ -419,11 +421,20 @@ needs the contract before it can speak it. Deferred by Peter on
 Filed into `ontodag-coupling.md` §7's tripwire table the same day; none
 blocks `loop` shipping, each removes a loopmarket-only behaviour.
 
-1. **Coordinate input spelling for `geo`.** `geo(LAT,LON,R)` → a cell at
-   the precision the radius implies; input vocabulary only (D10 shape),
-   exact on rationals. Removes `loop place` (§4).
-2. **Relative time spellings in `time(...)`.** `today`, `+2h`, `..+90d`,
-   elaborated to fixed UTC at input. Removes §2's superset.
+1. ~~**Coordinate input spelling for `geo`.**~~ — **built the other
+   way** in ontodag (its questions 29, 30 and 33, decided by Peter
+   2026-10-11; registry 5.0): a `geo` value is a rectangle with exact
+   bounds, and `geo(LAT,LON±SIZE)` is the square SIZE either way, turned
+   into bounds when read. loopmarket's literal is that parameter typed
+   bare (`46.05,14.50±5km`) and its geohash code is gone (branch
+   `ontodag-0.32`). `loop place` stays, computing nothing: it names a
+   private place and keeps the address a handoff seals (§14).
+2. ~~**Relative time spellings in `time(...)`.**~~ — **built** in ontodag
+   (its question 31, decided by Peter 2026-10-11: read where a person or
+   an agent types, `today` the UTC day, `..` an open end). `loop` reads
+   time terms with ontodag's code, so the superset is gone; `..+90d` in a
+   time term is now everything up to 90 days from now, and `now..+90d` the
+   next 90 days (branch `ontodag-0.32`).
 3. **A public opener for store specs.** `ontodag.open(spec)` or similar
    over `.od` / `rs:` / `swarm:` so loopmarket's `catalogue` setting
    resolves through public API rather than a copy of `_load_native`.

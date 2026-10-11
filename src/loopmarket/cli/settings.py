@@ -61,7 +61,7 @@ _SETTINGS = {
     "terms": _Setting(
         "LOOP_TERMS", "", "--terms 'TERM ...'",
         "terms added to every offer whose line does not name that head, "
-        "e.g. 'home ..+90d'; unset: anywhere, any time"),
+        "e.g. 'home now..+90d'; unset: anywhere, any time"),
     "valid": _Setting(
         "LOOP_VALID", "30d", "--valid DURATION",
         "how long my offers stand (a duration, or an absolute window)"),

@@ -1,7 +1,7 @@
 """Parsing and resolving an offer line: ontodag's grammar plus the two
 conventions (a bare number first is the quantity, a bare number last is
 the price). Each token then becomes catalogue vocabulary — a catalogue
-name as spelled, a private place as the cell it hangs under, a bare
+name as spelled, a private place as the rectangle it hangs under, a bare
 coordinate or time under the handover head the catalogue marks — and the
 line's thing a `Part`, shared by a simple offer, a draft and each part of
 a composed want."""
@@ -14,14 +14,13 @@ from collections import namedtuple
 
 from ontodag import OntoDAG
 from ontodag import dimensions as _dims
+from ontodag import surface as _surface
 
 from ..ontology import Ontology
 from ..schema import WANT, Thing, q
-from ..spacetime import cell_for_coords
 from .render import _num
 from .settings import _configured
-from .spellings import (PART_SEP, _INTERPRETED_HEADS, _iso, _looks_like_time, _number, parse_coords,
-                        window)
+from .spellings import PART_SEP, _INTERPRETED_HEADS, _looks_like_time, _number, coords, looks_like_coords
 from .stores import Session
 
 
@@ -208,11 +207,12 @@ def _head_kind(dag: OntoDAG, head: str) -> str | None:
 def _value_of(view: OntoDAG, name: str, kind: str) -> str | None:
     """A *private* name's public value in a dimension of `kind`: the
     parameter of the term it (or an ancestor) hangs under — `my_home`
-    under `geo(u2e4x)` yields `u2e4x`. Used only for names the pinned
-    catalogue does not hold (the personal layer's places): the same-root
-    constraint means a counterparty can interpret `from(my_home)` only if
-    `my_home` is in the root the offer pins, so a private place publishes
-    as its cell and the name stays private (`cli.md` §12). A catalogue
+    under `geo(46.0..46.1,14.4..14.6)` yields `46.0..46.1,14.4..14.6`. Used
+    only for names the pinned catalogue does not hold (the personal layer's
+    places): the same-root constraint means a counterparty can interpret
+    `from(my_home)` only if `my_home` is in the root the offer pins, so a
+    private place publishes as its rectangle and the name stays private
+    (`cli.md` §12). A catalogue
     name needs none of this since ontodag #15: it stands as spelled."""
     node = view.nodes.get(name)
     if node is None:
@@ -222,10 +222,10 @@ def _value_of(view: OntoDAG, name: str, kind: str) -> str | None:
         split = _dims.split_term(item.name)
         if not split or _head_kind(view, split[0]) != kind:
             continue
-        # A place hangs under its own cell and, by computed prefix
-        # containment, under every coarser cell too; ancestors come as a
-        # set. The name's value is the most specific term: the one that
-        # fits within all the others.
+        # A place may hang under several values (its own rectangle, and a
+        # wider one a region is filed under); ancestors come as a set. The
+        # name's value is the most specific term: the one that fits within
+        # all the others.
         if best is None or view.is_below(item.name, best.name):
             best = item
     return _dims.split_term(best.name)[1] if best is not None else None
@@ -233,7 +233,7 @@ def _value_of(view: OntoDAG, name: str, kind: str) -> str | None:
 
 def _term_of(view: OntoDAG, name: str) -> str | None:
     """The most specific dimension term a name hangs under, whatever its
-    kind — `home` under `geo(u2e4x)` yields `geo(u2e4x)`. What a *private*
+    kind — `home` under `geo(46.0..46.1,14.4..14.6)` yields that term. What a *private*
     place publishes as when typed bare (Peter, 2026-09-13: a bare geo term
     is where the offer holds; no `where` head)."""
     node = view.nodes.get(name)
@@ -252,7 +252,7 @@ def _term_of(view: OntoDAG, name: str) -> str | None:
 def _handover_base(ontology: Ontology, kind: str, spelling: str) -> str:
     """The base head of `kind` the catalogue marks as a handover
     coordinate — where a bare coordinate literal or time spelling goes
-    (`46.05,14.50,5km` → `geo(u2e4x)`, `today..+7d` → `time(...)`). The
+    (`46.05,14.50±5km` → `geo(46.005034..)`, `today..+7d` → `time(...)`). The
     CLI names no head: it asks the catalogue which head under `handover`
     is a base of that kind, and refuses when there is none."""
     dag = ontology.dag
@@ -268,14 +268,14 @@ def _handover_base(ontology: Ontology, kind: str, spelling: str) -> str:
         return bases[0]
     raise ValueError(
         f"{spelling}: the catalogue marks no {kind} head as a handover "
-        f"coordinate, so a bare {'coordinate' if kind == _dims.KIND_PREFIX else 'time'} "
-        f"has no head to go under — `odag put geo prefix-dimension handover`")
+        f"coordinate, so a bare {'coordinate' if kind == _dims.KIND_RECT else 'time'} "
+        f"has no head to go under — `odag put geo rectangle-dimension handover`")
 
 
 def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
     """Each token: let a catalogue name stand as spelled, publish a
     *private* place as the dimension term it hangs under, turn a bare
-    coordinate literal into a cell and a bare time spelling into a fixed-UTC
+    coordinate literal into a rectangle and a bare time spelling into a fixed-UTC
     window (input vocabulary, cli.md §2) — both under the base head the
     catalogue marks as a handover coordinate — and, for `head(param)`
     tokens, refuse quantity kinds (the field owns them) and check the
@@ -287,17 +287,16 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
     locally and sealed to the counterparty at clearing (handoff.py).
 
     Names, since ontodag #15 (2026-09-12): a parameter that names a node
-    of the *pinned catalogue* — a place under a cell, a region above
-    cells, a floor under a building — is stored as spelled
+    of the *pinned catalogue* — a place under a rectangle, a region above
+    rectangles, a floor under a building — is stored as spelled
     (`ljubljana`, `my_home_4th`, `from(my_home)`): ontodag orders it by the
     graph, and the counterparty, matching under the same root, can. A
     name only the personal layer holds is one the root does not carry, so
-    it publishes as the cell it hangs under (`from(my_home)` →
-    `from(u2e4x)`) and the name stays private; a private region or floor
-    has no single value and is refused — publish it to the catalogue, or
-    name a cell. A name outside the dimension is refused by ontodag in
-    its own words, never read as a literal that happens to spell the same
-    (a place called `u2e` must not become the cell `u2e`)."""
+    it publishes as the rectangle it hangs under (`from(my_home)` →
+    `from(geo(46.0..46.1,14.4..14.6))`) and the name stays private; a
+    private region or floor has no single value and is refused — publish
+    it to the catalogue, or give a rectangle. A name outside the dimension
+    is refused by ontodag in its own words."""
     dag = ontology.dag
     out, notes, addresses = [], [], []
     for c in concepts:
@@ -320,15 +319,12 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
                 address = view.nodes[c].metadata.get("address")
                 if term and address:
                     addresses.append(f"{c}: {address}")
-            elif "," in c and c.count(",") == 2:
-                lat, lon, radius = parse_coords(c)
-                head = _handover_base(ontology, _dims.KIND_PREFIX, c)
-                term = ontology.cell_term(head, cell_for_coords(lat, lon, radius))
+            elif looks_like_coords(c):
+                head = _handover_base(ontology, _dims.KIND_RECT, c)
+                term = _canonical(ontology.geo_term(head, coords(c)), dag, [])
             elif _looks_like_time(c):
-                w = window(c, session.now)
-                end = "" if w.end is None else _iso(w.end - 1)
                 head = _handover_base(ontology, _dims.KIND_CALENDAR, c)
-                term = f"{head}({_iso(w.start)}..{end})"
+                term = _surface.elaborate(f"{head}({c})", dag, now=session.now)
             if term is None:
                 out.append(c)           # unknown: fails closed at `known`
                 continue
@@ -353,29 +349,22 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
                     f"{c}: `{param}` is a private name (your personal store, "
                     f"not the catalogue offers pin) with no single {head} "
                     f"value to publish in its place — `loop place {param} "
-                    f"LAT,LON,RADIUS` gives a place its cell; a region or a "
+                    f"LAT,LON+-SIZE` gives a place its rectangle; a region or a "
                     f"floor must be in the catalogue to be named in an offer")
-            term = ontology.cell_term(head, value) if kind == _dims.KIND_PREFIX \
+            term = ontology.geo_term(head, value) if kind == _dims.KIND_RECT \
                 else f"{head}({value})"
-        elif kind == _dims.KIND_PREFIX and "," in param:
-            lat, lon, radius = parse_coords(param)
-            term = ontology.cell_term(head, cell_for_coords(lat, lon, radius))
-        elif kind == _dims.KIND_PREFIX and "(" not in param \
+        elif kind == _dims.KIND_RECT and looks_like_coords(param):
+            term = _canonical(ontology.geo_term(head, coords(param)), dag, [])
+        elif kind == _dims.KIND_RECT and "(" not in param \
                 and ontology.is_geo_role(head):
-            # ontodag 0.31 (its review question 14): in a role of geo a bare
-            # word names a place, and a cell is written by its own name.
-            # Before, `from(sydney)` was read as a cell in southern Turkey.
-            hint = (f", or, for the geohash cell {param!r}, write "
-                    f"{head}({_dims.GEO_HEAD}({param}))"
-                    if _dims.GEOHASH_RE.match(param) else "")
+            # In a role of geo a bare word names a place (ontodag's review
+            # question 14), and a value is written by geo's name.
             raise ValueError(
                 f"{c}: {param!r} is no place the catalogue or your names "
-                f"know — `loop place {param} LAT,LON,RADIUS` files it under "
-                f"its cell{hint}")
+                f"know — `loop place {param} LAT,LON+-SIZE` files it under "
+                f"its rectangle")
         elif kind == _dims.KIND_CALENDAR and not ontology.known(c):
-            w = window(param, session.now)
-            end = "" if w.end is None else _iso(w.end - 1)
-            term = f"{head}({_iso(w.start)}..{end})"
+            term = _surface.elaborate(c, dag, now=session.now)   # ontodag's relative times
         if param in view.nodes:
             address = view.nodes[param].metadata.get("address")
             if address:
@@ -383,13 +372,6 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
         if term != c:
             notes.append(f"{c} → {term}")
             c = term
-        cell = _dims.cell_value(c) if kind == _dims.KIND_PREFIX else None
-        if cell is not None and not _dims.GEOHASH_RE.match(cell):
-            raise ValueError(
-                f"{c}: a geo cell is a geohash, written with digits and the "
-                f"lowercase letters other than a, i, l and o, and {cell!r} is "
-                f"none — a named place is filed under its cell: `loop place "
-                f"{cell} LAT,LON,RADIUS`")
         if not ontology.known(c):
             try:                        # ontodag's own reason, when it has one
                 dag.is_below(c, c)
@@ -427,7 +409,7 @@ def _term_class(session: "Session", token: str) -> str:
     term = _term_of(session.view(), token)
     if term is not None:
         return _dims.split_term(term)[0]
-    kind = _dims.KIND_PREFIX if "," in token and token.count(",") == 2 \
+    kind = _dims.KIND_RECT if looks_like_coords(token) \
         else _dims.KIND_CALENDAR if _looks_like_time(token) else None
     if kind is not None:
         try:                        # the base head a bare literal goes under

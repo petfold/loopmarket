@@ -13,7 +13,6 @@ import sys
 
 from ..ontology import Ontology
 from ..schema import GIVE, WANT, Offer, Parts, Thing, TimeWindow, give, want
-from ..spacetime import cell_for_coords
 from .drafts import _VERBS, _find_draft, _part_from_record, _read_drafts, _write_drafts
 from .grammar import (_PRICE_RE, Composed, Parsed, Part, _resolve_part, parse_offer_tokens,
                       parse_want_line, part_line)
@@ -21,7 +20,7 @@ from .guarantees import _check_asset_categories, _guarantees
 from .options import _option_demand, _option_offer, _option_plan
 from .render import _age, _bare_key, _num, _span, render_offer
 from .settings import _configured, _err, _home_dir, _isatty, _read_json, _write_json
-from .spellings import PART_SEP, _iso, _number, parse_coords, validity
+from .spellings import PART_SEP, _iso, _number, coords, validity
 from .stores import Session, _resolve_id
 
 
@@ -428,25 +427,24 @@ def cmd_exercise(args, session, out):
 
 
 def cmd_place(args, session, out):
-    """The dated bridge (cli.md §4, §11.1): a place node under the cell of
-    that radius around that point, written to the personal layer through
-    the catalogue facade (`Ontology.declare_place`) — the cell is the
-    place (no disc anywhere since the v3 record). Deleted the day odag
-    accepts `geo(LAT,LON,R)` as input vocabulary. When the
-    personal store *is* the catalogue the name is vocabulary and offers
-    say `NAME` bare (ontodag #15 orders the name); under a separate
-    pinned catalogue the place is private and offers say its cell. The
-    optional ADDRESS is settlement text on the node (P1-spacetime-terms.md
-    §4): never vocabulary, never in a record — shown in the approval block
-    of an offer naming the place and sealed to the cleared counterparty."""
-    lat, lon, radius = parse_coords(args.coords)
+    """A named place (cli.md §4, §11.1): a node under the rectangle a
+    coordinate literal spells (`46.05,14.50±500m`, which ontodag turns
+    into bounds), written to the personal layer through the catalogue
+    facade (`Ontology.declare_place`). When the personal store *is* the
+    catalogue the name is vocabulary and offers say `NAME` bare (ontodag
+    orders the name); under a separate pinned catalogue the place is
+    private and offers say its rectangle. The optional ADDRESS is
+    settlement text on the node (P1-spacetime-terms.md §4): never
+    vocabulary, never in a record — shown in the approval block of an
+    offer naming the place and sealed to the cleared counterparty."""
+    where = coords(args.coords)
     personal = session.personal_session
 
     def adopted():
         print("loop: adopted ontodag's prelude into the personal store "
-              f"({personal.describe()}) so places hang under geo cells",
+              f"({personal.describe()}) so places hang under geo rectangles",
               file=_err())
-    Ontology(personal.dag).declare_place(args.name, cell_for_coords(lat, lon, radius),
+    Ontology(personal.dag).declare_place(args.name, where,
                                          address=" ".join(args.address).strip(), adopted=adopted)
     personal.save()
     return 0

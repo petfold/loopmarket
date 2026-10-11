@@ -20,6 +20,7 @@ import importlib.util
 
 import pytest
 
+from ontodag.dimensions import REGISTRY_VERSION
 from recordstore import MemoryBytesStore, RecordStore
 
 from loopmarket import (
@@ -36,6 +37,10 @@ pytestmark = pytest.mark.skipif(not _HAVE_EVM, reason="needs the evm extra: pip 
 BOND, WINDOW = 10 ** 16, 3
 H = vin_id("1HGCM82633A004352")             # the flat's item (the option test)
 CAR = vin_id("1HGCM82633A004353")           # the car's (the race test; the chain is shared)
+
+#: The installed registry's major: an offer pinned to another one is
+#: refused (review item 4), so the pins here follow it.
+MAJOR = REGISTRY_VERSION.split(".")[0]
 
 
 @pytest.fixture(scope="module")
@@ -198,7 +203,7 @@ def test_a_revoked_statement_is_convicted_on_chain(chain):
     from loopmarket.gate import CounterpartyGate
     from loopmarket.register import Register
 
-    pins = dict(ontology_root="ab" * 32, registry_version="4.2", contract_version="0.1")
+    pins = dict(ontology_root="ab" * 32, registry_version=f"{MAJOR}.2", contract_version="0.1")
     w = World(pins=pins)
     roots = tuple(sorted((r, reg.root) for r, reg in w.registers.items()))
     loop = Loop((Match(give=w.dentist, want=w.patient), Match(give=w.lesson, want=w.wants_lesson)))

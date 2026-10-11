@@ -15,12 +15,13 @@ from ontodag.prelude import apply as apply_prelude
 from ontodag import surface
 from recordstore import MemoryBytesStore, RecordStore
 
-from loopmarket.spacetime import cell_for_coords
 from loopmarket import (
     BookClearing, OfferRegistry, Ontology, SolverAgent, Thing,
     TimeWindow, give, want,
 )
 from loopmarket import cli
+
+from places import square
 
 NOW = 1_789_171_200                     # 2026-09-12T00:00:00Z
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -32,7 +33,7 @@ TRIANGLE_LOOP = os.path.join(ROOT, "examples", "triangle.loop")
 # CLI knows no head, the catalogue declares them), and the triangle's trades.
 CATALOGUE = {
     **{name: list(parents) for name, parents in PRELUDE_DECLARATIONS},
-    "handover": [], "geo": ["prefix-dimension", "handover"],
+    "handover": [], "geo": ["rectangle-dimension", "handover"],
     "time": ["calendar-dimension", "handover"],
     "service": [], "lesson": ["service"], "music-lesson": ["lesson"],
     "piano-lesson": ["music-lesson"], "repair": ["service"],
@@ -77,7 +78,7 @@ class Runner:
 @pytest.fixture
 def loop(env):
     run = Runner()
-    run.ok("place", "home", "46.05,14.50,5km")
+    run.ok("place", "home", "46.05,14.50±5km")
     return run
 
 
@@ -91,12 +92,11 @@ def _api_triangle(nonces):
     pins = dict(ontology_root="", registry_version=REGISTRY_VERSION,
                 contract_version=CONTRACT_VERSION)
     W = dict(valid=TimeWindow(NOW, NOW + 30 * 86_400), **pins)
-    # v3: the place is a term — the cell containing each radius (all `u24`
-    # here, every place sits within its radius of a cell edge); no `when`
-    # on the triangle's lines, so the offers are any time
-    flat = f"geo({cell_for_coords(46.05, 14.50, 5_000)})"
-    farm = f"geo({cell_for_coords(46.10, 14.55, 15_000)})"
-    shop = f"geo({cell_for_coords(46.06, 14.51, 4_000)})"
+    # v3: the place is a term — the square around each point, in ontodag's
+    # bounds; no `when` on the triangle's lines, so the offers are any time
+    flat = f"geo({square('46.05,14.50±5km')})"
+    farm = f"geo({square('46.10,14.55±15km')})"
+    shop = f"geo({square('46.06,14.51±3km')})"
     t = lambda *c: Thing(tuple(c))  # noqa: E731
     offers = [
         give("amara", t("piano-lesson", flat), 100, nonce=nonces[0], **W),
@@ -139,7 +139,7 @@ def test_g1_triangle_as_text_reproduces_the_python_loop_id(env, monkeypatch):
 CANONICAL_TERMS = [
     "mass(10kg)", "mass(10kg..21/2kg)", "mass(10kg..)", "mass(..11kg)",
     "time(2026-10-01T00:00:00Z..2026-12-31T23:59:59Z)", "count(3)",
-    "duration(7200s)", "geo(u2e4)", "length(10/33m)", "temperature(300K)",
+    "duration(7200s)", "geo(48.1..48.3,16.1..16.3)", "length(10/33m)", "temperature(300K)",
 ]
 
 
@@ -190,12 +190,27 @@ def test_relative_time_elaborates_to_fixed_utc():
     w = cli.window("2026-10", NOW)
     assert cli._iso(w.end) == "2026-11-01T00:00:00Z"
     assert cli.duration_s("2h") == 7200 and cli.duration_s("30d") == 30 * 86_400
-    assert cli.radius_m("5km") == 5000 and cli.radius_m("250") == 250
-    assert cli.radius_m("2.5km") == 2500 and cli.radius_m("1/3km") == 1000 / 3
+    assert cli.coords("46.05,14.50±2.5km") == "46.05,14.50±2.5km"   # ontodag reads it
     with pytest.raises(ValueError, match="window"):
         cli.window("+2h", NOW)
     with pytest.raises(ValueError, match="not a time"):
         cli.window("soonish..+2d", NOW)
+
+
+def test_a_time_term_reads_as_odag_reads_it(loop):
+    """ontodag's question 31 (decided by Peter 2026-10-11): a time term in
+    `loop` is read by ontodag's code, so `..` is an open end — `..+90d` is
+    everything up to 90 days from now, `now..+90d` the next 90 days — and
+    `today` is the UTC day. `valid(..B)`, the offer's own field, still
+    stands from now."""
+    def concepts(line):
+        return cli.offer_from_line(line, loop.session).thing.concepts
+    assert "time(..2026-12-10T23:59:59Z)" in concepts("want apple time(..+90d) 9")
+    assert "time(2026-09-12T00:00:00Z..2026-12-10T23:59:59Z)" in \
+        concepts("want apple now..+90d 9")
+    assert "time(2026-09-12T00:00:00Z..2026-09-12T23:59:59Z)" in concepts("want apple today 9")
+    o = cli.offer_from_line("want apple valid(..+90d) 9", loop.session)
+    assert (o.valid.start, o.valid.end) == (NOW, NOW + 90 * 86_400)
 
 
 def test_durations_and_relative_times_read_in_ontodags_units():
@@ -275,7 +290,7 @@ def test_g4_approval_block_is_the_show_renderer(loop):
     assert "state    open" in shown
     assert "up to 10 kg, divisible" in block
     assert "10/kg" in block
-    assert "note     home → geo(" in out       # a private place: its cell
+    assert "note     home → geo(" in out       # a private place: its rectangle
 
 
 def test_want_reading_names_the_point(loop):
@@ -292,7 +307,7 @@ def test_g5_setting_and_head_names_are_ordinary_categories(env, tmp_path,
     write_od(od, names)
     monkeypatch.setenv("LOOP_CATALOGUE", str(od))
     run = Runner()
-    run.ok("place", "home", "46.05,14.50,5km")
+    run.ok("place", "home", "46.05,14.50±5km")
     monkeypatch.setenv("LOOP_WHERE", "home")
     for name in names:
         oid = run.ok("give", name, "1").strip().splitlines()[-1]
@@ -433,16 +448,16 @@ def test_reused_price_refuses_in_a_batch_under_confirm_auto(loop, monkeypatch):
 
 def test_places_are_catalogue_nodes_with_coordinates(env, tmp_path):
     run = Runner()
-    run.ok("place", "home", "46.05,14.50,5km")
+    run.ok("place", "home", "46.05,14.50±5km")
     dag = run.session.personal_session.dag
-    cell = cell_for_coords(46.05, 14.50, 5_000)
+    cell = square('46.05,14.50±5000m')
     assert [p.name for p in dag.nodes["home"].parents] == [f"geo({cell})"]
     assert not dag.nodes["home"].metadata            # no disc anywhere (v3)
     # the node persisted through the store (a fresh session reads it back)
     fresh = Runner()
     out = fresh.ok("give", "apple", "home", "5")
     # the catalogue is a separate store here, so the place is private and
-    # publishes as its cell (a catalogue name would stand as spelled, #15)
+    # publishes as its rectangle (a catalogue name would stand as spelled, #15)
     assert f"give     apple geo({cell})" in out
     assert f"note     home → geo({cell})" in out
     # a place is optional: an offer with none is anywhere
@@ -450,9 +465,9 @@ def test_places_are_catalogue_nodes_with_coordinates(env, tmp_path):
     assert out.startswith("give     apple\n")
 
 
-def test_place_under_a_pinned_rs_catalogue_gets_its_cell_edge(env, tmp_path,
-                                                             monkeypatch):
-    """rs: catalogue with the prelude: the place hangs under its geo cell
+def test_place_under_a_pinned_rs_catalogue_gets_its_rectangle_edge(env, tmp_path,
+                                                                  monkeypatch):
+    """rs: catalogue with the prelude: the place hangs under its geo rectangle
     and the metadata survives the commit; offers pin the root."""
     import ontodag
     spec = f"rs:{tmp_path / 'cat'}"
@@ -467,10 +482,10 @@ def test_place_under_a_pinned_rs_catalogue_gets_its_cell_edge(env, tmp_path,
     monkeypatch.setenv("LOOP_CATALOGUE", spec)
     # ...and the personal layer is odag's default store, which is separate
     run = Runner()
-    run.ok("place", "home", "46.05,14.50,5km")
+    run.ok("place", "home", "46.05,14.50±5km")
     personal = run.session.personal_session.dag
     # the personal .od store had no prelude: `place` adopted it (by merge,
-    # idempotent) so the place hangs under its cell — that edge is what
+    # idempotent) so the place hangs under its rectangle — that edge is what
     # lets ontodag interpret the name
     assert any(p.name.startswith("geo(") for p in personal.nodes["home"].parents)
     out = run.ok("give", "apple", "home", "5")
@@ -478,21 +493,21 @@ def test_place_under_a_pinned_rs_catalogue_gets_its_cell_edge(env, tmp_path,
     assert root and f"catalogue {root[:16]}" in out
     # the pinned catalogue itself is untouched by the private name, and
     # the offer cannot carry a name that root does not hold: a private
-    # place publishes as its cell, the name stays private (cli.md §12)
+    # place publishes as its rectangle, the name stays private (cli.md §12)
     assert "home" not in run.session.catalogue.dag.nodes
-    cell = cell_for_coords(46.05, 14.50, 5_000)
+    cell = square('46.05,14.50±5000m')
     assert f"give     apple geo({cell})" in out
     assert f"note     home → geo({cell})" in out
     # a place written INTO the prelude'd rs: store commits (metadata too)
     monkeypatch.setenv("ONTODAG_STORE", spec)
     monkeypatch.delenv("LOOP_CATALOGUE")
     run2 = Runner()
-    run2.ok("place", "shop", "46.06,14.51,400m")
+    run2.ok("place", "shop", "46.06,14.51±400m")
     dag = run2.session.personal_session.dag
     assert any(p.name.startswith("geo(") for p in dag.nodes["shop"].parents)
     assert dag.store.root != root                     # a real commit
     shop = Runner().session.personal_session.dag.nodes["shop"]
-    assert [p.name for p in shop.parents] == [f"geo({cell_for_coords(46.06, 14.51, 400)})"]
+    assert [p.name for p in shop.parents] == [f"geo({square('46.06,14.51±400m')})"]
 
 
 def test_place_says_once_that_it_adopted_the_prelude(env):
@@ -500,13 +515,13 @@ def test_place_says_once_that_it_adopted_the_prelude(env):
     (`Ontology.declare_place`) and says so once, before the place is
     written: a place that cannot be filed still leaves the note."""
     run = Runner()
-    code, _, err = run("place", "dimension", "46.05,14.50,5km")     # a cycle under its own cell
+    code, _, err = run("place", "dimension", "46.05,14.50±5km")     # a cycle under its own rectangle
     note = "adopted ontodag's prelude into the personal store"
     assert code == 1 and err.index(note) < err.index("would create a cycle")
-    code, _, err = run("place", "home", "46.05,14.50,5km")
+    code, _, err = run("place", "home", "46.05,14.50±5km")
     assert code == 0 and note not in err                              # adopted in this session already
     run2 = Runner()
-    code, _, err = run2("place", "shop", "46.06,14.51,400m")
+    code, _, err = run2("place", "shop", "46.06,14.51±400m")
     assert code == 0 and note not in err                              # the saved store has it
 
 
@@ -529,65 +544,62 @@ def test_role_terms_carry_the_name_and_match_by_the_graph(
     """ontodag #15 (2026-09-12): a role head takes the base dimension's
     nodes as parameters, so a catalogue name in a role term stands as
     spelled — `from(my_home)` is the published term, and the graph orders
-    it (`my_home ⊑ geo(u2e4x)`), the London→Rome pattern with the name
+    it (`my_home ⊑ geo(48.2..48.25,16.2..16.25)`), the London→Rome pattern with the name
     kept. Here the personal store is the catalogue, so `place` writes
     vocabulary."""
     # `from`/`to` as roles OF `geo` (a head under a head, #15): only a
-    # role head reads a parameter as a node; a bare prefix head would
-    # read `my_home` as the literal cell "my_home"
+    # role head reads a parameter as a node
     _od_with_prelude(tmp_path / "roles.od",
                      [("from", ["geo"]), ("to", ["geo"]), ("ride", [])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "roles.od"))
     monkeypatch.setenv("ONTODAG_STORE", str(tmp_path / "roles.od"))
     run = Runner()
-    run.ok("place", "my_home", "46.05,14.50,500m")
-    cell = cell_for_coords(46.05, 14.50, 500)
+    run.ok("place", "my_home", "46.05,14.50±500m")
+    around, near = "46..46.1,14.4..14.6", "46.04..46.06,14.49..14.51"   # both hold it
     out = run.ok("give", "ride", "from(my_home)", "my_home", "5")
     assert "give     from(my_home) my_home ride" in out and "→" not in out
     oid = out.strip().splitlines()[-1]
     rec = run.session.book.store.get(f"offer/{oid}")
     assert rec["gives"]["concepts"] == ["from(my_home)", "my_home", "ride"]
-    # a want anywhere in the parent cell matches by the graph's order
+    # a want anywhere in a rectangle holding it matches by the graph's order
     monkeypatch.setenv("LOOP_MAKER", "bruno")
-    run.ok("want", "ride", f"from(geo({cell[:2]}))", "my_home", "6")
+    run.ok("want", "ride", f"from(geo({around}))", "my_home", "6")
     code, out, err = run("matches")
     assert code == 0 and "amara gives" in out and "bruno" in out
-    # a cell written by its own name passes through unchanged...
-    assert f"from(geo({cell[:3]}))" in run.ok("want", "ride", f"from(geo({cell[:3]}))",
-                                              "my_home", "6")
-    # ...a bare word that is no place is refused, naming both ways out
-    # (ontodag 0.31: in a role of geo a bare word is a place)...
-    code, out, err = run("want", "ride", f"from({cell[:3]})", "my_home", "6")
-    assert code == 1 and "no place the catalogue" in err \
-        and f"from(geo({cell[:3]}))" in err
+    # a rectangle written by geo's name passes through unchanged...
+    assert f"from(geo({near}))" in run.ok("want", "ride", f"from(geo({near}))", "my_home", "6")
+    # ...a bare word that is no place is refused, naming the way to file it
+    # (in a role of geo a bare word is a place)...
+    code, out, err = run("want", "ride", "from(nowhere)", "my_home", "6")
+    assert code == 1 and "no place the catalogue" in err and "loop place nowhere" in err
     # ...an undeclared role head is an unknown category (U7)...
     code, out, err = run("want", "ride", "via(my_home)", "my_home", "6")
     assert code == 1 and "unknown category: via(my_home)" in err
     # ...and a name outside the dimension is refused by ontodag, in its
-    # own words, never read as a literal cell that spells the same
+    # own words
     code, out, err = run("want", "ride", "from(ride)", "my_home", "6")
     assert code == 1 and "names a category outside the 'geo' dimension" in err
     # `offers` filters through the same order
-    assert len(run.ok("offers", f"from(geo({cell[:2]}))", "--raw").splitlines()) == 3
+    assert len(run.ok("offers", f"from(geo({around}))", "--raw").splitlines()) == 3
     assert run.ok("offers", "from(zzzz)", "--raw") == ""
-    # coordinates in a role become the cell by its own name, and a cell is
-    # a geohash: `london` is none
-    assert "from(geo(" in run.ok("want", "ride", "from(46.05,14.50,5km)",
-                                 "my_home", "6")
+    # coordinates in a role become a rectangle by geo's name, and a word
+    # by geo's name is no rectangle
+    out = run.ok("want", "ride", "from(46.05,14.50±5km)", "my_home", "6")
+    assert f"from(46.05,14.50±5km) → from(geo({square('46.05,14.50±5km')}))" in out
     code, out, err = run("want", "ride", "from(geo(london))", "my_home", "6")
-    assert code == 1 and "geohash" in err
+    assert code == 1 and "'london' is no rectangle" in err
 
 
 def test_regions_and_floors_are_names_in_role_terms(env, tmp_path, monkeypatch):
-    """A region above cells and a floor under a building (ontodag #15's
-    two shapes beyond a place) are catalogue nodes a role term names as
-    spelled; matching is containment by the graph: a give on the fourth
-    floor of a building fits a want for the region covering its cell."""
+    """A region above rectangles and a floor under a building (ontodag
+    #15's two shapes beyond a place) are catalogue nodes a role term names
+    as spelled; matching is containment by the graph: a give on the fourth
+    floor of a building fits a want for the region covering its rectangle."""
     _od_with_prelude(tmp_path / "city.od",
                      [("delivery", []),
-                      ("my_home", ["geo(u2e4x)"]), ("my_home_4th", ["my_home"]),
-                      ("ljubljana", ["geo"]), ("geo(u2e4)", ["ljubljana"]),
-                      ("geo(u2e5)", ["ljubljana"])])
+                      ("my_home", ["geo(48.2..48.25,16.2..16.25)"]), ("my_home_4th", ["my_home"]),
+                      ("ljubljana", ["geo"]), ("geo(48.1..48.3,16.1..16.3)", ["ljubljana"]),
+                      ("geo(48.5..48.7,16.1..16.3)", ["ljubljana"])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "city.od"))
     run = Runner()
     out = run.ok("give", "delivery", "my_home_4th", "5")
@@ -601,21 +613,21 @@ def test_regions_and_floors_are_names_in_role_terms(env, tmp_path, monkeypatch):
     # give to the whole region, and a want elsewhere by neither
     monkeypatch.setenv("LOOP_MAKER", "chen")
     run.ok("give", "delivery", "ljubljana", "5")
-    run.ok("want", "delivery", "geo(u2f)", "6")
+    run.ok("want", "delivery", "geo(49.5..50.5,14..15)", "6")
     matches = run.ok("matches")
-    assert "to chen" not in matches                         # nothing at u2f
+    assert "to chen" not in matches                         # nothing in that rectangle
     assert "chen gives delivery ljubljana to bruno" in matches   # equal
     assert "chen gives delivery ljubljana to amara" not in matches
-    # `offers geo(u2e4)`: the floor is inside the cell, and the region
+    # `offers geo(48.1..48.3,16.1..16.3)`: the floor is inside it, and the region
     # contains it — handover coordinates match when one contains the other
-    assert len(run.ok("offers", "geo(u2e4)", "--raw").splitlines()) == 3
-    assert "ljubljana" not in run.ok("offers", "geo(u2f)", "--raw")   # chen's want only
+    assert len(run.ok("offers", "geo(48.1..48.3,16.1..16.3)", "--raw").splitlines()) == 3
+    assert "ljubljana" not in run.ok("offers", "geo(49.5..50.5,14..15)", "--raw")   # chen's want only
 
 
 def test_time_names_need_nothing_from_loopmarket(env, tmp_path, monkeypatch):
     """`odag put autumn 'time(...)'` then time(autumn): the name's value is
     the time term it hangs under, carried into the role the person typed
-    — the same device as a place's cell; containment is ontodag's."""
+    — the same device as a place's rectangle; containment is ontodag's."""
     _od_with_prelude(tmp_path / "t.od",
                      [("apple", []), ("autumn", ["time(2026-09-22..2026-12-20)"])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "t.od"))
@@ -768,7 +780,7 @@ def test_peers_fold_into_every_answer_and_clear_rebases(env, tmp_path, monkeypat
     first re-bases my book on the fold (P1 §1's clearing pattern)."""
     monkeypatch.setenv("LOOP_CATALOGUE", TRIANGLE_OD)
     amara = Runner()
-    amara.ok("place", "home", "46.05,14.50,5km")
+    amara.ok("place", "home", "46.05,14.50±5km")
     amara.ok("give", "piano-lesson", "home", "100")
     amara.ok("want", "produce", "local", "weekly", "home", "104")
     monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'bruno'}")
@@ -823,8 +835,8 @@ def stage(env, tmp_path, monkeypatch):
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "stage.od"))
     monkeypatch.setenv("LOOP_TERMS", "home")     # the default place
     run = Runner()
-    run.ok("place", "home", "46.05,14.50,5km")
-    run.ok("place", "venue", "46.051,14.506,100m")
+    run.ok("place", "home", "46.05,14.50±5km")
+    run.ok("place", "venue", "46.051,14.506±100m")
     return run
 
 
@@ -835,8 +847,8 @@ RIDE = ["transport", "person", "from(home)", "to(venue)",
 
 
 def test_drafts_named_numbered_canonical_and_never_in_the_book(stage):
-    home = cell_for_coords(46.05, 14.50, 5000)
-    venue = cell_for_coords(46.051, 14.506, 100)
+    home = square('46.05,14.50±5000m')
+    venue = square('46.051,14.506±100m')
     out = stage.ok("draft", "ticket", "want", *TICKET)
     assert out.startswith(f"ticket  want geo({venue}) hamlet theatre-ticket "
                           "time(2026-10-05T19:00:00Z..2026-10-05T22:00:00Z)")
@@ -863,7 +875,7 @@ def test_drafts_named_numbered_canonical_and_never_in_the_book(stage):
     assert "unknown category: want" in stage("draft", "want", "want", "hamlet")[2]
     assert "a draft has no validity" in stage("draft", "want", "hamlet", "valid(2h)")[2]
     stage.ok("draft", "want", "hamlet")
-    assert "\n4  want geo(u24) hamlet" in stage.ok("drafts")
+    assert f"\n4  want geo({home}) hamlet" in stage.ok("drafts")
     # discard by name and number; discard alone empties
     stage.ok("discard", "ticket", "4")
     names = [l.split()[0] for l in stage.ok("drafts").splitlines() if not l.startswith(" ")]
@@ -943,12 +955,12 @@ def test_one_line_composed_want_is_the_same_block(stage):
     assert "  part 2   from(" in out and "price    60" in out
     assert stage("drafts")[0] == 1                       # the line staged nothing
     assert len(stage.ok("mine", "--raw").splitlines()) == 1    # it published
-    # a coordinate literal in geo(...) is the spelling `place` takes: the
-    # cell containing that radius, and nothing else, is what the offer says
-    out = stage.ok("want", "hamlet", "46.1,14.6,2km", "5")
-    cell = cell_for_coords(46.1, 14.6, 2000)
+    # a coordinate literal is the spelling `place` takes: the square that
+    # many metres either way, in ontodag's bounds, is what the offer says
+    out = stage.ok("want", "hamlet", "46.1,14.6±2km", "5")
+    cell = square('46.1,14.6±2000m')
     assert f"want     geo({cell}) hamlet" in out
-    assert f"note     46.1,14.6,2km → geo({cell})" in out
+    assert f"note     46.1,14.6±2km → geo({cell})" in out
 
 
 def test_clearing_is_the_verb_and_clear_its_alias(loop):
@@ -961,7 +973,7 @@ def test_offer_line_is_pythons_offer_literal(loop):
                             loop.session)
     assert o.kind == "want" and o.thing.qty == 2 and o.tokens.amount == 9
     line = cli.line_for(o)
-    home = cell_for_coords(46.05, 14.50, 5000)
+    home = square('46.05,14.50±5000m')
     assert line.startswith(f"want 2kg apple geo({home}) "
                            f"time(2026-10-01T00:00:00Z..2026-10-03T23:59:59Z) valid(")
     assert line.endswith(" 9")
@@ -979,7 +991,7 @@ def test_offer_line_is_pythons_offer_literal(loop):
 
 
 def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, monkeypatch):
-    """`give transport(small-item mass(..8kg)) from(geo(u2e4)) to(geo(u2e4))`: the
+    """`give transport(small-item mass(..8kg)) from(geo(…)) to(geo(…))`: the
     line splits on spaces, the tokens rejoin while a parenthesis is open,
     the constituents are stored sorted (one offer id, U2), and the wanter
     who names the bicycle matches the courier who names the class — the
@@ -994,18 +1006,18 @@ def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, m
                       ("piano", [])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "city.od"))
     run = Runner()
-    out = run.ok("give", "transport(small-item", "mass(..8000g))", "from(geo(u2e4))", "to(geo(u2e4))", "5")
+    out = run.ok("give", "transport(small-item", "mass(..8000g))", "from(geo(48.1..48.3,16.1..16.3))", "to(geo(48.1..48.3,16.1..16.3))", "5")
     assert "transport(mass(..8kg) small-item)" in out   # the catalogue's spelling, constituents included
     code, out, err = run("give", "transport(small-item", "5")
     assert code == 1 and "unbalanced" in err
-    code, out, err = run("give", "transport(unicorn)", "from(geo(u2e4))", "to(geo(u2e4))", "5")
+    code, out, err = run("give", "transport(unicorn)", "from(geo(48.1..48.3,16.1..16.3))", "to(geo(48.1..48.3,16.1..16.3))", "5")
     assert code == 1 and "'unicorn' is neither a category" in err   # ontodag's reason; fails closed, U7
     monkeypatch.setenv("LOOP_MAKER", "bruno")
-    run.ok("want", "transport(bicycle mass(5kg))", "from(geo(u2e4x))", "to(geo(u2e4y))", "6")
+    run.ok("want", "transport(bicycle mass(5kg))", "from(geo(48.2..48.25,16.2..16.25))", "to(geo(48.12..48.15,16.12..16.15))", "6")
     out = run.ok("matches")
-    assert "amara gives from(geo(u2e4)) to(geo(u2e4)) transport(mass(..8kg) small-item) to bruno" in out
+    assert "amara gives from(geo(48.1..48.3,16.1..16.3)) to(geo(48.1..48.3,16.1..16.3)) transport(mass(..8kg) small-item) to bruno" in out
     monkeypatch.setenv("LOOP_MAKER", "chen")
-    run.ok("want", "transport(piano)", "from(geo(u2e4x))", "to(geo(u2e4y))", "6")
+    run.ok("want", "transport(piano)", "from(geo(48.2..48.25,16.2..16.25))", "to(geo(48.12..48.15,16.12..16.15))", "6")
     assert "chen" not in run.ok("matches")                  # the courier takes no pianos
 
 

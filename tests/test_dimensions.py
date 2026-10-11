@@ -13,10 +13,10 @@ import random
 import pytest
 
 import oracle
+from places import square
 from loopmarket import Ontology, Thing, TimeWindow, give, want
 from loopmarket.dimensions import DimensionIndex, candidate_matches_indexed
 from loopmarket.matching import check_match
-from loopmarket.spacetime import cell_for_coords
 
 NOW = 5_000
 CATALOGUE = {
@@ -95,10 +95,10 @@ class TestRecallAgainstBaseline:
             qty, divisible = rng.choice([1, 2, 4]), rng.random() < 0.5
             start = rng.randrange(0, 150_000)
             # a service window and a disc, as v4 terms: the window's
-            # seconds, the finest cell containing the disc
+            # seconds, the square holding the disc
             when = f"time({_iso(start)}..{_iso(start + rng.randrange(600, 90_000) - 1)})"
-            cell = cell_for_coords(45 + rng.random() * 2, 13 + rng.random() * 2,
-                                   rng.choice([2_000, 20_000, 80_000]))
+            lat, lon = round(45 + rng.random() * 2, 4), round(13 + rng.random() * 2, 4)
+            cell = square(f"{lat},{lon}±{rng.choice([2_000, 20_000, 80_000])}m")
             thing = Thing(terms + (f"geo({cell})", when), qty=qty, divisible=divisible)
             side = give if rng.random() < 0.5 else want
             offers.append(side(maker, thing, 10 + rng.randrange(90), **wide()))
@@ -133,9 +133,9 @@ class TestRecallAgainstBaseline:
 # are the gives inside every wanted cone — one `get`, no set arithmetic.
 
 ROLES = {"from": "geo", "to": "geo", "depart": "time"}
-CELLS = ["u2e", "u2e4", "u2e4x", "u2e4xq", "u2e5", "u2f"]
-# nodes a role term may name since ontodag #15: a place under a cell, a
-# floor under the place, a region above two cells (a lower bound, §14)
+RECTANGLES = ["geo(48..49,16..17)", "geo(48.1..48.3,16.1..16.3)", "geo(48.2..48.25,16.2..16.25)", "geo(48.21..48.22,16.21..16.22)", "geo(48.5..48.7,16.1..16.3)", "geo(49.5..50.5,14..15)"]
+# nodes a role term may name since ontodag #15: a place under a rectangle,
+# a floor under the place, a region above two rectangles (a lower bound, §14)
 PLACES = ["my_home", "my_home_4th", "ljubljana"]
 
 
@@ -146,11 +146,11 @@ def roles_ontology():
     ont.declare_operator({"transport": ("from", "to")})   # `transport(x)`: reversed
     ont.dag.put("made_in", ["geo"])           # descriptive: containment
     ont.declare_descriptive(["made_in"])
-    ont.dag.put("my_home", ["geo(u2e4x)"])
+    ont.dag.put("my_home", ["geo(48.2..48.25,16.2..16.25)"])
     ont.dag.put("my_home_4th", ["my_home"])
     ont.dag.put("ljubljana", ["geo"])
-    ont.dag.put("geo(u2e4)", ["ljubljana"])
-    ont.dag.put("geo(u2e5)", ["ljubljana"])
+    ont.dag.put("geo(48.1..48.3,16.1..16.3)", ["ljubljana"])
+    ont.dag.put("geo(48.5..48.7,16.1..16.3)", ["ljubljana"])
     return ont
 
 
@@ -159,7 +159,7 @@ class TestRoleTerms:
         rng = random.Random(seed)
         concepts = ["vegetable-box", "fruit-box", "piano-lesson",
                     "bike-repair", "produce", "service", "local"]
-        params = CELLS + list(places)
+        params = RECTANGLES + list(places)
 
         def cal(t):
             return _iso(t)
@@ -176,7 +176,7 @@ class TestRoleTerms:
                 a = 1_800_000_000 + rng.randrange(0, 3600)
                 terms.append(f"depart({cal(a)}..{cal(a + rng.randrange(60, 3600))})")
             if rng.random() < 0.3:
-                terms.append(f"made_in({rng.choice(CELLS)})")
+                terms.append(f"made_in({rng.choice(RECTANGLES)})")
             if rng.random() < 0.3:              # an operator, argument reversed
                 terms = [t for t in terms if t not in concepts]
                 terms.append(rng.choice(
@@ -230,11 +230,11 @@ class TestRoleTerms:
         decided by `check_match`: the narrower give and the wider give both
         serve, the sibling and the silent give do not."""
         ontology = roles_ontology()
-        inside = give("bruno", Thing(("vegetable-box", "from(u2e4x)")), 50, **wide())
-        wider = give("chiara", Thing(("vegetable-box", "from(u2e)")), 50, **wide())
-        far = give("dora", Thing(("vegetable-box", "from(u2f)")), 50, **wide())
+        inside = give("bruno", Thing(("vegetable-box", "from(geo(48.2..48.25,16.2..16.25))")), 50, **wide())
+        wider = give("chiara", Thing(("vegetable-box", "from(geo(48..49,16..17))")), 50, **wide())
+        far = give("dora", Thing(("vegetable-box", "from(geo(49.5..50.5,14..15))")), 50, **wide())
         silent = give("erin", Thing(("vegetable-box",)), 50, **wide())
-        b = want("amara", Thing(("produce", "from(u2e4)")), 104, **wide())
+        b = want("amara", Thing(("produce", "from(geo(48.1..48.3,16.1..16.3))")), 104, **wide())
         index = DimensionIndex(ontology)
         for a in (inside, wider, far, silent):
             assert index.file(a)
@@ -249,21 +249,21 @@ class TestRoleTerms:
         # the index does not look at handover terms), an uninterpretable one
         # is unknown vocabulary and gets no candidates at all
         assert self._matches(ontology, [inside, wider, far, silent, want("amara", Thing(
-            ("produce", "from(u2e4)", "from(u2e5)")), 104, **wide())]) == set()
+            ("produce", "from(geo(48.1..48.3,16.1..16.3))", "from(geo(48.5..48.7,16.1..16.3))")), 104, **wide())]) == set()
         assert index.candidates(want("amara", Thing(
             ("produce", "depart(garbage)")), 104, **wide())) == set()
         assert index.file(give("e", Thing(("produce", "depart(garbage)")), 1, **wide()))   # narrows only
-        assert not index.file(give("f", Thing(("produce", "from(u2e4)", "from(u2e5)")), 1, **wide()))
+        assert not index.file(give("f", Thing(("produce", "from(geo(48.1..48.3,16.1..16.3))", "from(geo(48.5..48.7,16.1..16.3))")), 1, **wide()))
 
     def test_every_wanted_head_must_be_answered(self):
         """A give silent on `to` answers no `to`: a want naming `to` does
         not see it, however well its `from` fits."""
         ontology = roles_ontology()
-        half = give("bruno", Thing(("vegetable-box", "from(u2e4x)")), 50, **wide())
-        both = give("chiara", Thing(("vegetable-box", "from(u2e4x)", "to(u2f1)")), 50, **wide())
-        b = want("amara", Thing(("produce", "from(u2e4)", "to(u2f)")), 104, **wide())
+        half = give("bruno", Thing(("vegetable-box", "from(geo(48.2..48.25,16.2..16.25))")), 50, **wide())
+        both = give("chiara", Thing(("vegetable-box", "from(geo(48.2..48.25,16.2..16.25))", "to(geo(49.6..49.7,14.1..14.2))")), 50, **wide())
+        b = want("amara", Thing(("produce", "from(geo(48.1..48.3,16.1..16.3))", "to(geo(49.5..50.5,14..15))")), 104, **wide())
         assert self._matches(ontology, [half, both, b]) == {("chiara", "amara")}
-        b = want("amara", Thing(("produce", "from(u2e4)")), 104, **wide())
+        b = want("amara", Thing(("produce", "from(geo(48.1..48.3,16.1..16.3))")), 104, **wide())
         assert self._matches(ontology, [half, both, b]) == {("bruno", "amara"), ("chiara", "amara")}
 
     def test_names_in_role_terms_match_through_the_graph(self):
@@ -272,13 +272,13 @@ class TestRoleTerms:
         ontology = roles_ontology()
         floor = give("chiara", Thing(("vegetable-box", "from(my_home_4th)")), 50, **wide())
         region = give("bruno", Thing(("vegetable-box", "from(ljubljana)")), 50, **wide())
-        far = give("dora", Thing(("vegetable-box", "from(u2f)")), 50, **wide())
+        far = give("dora", Thing(("vegetable-box", "from(geo(49.5..50.5,14..15))")), 50, **wide())
         for wanted, expected in [("from(my_home)", {"chiara", "bruno"}),
-                                 ("from(u2e4)", {"chiara", "bruno"}),
-                                 ("from(u2e)", {"chiara"}),     # the region's covering is a
-                                 ("from(u2)", {"chiara", "dora"}),   # u2f is inside u2 too
+                                 ("from(geo(48.1..48.3,16.1..16.3))", {"chiara", "bruno"}),
+                                 ("from(geo(48..49,16..17))", {"chiara"}),     # the region's covering is a
+                                 ("from(geo(45..51,11..23))", {"chiara", "dora"}),   # the other rectangle is inside it too
                                  ("from(ljubljana)", {"chiara", "bruno"}),
-                                 ("from(u2f)", {"dora"})]:
+                                 ("from(geo(49.5..50.5,14..15))", {"dora"})]:
             got = self._matches(ontology, [floor, region, far,
                                            want("amara", Thing(("produce", wanted)), 104, **wide())])
             assert {g for g, _ in got} == expected, wanted
@@ -290,7 +290,7 @@ class TestRoleTerms:
         ontology = roles_ontology()
         index = DimensionIndex(ontology)
         v3 = dict(valid=TimeWindow(0, 1_000_000))
-        for a in (give("bruno", Thing(("vegetable-box", "from(u2e4x)")), 50, **v3),
+        for a in (give("bruno", Thing(("vegetable-box", "from(geo(48.2..48.25,16.2..16.25))")), 50, **v3),
                   give("dora", Thing(("vegetable-box",)), 50, **v3)):
             assert index.file(a)
         calls = []
@@ -299,11 +299,11 @@ class TestRoleTerms:
                             lambda *a, **kw: calls.append((a, kw)) or real_get(*a, **kw))
         monkeypatch.setattr(index._dag, "get_overlapping",
                             lambda *a, **kw: pytest.fail("get_overlapping called"))
-        b = want("amara", Thing(("produce", "from(u2e4)")), 104, **v3)
+        b = want("amara", Thing(("produce", "from(geo(48.1..48.3,16.1..16.3))")), 104, **v3)
         assert len(index.candidates(b)) == 2           # place is the exact check's
         assert len(calls) == 1
         (terms,), kw = calls[0]
-        assert "produce" in terms and "from(u2e4)" not in terms
+        assert "produce" in terms and "from(geo(48.1..48.3,16.1..16.3))" not in terms
         assert kw == {"items_only": True}
 
 

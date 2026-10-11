@@ -1,7 +1,7 @@
 """Sealed handoffs: how the exact address reaches the cleared courier.
 
-Matching runs on cells; a delivery needs a door. The address is settlement
-data on the maker's place node, never vocabulary, never in the record
+Matching runs on rectangles; a delivery needs a door. The address is
+settlement data on the maker's place node, never vocabulary, never in the record
 (`docs/plans/P1-spacetime-terms.md` §4, Peter 2026-09-12). After a loop
 clears, the place-owner's *client* writes one record into its own book,
 `handoff/<loop_id>/<offer_id>`, whose payload is the text encrypted to the
