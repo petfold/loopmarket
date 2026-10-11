@@ -466,8 +466,10 @@ finalized beat recorded its loop; without a chain U11 stays.
 
 One install script, then a first-start setup dialog: local first (a
 demo), and live when a Bee node runs and the user lets setup use its
-wallet. The flow is in `docs/plans/cli.md` §16. The default registry is
-on main (d079d7d), unreleased, waiting to ship with it.
+wallet. The identity is loop's own key by default, the Bee node's key an
+option, and setup offers to fund loop's key from the Bee wallet (question
+35). The flow is in `docs/plans/cli.md` §16. The default registry is on
+main (d079d7d), unreleased, waiting to ship with it.
 
 ## Upstream to watch
 

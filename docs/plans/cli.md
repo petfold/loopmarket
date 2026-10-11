@@ -754,6 +754,18 @@ The flow, as proposed:
    address shown to fund); then the announcement; last, the settings
    chosen and `loop give apple 5` to try.
 
+**Question 35, decided (Peter, 2026-10-11): the identity.** loop keeps
+its own key by default, as designed (the maker's identity, the owner of
+its Swarm book, the signer of its offers and the sender of its
+transactions), and setup also offers the Bee node's own key as the
+identity (read from Bee's key file with Bee's password; one wallet, at
+the price of loop holding the node's key and sharing its transaction
+sequence). With loop's own key, setup makes funding it easy: it offers to
+pay the few cents of xDAI from the Bee wallet (Bee pays out only to an
+address its config whitelists; setup checks, and shows the line to add
+when it is not) and does it when the user says yes, or shows the address
+to fund from any wallet.
+
 ## Open problems
 
 - ~~The binary's name~~ — `loop`, confirmed by Peter 2026-09-12.
