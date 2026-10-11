@@ -717,6 +717,43 @@ one step back only), resolving by content (an id position taking a query
 is ambiguous) and a shell script for the example (leaves the `.loop`
 form).
 
+## 16. Installation and the first start (question 34, decided 2026-10-11, not built)
+
+Peter, 2026-10-11: a new user runs one install script and is ready to
+make offers; with nothing else, offers stay local (a demo), and if a Bee
+node is running the first start can take the user live. Decided: **A,
+local first, refined** — the script checks for a running Swarm node and
+installs the Swarm version when one answers; the first start opens a
+setup dialog that asks which ontology to use and the other settings, each
+with a sensible default and an explanation, and asks whether it may use
+the Swarm node's wallet.
+
+What Bee allows (its 2.8.2 API, read 2026-10-11): the node buys a postage
+batch from its own xBZZ (`POST /stamps/{amount}/{depth}`), so the wallet
+can pay for the book's storage; announcing the book is a transaction from
+the user's `loop` key, which needs a little xDAI, and the node pays xDAI
+out only to an address its own config whitelists
+(`POST /wallet/withdraw/{coin}`, `withdrawal-addresses-whitelist`).
+
+The flow, as proposed:
+
+1. **`install.sh`** (one line in the README): installs uv for the user if
+   missing (no sudo), checks `localhost:1633/health`, installs
+   `loopmarket[swarm,chain,sig]` when a node answers and `loopmarket`
+   otherwise (with its own Python 3.12 while coincurve has no 3.14
+   release; "Upstream to watch"), then runs `loop setup`.
+2. **`loop setup`**, also on the first `loop` command never set up:
+   the ontology (default: ontodag's prelude, `core` pack and loopmarket's
+   markers, built the same everywhere so every default user pins one
+   root; or core with chosen domain packs; or an existing store); the
+   identity (default: a new key, its address shown, backed up by the
+   user; or an existing key); where offers live (with a node, a Swarm
+   book; without, a local book, the demo); with a node, may setup use its
+   wallet: a postage batch (depth, days, cost shown) and the xDAI for
+   announcing (paid by the node when it whitelists the key, else the
+   address shown to fund); then the announcement; last, the settings
+   chosen and `loop give apple 5` to try.
+
 ## Open problems
 
 - ~~The binary's name~~ — `loop`, confirmed by Peter 2026-09-12.

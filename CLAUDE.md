@@ -462,6 +462,13 @@ finalized beat recorded its loop; without a chain U11 stays.
   (it can carry a key). Throwaway signers come from
   `python3 -c 'import secrets;print(secrets.token_hex(32))'`.
 
+## Installation (question 34, decided 2026-10-11, not built)
+
+One install script, then a first-start setup dialog: local first (a
+demo), and live when a Bee node runs and the user lets setup use its
+wallet. The flow is in `docs/plans/cli.md` §16. The default registry is
+on main (d079d7d), unreleased, waiting to ship with it.
+
 ## Upstream to watch
 
 - **coincurve on Python 3.14.** coincurve 21.0.0 (March 2025) has no
