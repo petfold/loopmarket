@@ -9,6 +9,7 @@ import shlex
 import sys
 
 from ontodag import dimensions as _dims
+from ontodag import surface as _surface
 
 from .. import __version__
 from ..schema import q
@@ -25,7 +26,7 @@ from .registers import cmd_cred, cmd_register
 from .settings import (_ERR, _OUT, _OVERRIDES, _SETTINGS, _book_spec, _configured, _err, _out,
                        _read_config, _want_limit, _write_config)
 from .solving import cmd_clearing, cmd_commit, cmd_loops, cmd_outcome, cmd_propose, cmd_reveal, cmd_sealed
-from .spellings import _looks_like_time, _seconds_or_zero, coords, looks_like_coords, parse_now, validity, window
+from .spellings import _looks_like_time, _seconds_or_zero, coords, looks_like_coords, parse_now, validity
 from .stores import Session
 from .watch import cmd_handoff, cmd_handoffs, cmd_watch
 
@@ -100,11 +101,11 @@ def cmd_set(args, session, out):
             # what can be checked now is the spelling of what is not a name
             if "(" in term and _dims.split_term(term) is None:
                 raise ValueError(f"{term!r} is not a term head(param) — "
-                                 f"terms are e.g. 'home ..+90d'")
+                                 f"terms are e.g. 'home now..+90d'")
             if looks_like_coords(term):
                 coords(term)
             elif _looks_like_time(term):
-                window(term, session.now)
+                _surface.elaborate(f"time({term})", kind=_dims.KIND_CALENDAR, now=session.now)
     if args.key == "limit":
         _want_limit(argparse.Namespace(limit=value), out)
     if args.key in ("book", "peers"):
@@ -212,7 +213,9 @@ either way (± works too); LAT,LON alone is the rectangle its digits cover.
 Relative time is an input spelling.
 A composed want (`+` between parts, one price last) is one v4 offer: all
 the parts or nothing, one price (docs/plans/cli.md §13).
-Time: now, today, tomorrow, +90d, -2h, ISO dates, A..B. Durations are
+Time: now, today, tomorrow, +90d, -2h, ISO dates, A..B, read as ontodag
+reads them: today is the UTC day, and ..B is open at the start (now..B is
+from now; in valid(..B) the offer stands from now). Durations are
 ontodag's: s, min, h, d, wk (90min, 1wk); a bare m is metres, so 90m is
 refused with the fix named.
 

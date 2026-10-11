@@ -32,6 +32,14 @@ major (review item 4) until their makers re-post them.
   places match only when one holds the other, and partial overlap is no
   match. The triangle example's shop is now 3 km around its point (it was
   4 km), inside the flat's square.
+- **A time term is read by ontodag's code** (its question 31, decided by
+  Peter 2026-10-11): `now`, `today`, `tomorrow` and offsets from now are
+  ontodag's relative times, so a term reads the same in `loop` and `odag`.
+  `..` is an open end there: `..+90d` in a time term is now everything up
+  to 90 days from now, where it meant "from now"; `now..+90d` says the next
+  90 days (the `terms` example is `home now..+90d`). `valid(..B)`, the
+  offer's own field, still stands from now. A relative instant alone
+  (`time(+2h)`) is now taken, as `odag` takes it, where it was refused.
 - `examples/*.od` carry ontodag's prelude 5 (`geo` under
   `rectangle-dimension`), and the examples' Barcelona is
   `geo(41.3..41.5,2.0..2.3)`.

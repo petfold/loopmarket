@@ -197,6 +197,22 @@ def test_relative_time_elaborates_to_fixed_utc():
         cli.window("soonish..+2d", NOW)
 
 
+def test_a_time_term_reads_as_odag_reads_it(loop):
+    """ontodag's question 31 (decided by Peter 2026-10-11): a time term in
+    `loop` is read by ontodag's code, so `..` is an open end — `..+90d` is
+    everything up to 90 days from now, `now..+90d` the next 90 days — and
+    `today` is the UTC day. `valid(..B)`, the offer's own field, still
+    stands from now."""
+    def concepts(line):
+        return cli.offer_from_line(line, loop.session).thing.concepts
+    assert "time(..2026-12-10T23:59:59Z)" in concepts("want apple time(..+90d) 9")
+    assert "time(2026-09-12T00:00:00Z..2026-12-10T23:59:59Z)" in \
+        concepts("want apple now..+90d 9")
+    assert "time(2026-09-12T00:00:00Z..2026-09-12T23:59:59Z)" in concepts("want apple today 9")
+    o = cli.offer_from_line("want apple valid(..+90d) 9", loop.session)
+    assert (o.valid.start, o.valid.end) == (NOW, NOW + 90 * 86_400)
+
+
 def test_durations_and_relative_times_read_in_ontodags_units():
     """Review item 11 (decided by Peter 2026-10-10): `loop` reads a duration
     or a relative time in ontodag's units — `s`, `min`, `h`, `d`, `wk` —

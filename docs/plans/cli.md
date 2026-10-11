@@ -149,7 +149,7 @@ key lists everything; with a key shows it; unknown keys are errors
 | `catalogue` | the ontodag store spec offers pin (any odag spec) | odag's active store |
 | `peers` | read-only maker books / manifests folded into every answer | none |
 | `maker` | my identity; the signer's address when `sig` is installed | none — required to publish |
-| `terms` | terms added to every offer whose line does not already state that coordinate, e.g. `home ..+90d` (since v3, 2026-09-12: place and time are optional — unset, an offer is anywhere, any time) | none |
+| `terms` | terms added to every offer whose line does not already state that coordinate, e.g. `home now..+90d` (since v3, 2026-09-12: place and time are optional — unset, an offer is anywhere, any time) | none |
 | `valid` | how long my offers stand | `30d` |
 | `now` | the clock, for reproducible runs and tests | wall clock |
 | `confirm` | `auto` / `on` / `off` (§7) | `auto` |
@@ -429,8 +429,12 @@ blocks `loop` shipping, each removes a loopmarket-only behaviour.
    bare (`46.05,14.50±5km`) and its geohash code is gone (branch
    `ontodag-0.32`). `loop place` stays, computing nothing: it names a
    private place and keeps the address a handoff seals (§14).
-2. **Relative time spellings in `time(...)`.** `today`, `+2h`, `..+90d`,
-   elaborated to fixed UTC at input. Removes §2's superset.
+2. ~~**Relative time spellings in `time(...)`.**~~ — **built** in ontodag
+   (its question 31, decided by Peter 2026-10-11: read where a person or
+   an agent types, `today` the UTC day, `..` an open end). `loop` reads
+   time terms with ontodag's code, so the superset is gone; `..+90d` in a
+   time term is now everything up to 90 days from now, and `now..+90d` the
+   next 90 days (branch `ontodag-0.32`).
 3. **A public opener for store specs.** `ontodag.open(spec)` or similar
    over `.od` / `rs:` / `swarm:` so loopmarket's `catalogue` setting
    resolves through public API rather than a copy of `_load_native`.

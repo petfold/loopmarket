@@ -349,11 +349,11 @@ word.
 - **P1**, the Swarm book: done on one machine (books on Swarm, the
   announcement channel on Gnosis, folds as the default read path, the CLI).
   Open, and needed before a public launch: announced books folded live
-  from a second machine, and one upstream ask to ontodag
-  (`docs/plans/cli.md` §11): relative times in `time(...)`. Coordinates
-  for `geo` are built on ontodag's main (registry 5.0, unreleased) and
-  taken here on the branch `ontodag-0.32`; a public store opener came
-  with ontodag 0.31.
+  from a second machine. The upstream asks to ontodag (`docs/plans/cli.md`
+  §11) are answered: coordinates for `geo` and relative times in
+  `time(...)` are built on ontodag's main (registry 5.0, surface 0.2,
+  unreleased) and taken here on the branch `ontodag-0.32`; a public store
+  opener came with ontodag 0.31.
 - **P2**, verifiable clearing: the contracts, the challenger, Swarm
   addressing on chain and the sealed beat are built. Open: Shutter, solver
   bonds and the spread leg, chains and netting (G4, G5), priors from data

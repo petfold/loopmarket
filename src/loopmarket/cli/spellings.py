@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from fractions import Fraction
 
 from ontodag import dimensions as _dims
+from ontodag import surface as _surface
 
 from ..schema import TimeWindow
 
@@ -63,21 +64,14 @@ def _calendar_span(text: str) -> tuple[int, int]:
 
 
 def _side_span(text: str, now: int) -> tuple[int, int]:
-    """[lo, hi) of one side of a window expression: `now`, `today`,
-    `tomorrow`, `+90d`, `-2h`, or any absolute ontodag time literal. A
-    point has lo == hi."""
+    """[lo, hi) of one side of a window expression: a relative time as
+    ontodag reads it (`now`, `today`, `tomorrow`, `+90d`, `-2h`; its
+    question 31) or any absolute ontodag time literal. A point has
+    lo == hi."""
     text = text.strip()
-    if text == "now":
-        return now, now
-    if text in ("today", "tomorrow"):
-        day = now - now % 86_400 + (86_400 if text == "tomorrow" else 0)
-        return day, day + 86_400
-    if text[:1] in ("+", "-"):
-        delta = _seconds(text[1:], shown=text)
-        ts = int(now + delta if text[0] == "+" else now - delta)
-        return ts, ts
+    absolute = _surface.relative_calendar(text, now)   # its own error for a bad offset
     try:
-        return _calendar_span(text)
+        return _calendar_span(absolute)
     except ValueError as exc:
         raise ValueError(
             f"{text!r} is not a time: use now, today, tomorrow, +90d, -2h, "

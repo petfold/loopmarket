@@ -14,13 +14,13 @@ from collections import namedtuple
 
 from ontodag import OntoDAG
 from ontodag import dimensions as _dims
+from ontodag import surface as _surface
 
 from ..ontology import Ontology
 from ..schema import WANT, Thing, q
 from .render import _num
 from .settings import _configured
-from .spellings import (PART_SEP, _INTERPRETED_HEADS, _iso, _looks_like_time, _number, coords,
-                        looks_like_coords, window)
+from .spellings import PART_SEP, _INTERPRETED_HEADS, _looks_like_time, _number, coords, looks_like_coords
 from .stores import Session
 
 
@@ -323,10 +323,8 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
                 head = _handover_base(ontology, _dims.KIND_RECT, c)
                 term = _canonical(ontology.geo_term(head, coords(c)), dag, [])
             elif _looks_like_time(c):
-                w = window(c, session.now)
-                end = "" if w.end is None else _iso(w.end - 1)
                 head = _handover_base(ontology, _dims.KIND_CALENDAR, c)
-                term = f"{head}({_iso(w.start)}..{end})"
+                term = _surface.elaborate(f"{head}({c})", dag, now=session.now)
             if term is None:
                 out.append(c)           # unknown: fails closed at `known`
                 continue
@@ -366,9 +364,7 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
                 f"know — `loop place {param} LAT,LON+-SIZE` files it under "
                 f"its rectangle")
         elif kind == _dims.KIND_CALENDAR and not ontology.known(c):
-            w = window(param, session.now)
-            end = "" if w.end is None else _iso(w.end - 1)
-            term = f"{head}({_iso(w.start)}..{end})"
+            term = _surface.elaborate(c, dag, now=session.now)   # ontodag's relative times
         if param in view.nodes:
             address = view.nodes[param].metadata.get("address")
             if address:

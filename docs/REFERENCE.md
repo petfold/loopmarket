@@ -1224,11 +1224,15 @@ fields today. A floor alone or a ceiling alone in quantity position
 (`10kg..`, `..11kg`) parses and refuses, naming the spelling that says how
 much.
 
-**Time** (input vocabulary, stored absolute UTC): `now`, `today`,
-`tomorrow`, `+90d`/`-2h`/`+90min` (an offset is a duration), any ontodag
-time literal (`2026-10`, `2026-10-01`, `2026-10-01T10:00:00Z`), and ranges
-`A..B`, `..B` (from now), `A..` (open-ended: for `valid`, until
-withdrawn). A name whose node hangs under a `time(...)` term is a window
+**Time** (input vocabulary, stored absolute UTC): ontodag's relative times
+(its question 31) — `now`, `today` (the UTC day), `tomorrow`,
+`+90d`/`-2h`/`+90min` (an offset from now is a duration) — any ontodag time
+literal (`2026-10`, `2026-10-01`, `2026-10-01T10:00:00Z`), and ranges
+`A..B`, `..B` and `A..`, read by ontodag's own code, so a time term reads
+the same in `loop` and `odag`: `..B` is open at the start (`now..B` is
+from now), and an instant closing a range is the second before it. In
+`valid(...)`, the offer's own field, `..B` stands from now and `A..` until
+withdrawn. A name whose node hangs under a `time(...)` term is a window
 too (`evenings`). **Durations** are ontodag's, read by its duration
 arithmetic in its units — `s`, `min`, `h`, `d`, `wk` (`30d`, `2h`,
 `90min`, `1wk`, `1/2d`) — and printed as ontodag prints them, in the
@@ -1332,7 +1336,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `catalogue` | `LOOP_CATALOGUE` | odag's active store | the store offers pin (any odag spec: `.od` file, `rs:PATH`, `swarm:NAME`) |
 | `peers` | `LOOP_PEERS` | none | read-only books folded into every answer: `rs:PATH`, `swarm:TOPIC@OWNER`; comma-separated. A trusted OR-set union today (U8 admission needs owners: the `fold` command) |
 | `maker` | `LOOP_MAKER` | none | my identity; unset with `bee_signer` set and `[sig]` installed ⇒ the key's address, and offers get detached signatures |
-| `terms` | `LOOP_TERMS` | none | terms added to every offer whose line does not already state that coordinate, e.g. `home ..+90d`; unset ⇒ anywhere, any time |
+| `terms` | `LOOP_TERMS` | none | terms added to every offer whose line does not already state that coordinate, e.g. `home now..+90d`; unset ⇒ anywhere, any time |
 | `valid` | `LOOP_VALID` | `30d` | how long offers stand (`A..` until withdrawn) |
 | `interval` | `LOOP_INTERVAL` | `30s` | how often `watch` polls |
 | `now` | `LOOP_NOW` | wall clock | the clock: unix seconds or an ISO-8601 literal |
