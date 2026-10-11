@@ -1146,7 +1146,8 @@ so reruns inherit nothing.
 | `ValueError` | constructors, `from_record`, `attach_signature`, `announce` | malformed values, unknown record versions, non-recovering signatures, unknown roles |
 | `KeyError` | `get`, `withdraw` | no such offer in this book |
 | `PartialLoopError` | `verify_loop_atomicity` (reconciled commits, folds) | a merge stranded a partially-filled loop (U11) |
-| `RuntimeError` | `sigs.*` without `[sig]`; `Ontology.persistent` without `EagerOntoDAG` | missing optional machinery |
+| `MissingExtra(RuntimeError)` | `sigs.*` and sealed handoffs without `[sig]`; the announcement channel, beat, escrow and sealed beat on chain without `[chain]` | a missing extra, the message naming the `pip install` that brings it; `loop` prints it as one line, exit 1 |
+| `RuntimeError` | `Ontology.persistent` without `EagerOntoDAG` | missing optional machinery |
 | `TypeError` | `Ontology.commit` on in-memory catalogues | nothing to commit to |
 
 ## 17. `loopmarket.cli` — the `loop` command line

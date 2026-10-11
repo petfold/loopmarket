@@ -47,6 +47,7 @@ import re
 from fractions import Fraction
 
 from .schema import q
+from ._extras import MissingExtra
 
 NATIVE = "0x0000000000000000000000000000000000000000"
 
@@ -361,7 +362,7 @@ class EscrowClient:
             try:
                 from web3 import Web3
             except ImportError as exc:
-                raise RuntimeError("the escrow needs web3: pip install 'loopmarket[chain]'") from exc
+                raise MissingExtra("the escrow needs web3: pip install 'loopmarket[chain]'") from exc
             self._client = Web3(Web3.HTTPProvider(self.rpc_url))
         return self._client
 

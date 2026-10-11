@@ -12,6 +12,7 @@ from ontodag import dimensions as _dims
 from ontodag import surface as _surface
 
 from .. import __version__
+from .._extras import MissingExtra
 from ..schema import q
 from .beats import cmd_beats, cmd_challenge, cmd_finalize
 from .book import (cmd_announce, cmd_announced, cmd_export, cmd_fold, cmd_import, cmd_matches, cmd_mine,
@@ -481,7 +482,7 @@ def _dispatch(argv, session) -> int:
             handle = open(outpath, "w", encoding="utf-8")
             out = handle
         return args.func(args, session, out) or 0
-    except (ValueError, KeyError, OSError) as exc:
+    except (ValueError, KeyError, OSError, MissingExtra) as exc:
         message = exc.args[0] if isinstance(exc, KeyError) and exc.args else exc
         print(f"loop: {message}", file=_err())
         return 1

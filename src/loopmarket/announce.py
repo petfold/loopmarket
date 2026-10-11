@@ -54,6 +54,8 @@ import threading
 from dataclasses import dataclass
 from typing import Iterable, Protocol
 
+from ._extras import MissingExtra
+
 MAKER = "maker"
 CLEARING = "clearing"
 REGISTER = "register"   # R3a, 2026-09-29: a register's own book, separately rooted (register.py)
@@ -197,7 +199,7 @@ class ChainAnnouncements:
             try:
                 from web3 import Web3
             except ImportError as exc:
-                raise RuntimeError(
+                raise MissingExtra(
                     "the chain announcement channel needs web3: "
                     "pip install 'loopmarket[chain]'") from exc
             self._client = Web3(Web3.HTTPProvider(self.rpc_url))

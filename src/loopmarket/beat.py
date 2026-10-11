@@ -50,6 +50,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 
 from .clearing import LoopProposal, BookClearing
+from ._extras import MissingExtra
 from .graph import Circulation
 from .matching import Leg, major
 from .reads import Reads
@@ -511,7 +512,7 @@ class BeatClient:
             try:
                 from web3 import Web3
             except ImportError as exc:
-                raise RuntimeError("the beat needs web3: pip install 'loopmarket[chain]'") from exc
+                raise MissingExtra("the beat needs web3: pip install 'loopmarket[chain]'") from exc
             self._client = Web3(Web3.HTTPProvider(self.rpc_url))
         return self._client
 

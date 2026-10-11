@@ -33,6 +33,8 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from ._extras import MissingExtra
+
 _INFO = b"loopmarket-handoff-v1"
 VERSION = 1
 
@@ -44,8 +46,9 @@ def _crypto():
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         from cryptography.hazmat.primitives.kdf.hkdf import HKDF
     except ImportError as exc:  # pragma: no cover - optional layer
-        raise RuntimeError(
-            "sealed handoffs need the `sig` extra (coincurve, cryptography)"
+        raise MissingExtra(
+            "sealed handoffs need the sig extra (coincurve, cryptography): "
+            "pip install 'loopmarket[sig]'"
         ) from exc
     return PrivateKey, PublicKey, AESGCM, HKDF, hashes
 

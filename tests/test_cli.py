@@ -1766,3 +1766,15 @@ def test_a_client_replaced_on_its_module_reaches_every_command(loop, monkeypatch
     monkeypatch.setenv("LOOP_BEAT", "chain:http://x@0x1")
     assert run("loops")[0] == 1 and filled                    # nothing to clear, but the chain was asked
     assert not hasattr(cli, "_beat_client") and not hasattr(cli, "_escrow_client")
+
+
+def test_a_missing_extra_is_one_line_naming_the_command(env, monkeypatch):
+    """Without the `chain` extra a reader of a chain registry got a Python
+    traceback (found reading through the public gateway, 2026-10-11); a
+    missing extra is an instruction, printed as one line, exit 1."""
+    import sys
+    monkeypatch.setitem(sys.modules, "web3", None)          # `import web3` fails
+    monkeypatch.setenv("LOOP_REGISTRY", "chain:http://127.0.0.1:9@0x" + "00" * 20)
+    code, out, err = Runner()("announced")
+    assert code == 1 and out == ""
+    assert err == "loop: the chain announcement channel needs web3: pip install 'loopmarket[chain]'\n"

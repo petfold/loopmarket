@@ -57,6 +57,7 @@ from fractions import Fraction
 from recordstore import canonical_bytes
 
 from .beat import proposal_from_record
+from ._extras import MissingExtra
 from .clearing import LoopProposal, BookClearing
 from .reads import Reads, reads_of
 from .registry import OfferRegistry
@@ -303,7 +304,7 @@ class SealedBeatClient:
             try:
                 from web3 import Web3
             except ImportError as exc:
-                raise RuntimeError("the sealed beat needs web3: pip install 'loopmarket[chain]'") from exc
+                raise MissingExtra("the sealed beat needs web3: pip install 'loopmarket[chain]'") from exc
             self._client = Web3(Web3.HTTPProvider(self.rpc_url))
         return self._client
 

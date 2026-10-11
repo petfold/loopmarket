@@ -7,6 +7,18 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
+## [Unreleased]
+
+### Fixed
+
+- **A missing extra is one line naming the command, not a traceback.** A
+  reader of a chain registry without the `chain` extra got a Python
+  traceback from `loop` (found reading through the public gateway,
+  2026-10-11). Every missing-extra error (the chain clients without
+  `[chain]`, signatures and sealed handoffs without `[sig]`) is now a
+  `MissingExtra`, a `RuntimeError` as before, and `loop` prints it as one
+  line naming the `pip install`, exit 1.
+
 ## [0.16.0] — 2026-10-11
 
 Places are ontodag's rectangles (its questions 29, 30 and 33, decided by

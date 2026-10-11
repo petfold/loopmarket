@@ -33,6 +33,7 @@ model (boundary B1) — install the `sig` extra to use it.
 from __future__ import annotations
 
 from .schema import Offer
+from ._extras import MissingExtra
 
 _EXTRA = "pip install 'loopmarket[sig]'"
 
@@ -41,9 +42,9 @@ def _signer():
     try:
         from swarmfs import signer
     except ImportError as e:  # pragma: no cover - exercised only without extra
-        raise RuntimeError(f"signatures need swarmfs's signer: {_EXTRA}") from e
+        raise MissingExtra(f"signatures need swarmfs's signer: {_EXTRA}") from e
     if not hasattr(signer, "recover_hash"):  # pragma: no cover - old swarmfs
-        raise RuntimeError(f"signatures need swarmfs 0.14.0 or later: {_EXTRA}")
+        raise MissingExtra(f"signatures need swarmfs 0.14.0 or later: {_EXTRA}")
     return signer
 
 
@@ -52,7 +53,7 @@ def _key(private_key_hex: str):
     try:
         return S.Signer(private_key_hex)
     except ImportError as e:  # pragma: no cover - exercised only without extra
-        raise RuntimeError(f"signing needs coincurve: {_EXTRA}") from e
+        raise MissingExtra(f"signing needs coincurve: {_EXTRA}") from e
 
 
 def _to_hex(signature: bytes) -> str:
