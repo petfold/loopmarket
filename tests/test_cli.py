@@ -761,6 +761,13 @@ def test_every_advertised_flag_is_accepted(env, capsys):
     assert capsys.readouterr().out.strip() == "trust = 0xabc"
 
 
+def test_help_starts_with_the_user_guide(env):
+    """Peter, 2026-10-11: the help page starts with a link to the User
+    Guide, the place that explains what the commands below are for."""
+    first = Runner().ok("help").splitlines()[0]
+    assert first == "User Guide: https://github.com/petfold/loopmarket/blob/main/docs/USER-GUIDE.md"
+
+
 def test_help_lists_every_setting(env):
     run = Runner()
     out = run.ok("help")

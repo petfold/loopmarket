@@ -30,6 +30,20 @@ scratch and commits the whole loop atomically, or not at all.
 pip install loopmarket             # gives you the `loop` command (and `odag`)
 ```
 
+On a recent Ubuntu, where `pip install` refuses with
+`externally-managed-environment`, install the command with `pipx install
+"loopmarket[swarm,chain]"` instead: it gets an environment of its own and
+`loop` lands on your PATH. **On Python 3.14** (Ubuntu 26.04) the `swarm`
+and `sig` extras do not install yet: `coincurve`, their secp256k1 library,
+has no release for 3.14 (its fix is merged, unreleased as of 2026-10-11).
+Until it ships, give `loop` its own Python 3.12 with
+[uv](https://docs.astral.sh/uv/) (`pipx install uv`), which leaves the
+system's Python as it is:
+
+```bash
+uv tool install --python 3.12 "loopmarket[swarm,chain]"
+```
+
 or, to work on it:
 
 ```bash

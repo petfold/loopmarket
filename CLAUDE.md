@@ -459,10 +459,25 @@ finalized beat recorded its loop; without a chain U11 stays.
   (it can carry a key). Throwaway signers come from
   `python3 -c 'import secrets;print(secrets.token_hex(32))'`.
 
+## Upstream to watch
+
+- **coincurve on Python 3.14.** coincurve 21.0.0 (March 2025) has no
+  Python 3.14 package and its source build fails ("Expected exactly one
+  LICENSE file in cffi distribution"), so on Ubuntu 26.04's Python the
+  `swarm` and `sig` extras do not install; the user guide's §1 gives the
+  workaround (`uv tool install --python 3.12 "loopmarket[swarm,chain]"`).
+  The fix is merged upstream (ofek/coincurve PR #225, "Prepare coincurve
+  22.0.0 for Python 3.14"), unreleased as of 2026-10-11; issue #219 asks
+  for the release, #223 is the build error. Peter, 2026-10-11: keep
+  checking, and keep coincurve rather than any pure-Python secp256k1. When
+  a release supports 3.14: install `loopmarket[swarm,chain]` with pipx on
+  3.14, run the suite there, drop the guide's note and this entry.
+
 ## Starting a session
 
 1. `git status` and `git log --oneline -5` here, and in ontodag before
-   relying on its behaviour.
+   relying on its behaviour. Check "Upstream to watch" above (`gh api
+   repos/ofek/coincurve/releases/latest`).
 2. Read "The 2026-10 review" and "Roadmap (state)" above.
 3. Before changing code, run the suite or the test files the change
    touches; `tests/test_boundaries.py` always.

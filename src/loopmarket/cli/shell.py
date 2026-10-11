@@ -125,6 +125,8 @@ def cmd_set(args, session, out):
 
 
 HELP_TEXT = """\
+User Guide: https://github.com/petfold/loopmarket/blob/main/docs/USER-GUIDE.md
+
 loop — the loopmarket command line (docs/plans/cli.md)
 
   loop give  [QTY] CATEGORY|TERM... [PRICE]   I give this, priced on my scale

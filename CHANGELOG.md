@@ -7,6 +7,20 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
+## [Unreleased]
+
+### Changed
+
+- **`loop help` starts with a link to the User Guide** (Peter,
+  2026-10-11).
+
+### Documentation
+
+- The user guide's installation section says what to do on a recent
+  Ubuntu (`pipx`) and on Python 3.14, where coincurve, the `swarm` and
+  `sig` extras' secp256k1 library, has no release yet (`uv tool install
+  --python 3.12`).
+
 ## [0.16.1] — 2026-10-11
 
 ### Fixed
