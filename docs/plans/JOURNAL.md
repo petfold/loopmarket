@@ -290,3 +290,11 @@ and the v5-gate clearing book). The script now asks for `>=0.17.0`, so a
 lagging index fails at the install instead. Lessons: run anything that
 prints the version after a bump (the release step says so; a test now
 does it); and a release's first install can meet the old index.
+
+**The v5-gate clearing announcement retracted (2026-10-11)**, on Peter's
+word: the chain key `0xE9d6…17aE` called the registry's `retract()` (tx
+`41b3c97d74760e9b…`, block 48705510). Every fresh fold had listed that
+book's old loops as rejected. Now only the test maker's book stands, and a
+fresh fold from the PyPI install reads one offer with no rejected lines.
+There is no `loop retract` verb; the client's `retract()` was called
+directly.
