@@ -492,7 +492,7 @@ Chromium and in real Freedom Browser (`browser/check.py`,
 `browser/freedom_check.cjs`). Its Swarm layer is ontodag's
 `demo/freedom/swarm.js`, copied in by `browser/build.py`.
 
-The published page: `bzz://b25a77e389e8b0d08a33553cc55feb04ca17be0bb14d5b72b7c927f80ce5bd13/`
+The published page: `bzz://151f5739ec1d707c09bfc538606d709d6cec8dc71d04f6f8653f45586724f2e0/`
 (2026-10-12); it bundles ontodag's and recordstore's unreleased mains.
 
 ## Upstream to watch

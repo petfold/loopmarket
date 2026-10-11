@@ -7,9 +7,9 @@ the books with loopmarket's own `Aggregator` under Pyodide
 (`loopmarket.browser.MarketPage`), and lists the open offers. Design:
 `docs/plans/BROWSER.md` §5a.
 
-Published: `bzz://b25a77e389e8b0d08a33553cc55feb04ca17be0bb14d5b72b7c927f80ce5bd13/`
+Published: `bzz://151f5739ec1d707c09bfc538606d709d6cec8dc71d04f6f8653f45586724f2e0/`
 (open it in Freedom Browser; through a node:
-`http://localhost:1633/bzz/b25a77e389e8b0d08a33553cc55feb04ca17be0bb14d5b72b7c927f80ce5bd13/`;
+`http://localhost:1633/bzz/151f5739ec1d707c09bfc538606d709d6cec8dc71d04f6f8653f45586724f2e0/`;
 in any browser, serve `dist/` and add `?gateway=https://api.gateway.ethswarm.org`).
 
 | file | what it is |

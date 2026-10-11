@@ -330,3 +330,10 @@ lookup on recordstore's format), the market in 7.7 s. Published at
 It needs ontodag's and recordstore's unreleased mains, which the page
 bundles. Clearing books are listed, not folded (their loops are re-checked
 under the catalogue, which the page does not load).
+Republished the same night at
+`bzz://151f5739ec1d707c09bfc538606d709d6cec8dc71d04f6f8653f45586724f2e0/` with
+ontodag's newer `swarm.js`, which also joins erasure-coded trees: Bee 2.8
+codes `/bytes` uploads without a level, and books are written through
+`BeeBytesStore`, which sends none, so a book's blobs over 4 KB come back
+coded (ontodag's journal has the finding). Checked again in Chromium and
+in real Freedom Browser.

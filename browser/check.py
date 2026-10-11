@@ -59,6 +59,14 @@ def not_found(reason):
     return {"error": {"code": -32602, "message": reason, "data": {"reason": reason}}}
 
 
+def _span(raw):
+    """A span as Freedom hands it over: a number, or for one past 2^53 (an
+    erasure-coded chunk's level byte) a BigInt, here its decimal string,
+    which BigInt() in swarm.js reads the same."""
+    value = int.from_bytes(raw, "little")
+    return value if value <= 2**53 - 1 else str(value)
+
+
 def standin(calls, method, params):
     """Freedom's provider answered from the node, with Freedom's result
     shapes and error reasons (swarm-provider-ipc.js, chunk-service.js)."""
@@ -71,7 +79,7 @@ def standin(calls, method, params):
         if status == 404:
             return not_found("chunk_not_found")
         return {"result": {"data": base64.b64encode(wire[8:]).decode(), "encoding": "base64",
-                           "span": int.from_bytes(wire[:8], "little")}}
+                           "span": _span(wire[:8])}}
     if method == "swarm_readSingleOwnerChunk":
         owner = params["owner"].removeprefix("0x").lower()
         address = keccak256(bytes.fromhex(params["identifier"]) + bytes.fromhex(owner)).hex()
@@ -79,7 +87,7 @@ def standin(calls, method, params):
         if status == 404:
             return not_found("chunk_not_found")
         return {"result": {"data": base64.b64encode(wire[105:]).decode(), "encoding": "base64",
-                           "span": int.from_bytes(wire[97:105], "little"), "reference": address,
+                           "span": _span(wire[97:105]), "reference": address,
                            "owner": owner, "identifier": params["identifier"], "signature": wire[32:97].hex()}}
     if method == "swarm_readFeedEntry":
         owner = params["owner"].removeprefix("0x").lower()
