@@ -8,6 +8,8 @@
 #
 #   LOOP_HOME=$(mktemp -d) ONTODAG_HOME=$(mktemp -d) loop --catalogue examples/delivery.od < examples/delivery.loop
 set confirm off
+# a self-contained example: no announced books folded in
+set registry none
 set now 2026-09-13T09:00:00Z
 place shop 41.3874,2.1686+-20m
 place door 41.4036,2.1744+-20m

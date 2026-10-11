@@ -11,7 +11,7 @@ from ..schema import q
 from . import clients, stores
 from .clients import _register_at, _registers, _resolver_profiles
 from .render import _leg_line, _num
-from .settings import _configured, _err
+from .settings import _configured, _err, _registry
 from .spellings import _calendar_span, _seconds_or_zero, duration_s
 
 
@@ -118,8 +118,8 @@ def _evidence_books(session, state: dict, spec: str | None):
     if spec:
         return [stores._open_book(spec)]
     books = []
-    if _configured("registry"):
-        mine = sorted((ann for ann in session.announcements.announced()
+    if _registry():
+        mine = sorted((ann for ann in session.standing()
                        if ann.owner.lower() == state["submitter"].lower()),
                       key=lambda ann: ann.role != "clearing")
         for ann in mine:

@@ -29,6 +29,14 @@ def golden():
     return records
 
 
+@pytest.fixture(autouse=True)
+def _no_default_registry(monkeypatch):
+    """`loop` reads the registry on Gnosis unless told otherwise (Peter,
+    2026-10-11); the suite runs offline, so every test starts with no
+    channel, and a test of the default unsets this."""
+    monkeypatch.setenv("LOOP_REGISTRY", "none")
+
+
 @pytest.fixture
 def env(tmp_path, monkeypatch):
     """A scratch home for both tools, an unpinned `.od` catalogue, a fixed

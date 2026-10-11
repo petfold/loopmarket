@@ -1785,3 +1785,35 @@ def test_a_missing_extra_is_one_line_naming_the_command(env, monkeypatch):
     code, out, err = Runner()("announced")
     assert code == 1 and out == ""
     assert err == "loop: the chain announcement channel needs web3: pip install 'loopmarket[chain]'\n"
+
+
+def test_a_fresh_install_reads_the_registry_on_gnosis(env, monkeypatch):
+    """Peter, 2026-10-11: `loop` works right after installation with nothing
+    to set, so the registry defaults to the one deployed on Gnosis; `none`
+    (or `off`) is no channel."""
+    from loopmarket.cli import settings
+    monkeypatch.delenv("LOOP_REGISTRY")
+    assert settings._registry() == settings.DEFAULT_REGISTRY \
+        == "chain:https://rpc.gnosischain.com@0xD4379E494a488411D964BebDb210C0bf628d97af"
+    for off in ("none", "off", "None"):
+        monkeypatch.setenv("LOOP_REGISTRY", off)
+        assert settings._registry() == ""
+    code, _, err = Runner()("announced")
+    assert code == 1 and "registry` is none" in err
+
+
+def test_the_default_registry_unread_is_a_note_and_my_book_still_answers(env, monkeypatch):
+    """Offline, or without the `chain` extra, a fresh install still works:
+    the built-in registry not being readable is one note, and the answer is
+    my book; a registry that was set and cannot be read stays an error
+    (test_a_missing_extra_is_one_line_naming_the_command)."""
+    import sys
+    monkeypatch.delenv("LOOP_REGISTRY")
+    monkeypatch.setitem(sys.modules, "web3", None)
+    run = Runner()
+    run.ok("give", "apple", "5")
+    code, out, err = run("offers", "--raw")
+    assert code == 0 and len(out.splitlines()) == 1
+    assert err.count("the registry on Gnosis is not read") == 1
+    assert "pip install 'loopmarket[chain]'" in err
+

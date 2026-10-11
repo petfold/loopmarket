@@ -15,7 +15,7 @@ from ontodag import OntoDAG
 
 from ..ontology import Ontology
 from ..registry import OfferRegistry
-from .settings import _OVERRIDES, _book_spec, _configured, _err, _peer_specs
+from .settings import _OVERRIDES, _book_spec, _configured, _err, _peer_specs, _registry, _registry_is_default
 from .spellings import _INTERPRETED_HEADS, parse_now
 
 
@@ -139,7 +139,7 @@ class Session:
         nothing there. And two announced clearing books that each hold a
         valid loop over one offer are rivals there, kept in `rivals`, where
         without a chain they fail U11 (question 25): the chain decides."""
-        specs, registry = _peer_specs(), _configured("registry")
+        specs, registry = _peer_specs(), _registry()
         self.rejections, self.rivals = [], []
         contested = set()
         if not specs and not registry:
@@ -151,18 +151,21 @@ class Session:
         if registry:
             from ..federation import CLEARING, Aggregator
             blobs = MemoryBytesStore()
-            announced = list(self.announcements.announced())
+            announced = self.standing()
             # the catalogue is opened only when there are loops to re-check
             clearing = any(ann.role == CLEARING for ann in announced)
             agg = Aggregator(lambda: RecordStore(blobs), aggregator_id="loop-cli",
                              ontology=self.catalogue if clearing else None,
                              chain=(_configured("beat") or "").startswith("chain:"),
                              **(self._gate_reads() if clearing else {}))
+            unread = []
             for ann in announced:
                 try:
                     peer = _open_book(ann.spec())
                 except Exception as exc:                # the maker's postage, not our omission
-                    print(f"loop: {ann.owner}: {exc}", file=_err())
+                    if not _registry_is_default():
+                        print(f"loop: {ann.owner}: {exc}", file=_err())
+                    unread.append(exc)
                     continue
                 if ann.spec() == _book_spec() or ann.spec() == \
                         f"{_book_spec()}@{ann.owner}":
@@ -171,6 +174,9 @@ class Session:
                 staged.absorb(peer)
                 staged.commit()
                 agg.announce(ann.owner, staged.store, role=ann.role)
+            if unread and _registry_is_default():
+                print(f"loop: {len(unread)} of the {len(announced)} books announced on Gnosis "
+                      f"are not read ({unread[0]})", file=_err())
             manifest = agg.fold()
             if manifest.book_root:
                 folded.absorb(OfferRegistry(RecordStore.at(manifest.book_root, blobs)))
@@ -211,12 +217,32 @@ class Session:
     def announcements(self):
         """The announcement channel named by `registry` (announce.py)."""
         from ..announce import open_announcements
-        spec = _configured("registry")
+        spec = _registry()
         if not spec:
             raise ValueError(
-                "no registry: `loop set registry chain:RPC_URL@CONTRACT` (or "
-                "file:PATH for sessions on one machine)")
+                "no registry: `registry` is none — `loop set registry "
+                "chain:RPC_URL@CONTRACT` (or file:PATH for sessions on one "
+                "machine), or unset it for the registry on Gnosis")
         return open_announcements(spec, key=_configured("bee_signer") or None)
+
+    def standing(self) -> list:
+        """The standing announcements every read folds in. A registry that
+        was set and cannot be read is an error; the built-in one, a note
+        (once a session) and no announcements, so a fresh install works
+        with no `chain` extra, no network and no Bee node."""
+        if not _registry():
+            return []
+        try:
+            return list(self.announcements.announced())
+        except Exception as exc:                        # noqa: BLE001
+            if not _registry_is_default():
+                raise
+            if not getattr(self, "_noted_registry", False):
+                self._noted_registry = True
+                print(f"loop: the registry on Gnosis is not read ({exc}); "
+                      f"my book alone — `loop set registry none` says so for good",
+                      file=_err())
+            return []
 
     # -- the catalogue and the names layer ---------------------------------------
 

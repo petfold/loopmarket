@@ -266,8 +266,8 @@ def test_the_cli_posts_lists_challenges_and_finalizes(chain, tmp_path, monkeypat
     monkeypatch.setenv("LOOP_CONFIRM", "off")
     monkeypatch.setenv("LOOP_NOW", str(NOW))
     monkeypatch.setenv("LOOP_BEAT", f"chain:test@{address}")
-    for var in ("LOOP_REGISTRY", "LOOP_PEERS"):
-        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("LOOP_REGISTRY", "none")
+    monkeypatch.delenv("LOOP_PEERS", raising=False)
     monkeypatch.setenv("BEE_SIGNER", key)              # sending a challenge needs a key
     cli._OVERRIDES.clear()
     spec = f"rs:{tmp_path / 'cat'}"
@@ -330,7 +330,8 @@ def test_finalize_reports_a_beat_cancelled_by_a_race(chain, tmp_path, monkeypatc
     monkeypatch.setenv("LOOP_CONFIRM", "off")
     monkeypatch.setenv("LOOP_NOW", str(NOW))
     monkeypatch.setenv("LOOP_BEAT", f"chain:test@{address}")
-    for var in ("LOOP_REGISTRY", "LOOP_PEERS", "LOOP_ESCROW"):
+    monkeypatch.setenv("LOOP_REGISTRY", "none")
+    for var in ("LOOP_PEERS", "LOOP_ESCROW"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("BEE_SIGNER", key)
     cli._OVERRIDES.clear()
@@ -531,8 +532,8 @@ def test_a_loop_another_clearing_never_posts_keeps_nobody_off_its_offers(chain, 
     monkeypatch.setenv("LOOP_CONFIRM", "off")
     monkeypatch.setenv("LOOP_NOW", str(NOW))
     monkeypatch.setenv("LOOP_BEAT", f"chain:test@{address}")
-    for var in ("LOOP_REGISTRY", "LOOP_PEERS"):
-        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("LOOP_REGISTRY", "none")
+    monkeypatch.delenv("LOOP_PEERS", raising=False)
     monkeypatch.setenv("BEE_SIGNER", key)
     cli._OVERRIDES.clear()
     spec = f"rs:{tmp_path / 'cat'}"

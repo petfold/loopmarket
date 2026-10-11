@@ -246,8 +246,8 @@ def test_the_cli_commits_reveals_and_derives_the_outcome(chain, tmp_path, monkey
     monkeypatch.setenv("LOOP_AUCTION", "memory:")
     monkeypatch.setenv("LOOP_BEAT", f"chain:test@{clearing_addr}")
     monkeypatch.setenv("BEE_SIGNER", keys[0])
-    for var in ("LOOP_REGISTRY", "LOOP_PEERS"):
-        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("LOOP_REGISTRY", "none")
+    monkeypatch.delenv("LOOP_PEERS", raising=False)
     cli._OVERRIDES.clear()
     spec = f"rs:{tmp_path / 'cat'}"
     cat = ontodag.open(spec)

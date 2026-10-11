@@ -272,7 +272,10 @@ LOOP_HOME=$(mktemp -d) PYTHONPATH=src python3 -m loopmarket --catalogue examples
   reservations, the escrow's acts), `registers` (cred, register),
   `claims` (contact cards, notices, cures, cases, arbitrators), `watch`
   (watch, handoffs) and `shell` (help, set, the parser, dispatch, the
-  prompt, `main`); `cli/__init__.py` re-exports the public pieces. A test
+  prompt, `main`); `cli/__init__.py` re-exports the public pieces. The
+  `registry` setting defaults to the LoopBookRegistry on Gnosis (Peter,
+  2026-10-11: work right after installation); `none` turns it off, and
+  the default not being readable is a note, never an error. A test
   replaces a client on the module that defines it
   (`cli.clients._escrow_client`, `cli.stores._open_book`), where every
   command looks it up. It encodes only what the schema holds.

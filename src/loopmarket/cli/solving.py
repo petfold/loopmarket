@@ -15,7 +15,7 @@ from ..solver import SolverAgent, baseline_proposals
 from . import clients
 from .clients import _chain_fills, _clearing_reads, _escrow_free, _escrow_held, _gate_reads, _reads, _sealed_client
 from .render import _leg_line, _print_loop
-from .settings import _configured, _err, _home_dir, _peer_specs, _read_json, _write_json
+from .settings import _err, _home_dir, _peer_specs, _read_json, _registry, _write_json
 from .spellings import _calendar_span
 
 
@@ -45,7 +45,7 @@ def cmd_propose(args, session, out):
     (question 25)."""
     from ..clearing import ChainClearing
     now = session.now
-    if _peer_specs() or _configured("registry"):
+    if _peer_specs() or _registry():
         # the makers' speech only: the chain decides what is filled, so a
         # loop another clearing holds keeps nobody off its offers (question 25)
         session.book.absorb(session.fold(), clearing=False)
@@ -169,7 +169,7 @@ def cmd_outcome(args, session, out):
               file=_err())
         return 2
     now = session.now
-    if _peer_specs() or _configured("registry"):
+    if _peer_specs() or _registry():
         session.book.absorb(session.fold(), clearing=False)     # the chain decides, as for propose
         session.book.commit()
     book, ontology = session.book, session.catalogue

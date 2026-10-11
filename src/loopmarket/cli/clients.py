@@ -13,7 +13,7 @@ import shlex
 
 from ..reads import Reads
 from . import stores
-from .settings import _configured, _err
+from .settings import _configured, _err, _registry
 from .spellings import _calendar_span
 
 
@@ -68,9 +68,9 @@ def _registers(session) -> dict:
         if not sep or not rid or not spec:
             raise ValueError(f"registers entry {pair!r} is ID=SPEC")
         out[rid] = Register(stores._open_book(spec).store)
-    if _configured("registry"):
+    if _registry():
         from ..announce import REGISTER
-        for ann in session.announcements.announced():
+        for ann in session.standing():
             if ann.role != REGISTER or ann.owner in out:
                 continue
             try:

@@ -1344,7 +1344,7 @@ loop config (owner-readable, 0600); secrets print masked.
 | `confirm` | `LOOP_CONFIRM` | `auto` | `auto` / `on` / `off` |
 | `render`, `limit` | `LOOP_RENDER`, `LOOP_LIMIT` | `auto` | as odag: tables and 50 rows at a terminal, raw and unlimited in a pipe |
 | `bee_api`, `bee_batch`, `bee_signer` | `BEE_*` | inherited from odag | the Bee node; `bee_signer` is secret |
-| `registry` | `LOOP_REGISTRY` | none | the announcement channel: `chain:RPC@CONTRACT` (LoopBookRegistry), `file:PATH`, `memory:`; comma-separated are one channel |
+| `registry` | `LOOP_REGISTRY` | the LoopBookRegistry on Gnosis, `chain:https://rpc.gnosischain.com@0xD4379E494a488411D964BebDb210C0bf628d97af` | the announcement channel: `chain:RPC@CONTRACT` (LoopBookRegistry), `file:PATH`, `memory:`; comma-separated are one channel; `none` (or `off`): no channel, my book alone. The default not being readable (no `chain` extra, no network, no Bee node) is one note on stderr and my book alone; a registry that was set and cannot be read is an error |
 | `beat` | `LOOP_BEAT` | none | the clearing contract `chain:RPC@CONTRACT` (BeatClearing): `propose`, `beats`, `challenge`, `finalize`; where set, its finalized fills are the fill authority for every read of the fold (`offers`, `show`, `mine`, `matches`, `loops`): a fill in a book hides nothing (review item 9) |
 | `auction` | `LOOP_AUCTION` | none | the sealed-proposal beat `chain:RPC@CONTRACT` (SealedBeat) or `memory:`: `commit`, `reveal`, `outcome`, `sealed` |
 | `escrow` | `LOOP_ESCROW` | none | the escrow contract `chain:RPC@CONTRACT` (LoopEscrow); the record names the address; `deposit` funds, `finalize` reserves |

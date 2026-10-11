@@ -22,6 +22,12 @@ from ontodag import settings as _odag_settings
 _Setting = namedtuple("_Setting", "env default flag help secret odag",
                       defaults=(False, None))
 
+#: The announcement channel every `loop` reads unless told otherwise: the
+#: LoopBookRegistry deployed on Gnosis, through Gnosis's public RPC, so a
+#: fresh install sees the announced books with nothing to set (Peter,
+#: 2026-10-11). `loop set registry none` turns it off.
+DEFAULT_REGISTRY = "chain:https://rpc.gnosischain.com@0xD4379E494a488411D964BebDb210C0bf628d97af"
+
 _SETTINGS = {
     "book": _Setting(
         "LOOP_BOOK", "", "-f SPEC",
@@ -36,12 +42,13 @@ _SETTINGS = {
         "swarm:TOPIC@OWNER follows someone else's feed); books you trust "
         "— the announced books come from `registry`"),
     "registry": _Setting(
-        "LOOP_REGISTRY", "", "--registry SPEC",
+        "LOOP_REGISTRY", DEFAULT_REGISTRY, "--registry SPEC",
         "the announcement channel: chain:RPC_URL@CONTRACT (the "
         "LoopBookRegistry on the EVM chain Swarm settles on), file:PATH "
         "(sessions on one machine), memory:; several comma-separated are "
         "one channel, the newer chain last; every announced book is folded "
-        "into every answer, as its announced owner's"),
+        "into every answer, as its announced owner's. Default: the registry "
+        "on Gnosis, through its public RPC; none: no channel, my book alone"),
     "beat": _Setting(
         "LOOP_BEAT", "", "--beat SPEC",
         "the clearing contract: chain:RPC_URL@CONTRACT (BeatClearing); "
@@ -316,6 +323,20 @@ def _configured(key: str, flag=None) -> str:
         if odag_cfg.get(setting.odag):
             return odag_cfg[setting.odag]
     return setting.default
+
+
+def _registry() -> str:
+    """The announcement channel in effect: the `registry` setting, or ""
+    when it is `none` (or `off`): no channel, my book alone."""
+    spec = _configured("registry")
+    return "" if spec.strip().lower() in ("none", "off") else spec
+
+
+def _registry_is_default() -> bool:
+    """Is the channel in effect the built-in one? Then a failure to read it
+    (no `chain` extra, no network, no Bee node) is a note, never an error:
+    a fresh install must work offline too."""
+    return _registry() == DEFAULT_REGISTRY
 
 
 def _default_book_spec() -> str:

@@ -63,7 +63,7 @@ agent.step()                          # snapshot → match → candidates → se
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 439 tests (three need a live Bee node, sixty-two the evm extra, one swarmfs — skipped per test without them)
+python3 -m pytest tests/ -v           # 441 tests (three need a live Bee node, sixty-two the evm extra, one swarmfs — skipped per test without them)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
@@ -132,8 +132,8 @@ it from its own manifest with absence proofs, and a solver folding the
 announced maker books itself recovers the honest fold (T14). Since
 2026-09-14 discovery is one registry event on the chain Swarm settles on
 (`LoopBookRegistry`, deployed on Gnosis): `loop announce` says "my book is
-here", and every session with the `registry` setting folds the announced
-books itself under the admission rules — the read path needs no
+here", and every session folds the announced books itself (the registry
+on Gnosis is `loop`'s default since 0.17) under the admission rules — the read path needs no
 aggregator to trust; the v4 record carries exact rationals (U9), a
 thing's `step` and `min`, wants of several parts, fills with the
 quantity taken, partial fills of divisible gives and aggregation by

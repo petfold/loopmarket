@@ -11,6 +11,15 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Changed
 
+- **`loop` reads the registry on Gnosis by default** (Peter, 2026-10-11:
+  it works right after installation, with nothing to set). The `registry`
+  setting defaults to the deployed LoopBookRegistry through Gnosis's public
+  RPC, so `loop announced`, `offers` and `fold` see the announced books on
+  a fresh install; `loop set registry none` (or `off`) keeps a session to
+  its own book. If the default cannot be read (no `chain` extra, no
+  network, no Bee node), `loop` says so once on stderr and answers from
+  your book; a registry that was set and cannot be read is still an error.
+  The example scripts set `registry none`, and the suite runs with it.
 - **`loop help` starts with a link to the User Guide** (Peter,
   2026-10-11).
 

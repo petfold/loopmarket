@@ -956,6 +956,8 @@ LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle
 
 ```
 set confirm off
+# a self-contained example: no announced books folded in
+set registry none
 set now 2026-09-12T00:00:00Z
 place amara_flat 46.05,14.50+-5km
 place bruno_farm 46.10,14.55+-15km
@@ -995,9 +997,13 @@ Now the part that makes it a *marketplace* rather than a database: nobody
 shares a book. Each maker has their own — on Swarm their own feed and
 signing key, so **feed ownership is the authenticity** of their offers —
 and readers **fold** the books they know about. At the command line that
-is the `registry` setting, the announcement channel on Gnosis: `loop set
-registry chain:https://rpc.gnosischain.com@0xD4379E494a488411D964BebDb210C0bf628d97af`,
-and every session folds the books announced there (`loop announce` says
+is the `registry` setting, the announcement channel on Gnosis, which `loop`
+reads by default — right after installation, with nothing to set
+(`chain:https://rpc.gnosischain.com@0xD4379E494a488411D964BebDb210C0bf628d97af`;
+`loop set registry none` keeps a session to its own book, and if the
+registry cannot be read, without the `chain` extra or offline, `loop` says
+so once and answers from your book) — and every session folds the books
+announced there (`loop announce` says
 "my book is here", `loop announced` lists them, `loop fold` prints the
 root), each read as its owner's under the fold rules below. `peers`
 (`loop set peers rs:/path/to/bruno,swarm:chen-book@0x…`) are books you

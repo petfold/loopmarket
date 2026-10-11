@@ -6,6 +6,8 @@
 # `set` is durable, as odag's is — this is the shared dev/demo book, not the
 # federated one-book-per-maker shape (docs/plans/cli.md §8).
 set confirm off
+# a self-contained example: no announced books folded in
+set registry none
 set now 2026-09-12T00:00:00Z
 place amara_flat 46.05,14.50+-5km
 place bruno_farm 46.10,14.55+-15km
