@@ -1123,11 +1123,13 @@ matching half are already running (§11, §5).
 
 | variable | used by | meaning |
 |---|---|---|
-| `BEE_API` | live tests, `demo_federation.py` | Bee node API, e.g. `http://localhost:1633` (a light node suffices) |
+| `BEE_API` | live tests, `demo_federation.py`, `install.sh` | Bee node API, e.g. `http://localhost:1633` (a light node suffices) |
 | `BEE_BATCH` | " | a purchased postage batch id (never auto-buys; prefer mutable for feed-heavy work) |
 | `BEE_SIGNER` | gated tests, `loop` | throwaway 32-byte hex key for the shared-catalogue/book feeds; at the CLI, the maker's key |
 | `LOOP_CORE` | `demo_federation.py` | `0` skips adopting ontodag's `core` pack (needs ontodag>=0.19) and uses the eleven-category toy catalogue |
-| `LOOP_HOME` | `loop` | the CLI's home (`~/.loopmarket`): `config`, the default book `book/` |
+| `LOOP_HOME` | `loop`, `install.sh` | the CLI's home (`~/.loopmarket`): `config`, the default book `book/`, the setup's catalogue `catalogue/` and record `setup.json` |
+| `LOOP_PYTHON` | `install.sh` | the Python version (or range) to install loop with; by default `>=3.11`, `>=3.11,<3.14` for the Swarm version while coincurve has no 3.14 release; an installed one is used when it fits |
+| `LOOPMARKET_REF`, `LOOP_SETUP` | `install.sh` | install from GitHub at that ref instead of PyPI; `0` skips the setup at the end |
 | `LOOP_<SETTING>` — `LOOP_BOOK`, `LOOP_CATALOGUE`, `LOOP_PEERS`, `LOOP_MAKER`, `LOOP_TERMS`, `LOOP_VALID`, `LOOP_NOW`, `LOOP_CONFIRM`, `LOOP_RENDER`, `LOOP_LIMIT`, `LOOP_REGISTRY`, `LOOP_BEAT`, `LOOP_ESCROW`, … | `loop` | the environment layer of the settings table (§17): every setting `KEY` reads `LOOP_KEY`; `BEE_*` is shared with odag |
 | `LOOP_CHAIN_RPC`, `LOOP_CHAIN_KEY` | `scripts/gate_*.py`, `scripts/deploy_*.py` | the chain's RPC and the deploying or clearing key for the live gates (never printed) |
 | `ONTODAG_HOME`, `ONTODAG_STORE` | `loop`, via odag | where the inherited odag config and active store (the default catalogue and the personal names layer) live |
@@ -1274,7 +1276,8 @@ is required).
 | plumbing | `set [KEY [VALUE]]` | list / show / durably change a setting; unknown keys are errors; values validated at set time |
 | | `export` | every offer of my book as JSON lines of canonical records |
 | | `import [FILE]` | publish records from FILE or stdin; ids survive |
-| | `help`, `--version` | |
+| | `setup [--defaults]` | the setup dialog (`docs/plans/cli.md` §16): the ontology (core, core with domain packs, or a store of yours), the identity (a key of loop's own, or the Bee node's key), the book (on Swarm or on this machine), and with a node the postage batch, the key's xDAI (paid from the node's wallet only on a yes) and the announcement; writes `config` and `setup.json` (what it chose, never a key). `--defaults` takes every default and spends nothing. A `loop` started on a terminal before any setup runs it first (Ctrl-C skips it) |
+| | `help`, `--version` | `help` starts with the User Guide's address |
 | chain | `propose` | clear locally as `clearing` does and post each loop as one beat on `beat` (the contract's verdict asked first; the bee_signer key pays the bond); with peers or a registry my book first takes the fold's makers' records, never another clearing's loops and fills (question 25) |
 | | `beats [--open]` | every beat on the contract: submitter, root, fills, state |
 | | `challenge BEAT [LEG] [--check] [--book SPEC]` | find the record behind a beat, re-derive every leg off chain and by the verifier for free, send only what convicts (exit 2: no record anywhere) |

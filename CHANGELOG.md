@@ -9,6 +9,28 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Added
+
+- **One line installs loop** (questions 34 and 35, Peter, 2026-10-11):
+  `curl -fsSL https://raw.githubusercontent.com/petfold/loopmarket/main/install.sh | bash`.
+  It needs no `sudo`. It installs uv if missing, installs the Swarm
+  version when a Bee node answers at `BEE_API` (else the local one), and
+  uses an installed Python that can run loop. Only when none can does it
+  fetch one for loop alone: 3.11 or later, and 3.11 to 3.13 for the Swarm
+  version until coincurve supports 3.14. `odag` is installed beside
+  `loop`, and the setup runs at the end. `--uninstall` removes loop and
+  asks before deleting `~/.loopmarket`.
+- **`loop setup`**, the first start's dialog. It asks for the ontology
+  (ontodag's core by default, the same root everywhere; domain packs; or a
+  store of yours) and the identity: a key of loop's own by default, or the
+  Bee node's key. It asks where the book lives (`swarm:loop-<address>` or
+  this machine). With a node it then handles the postage (the node's
+  batch, or a purchase only on a yes), the key's xDAI (0.01 from the
+  node's wallet only on a yes, adding the key to Bee's withdrawal list if
+  asked, with a dated copy of `config.yaml`) and the announcement.
+  `--defaults` spends nothing. A `loop` started on a terminal before any
+  setup runs it first; `setup.json` records what was chosen, never a key.
+
 ### Changed
 
 - **`loop` reads the registry on Gnosis by default** (Peter, 2026-10-11:
@@ -25,10 +47,10 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Documentation
 
-- The user guide's installation section says what to do on a recent
-  Ubuntu (`pipx`) and on Python 3.14, where coincurve, the `swarm` and
-  `sig` extras' secp256k1 library, has no release yet (`uv tool install
-  --python 3.12`).
+- The user guide's installation section starts from the install script
+  and the setup. By hand, it covers a recent Ubuntu (`pipx`) and Python
+  3.14, where coincurve, the `swarm` and `sig` extras' secp256k1 library,
+  has no release yet (`uv tool install --python 3.12`).
 
 ## [0.16.1] — 2026-10-11
 

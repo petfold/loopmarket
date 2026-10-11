@@ -26,31 +26,91 @@ scratch and commits the whole loop atomically, or not at all.
 
 ## 1. Installation
 
-```bash
-pip install loopmarket             # gives you the `loop` command (and `odag`)
-```
-
-On a recent Ubuntu, where `pip install` refuses with
-`externally-managed-environment`, install the command with `pipx install
-"loopmarket[swarm,chain]"` instead: it gets an environment of its own and
-`loop` lands on your PATH. **On Python 3.14** (Ubuntu 26.04) the `swarm`
-and `sig` extras do not install yet: `coincurve`, their secp256k1 library,
-has no release for 3.14 (its fix is merged, unreleased as of 2026-10-11).
-Until it ships, give `loop` its own Python 3.12 with
-[uv](https://docs.astral.sh/uv/) (`pipx install uv`), which leaves the
-system's Python as it is:
+One line, no `sudo`:
 
 ```bash
-uv tool install --python 3.12 "loopmarket[swarm,chain]"
+curl -fsSL https://raw.githubusercontent.com/petfold/loopmarket/main/install.sh | bash
 ```
 
-or, to work on it:
+The script installs [uv](https://docs.astral.sh/uv/), the tool that gives
+`loop` an environment of its own, if you lack it. Then it looks for a Swarm
+(Bee) node at `http://localhost:1633`. If one answers, it installs the
+Swarm version (the `swarm`, `chain` and `sig` extras below). If none does,
+it installs the local version, whose offers stay on this machine until you
+add a node and run the script again. `loop` runs on a Python you already
+have when that Python can run it: any from 3.11 for the local version,
+and 3.11 to 3.13 for the Swarm version, because coincurve (its secp256k1
+library) has no release for 3.14 yet. Only when none fits does uv fetch one
+for `loop` alone. Your system's Python is left as it is either way. `odag`
+is installed beside `loop`. Last, the script starts the setup.
+
+The script is for Linux and macOS; so far it has been tried on Ubuntu
+only. On Windows, run it inside WSL (Windows Subsystem for Linux), with a
+Bee node that WSL can reach.
+
+### 1.1 The setup
+
+The setup asks a few questions. Each has a default, which Enter takes:
+
+1. **The ontology**: the categories offers are written in. Two people's
+   offers can match only when they use the same one. The default is
+   ontodag's core, about 5,000 everyday categories, built the same way on
+   every machine. You can add some of ontodag's domain packs, or name an
+   ontology store of your own (§2).
+2. **Your identity.** With a node, the default is a key of `loop`'s own,
+   kept in `~/.loopmarket/config`. Back that file up: whoever holds it can
+   act as you. The other choice is your node's key, one wallet already
+   funded, but then `loop` holds the node's key. Without a node, your
+   offers go out under a name, and no key is needed for a demo.
+3. **Where your offers live**: a book on Swarm, which others can read once
+   it is announced, or a book on this machine (a demo).
+4. **Postage.** A book on Swarm uses your node's postage batch. If the node
+   has none, the setup shows what one costs, and buys it only if you say
+   yes.
+5. **xDAI for your key.** Announcing your book is a small transaction from
+   your key. The setup offers to pay 0.01 xDAI, enough for thousands of
+   them, from your node's wallet, and does it only on a yes. Bee pays out
+   only to addresses its configuration lists. If yours is not listed, the
+   setup offers to add it to Bee's `config.yaml`, keeping a dated copy of
+   the old file. Then it asks you to restart the node, and pays. You can
+   also fund the key yourself and run `loop announce`.
+6. **The announcement**, which lets others find your book.
+
+`loop setup` runs the dialog again at any time, and `loop setup
+--defaults` takes every default and spends nothing. A `loop` started on a
+terminal before any setup runs it first (Ctrl-C skips it). After the setup
+you can make an offer at once:
+
+```bash
+loop give apple 5
+```
+
+`loop` reads the registry of announced books on Gnosis by default (§8),
+so `loop offers` shows others' offers too. To uninstall:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/petfold/loopmarket/main/install.sh | bash -s -- --uninstall
+```
+
+It asks before it deletes `~/.loopmarket`, which holds your key.
+
+### 1.2 By hand
+
+`pip install loopmarket` (or `pipx install loopmarket` where pip refuses
+with `externally-managed-environment`, as on a recent Ubuntu) gives the
+local version. Name the extras for the rest, for instance `pipx install
+"loopmarket[swarm,chain,sig]"`. On Python 3.14 those extras do not install
+until coincurve ships 3.14 support (its fix is merged, unreleased as of
+2026-10-11). Until then, give `loop` its own Python with `uv tool install
+--python 3.12 "loopmarket[swarm,chain,sig]"`. Then run `loop setup`.
+
+To work on it:
 
 ```bash
 git clone https://github.com/petfold/loopmarket
 cd loopmarket
 pip install -e ".[test]"        # (--break-system-packages, or use a venv)
-python3 -m pytest tests/ -q    # everything green; two tests skip without a Bee node
+python3 -m pytest tests/ -q    # everything green; the live tests skip without a Bee node
 ```
 
 Extras, when you need them:

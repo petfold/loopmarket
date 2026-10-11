@@ -36,7 +36,7 @@ $ loop want produce local weekly 104        # I want this, priced on my scale
 $ loop loops && loop clearing               # hunt profitable loops; run the clearing house
 ```
 
-`loop` is the command line (`pip install loopmarket`): ontodag's grammar
+`loop` is the command line (installed by one line, below): ontodag's grammar
 plus two conventions — a bare number first is the quantity, last is the
 price — and `+` between the parts of a want that must clear together;
 every term the catalogue's (your own places stay private and publish as
@@ -59,11 +59,25 @@ agent = SolverAgent(registry, ontology, BookClearing(registry, ontology))
 agent.step()                          # snapshot → match → candidates → select → propose; clearing re-verifies
 ```
 
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/petfold/loopmarket/main/install.sh | bash
+```
+
+No `sudo`. It installs `loop` and `odag` through
+[uv](https://docs.astral.sh/uv/), on a Python you already have when one
+fits. If a Bee node answers at `localhost:1633` it installs the Swarm
+version. Then it starts the setup: the ontology, your key and your book,
+each with a default. After that, `loop give apple 5` makes an offer. The
+[User Guide](docs/USER-GUIDE.md) §1 says what the setup asks and how to
+install by hand.
+
 ## Try it
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 441 tests (three need a live Bee node, sixty-two the evm extra, one swarmfs — skipped per test without them)
+python3 -m pytest tests/ -v           # 451 tests (three need a live Bee node, sixty-two the evm extra, one swarmfs — skipped per test without them)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
