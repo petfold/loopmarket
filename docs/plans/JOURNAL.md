@@ -298,3 +298,17 @@ book's old loops as rejected. Now only the test maker's book stands, and a
 fresh fold from the PyPI install reads one offer with no rejected lines.
 There is no `loop retract` verb; the client's `retract()` was called
 directly.
+
+**0.17.1 released (2026-10-11/12)**, on Peter's word ("release loopmarket
+0.17.1 with loop retract"): `loop retract`, and the install script's floor
+in the CHANGELOG. Full suite 453 passed and 4 skipped (the README's 457),
+lint clean; the wheel smoke-tested in a fresh venv (version 0.17.1; a
+reader saw the offer, then none after the retract; a second retract
+refused, exit 1); CI and `publish.yml` green. From PyPI: the first fresh
+install got 0.17.0 although PyPI's HTML and JSON index pages already
+listed 0.17.1, and uv resolved 0.17.0 for a few minutes even with its
+cache off; asked for `==0.17.1` it resolved at once. Once uv's own
+`>=0.17.0` resolution gave 0.17.1, the installer in a fresh home installed
+it, `loop retract` worked, and the registry on Gnosis read by default.
+Lesson: after a release, check what uv resolves (`uv pip compile
+--no-cache`) before testing an install, not only the index page.
