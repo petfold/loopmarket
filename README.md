@@ -78,7 +78,7 @@ install by hand.
 
 ```bash
 pip install -e ".[test]"              # (--break-system-packages or a venv)
-python3 -m pytest tests/ -v           # 457 tests (three need a live Bee node, sixty-two the evm extra, one swarmfs — skipped per test without them)
+python3 -m pytest tests/ -v           # 461 tests (three need a live Bee node, sixty-two the evm extra, one swarmfs — skipped per test without them)
 LOOP_HOME=$(mktemp -d) loop --catalogue examples/triangle.od < examples/triangle.loop   # P0 as a script
 PYTHONPATH=src python3 examples/demo_triangle.py     # the same, through the API
 PYTHONPATH=src python3 examples/demo_federation.py   # P1: books, fold, forgery, follower
@@ -273,7 +273,7 @@ And two pairs more: **clearing** is the atomic commit that fixes obligations; **
 | [`P4-privacy.md`](docs/plans/P4-privacy.md) | Staged privacy: Tier 1 with zero new cryptography, the P2 format-freeze list, explicit dead/deferred rulings. |
 | [`ontodag-coupling.md`](docs/plans/ontodag-coupling.md) | The catalogue contract: dimension terms, unit families, match degrees, the upstream-vs-local tripwire table. |
 | [`cli.md`](docs/plans/cli.md) | The command line (designed 2026-09-11, **built 2026-09-12** as `loop`): ontodag's grammar plus quantity-first/price-last, every term the catalogue's, last-price memory, "declare in the direction you know" instead of a tolerance parameter, the approval block, batch scripts; what is still open (the upstream asks, §11). |
-| [`BROWSER.md`](docs/plans/BROWSER.md) | loopmarket in a browser (discussed 2026-10-11, not built): what runs under Pyodide as it is, what needs replacing (the catalogue, the book through ontodag's four calls on chunks, the registry through the wallet), the identity decided as one key from one wallet signature, what a page can't do (duties with deadlines), and the first page, read-only. |
+| [`BROWSER.md`](docs/plans/BROWSER.md) | loopmarket in a browser: what runs under Pyodide as it is, what needs replacing (the catalogue, the book through ontodag's four calls on chunks, the registry through the wallet), the identity decided as one key from one wallet signature, what a page can't do (duties with deadlines). The read-only page is built (`browser/`, 2026-10-12) and runs in Freedom Browser. |
 | [`catalogue-bootstrap.md`](docs/plans/catalogue-bootstrap.md) | Seeding and governing the shared catalogue: seed taxonomies, the import pipeline, norms as protocol rules. |
 | [`adoption-and-thickness.md`](docs/plans/adoption-and-thickness.md) | Where the first loops come from: launch verticals, the broker surface, bridge liquidity, thickness engineering. |
 | [`THREATS.md`](docs/plans/THREATS.md) | The threat register, T1–T20 (the fixed T1–T9 by expected damage to a young system, then dated additions — T19, biometric linkage at the door; T20, a resolver's stake thinner than it reads); mirrored in factbond. |

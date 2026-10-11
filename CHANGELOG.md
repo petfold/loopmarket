@@ -7,6 +7,23 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
+## [Unreleased]
+
+### Added
+
+- **A read-only market page for Freedom Browser** (`browser/`,
+  docs/plans/BROWSER.md §5a). The page runs loopmarket under Pyodide:
+  - it reads the books announced on Gnosis, through the browser's chain
+    access (`window.ethereum`) or the public RPC;
+  - it finds each book's newest root through its feed, over Freedom's
+    `window.swarm` or a node over HTTP;
+  - it folds the books with loopmarket's own `Aggregator` and lists the
+    open offers.
+
+  `loopmarket.browser.MarketPage` is its Python. Checked in Chromium
+  against a real node (the offers equal the same fold computed natively)
+  and in real Freedom Browser.
+
 ## [0.17.1] — 2026-10-11
 
 ### Added

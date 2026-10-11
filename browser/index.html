@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>loopmarket on Swarm</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #dedbd3;
+    --card: #ffffff; --accent: #2f5f8f; --accent-fg: #ffffff; --warn: #9a5b00;
+    --give: #2f6f4f; --want: #8a3f6f;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161614; --fg: #ecebe6; --muted: #a3a29c; --line: #34332f;
+      --card: #1f1f1c; --accent: #8db8e3; --accent-fg: #0f1720; --warn: #e3a64a;
+      --give: #7cc49c; --want: #e09ac8;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 1.35rem; margin: 0 0 2px; }
+  h2 { font-size: 1rem; margin: 0 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin: 12px 0; overflow-x: auto; }
+  input, button { font: inherit; color: inherit; background: var(--card);
+         border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+  input { min-width: 0; flex: 1 1 220px; }
+  button { cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #status { color: var(--muted); min-height: 1.5em; }
+  #status.warn { color: var(--warn); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.mono { font-family: var(--mono); font-size: 0.85rem; }
+  .give { color: var(--give); font-weight: 600; }
+  .want { color: var(--want); font-weight: 600; }
+  .muted { color: var(--muted); }
+  #stats { color: var(--muted); font-size: 0.85rem; font-family: var(--mono); }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>loopmarket on Swarm</h1>
+  <p class="sub">The market as the books announced on Gnosis say it is, read straight from Swarm in your browser. Read-only: nothing installed, no key needed.</p>
+
+  <div class="bar">
+    <span id="source">Starting…</span>
+    <button id="connect" class="hidden" title="A connected site may read more of Swarm per minute">Connect to Freedom</button>
+    <button id="refresh" disabled>Read again</button>
+  </div>
+  <div id="status">Loading Python (Pyodide, about 14 MB the first time; cached after that)…</div>
+
+  <div class="card">
+    <h2>Open offers</h2>
+    <div class="bar"><input id="filter" placeholder="show only offers mentioning… (a category, a maker)" disabled></div>
+    <table id="offers"><thead></thead><tbody></tbody></table>
+    <p class="muted" id="nooffers"></p>
+  </div>
+
+  <div class="card">
+    <h2>Books announced on the registry</h2>
+    <table id="books">
+      <thead><tr><th>owner</th><th>book</th><th>role</th><th>feed</th><th>in the fold</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="muted" id="via"></p>
+  </div>
+
+  <div class="card hidden" id="rejectedcard">
+    <h2>Left out of the fold</h2>
+    <table id="rejected"><thead><tr><th>owner</th><th>record</th><th>why</th></tr></thead><tbody></tbody></table>
+  </div>
+
+  <div id="stats"></div>
+</main>
+<script src="pyodide/pyodide.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

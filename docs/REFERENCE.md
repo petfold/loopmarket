@@ -1152,6 +1152,20 @@ so reruns inherit nothing.
 | `RuntimeError` | `Ontology.persistent` without `EagerOntoDAG` | missing optional machinery |
 | `TypeError` | `Ontology.commit` on in-memory catalogues | nothing to commit to |
 
+## 16b. `loopmarket.browser` — the read-only page's Python
+
+Runs under Pyodide in the page `browser/` (docs/plans/BROWSER.md §5a);
+answers are JSON text.
+
+| member | does |
+|---|---|
+| `MarketPage(js_store, bridge=None)` | over the page's blob store (`download`, `downloadMany`, read through ontodag's `JsBytesStore`); `bridge` defaults to Pyodide's `run_sync` (JSPI) |
+| `MarketPage.fold(books_json)` | `books_json` lists `{owner, book, role, root}`; each maker book is read as its announced owner's and folded by `Aggregator`; clearing books and books without a root are listed with why they were left out; the answer adds `folded`, `offers` per book, `book_root` and the fold's `rejections` |
+| `MarketPage.offers(text="", now=None)` | the fold's open offers as `loop offers` lists them (`columns`, `rows`), those mentioning `text` |
+
+An unreachable blob, or one whose chunks did not match their addresses,
+raises; a fold never answers with an empty book in its place.
+
 ## 17. `loopmarket.cli` — the `loop` command line
 
 Console scripts `loop` and `loopmarket` (alias); `python -m loopmarket`

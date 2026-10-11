@@ -476,7 +476,7 @@ places); `loop categories` looks through loop's catalogue, and the
 unknown-word hint names it (question 36). The flow is in
 `docs/plans/cli.md` §16.
 
-## Browser (identity decided 2026-10-11, nothing built)
+## Browser (identity decided 2026-10-11; the read-only page built 2026-10-12)
 
 `docs/plans/BROWSER.md`, over ontodag's `docs/plans/BROWSER.md`. The
 maker's key in a browser is one key derived from one wallet signature, the
@@ -484,8 +484,13 @@ same in every client (Peter's option A). It owns the book's feed, signs
 offers as now and opens sealed records, so the protocol doesn't change;
 it needs a little xDAI to announce. Freedom pages can read now and publish
 once Freedom accepts page-signed chunks (their #647). Duties with
-deadlines need `loop` on a machine that stays on. The first page is
-read-only.
+deadlines need `loop` on a machine that stays on. The read-only page is
+`browser/` with `loopmarket.browser`: the registry through the browser's
+chain access or the public RPC, each book's root through its feed, the
+fold by loopmarket's own `Aggregator`, the open offers; checked in
+Chromium and in real Freedom Browser (`browser/check.py`,
+`browser/freedom_check.cjs`). Its Swarm layer is ontodag's
+`demo/freedom/swarm.js`, copied in by `browser/build.py`.
 
 ## Upstream to watch
 

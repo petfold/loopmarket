@@ -1,7 +1,8 @@
 # loopmarket in a browser
 
-Status (2026-10-11): discussed, with one decision (identity, §3); nothing
-is built. ontodag's `docs/plans/BROWSER.md` is the base:
+Status (2026-10-12): the read-only page (§5, step 1) is built and runs in
+Freedom Browser; writing waits on Freedom #647 and the key (§3). ontodag's
+`docs/plans/BROWSER.md` is the base:
 
 - the code runs under Pyodide;
 - a page reaches Swarm through four calls on chunks, with one adapter per
@@ -100,6 +101,44 @@ since no wallet does ECDH.
    key: with Weeb-3 or an HTTP node first, in Freedom once #647 is
    accepted.
 3. **Sealed messages and chain duties last.**
+
+## 5a. The read-only page, built (2026-10-12)
+
+`browser/` (index.html, app.js, registry.js) with `loopmarket.browser`
+(`MarketPage`). In the page:
+
+- **The registry:** `registry.js` reads the LoopBookRegistry's events from
+  block 48,249,000. It goes through Freedom's own chain access
+  (`window.ethereum`, which checks log answers against several RPCs, with
+  10 s at most for an answer), or else the public Gnosis RPC, which allows
+  any origin. It keeps the latest announcement per owner, with the owner
+  checksummed, since the fold compares it with offers' makers as strings.
+- **Each book's newest root:** read through ontodag's `swarm.js`: the
+  feed's newest index (`swarm_readFeedEntry`), then that update's
+  single-owner chunk (`swarm_readSingleOwnerChunk`), whose 40 bytes are a
+  timestamp and the root.
+- **The fold:** `MarketPage.fold` reads each maker book through ontodag's
+  `JsBytesStore` and folds it with loopmarket's own `Aggregator`, as
+  `loop fold` does. Clearing books are listed but not folded, since
+  re-checking their loops needs the catalogue. Without crypto in the page,
+  an offer in its maker's own book enters (feed ownership authenticates
+  it), and a foreign one is rejected and named.
+- **The offers:** `MarketPage.offers(text)` lists the open offers as
+  `loop offers` does.
+
+`build.py` copies in ontodag's `swarm.js`, so there is one source.
+Checked:
+
+- **`check.py`:** Chromium through a stand-in for Freedom's provider
+  answered from a Bee node, and through the node itself over HTTP. In both,
+  the offers equal the same fold computed natively (web3 for the
+  announcements, `SwarmFeedPointer` for the roots, `BeeBytesStore` for the
+  books).
+- **`freedom_check.cjs`:** real Freedom Browser, run from its checkout with
+  the Bee node as its external node. The registry came through
+  `window.ethereum`, the book through `window.swarm` (5 chunks), and the
+  market was shown in 7.7 s from opening the page, with the one standing
+  offer.
 
 ## 6. Open
 
