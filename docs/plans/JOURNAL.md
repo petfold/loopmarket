@@ -312,3 +312,21 @@ cache off; asked for `==0.17.1` it resolved at once. Once uv's own
 it, `loop retract` worked, and the registry on Gnosis read by default.
 Lesson: after a release, check what uv resolves (`uv pip compile
 --no-cache`) before testing an install, not only the index page.
+
+**The read-only market page (2026-10-12, night)**, on Peter's word ("start
+both browser implementations mainly for Freedom browser, starting with the
+read-only Freedom page"). `browser/` with `loopmarket.browser.MarketPage`
+(BROWSER.md §5a): the registry's events in the page (decoded by hand;
+owners checksummed, since the fold compares them with makers as strings),
+each book's newest root through its feed, the fold by loopmarket's own
+`Aggregator` under Pyodide, the open offers as `loop offers` lists them.
+Its Swarm layer is ontodag's `demo/freedom/swarm.js`. Checked: in Chromium
+through a stand-in for Freedom's provider, through the Bee node over HTTP,
+and through the public gateway, the offers equal the same fold computed
+natively; in real Freedom Browser the registry came through
+`window.ethereum`, the book through `window.swarm` (5 chunks, a feed
+lookup on recordstore's format), the market in 7.7 s. Published at
+`bzz://b25a77e389e8b0d08a33553cc55feb04ca17be0bb14d5b72b7c927f80ce5bd13/`.
+It needs ontodag's and recordstore's unreleased mains, which the page
+bundles. Clearing books are listed, not folded (their loops are re-checked
+under the catalogue, which the page does not load).

@@ -492,6 +492,9 @@ Chromium and in real Freedom Browser (`browser/check.py`,
 `browser/freedom_check.cjs`). Its Swarm layer is ontodag's
 `demo/freedom/swarm.js`, copied in by `browser/build.py`.
 
+The published page: `bzz://b25a77e389e8b0d08a33553cc55feb04ca17be0bb14d5b72b7c927f80ce5bd13/`
+(2026-10-12); it bundles ontodag's and recordstore's unreleased mains.
+
 ## Upstream to watch
 
 - **coincurve on Python 3.14.** coincurve 21.0.0 (March 2025) has no
