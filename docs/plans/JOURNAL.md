@@ -210,3 +210,21 @@ was re-executed. The branch merged into main just before ontodag 0.32.0's
 tag (its gate ran this main green against the candidate); 0.16.0 followed
 with the floor `ontodag>=0.32.0`, every publish job green, the chain
 tests included, and both examples clear from the PyPI install.
+
+**A maker's offer folded through the public gateway (2026-10-11).**
+recordstore 0.22.3 (released on Peter's word) stopped asking a reader for
+a postage batch. The maker, on this laptop's node with the chain key as
+its `bee_signer` (`0xE9d6D1D4…`; the key in ontodag's config holds no
+xDAI), published `give piano-lesson 46.05,14.50+-5km 100` to
+`swarm:loop-gateway-1791724973` and announced it on the registry (one
+transaction, about 2×10⁻¹³ xDAI). A reader whose venv held only released
+packages (loopmarket 0.16.0 with `[swarm,chain]`, ontodag 0.32.0,
+recordstore 0.22.3), fresh homes, no key and nothing but the registry
+setting, with `bee_api` at `api.gateway.ethswarm.org`: `announced` listed
+the book, `offers` showed the offer (`4a31c2327c88`), `fold` built its
+root (`4293cb66…`, 1 offer), about 5 s each. Two findings: the registry
+keeps one standing announcement per owner, so this one replaced the same
+key's v5-gate clearing book (`swarm:loop-v5-gate-1789734484`); and a
+reader without the `chain` extra got a traceback where a one-line
+instruction belongs. Still open: a second machine with its own node.
+

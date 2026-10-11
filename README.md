@@ -206,9 +206,12 @@ they still guard:
   waits for the pre-registration, which Peter makes when Phase 0's answer
   is wanted.
 
-Before a public launch, P1 also still lacks a second machine folding live
-books, and ontodag accepting coordinates for `geo` and relative times in
-`time(...)` ([`cli.md`](docs/plans/cli.md) §11). factbond's roadmap
+Before a public launch, P1 also still lacks a second machine, with its own
+Bee node, folding live books; a reader through the public gateway did on
+2026-10-11 (a maker's offer announced on Gnosis, folded by a clean session
+with nothing but the registry setting). ontodag's coordinates for `geo` and
+relative times in `time(...)` came with ontodag 0.32
+([`cli.md`](docs/plans/cli.md) §11). factbond's roadmap
 ("Alignment with loopmarket") and its `loopmarket-coupling.md` §5 say the
 same.
 

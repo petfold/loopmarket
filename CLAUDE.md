@@ -347,7 +347,9 @@ word.
 - **P1**, the Swarm book: done on one machine (books on Swarm, the
   announcement channel on Gnosis, folds as the default read path, the CLI).
   Open, and needed before a public launch: announced books folded live
-  from a second machine. The upstream asks to ontodag (`docs/plans/cli.md`
+  from a second machine with its own Bee node (through the public gateway
+  it works since recordstore 0.22.3: a maker's announced offer folded by a
+  clean reader, 2026-10-11). The upstream asks to ontodag (`docs/plans/cli.md`
   §11) are answered: coordinates for `geo` and relative times in
   `time(...)` came with ontodag 0.32 (loopmarket 0.16.0), a public store
   opener with ontodag 0.31.
