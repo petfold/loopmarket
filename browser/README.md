@@ -7,6 +7,11 @@ the books with loopmarket's own `Aggregator` under Pyodide
 (`loopmarket.browser.MarketPage`), and lists the open offers. Design:
 `docs/plans/BROWSER.md` §5a.
 
+Stable address (a feed manifest; every publish advances the feed, so it
+always opens the current version): `bzz://a0e5384ab667abe869c07c97c21a8e4b9dd68332f8c0760d9db60af31672b340/`. The publisher key is
+`~/.ontodag/page-feeds/loopmarket.key` on the publishing machine (never
+committed); `ontodag/demo/freedom/page_feed.py` makes and moves the feed.
+
 Published: `bzz://151f5739ec1d707c09bfc538606d709d6cec8dc71d04f6f8653f45586724f2e0/`
 (open it in Freedom Browser; through a node:
 `http://localhost:1633/bzz/151f5739ec1d707c09bfc538606d709d6cec8dc71d04f6f8653f45586724f2e0/`;

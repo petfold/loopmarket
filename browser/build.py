@@ -67,6 +67,7 @@ def main():
         api = args.api.rstrip("/")
         ref = base.upload(args.dist, api, args.batch)
         print(f"published: bzz://{ref}/  ({api}/bzz/{ref}/)", flush=True)
+        base.advance_feed("loopmarket", api, ref, args.batch)
         ok = base.retrievable(api, ref, args.wait)
         print("retrievable" if ok else "NOT yet retrievable: check GET /stewardship later")
 
