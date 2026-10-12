@@ -7,6 +7,7 @@
 import { ChunkReader, BlobStore, FreedomSwarm, HttpSwarm, StoredChunks, topicOf } from "./swarm.js";
 import { standing } from "./registry.js";
 import { LocalFile } from "./localfile.js";
+import { PythonCalls } from "./pycall.js";
 
 // The LoopBookRegistry (loopmarket's DEFAULT_REGISTRY), deployed 2026-09-14.
 const REGISTRY = {
@@ -60,12 +61,16 @@ function chooseSource() {
   return new HttpSwarm("https://api.gateway.ethswarm.org");
 }
 
-async function call(name, ...args) {
-  const fn = py.globals.get(name);
-  try {
-    return JSON.parse(await fn.callPromising(...args));
-  } finally {
-    fn.destroy();
+// How Python waits for Swarm, "jspi" or "retry" (Pyodide on iOS): pycall.js.
+let calls = null;
+
+function call(name, ...args) {
+  return calls.call(name, ...args);
+}
+
+function showRetrying() {
+  if (!$("source").textContent.includes("retrying")) {
+    $("source").textContent += "; Python reads by retrying (it cannot wait on Swarm in this browser)";
   }
 }
 
@@ -276,6 +281,9 @@ async function boot() {
 
   const source = chooseSource();
   $("source").textContent = `Reading Swarm through ${source.kind}`;
+  calls = new PythonCalls(py, globalThis.loopBlobs || null, {
+    onRetry: async () => { showRetrying(); await calls.call("make_market", true); },
+  });
   const connected = { yes: false };
   reader = new ChunkReader(source, {
     stored: await StoredChunks.open("loopmarket-swarm-chunks"),
@@ -306,12 +314,26 @@ async function boot() {
   await py.runPythonAsync(`
 from js import loopBlobs
 from loopmarket.browser import MarketPage
+from ontodag.browser import RETRY, NeedBlobs
 
-market = MarketPage(loopBlobs)
+market = None
 searches = None
 
+def make_market(retry):
+    """The market reader, its blobs read waiting on Swarm or by retrying."""
+    global market
+    catalogue = getattr(market, "_catalogue", None)
+    market = MarketPage(loopBlobs, bridge=RETRY if retry else None)
+    market._catalogue = catalogue
+    import json
+    return json.dumps({})
+
 def fold(books):
-    return market.fold(books)
+    import json
+    try:
+        return market.fold(books)
+    except NeedBlobs as need:
+        return json.dumps({"need": need.refs})
 
 def offers(text):
     return market.offers(text)
@@ -360,6 +382,9 @@ def searches_saved(name):
   $("searchsave").onclick = searchSave;
   $("searchbutton").onclick = searchAdd;
   $("searchcats").onkeydown = (e) => { if (e.key === "Enter") searchAdd(); };
+  calls.blobs = globalThis.loopBlobs;
+  await calls.call("make_market", calls.choose(params.get("bridge")) === "retry");
+  if (calls.mode === "retry") showRetrying();
   $("refresh").disabled = false;
   $("filter").disabled = false;
   $("refresh").onclick = refresh;
@@ -369,5 +394,6 @@ def searches_saved(name):
 }
 
 // For tests and the console.
-globalThis.loopPage = { refresh, call, stats: () => reader && reader.stats, connect: () => $("connect").click(), ready: null };
+globalThis.loopPage = { refresh, call, stats: () => reader && reader.stats, connect: () => $("connect").click(), ready: null,
+  bridge: () => calls && calls.mode };
 globalThis.loopPage.ready = boot().then((r) => r, (e) => { status(`Could not start: ${e.message || e}`, true); console.error(e); return { error: String(e) }; });

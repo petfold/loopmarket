@@ -1159,7 +1159,7 @@ Runs under Pyodide in the page `browser/` (docs/plans/BROWSER.md §5a,
 
 | member | does |
 |---|---|
-| `MarketPage(js_store, bridge=None)` | over the page's blob store (`download`, `downloadMany`, read through ontodag's `JsBytesStore`); `bridge` defaults to Pyodide's `run_sync` (JSPI) |
+| `MarketPage(js_store, bridge=None)` | over the page's blob store (`download`, `downloadMany`, read through ontodag's `JsBytesStore`); `bridge` defaults to Pyodide's `run_sync` (JSPI); with ontodag's `RETRY` it reads only fetched blobs (`cached`) and a fold that needs more raises `NeedBlobs`, for the page to fetch and fold again (Pyodide on iOS) |
 | `MarketPage.fold(books_json)` | `books_json` lists `{owner, book, role, root}`; each maker book is read as its announced owner's and folded by `Aggregator`; clearing books and books without a root are listed with why they were left out; the answer adds `folded`, `offers` per book, `book_root` and the fold's `rejections` |
 | `MarketPage.offers(text="", now=None)` | the fold's open offers as `loop offers` lists them (`columns`, `rows`), those mentioning `text` |
 | `MarketPage.catalogue()` | the default catalogue (ontodag's prelude, core and loop's markers: `cli.setup.fill_catalogue`), built in memory once |

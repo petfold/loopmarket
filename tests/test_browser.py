@@ -179,3 +179,41 @@ def test_saved_searches_round_trip_their_file_and_refuse_another():
         SavedSearches.from_text('{"format": "something else"}', "other.json")
     saved.remove("lessons")
     assert json.loads(saved.summary())["searches"] == []
+
+
+# Retry mode (ontodag BROWSER.md §15): where Python cannot wait on Swarm
+# (Pyodide on iOS), the page fetches what a fold needed and folds again.
+
+class RetryBlobs:
+    """The page's BlobStore in retry mode: `cached` answers from what was
+    fetched, `fetch` is the page's await between runs."""
+
+    def __init__(self, blobs):
+        self.blobs = blobs.blobs
+        self.held = {}
+
+    def cached(self, ref):
+        return self.held.get(str(ref))
+
+    def fetch(self, refs):
+        for r in refs:
+            self.held[r] = self.blobs[r]
+
+
+def test_a_fold_by_retrying_equals_the_waiting_fold():
+    from ontodag.browser import RETRY, NeedBlobs
+    waiting, books = market()
+    want = json.loads(waiting.fold(json.dumps(books)))
+    js = RetryBlobs(waiting._source._js.blobs)
+    page = MarketPage(js, bridge=RETRY)
+    for runs in range(1, len(js.blobs) + 2):
+        try:
+            got = json.loads(page.fold(json.dumps(books)))
+            break
+        except NeedBlobs as need:
+            js.fetch(need.refs)
+    else:
+        raise AssertionError("the fold kept needing blobs")
+    assert got == want
+    assert json.loads(page.offers(now=NOW)) == json.loads(waiting.offers(now=NOW))
+    assert runs <= len(js.held) + 1

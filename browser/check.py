@@ -201,13 +201,21 @@ def native():
     return folded, json.loads(page.offers())["rows"], json.loads(page.search(SEARCH))["rows"]
 
 
-async def check_page(url, freedom, searched=()):
+#: What Pyodide reads to choose its JavaScript trampoline (and so no JSPI):
+#: an iPhone's navigator.platform. `--iphone` reports it, so Chromium runs the
+#: page as Freedom on iOS does.
+IPHONE = "Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'iPhone' })"
+
+
+async def check_page(url, freedom, searched=(), mode=None, iphone=False):
     from playwright.async_api import async_playwright
     calls = {}
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         page = await browser.new_page()
         page.on("console", lambda m: m.type == "error" and print("  page console:", m.text))
+        if iphone:
+            await page.add_init_script(IPHONE)
         if freedom:
             async def answer(method, params):
                 return await asyncio.to_thread(standin, calls, method, params)
@@ -216,9 +224,10 @@ async def check_page(url, freedom, searched=()):
         started = time.time()
         if url.startswith("http://127.0.0.1"):           # served here: Pyodide from the npm copy
             url += ("&" if "?" in url else "?") + "pyodide=/pyodide/"
-        await page.goto(url)
+        await page.goto(url + (("&" if "?" in url else "?") + f"bridge={mode}" if mode else ""))
         result = await page.evaluate("window.loopPage.ready")
         print(f"  page ready after {time.time() - started:.1f} s; source: {await page.inner_text('#source')}")
+        print(f"  bridge: {await page.evaluate('window.loopPage.bridge()')}")
         print(f"  status: {await page.inner_text('#status')}")
         print(f"  registry: {await page.inner_text('#via')}")
         rows = (await page.evaluate("window.loopPage.call('offers', '')"))["rows"] if "error" not in result else None
@@ -232,18 +241,24 @@ async def check_page(url, freedom, searched=()):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--url", help="the page as a node serves it (http://localhost:1633/bzz/REF/)")
+    ap.add_argument("--bridge", choices=("jspi", "retry"),
+                    help="how Python waits for Swarm (default: the page decides); "
+                         "retry is what Pyodide on iOS needs")
+    ap.add_argument("--iphone", action="store_true",
+                    help="report an iPhone's platform, as Freedom on iOS does (Pyodide then takes its "
+                         "JavaScript trampoline, and the page must read by retrying)")
     args = ap.parse_args()
     folded, want, searched = native()
     print("native: " + "; ".join(f"{b['book']} ({b['role']}) folded={b['folded']}" for b in folded["books"]))
     print(f"native: {len(want)} open offers, {len(folded['rejections'])} rejections")
     if args.url:
         print(f"over HTTP: {args.url}")
-        result, rows, problems = asyncio.run(check_page(args.url, freedom=False, searched=searched))
+        result, rows, problems = asyncio.run(check_page(args.url, freedom=False, searched=searched, mode=args.bridge, iphone=args.iphone))
     else:
         server = serve(os.path.join(HERE, "dist"))
         url = f"http://127.0.0.1:{server.server_port}/index.html"
         print(f"Freedom's path (stand-in window.swarm over {API}): {url}")
-        result, rows, problems = asyncio.run(check_page(url, freedom=True, searched=searched))
+        result, rows, problems = asyncio.run(check_page(url, freedom=True, searched=searched, mode=args.bridge, iphone=args.iphone))
         server.shutdown()
     if rows is None:
         print(f"the page failed: {result}")

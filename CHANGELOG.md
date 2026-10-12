@@ -9,6 +9,17 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Fixed
+
+- **The market page works on iPhones.** On iOS, Pyodide calls function
+  pointers through a JavaScript trampoline, and JSPI cannot suspend Python
+  across it (Meinhard saw "JavaScript frames found between
+  WebAssembly.Suspending and WebAssembly.promising" in Freedom on an
+  iPhone). The page now reads by retrying there (ontodag's `pycall.js`,
+  `MarketPage(js_store, bridge=RETRY)`): a fold that reaches a blob not yet
+  fetched stops, the page fetches it and folds again. `browser/check.py
+  --iphone` runs the page as an iPhone does (ontodag BROWSER.md §15).
+
 ### Added
 
 - **Saved searches in the market page** (`loopmarket.browser.SavedSearches`,

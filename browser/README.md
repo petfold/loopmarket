@@ -27,8 +27,8 @@ in any browser, serve `dist/` and add `?gateway=https://api.gateway.ethswarm.org
 |---|---|
 | `index.html`, `app.js` | the page: open offers (with a filter), your saved searches (a local file), the books announced on the registry, what the fold left out |
 | `registry.js` | the registry's events, decoded in the page; the latest announcement per owner |
-| `build.py` | assembles `dist/`: the page, ontodag's `demo/freedom/swarm.js` with its keccak and `localfile.js` (one source), wheels built from the recordstore, ontodag and loopmarket checkouts; `--publish --batch ID` uploads it. Pyodide comes from the shared folder on Swarm (`app.js`, `PYODIDE`), as in ontodag's page |
-| `check.py` | runs `dist/` in Chromium through a stand-in for Freedom's provider (or `--url`, as a node or with `?gateway=`) and compares the offers with the same fold computed natively; then drives the saved searches through the page's buttons against the native search |
+| `build.py` | assembles `dist/`: the page, ontodag's `demo/freedom/swarm.js` with its keccak, `localfile.js` and `pycall.js` (one source), wheels built from the recordstore, ontodag and loopmarket checkouts; `--publish --batch ID` uploads it. Pyodide comes from the shared folder on Swarm (`app.js`, `PYODIDE`), as in ontodag's page |
+| `check.py` | runs `dist/` in Chromium through a stand-in for Freedom's provider (or `--url`, as a node or with `?gateway=`) and compares the offers with the same fold computed natively; then drives the saved searches through the page's buttons against the native search. `--bridge retry` forces reading by retrying; `--iphone` runs the page as an iPhone does |
 | `freedom_check.cjs` | runs the published page in real Freedom Browser from a Freedom checkout |
 
 Run `check.py` with the checkouts on the path:

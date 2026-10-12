@@ -140,6 +140,12 @@ Checked:
   market was shown in 7.7 s from opening the page, with the one standing
   offer.
 
+**On iPhones** (2026-10-12) the page reads by retrying, since Pyodide
+there cannot be suspended by JSPI: a fold that reaches a blob not yet
+fetched stops, and the page fetches it and folds again (ontodag
+BROWSER.md §15). A book absorbs record by record, so a fold needs about
+one run per blob of its books.
+
 ## 5b. Local first: what may stay on this computer (Peter, 2026-10-12)
 
 ontodag's page now keeps a store of your own in a local `.od` file, never
