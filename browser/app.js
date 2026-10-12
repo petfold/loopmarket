@@ -6,6 +6,7 @@
 
 import { ChunkReader, BlobStore, FreedomSwarm, HttpSwarm, StoredChunks, topicOf } from "./swarm.js";
 import { standing } from "./registry.js";
+import { LocalFile } from "./localfile.js";
 
 // The LoopBookRegistry (loopmarket's DEFAULT_REGISTRY), deployed 2026-09-14.
 const REGISTRY = {
@@ -42,6 +43,8 @@ function loadScript(src) {
   });
 }
 let py, reader, folded = null;
+let searchFile = null, searches = false, searchChanged = false;
+const SEARCH_TYPES = [{ description: "loopmarket saved searches", accept: { "application/json": [".json"] } }];
 let busy = false;
 
 function status(text, warn = false) {
@@ -145,6 +148,7 @@ async function refresh() {
     const n = await showOffers();
     status(`${n} open offer${n === 1 ? "" : "s"}; read in ${((performance.now() - started) / 1000).toFixed(1)} s`);
     showStats();
+    if (searches) await runSearches();
     return { offers: n, books: folded.books, rejections: folded.rejections };
   } catch (e) {
     status(`${e.message || e}`, true);
@@ -154,6 +158,113 @@ async function refresh() {
     busy = false;
   }
 }
+
+// Saved searches: the person's own, in a local file (BROWSER.md §5b).
+function showSearchState(summary, note = "") {
+  searches = true;
+  searchChanged = summary.changed;
+  const n = summary.searches.length;
+  $("searchstate").textContent = `${summary.name} · ${n} search${n === 1 ? "" : "es"}` +
+    (summary.changed ? " · unsaved changes" : " · saved") +
+    (searchFile.inPlace ? " · Save writes back to the file" : " · Save downloads the file") + (note ? ` · ${note}` : "");
+  $("searchsave").disabled = false;
+  $("searchadd").classList.remove("hidden");
+}
+
+function offersTable(answer, fresh) {
+  const table = document.createElement("table");
+  const head = document.createElement("tr");
+  head.append(...answer.columns.map((c) => { const th = document.createElement("th"); th.textContent = c; return th; }));
+  table.createTHead().append(head);
+  const body = table.createTBody();
+  for (const r of answer.rows) {
+    const tr = document.createElement("tr");
+    if (fresh.has(r[0])) tr.className = "newrow";
+    r.forEach((v, i) => {
+      const col = answer.columns[i];
+      tr.append(cell(col === "maker" ? short(v) : v, col === "side" ? v : (col === "id" || col === "maker") ? "mono" : ""));
+    });
+    body.append(tr);
+  }
+  return table;
+}
+
+async function runSearches() {
+  if (!folded) return;
+  status("Searching (the catalogue is built once per visit)…");
+  const answer = await call("searches_run");
+  const box = $("searchresults");
+  box.replaceChildren();
+  let fresh = 0;
+  for (const r of answer.results) {
+    const div = document.createElement("div");
+    div.className = "search";
+    const h = document.createElement("h3");
+    h.append(r.name);
+    const info = document.createElement("span");
+    if (r.error) {
+      info.className = "err"; info.textContent = r.error;
+      h.append(info);
+    } else {
+      fresh += r.new.length;
+      info.className = "muted";
+      info.textContent = `${r.categories}: ${r.rows.length} offer${r.rows.length === 1 ? "" : "s"}`;
+      h.append(info);
+      if (r.new.length) {
+        const n = document.createElement("span");
+        n.className = "new"; n.textContent = `${r.new.length} new`;
+        const seen = document.createElement("button");
+        seen.textContent = "Mark seen";
+        seen.onclick = async () => { showSearchState(await call("searches_seen", r.name, JSON.stringify(r.new))); runSearches(); };
+        h.append(n, seen);
+      }
+    }
+    const del = document.createElement("button");
+    del.textContent = "Delete";
+    del.onclick = async () => { showSearchState(await call("searches_remove", r.name)); runSearches(); };
+    h.append(del);
+    div.append(h);
+    if (!r.error && r.rows.length) div.append(offersTable(r, new Set(r.new)));
+    box.append(div);
+  }
+  status(`${fresh} new offer${fresh === 1 ? "" : "s"} in your saved searches`);
+}
+
+async function searchNew() {
+  if (searchChanged && !confirm("Your saved searches have unsaved changes. Start a new list anyway?")) return;
+  searchFile.forget();
+  showSearchState(await call("searches_new"));
+  $("searchresults").replaceChildren();
+}
+
+async function searchOpen() {
+  if (searchChanged && !confirm("Your saved searches have unsaved changes. Open another file anyway?")) return;
+  const file = await searchFile.open();
+  if (!file) return;
+  const summary = await call("searches_open", await file.text(), file.name);
+  if (summary.error) { status(summary.error, true); return; }
+  showSearchState(summary);
+  await runSearches();
+}
+
+async function searchSave() {
+  const { text, name } = await call("searches_text");
+  const where = await searchFile.save(text, name);
+  if (!where) return;
+  showSearchState(await call("searches_saved", where.name),
+    where.how === "download" ? "downloaded; keep it where you like and open it next time" : "");
+}
+
+async function searchAdd() {
+  const name = $("searchname").value.trim(), cats = $("searchcats").value.trim();
+  const summary = await call("searches_add", name, cats);
+  if (summary.error) { status(summary.error, true); return; }
+  showSearchState(summary);
+  $("searchname").value = ""; $("searchcats").value = "";
+  await runSearches();
+}
+
+addEventListener("beforeunload", (e) => { if (searchChanged) { e.preventDefault(); e.returnValue = ""; } });
 
 async function boot() {
   const base = pyodideBase();
@@ -197,13 +308,58 @@ from js import loopBlobs
 from loopmarket.browser import MarketPage
 
 market = MarketPage(loopBlobs)
+searches = None
 
 def fold(books):
     return market.fold(books)
 
 def offers(text):
     return market.offers(text)
+
+def searches_new():
+    global searches
+    from loopmarket.browser import SavedSearches
+    searches = SavedSearches()
+    return searches.summary()
+
+def searches_open(text, name):
+    global searches
+    import json
+    from loopmarket.browser import SavedSearches
+    try:
+        searches = SavedSearches.from_text(text, name)
+    except ValueError as e:
+        return json.dumps({"error": str(e)})
+    return searches.summary()
+
+def searches_add(name, categories):
+    return searches.add(name, categories)
+
+def searches_remove(name):
+    return searches.remove(name)
+
+def searches_seen(name, ids):
+    return searches.mark_seen(name, ids)
+
+def searches_run():
+    return searches.run(market)
+
+def searches_text():
+    import json
+    return json.dumps({"text": searches.text(), "name": searches.name})
+
+def searches_saved(name):
+    return searches.saved(name)
 `);
+  searchFile = new LocalFile({ input: $("searchfile"), types: SEARCH_TYPES,
+    pickers: !(source instanceof FreedomSwarm), refusedKey: "loopmarket-pickers-refused" });
+  globalThis.loopPage.searchFile = searchFile;
+  for (const id of ["searchnew", "searchopen"]) $(id).disabled = false;
+  $("searchnew").onclick = searchNew;
+  $("searchopen").onclick = searchOpen;
+  $("searchsave").onclick = searchSave;
+  $("searchbutton").onclick = searchAdd;
+  $("searchcats").onkeydown = (e) => { if (e.key === "Enter") searchAdd(); };
   $("refresh").disabled = false;
   $("filter").disabled = false;
   $("refresh").onclick = refresh;

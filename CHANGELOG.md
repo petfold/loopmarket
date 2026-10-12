@@ -11,6 +11,16 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ### Added
 
+- **Saved searches in the market page** (`loopmarket.browser.SavedSearches`,
+  `MarketPage.search`, BROWSER.md §5b): a name and categories, as `loop
+  offers` takes them, run after every reading of the market, with the
+  offers not seen before marked. Kept in a local JSON file, never on
+  Swarm; saved back in place where the browser allows it, downloaded
+  where it does not (ontodag's `localfile.js`). The page builds the
+  default catalogue in memory for them (`cli.setup.fill_catalogue`, the
+  same root as `loop setup`'s; about 8 s, once per visit). `browser/check.py`
+  drives it through the page's buttons against the native search.
+
 - **A read-only market page for Freedom Browser** (`browser/`,
   docs/plans/BROWSER.md §5a). The page runs loopmarket under Pyodide:
   - it reads the books announced on Gnosis, through the browser's chain

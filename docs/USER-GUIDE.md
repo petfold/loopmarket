@@ -1544,7 +1544,8 @@ in `browser/` runs loopmarket under Pyodide:
   or the public RPC);
 - it finds each book's newest root through its feed on Swarm;
 - it folds the books with the same `Aggregator` as `loop fold`;
-- it lists the open offers, which a box filters.
+- it lists the open offers, which a box filters;
+- it keeps your saved searches, in a file on your computer.
 
 In Freedom Browser, open `bzz://loopmarket.gwei/`; with a local Bee node
 (Swarm Desktop, say), `http://localhost:1633/bzz/loopmarket.eth/`, read
@@ -1556,6 +1557,41 @@ It is read-only and needs no key. Clearing books are listed but not
 folded, since re-checking their loops needs the catalogue, and an offer
 naming a maker other than its book's owner is left out (the page has no
 signature check). Writing waits on the identity of BROWSER.md §3.
+
+**Saved searches.** A saved search is a name and a list of categories,
+as `loop offers` takes them (`lesson`, `bicycle geo(41.8..42,12.4..12.6)`).
+After every reading of the market the page runs each one and marks the
+offers it has not seen before; **Mark seen** clears the marks. The list
+is yours alone: it is kept in a file on your computer (**New list**,
+**Open file…**, **Save**), never on Swarm, since what you are looking for
+is nobody's business. Where the browser allows it (Chrome), Save writes
+back to the file you opened; in Freedom and Brave it downloads the file.
+The first search of a visit builds the catalogue in the page (core and the
+prelude, as `loop setup` builds it; about 8 s); a category it does not
+know is reported, since it could never match. In Python the list is
+`loopmarket.browser.SavedSearches`:
+
+```python
+>>> from loopmarket.browser import SavedSearches
+>>> saved = SavedSearches(name="mine.json")
+>>> saved.add("lessons", "lesson")
+'{"name": "mine.json", "changed": true, "searches": [{"name": "lessons", "categories": "lesson"}]}'
+>>> print(saved.text(), end="")
+{
+ "format": "loopmarket saved searches",
+ "version": 1,
+ "searches": [
+  {
+   "name": "lessons",
+   "categories": "lesson",
+   "seen": []
+  }
+ ]
+}
+```
+
+Offers themselves are never kept back in a local file: an offer means
+something only from the moment it is published (BROWSER.md §5b).
 
 ## 12. Where to go next
 

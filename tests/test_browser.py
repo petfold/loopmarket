@@ -102,3 +102,80 @@ def test_an_unreachable_book_is_an_error_not_an_empty_book():
         assert not isinstance(e, KeyError)
     else:
         raise AssertionError("a fold over unreachable books answered")
+
+
+# Saved searches (BROWSER.md §5b): the person's own, in a local file.
+
+_CATALOGUE = []
+
+
+def searching_market():
+    """The market, folded, with the default catalogue built once per run."""
+    page, books = market()
+    page.fold(json.dumps(books))
+    if not _CATALOGUE:
+        _CATALOGUE.append(page.catalogue())
+    page._catalogue = _CATALOGUE[0]
+    return page
+
+
+def test_the_page_builds_the_catalogue_loop_setup_stores(tmp_path):
+    import ontodag
+    from ontodag import native
+
+    from loopmarket.cli.setup import build_catalogue
+    page = searching_market()
+    spec = f"rs:{tmp_path / 'cat'}"
+    build_catalogue(spec)
+    assert native.dumps(page.catalogue().dag) == native.dumps(ontodag.open(spec).dag)
+
+
+def test_a_search_is_loop_offers_with_categories():
+    page = searching_market()
+    rows = json.loads(page.search("lesson", now=NOW))["rows"]
+    assert [(r[1], r[2], r[4]) for r in rows] == [("give", "amara", "piano-lesson")]
+    assert json.loads(page.search("vehicle", now=NOW))["rows"][0][4] == "bicycle"
+
+
+def test_a_category_the_catalogue_does_not_know_is_an_error():
+    page = searching_market()
+    assert "not in the catalogue: durian-pastry" in json.loads(
+        page.search("lesson durian-pastry", now=NOW))["error"]
+    assert "error" in json.loads(page.search("  ", now=NOW))
+
+
+def test_saved_searches_mark_what_is_new_until_seen():
+    from loopmarket.browser import SavedSearches
+    page = searching_market()
+    saved = SavedSearches(name="mine.json")
+    saved.add("lessons", "lesson")
+    saved.add("rides", "vehicle")
+    saved.add("nonsense", "durian-pastry")
+    results = {r["name"]: r for r in json.loads(saved.run(page, now=NOW))["results"]}
+    assert len(results["lessons"]["new"]) == 1
+    assert len(results["rides"]["new"]) == 1           # mallory's bicycle
+    assert "not in the catalogue" in results["nonsense"]["error"]
+    saved.mark_seen("rides", json.dumps(results["rides"]["new"]))
+    again = {r["name"]: r for r in json.loads(saved.run(page, now=NOW))["results"]}
+    assert again["rides"]["new"] == [] and len(again["rides"]["rows"]) == 1
+    assert len(again["lessons"]["new"]) == 1
+    saved.add("rides", "vehicle geo(41.8..42,12.4..12.6)")   # changed: seen again from scratch
+    assert saved.searches[1]["seen"] == []
+
+
+def test_saved_searches_round_trip_their_file_and_refuse_another():
+    import pytest
+
+    from loopmarket.browser import SavedSearches
+    saved = SavedSearches()
+    saved.add("lessons", "lesson")
+    saved.mark_seen("lessons", json.dumps(["abc123"]))
+    assert json.loads(saved.summary())["changed"]
+    text = saved.text()
+    assert not json.loads(saved.saved("mine.json"))["changed"]
+    again = SavedSearches.from_text(text, "mine.json")
+    assert again.searches == saved.searches and again.text() == text
+    with pytest.raises(ValueError, match="not a file of saved searches"):
+        SavedSearches.from_text('{"format": "something else"}', "other.json")
+    saved.remove("lessons")
+    assert json.loads(saved.summary())["searches"] == []

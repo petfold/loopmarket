@@ -121,6 +121,61 @@ def serve(directory):
     return server
 
 
+#: The saved search the check makes in the page and answers natively.
+SEARCH = "lesson"
+
+
+async def check_searches(page, want):
+    """Saved searches through the page's buttons (BROWSER.md §5b): a new
+    list, a search (its offers equal the native search's, all new), mark
+    seen, save (a download), open again by the file input. The problems."""
+    import tempfile
+    problems = []
+    page.on("dialog", lambda d: asyncio.ensure_future(d.accept()))
+    await page.evaluate("window.loopPage.searchFile.pickers = false")
+    await page.click("#searchnew")
+    await page.wait_for_selector("#searchadd:not(.hidden)")
+    await page.fill("#searchname", "lessons")
+    await page.fill("#searchcats", SEARCH)
+    t = time.time()
+    await page.click("#searchbutton")
+    await page.wait_for_selector("#searchresults .search", timeout=180_000)
+    first = time.time() - t
+    rows = await page.eval_on_selector_all("#searchresults table tbody tr",
+                                           "trs => trs.map(tr => [...tr.cells].map(td => td.textContent))")
+    fresh = await page.eval_on_selector_all("#searchresults tr.newrow", "trs => trs.length")
+    shown = sorted(tuple(r) for r in rows)
+    expected = sorted(tuple(r[:1]) + tuple(r[1:]) for r in want)
+    if [r[0] for r in shown] != [r[0] for r in expected]:
+        problems.append(f"search {SEARCH!r}: page {shown}, native {expected}")
+    if fresh != len(want):
+        problems.append(f"{fresh} marked new of {len(want)}")
+    if want:
+        await page.click("#searchresults button:text('Mark seen')")
+        await page.wait_for_function("!document.querySelector('#searchresults tr.newrow')")
+    async with page.expect_download() as info:
+        await page.click("#searchsave")
+    saved = json.loads(open(await (await info.value).path()).read())
+    seen = saved["searches"][0]["seen"] if saved.get("searches") else None
+    if saved.get("format") != "loopmarket saved searches" or seen is None or len(seen) != len(want):
+        problems.append(f"saved file: {saved!r}")
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+        json.dump(saved, fh)
+    await page.click("#searchnew")
+    async with page.expect_file_chooser() as chooser:
+        await page.click("#searchopen")
+    await (await chooser.value).set_files(fh.name)
+    await page.wait_for_selector("#searchresults .search", timeout=60_000)
+    again = await page.eval_on_selector_all("#searchresults tr.newrow", "trs => trs.length")
+    if again:
+        problems.append(f"after reopening, {again} still marked new")
+    os.unlink(fh.name)
+    print(f"  first search (the catalogue built in the page): {first:.1f} s")
+    print(f"  saved searches: new list, search, mark seen, save (download), open (file input): "
+          f"{'ok' if not problems else problems}")
+    return problems
+
+
 def native():
     """The same fold in plain Python: announcements through web3, roots
     through SwarmFeedPointer, books through BeeBytesStore."""
@@ -143,10 +198,10 @@ def native():
         books.append(b)
     page = MarketPage(NodeBlobs(), bridge=lambda value: value)
     folded = json.loads(page.fold(json.dumps(books)))
-    return folded, json.loads(page.offers())["rows"]
+    return folded, json.loads(page.offers())["rows"], json.loads(page.search(SEARCH))["rows"]
 
 
-async def check_page(url, freedom):
+async def check_page(url, freedom, searched=()):
     from playwright.async_api import async_playwright
     calls = {}
     async with async_playwright() as p:
@@ -169,25 +224,26 @@ async def check_page(url, freedom):
         rows = (await page.evaluate("window.loopPage.call('offers', '')"))["rows"] if "error" not in result else None
         stats = await page.evaluate("window.loopPage.stats()")
         print(f"  chunks fetched {stats['reads']} ({stats['bytes'] // 1024} KB); window.swarm calls {calls}")
+        problems = await check_searches(page, searched) if rows is not None else []
         await browser.close()
-    return result, rows
+    return result, rows, problems
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--url", help="the page as a node serves it (http://localhost:1633/bzz/REF/)")
     args = ap.parse_args()
-    folded, want = native()
+    folded, want, searched = native()
     print("native: " + "; ".join(f"{b['book']} ({b['role']}) folded={b['folded']}" for b in folded["books"]))
     print(f"native: {len(want)} open offers, {len(folded['rejections'])} rejections")
     if args.url:
         print(f"over HTTP: {args.url}")
-        result, rows = asyncio.run(check_page(args.url, freedom=False))
+        result, rows, problems = asyncio.run(check_page(args.url, freedom=False, searched=searched))
     else:
         server = serve(os.path.join(HERE, "dist"))
         url = f"http://127.0.0.1:{server.server_port}/index.html"
         print(f"Freedom's path (stand-in window.swarm over {API}): {url}")
-        result, rows = asyncio.run(check_page(url, freedom=True))
+        result, rows, problems = asyncio.run(check_page(url, freedom=True, searched=searched))
         server.shutdown()
     if rows is None:
         print(f"the page failed: {result}")
@@ -196,7 +252,9 @@ def main():
     for r in rows:
         print("  ", "  ".join(r))
     print("the page's offers match the native fold" if same else "MISMATCH between the page and the native fold")
-    sys.exit(0 if same else 1)
+    if problems:
+        print(f"saved searches: {len(problems)} problems")
+    sys.exit(0 if same and not problems else 1)
 
 
 if __name__ == "__main__":

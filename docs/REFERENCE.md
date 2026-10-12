@@ -1154,14 +1154,20 @@ so reruns inherit nothing.
 
 ## 16b. `loopmarket.browser` — the read-only page's Python
 
-Runs under Pyodide in the page `browser/` (docs/plans/BROWSER.md §5a);
-answers are JSON text.
+Runs under Pyodide in the page `browser/` (docs/plans/BROWSER.md §5a,
+§5b); answers are JSON text.
 
 | member | does |
 |---|---|
 | `MarketPage(js_store, bridge=None)` | over the page's blob store (`download`, `downloadMany`, read through ontodag's `JsBytesStore`); `bridge` defaults to Pyodide's `run_sync` (JSPI) |
 | `MarketPage.fold(books_json)` | `books_json` lists `{owner, book, role, root}`; each maker book is read as its announced owner's and folded by `Aggregator`; clearing books and books without a root are listed with why they were left out; the answer adds `folded`, `offers` per book, `book_root` and the fold's `rejections` |
 | `MarketPage.offers(text="", now=None)` | the fold's open offers as `loop offers` lists them (`columns`, `rows`), those mentioning `text` |
+| `MarketPage.catalogue()` | the default catalogue (ontodag's prelude, core and loop's markers: `cli.setup.fill_catalogue`), built in memory once |
+| `MarketPage.search(categories, now=None)` | the fold's open offers with a part that satisfies every category, as `loop offers CATEGORIES` lists them; a category the catalogue does not know is an `error` (U7); relative times are read with the clock |
+| `SavedSearches(searches=None, name="searches.json")` | the person's saved searches, a local JSON file (`format: "loopmarket saved searches"`), never on Swarm; `from_text(text, name)` (refuses another file), `text()`, `saved(name)`, `summary()` |
+| `SavedSearches.add(name, categories)` / `remove(name)` | add or change a search (a change forgets what it had seen) / remove one |
+| `SavedSearches.run(market, now=None)` | every search against the fold: its `rows`, and which are `new` (not yet seen), or its `error` |
+| `SavedSearches.mark_seen(name, ids_json)` | count these offer ids as seen by that search |
 
 An unreachable blob, or one whose chunks did not match their addresses,
 raises; a fold never answers with an empty book in its place.

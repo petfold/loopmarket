@@ -39,7 +39,8 @@ def assemble(dist, base):
     os.makedirs(os.path.join(dist, "wheels"))
     for f in ("index.html", "app.js", "registry.js"):
         shutil.copy(os.path.join(HERE, f), os.path.join(dist, f))
-    shutil.copy(os.path.join(ONTODAG_PAGE, "swarm.js"), os.path.join(dist, "swarm.js"))
+    for f in ("swarm.js", "localfile.js"):
+        shutil.copy(os.path.join(ONTODAG_PAGE, f), os.path.join(dist, f))
     shutil.copytree(os.path.join(ONTODAG_PAGE, "vendor"), os.path.join(dist, "vendor"))
     wheels = [base.wheel(os.path.join(PROJECTS, p), os.path.join(dist, "wheels"))
               for p in ("recordstore", "ontodag")]

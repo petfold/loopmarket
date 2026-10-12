@@ -265,21 +265,31 @@ def build_catalogue(spec: str, packs=DEFAULT_PACKS) -> str:
     options and item heads are left out: their names (`transport`,
     `storage`, `option`, `item`) are everyday words in `core`."""
     import ontodag
+
+    from ..ontology import Ontology
+
+    store = ontodag.open(spec)
+    fill_catalogue(store.dag, packs)
+    store.save()
+    return Ontology(store.dag).root
+
+
+def fill_catalogue(dag, packs=DEFAULT_PACKS):
+    """Put the default catalogue into `dag`: ontodag's prelude, `packs`,
+    and loop's matching markers. `build_catalogue` stores it; the market
+    page builds it in memory, so both match under the same root."""
     from ontodag import packs as ontodag_packs
     from ontodag import prelude
 
     from ..ontology import Ontology
 
-    store = ontodag.open(spec)
-    dag = store.dag
     prelude.apply(dag)
     for name in packs:
         ontodag_packs.apply(dag, name)
     ont = Ontology(dag)
     ont.declare_handover(["geo", "time"])
     ont.declare_roles({"from": "geo", "to": "geo", "depart": "time", "arrive": "time"})
-    store.save()
-    return Ontology(store.dag).root
+    return dag
 
 
 # ------------------------------------------------------------------- setup

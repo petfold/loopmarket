@@ -24,7 +24,9 @@
   main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
   h1 { font-size: 1.35rem; margin: 0 0 2px; }
   h2 { font-size: 1rem; margin: 0 0 8px; }
-  .sub { color: var(--muted); margin: 0 0 16px; }
+  .sub { color: var(--muted); margin: 0 0 4px; }
+  .guide { margin: 0 0 16px; font-size: 0.9rem; }
+  .guide a { color: var(--accent); }
   .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin: 12px 0; overflow-x: auto; }
   input, button { font: inherit; color: inherit; background: var(--card);
@@ -44,12 +46,19 @@
   .muted { color: var(--muted); }
   #stats { color: var(--muted); font-size: 0.85rem; font-family: var(--mono); }
   .hidden { display: none; }
+  .search { border-top: 1px solid var(--line); padding: 8px 0; }
+  .search h3 { font-size: 0.95rem; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+  .search .new { color: var(--accent); font-weight: 600; }
+  .search .err { color: var(--warn); }
+  tr.newrow td:first-child::before { content: "new "; color: var(--accent); font-weight: 600; }
+  code { font-family: var(--mono); font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <main>
   <h1>loopmarket on Swarm</h1>
-  <p class="sub">The market as the books announced on Gnosis say it is, read straight from Swarm in your browser. Read-only: nothing installed, no key needed.</p>
+  <p class="sub">The market as the books announced on Gnosis say it is, read straight from Swarm in your browser: nothing installed, no key needed, nothing written to Swarm. Your saved searches stay in a file on this computer.</p>
+  <p class="guide"><a href="https://github.com/petfold/loopmarket/blob/main/docs/USER-GUIDE.md#112-the-market-in-a-browser" target="_blank" rel="noopener">User Guide: this page</a> · <a href="https://github.com/petfold/loopmarket/blob/main/docs/USER-GUIDE.md" target="_blank" rel="noopener">the whole guide</a></p>
 
   <div class="bar">
     <span id="source">Starting…</span>
@@ -63,6 +72,24 @@
     <div class="bar"><input id="filter" placeholder="show only offers mentioning… (a category, a maker)" disabled></div>
     <table id="offers"><thead></thead><tbody></tbody></table>
     <p class="muted" id="nooffers"></p>
+  </div>
+
+  <div class="card">
+    <h2>Saved searches</h2>
+    <p class="muted">Yours alone: kept in a file on this computer, never on Swarm. Each is a list of categories, as <code>loop offers</code> takes them; after every reading of the market, what is new is marked.</p>
+    <div class="bar">
+      <button id="searchnew" disabled>New list</button>
+      <button id="searchopen" disabled>Open file…</button>
+      <button id="searchsave" disabled>Save</button>
+      <input type="file" id="searchfile" accept=".json,application/json" class="hidden">
+      <span class="muted" id="searchstate"></span>
+    </div>
+    <div class="bar hidden" id="searchadd">
+      <input id="searchname" placeholder="name, e.g. lessons">
+      <input id="searchcats" placeholder="categories, e.g. lesson geo(41.8..42,12.4..12.6)">
+      <button id="searchbutton" class="primary">Save search</button>
+    </div>
+    <div id="searchresults"></div>
   </div>
 
   <div class="card">
