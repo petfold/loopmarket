@@ -1546,9 +1546,8 @@ in `browser/` runs loopmarket under Pyodide:
 - it folds the books with the same `Aggregator` as `loop fold`;
 - it lists the open offers, which a box filters.
 
-In Freedom Browser, open
-`bzz://151f5739ec1d707c09bfc538606d709d6cec8dc71d04f6f8653f45586724f2e0/`;
-in any browser, serve the page's folder and add
+In Freedom Browser, open `bzz://loopmarket.gwei/`; in any browser, open
+`https://loopmarket.gwei.domains/`, or serve the page's folder and add
 `?gateway=https://api.gateway.ethswarm.org`.
 
 It is read-only and needs no key. Clearing books are listed but not

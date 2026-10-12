@@ -12,9 +12,12 @@ always opens the current version): `bzz://a0e5384ab667abe869c07c97c21a8e4b9dd683
 `~/.ontodag/page-feeds/loopmarket.key` on the publishing machine (never
 committed); `ontodag/demo/freedom/page_feed.py` makes and moves the feed.
 
-Published: `bzz://151f5739ec1d707c09bfc538606d709d6cec8dc71d04f6f8653f45586724f2e0/`
-(open it in Freedom Browser; through a node:
-`http://localhost:1633/bzz/151f5739ec1d707c09bfc538606d709d6cec8dc71d04f6f8653f45586724f2e0/`;
+Names: `bzz://loopmarket.gwei/` in Freedom Browser, `https://loopmarket.gwei.domains/`
+in any browser (both resolve the feed).
+
+Published: `bzz://ab6dbd46f29e307b70c378fb7439a9e18c445cc8c92edfdc3089a5452aea938c/`
+(2026-10-12; Pyodide loaded from the shared folder `PYODIDE` in `app.js`;
+through a node: `http://localhost:1633/bzz/ab6dbd46f29e307b70c378fb7439a9e18c445cc8c92edfdc3089a5452aea938c/`;
 in any browser, serve `dist/` and add `?gateway=https://api.gateway.ethswarm.org`).
 
 | file | what it is |
