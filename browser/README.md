@@ -13,7 +13,8 @@ always opens the current version): `bzz://a0e5384ab667abe869c07c97c21a8e4b9dd683
 committed); `ontodag/demo/freedom/page_feed.py` makes and moves the feed.
 
 Names: `bzz://loopmarket.gwei/` in Freedom Browser, `https://loopmarket.gwei.domains/`
-in any browser (both resolve the feed).
+in any browser, and `http://localhost:1633/bzz/loopmarket.eth/` with a local Bee
+node such as Swarm Desktop, no gateway (all resolve the feed).
 
 Published: `bzz://ab6dbd46f29e307b70c378fb7439a9e18c445cc8c92edfdc3089a5452aea938c/`
 (2026-10-12; Pyodide loaded from the shared folder `PYODIDE` in `app.js`;

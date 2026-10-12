@@ -1546,8 +1546,10 @@ in `browser/` runs loopmarket under Pyodide:
 - it folds the books with the same `Aggregator` as `loop fold`;
 - it lists the open offers, which a box filters.
 
-In Freedom Browser, open `bzz://loopmarket.gwei/`; in any browser, open
-`https://loopmarket.gwei.domains/`, or serve the page's folder and add
+In Freedom Browser, open `bzz://loopmarket.gwei/`; with a local Bee node
+(Swarm Desktop, say), `http://localhost:1633/bzz/loopmarket.eth/`, read
+through your own node; in any browser, `https://loopmarket.gwei.domains/`,
+or serve the page's folder and add
 `?gateway=https://api.gateway.ethswarm.org`.
 
 It is read-only and needs no key. Clearing books are listed but not
