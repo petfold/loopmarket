@@ -140,6 +140,51 @@ Checked:
   market was shown in 7.7 s from opening the page, with the one standing
   offer.
 
+## 5b. Local first: what may stay on this computer (Peter, 2026-10-12)
+
+ontodag's page now keeps a store of your own in a local `.od` file, never
+written to Swarm (ontodag BROWSER.md §14). For loopmarket the line falls
+between what a person keeps for themselves and what the market relies on.
+
+**Local, and better for it:**
+- **Inventory and wants:** what you have, can do or need, filed under
+  categories (`road-bike ⊑ bicycle`, `in(rome)`). Not an offer, but what
+  offers are made from: kept private, and no retyping when you make one.
+- **Saved searches:** a query over the fold, such as piano lessons in Rome
+  under 30. What you are looking for is nobody's business, so these never
+  go to Swarm. The page re-runs them after each fold and marks what is new.
+- **Drafts and templates of offers:** clearly drafts, not offers.
+- **Your own ledger:** what you offered, the loops you were in, fills,
+  receipts, counterparties, anything you may need as evidence. The book
+  and the chain stay authoritative; this is your copy, as a file.
+
+**Never queued locally: what others act on.**
+- **Offers.** An offer means something only from the moment it is
+  published, and only while its prices, times and places still hold.
+  Publishing a queued offer later is publishing a stale one.
+- **Withdrawals, fills, notices, cures.** They must reach the book when
+  made. Removing something from a local copy does not remove it from the
+  market: whoever holds the old offer brings it back on merge. That is why
+  loopmarket withdraws and retracts with published records.
+- **Being reachable.** Once others match against an offer, its maker must
+  be able to withdraw it and answer notices. Offline-first makes that
+  worse.
+
+A book is a mergeable store, so it *could* be edited offline and synced
+later without inconsistency (the CLI already writes it locally and then
+syncs). The objection is not consistency: a commitment that waits is a
+bad commitment.
+
+**The page, then:**
+- drafts in the local file, labelled as drafts;
+- **Publish** signs and announces now, and refuses a draft whose window
+  has passed; withdraw and retract are immediate, never saved for later;
+- saved searches and the ledger stay local for good.
+
+Publishing waits on the write route (ontodag BROWSER.md §14.2) and the
+identity (§3). Order: saved searches first (useful at once, purely local,
+no stamps, no key), then drafts and the ledger, then Publish.
+
 ## 6. Open
 
 - Which message the wallet signs: ontodag's SHARING_ON_SWARM.md S1, shared
