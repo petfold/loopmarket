@@ -86,7 +86,7 @@ consequences were decided that day and built the next
   encoding — `from(my_home)` is published as `from(u2e4x)` (Peter,
   2026-09-12: ontodag interprets the name; the CLI only carries the value).
   *Narrowed the same night, when ontodag #15 landed:* a name the pinned
-  catalogue holds stands as spelled (`where(ljubljana)`), ontodag orders
+  catalogue holds stands as spelled (`where(rome)`), ontodag orders
   the node; only a name the root does not carry — a place in the
   personal layer — publishes as its cell.
 
@@ -158,7 +158,7 @@ amphora shows it cannot come from the *dimension* either:
   geo and time kinds as the service fields, but *descriptive* — they say
   what the thing is, and the offered thing must be at least as specific as
   asked, exactly like a category.
-- `ride from(my_home) when(evenings)` against a give `ride from(ljubljana)
+- `ride from(my_home) when(evenings)` against a give `ride from(rome)
   when(2026-09..)`: **overlap**. A large give region serves a small want
   place, so the direction even flips relative to concepts; what must hold
   is that the two denotations share a point.
@@ -296,8 +296,8 @@ the record.
   radius' precision — a point near a cell edge names the coarser cell
   that covers what the maker meant (the triangle's three places all say
   `u24`), and the exact covering is a region node (ontodag #15, landed
-  2026-09-12: `where(ljubljana)` stands in the offer and the region's
-  covering is a lower bound — `from(ljubljana) ⊑ from(u2)` is False until
+  2026-09-12: `where(rome)` stands in the offer and the region's
+  covering is a lower bound — `from(rome) ⊑ from(u2)` is False until
   the region is filed under `geo(u2)`, CONTRACT G2). A want five metres across a cell edge from a give's covering does
   not match unless the covering includes the neighbour cell — and the maker
   who wanted that says so with one more cell, or a coarser one. The disc
@@ -399,7 +399,7 @@ the record.
   geohash encoder and the radius→precision table, and loses those too
   when ontodag accepts `geo(lat,lon,r)`. The place node's `disc` metadata
   is written only while the CLI still publishes v2.
-- *Region nodes as service parameters* (`from(ljubljana)`) wait on
+- *Region nodes as service parameters* (`from(rome)`) wait on
   upstream (§5, step 3b); until then role terms carry cell values, as the
   CLI already publishes them.
 
@@ -435,13 +435,13 @@ the record.
      terms, the CLI keeps a catalogue name as spelled and substitutes a
      cell only for a private place (`cli.md` §12), `DimensionIndex` files
      names as spelled. Probe
-     2026-09-12: with `from` declared under `geo`, `from(ljubljana)` is
-     accepted and silently read as a literal cell named "ljubljana" — the
+     2026-09-12: with `from` declared under `geo`, `from(rome)` is
+     accepted and silently read as a literal cell named "rome" — the
      footgun the CLI's `_value_of` exists to guard. Ask: a head declared
      under another head accepts that head's nodes as parameters and
      denotes their value (or their covering, for a region node), so
-     `from(ljubljana)` stands as a stored term and `from(my_home) ⊑
-     from(ljubljana)` computes. Deletes the CLI's value substitution;
+     `from(rome)` stands as a stored term and `from(my_home) ⊑
+     from(rome)` computes. Deletes the CLI's value substitution;
      *Refinement filed 2026-09-12 (after the 0.3.0 live run put the whole
      triangle in `u24`):* a **covering as a value** — a prefix-kind
      parameter that is a set of cells, `where(u24m+u24q)`, the union

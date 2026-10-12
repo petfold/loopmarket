@@ -232,7 +232,7 @@ head declared under a head (`from` under `geo`) reads a parameter that
 names a node of the base dimension — a place under a cell, a region above
 cells, a floor under a building — stored as spelled and ordered by the
 graph; a name outside the dimension is refused. So a catalogue name in a
-term stands in the offer (`ljubljana`, `my_home_4th`, bare since the 13th),
+term stands in the offer (`rome`, `my_home_4th`, bare since the 13th),
 and the CLI's value substitution survives only for *private* places
 (`cli.md` §12). (ii) *Overlap was a modelling error, not a missing
 operator.* Peter, after three revisions of an overlap query mode in one

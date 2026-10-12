@@ -638,30 +638,30 @@ def test_regions_and_floors_are_names_in_role_terms(env, tmp_path, monkeypatch):
     _od_with_prelude(tmp_path / "city.od",
                      [("delivery", []),
                       ("my_home", ["geo(48.2..48.25,16.2..16.25)"]), ("my_home_4th", ["my_home"]),
-                      ("ljubljana", ["geo"]), ("geo(48.1..48.3,16.1..16.3)", ["ljubljana"]),
-                      ("geo(48.5..48.7,16.1..16.3)", ["ljubljana"])])
+                      ("rome", ["geo"]), ("geo(48.1..48.3,16.1..16.3)", ["rome"]),
+                      ("geo(48.5..48.7,16.1..16.3)", ["rome"])])
     monkeypatch.setenv("LOOP_CATALOGUE", str(tmp_path / "city.od"))
     run = Runner()
     out = run.ok("give", "delivery", "my_home_4th", "5")
     assert "give     delivery my_home_4th" in out
     monkeypatch.setenv("LOOP_MAKER", "bruno")
-    out = run.ok("want", "delivery", "ljubljana", "6")
-    assert "want     delivery ljubljana" in out
+    out = run.ok("want", "delivery", "rome", "6")
+    assert "want     delivery rome" in out
     code, out, err = run("matches")
     assert code == 0 and "amara gives delivery my_home_4th to bruno" in out
     # the give is the narrower cone: a want at the floor is not served by a
     # give to the whole region, and a want elsewhere by neither
     monkeypatch.setenv("LOOP_MAKER", "chen")
-    run.ok("give", "delivery", "ljubljana", "5")
+    run.ok("give", "delivery", "rome", "5")
     run.ok("want", "delivery", "geo(49.5..50.5,14..15)", "6")
     matches = run.ok("matches")
     assert "to chen" not in matches                         # nothing in that rectangle
-    assert "chen gives delivery ljubljana to bruno" in matches   # equal
-    assert "chen gives delivery ljubljana to amara" not in matches
+    assert "chen gives delivery rome to bruno" in matches   # equal
+    assert "chen gives delivery rome to amara" not in matches
     # `offers geo(48.1..48.3,16.1..16.3)`: the floor is inside it, and the region
     # contains it — handover coordinates match when one contains the other
     assert len(run.ok("offers", "geo(48.1..48.3,16.1..16.3)", "--raw").splitlines()) == 3
-    assert "ljubljana" not in run.ok("offers", "geo(49.5..50.5,14..15)", "--raw")   # chen's want only
+    assert "rome" not in run.ok("offers", "geo(49.5..50.5,14..15)", "--raw")   # chen's want only
 
 
 def test_time_names_need_nothing_from_loopmarket(env, tmp_path, monkeypatch):

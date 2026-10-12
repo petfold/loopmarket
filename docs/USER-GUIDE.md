@@ -823,10 +823,10 @@ An **option** is a give of the right to take one of your offers later, at
 the price that offer already names (the v6 record, released in
 0.13.0; `docs/plans/options-and-cover.md`). You write it
 on your own open offer; the premium is what the option itself costs, on
-your scale (here in a catalogue with `flat` and a `ljubljana` place):
+your scale (here in a catalogue with `flat` and a `rome` place):
 
 ```console
-$ loop give flat ljubljana 900                  # the offer: a flat, one and indivisible, at 900
+$ loop give flat rome 900                  # the offer: a flat, one and indivisible, at 900
 $ loop option 4f2a --until 7d --premium 20      # an option on it: exercisable for a week, for 20
 $ loop option 4f2a                              # or let the window and the premium be suggested (below)
 $ loop holds                                    # every hold in the fold: offer, option, holder, until, left
@@ -860,7 +860,7 @@ hold a thing like it, and `loop option ID --for WANT` writes the option
 that meets that want. `show` on any offer also lists the options written
 on it, so a buyer sees what may be held.
 
-The option is an ordinary give of `option(flat ljubljana)`: a want of
+The option is an ordinary give of `option(flat rome)`: a want of
 `option(flat)` matches it by containment, and it clears in a loop like
 anything else. When it clears the flat is **held** for the option's
 holder until the window ends: nobody else's leg can take it, and it

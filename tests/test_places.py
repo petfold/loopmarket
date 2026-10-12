@@ -17,7 +17,7 @@ from places import square
 from test_dimensions import NOW, roles_ontology, wide
 
 INSIDE = "geo(48.2..48.25,16.2..16.25)"     # where my_home is
-AROUND = "geo(48.1..48.3,16.1..16.3)"       # holds it, under ljubljana
+AROUND = "geo(48.1..48.3,16.1..16.3)"       # holds it, under rome
 ELSEWHERE = "geo(49.5..50.5,14..15)"
 
 

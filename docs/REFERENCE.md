@@ -1223,7 +1223,7 @@ line that does not already state that coordinate (`set terms home`).
 
 **Terms** pass into the description, elaborated by *kind*, never by head
 (the CLI names no head). A *catalogue* name stands as spelled (`shop`,
-`ljubljana`, `my_home_4th`, `autumn`): ontodag orders it. A *private*
+`rome`, `my_home_4th`, `autumn`): ontodag orders it. A *private*
 name — one only the personal store holds, which the pinned root cannot
 carry — publishes as the dimension term it hangs under (`home` →
 `geo(46.005033..46.094967,14.435157..14.564843)`) and is printed as a

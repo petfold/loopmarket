@@ -179,9 +179,9 @@ def test_places_regions_and_floors_match_through_the_graph():
     cat.dag.put("my_home", ["geo(48.2..48.25,16.2..16.25)"])
     cat.dag.put("my_home_4th", ["my_home"])
     cat.dag.put("my_home_ground", ["my_home"])
-    cat.dag.put("ljubljana", ["geo"])                 # a region: above rectangles
-    cat.dag.put("geo(48.1..48.3,16.1..16.3)", ["ljubljana"])
-    cat.dag.put("geo(48.5..48.7,16.1..16.3)", ["ljubljana"])
+    cat.dag.put("rome", ["geo"])                 # a region: above rectangles
+    cat.dag.put("geo(48.1..48.3,16.1..16.3)", ["rome"])
+    cat.dag.put("geo(48.5..48.7,16.1..16.3)", ["rome"])
     V = dict(valid=TimeWindow(0, 1_000_000))
 
     def pair(give_terms, want_terms):
@@ -189,17 +189,17 @@ def test_places_regions_and_floors_match_through_the_graph():
         b = want("amara", Thing(("delivery", *want_terms)), 6, **V)
         return check_match(a, b, cat, now=NOW) is not None
 
-    assert pair(["my_home"], ["ljubljana"])       # place ⊑ region: collect anywhere
-    assert pair(["ljubljana"], ["my_home"])       # region ⊒ place: delivers anywhere
+    assert pair(["my_home"], ["rome"])       # place ⊑ region: collect anywhere
+    assert pair(["rome"], ["my_home"])       # region ⊒ place: delivers anywhere
     assert pair(["my_home_4th"], ["my_home"])     # floor ⊑ building
     assert pair(["my_home"], ["my_home_4th"])     # the building serves its floor
     assert not pair(["my_home_ground"], ["my_home_4th"])  # siblings
     assert pair(["my_home_4th"], ["geo(48..49,16..17)"])         # up through the rectangle
     assert pair(["geo(48..49,16..17)"], ["my_home_4th"])         # and down to it
-    assert not pair(["ljubljana"], ["geo(45..51,11..23)"])        # covering: lower bound
+    assert not pair(["rome"], ["geo(45..51,11..23)"])        # covering: lower bound
     assert not pair(["my_home"], ["geo(49.5..50.5,14..15)"])
     # the stored spelling is the name; ontodag orders it (`known` passes)
-    assert cat.known("my_home_4th") and cat.known("ljubljana")
+    assert cat.known("my_home_4th") and cat.known("rome")
     # a give with two same-head terms sits in their meet; a provably empty
     # meet describes nothing
     assert pair(["my_home", "geo(48..49,16..17)"], ["geo(48.1..48.3,16.1..16.3)"])

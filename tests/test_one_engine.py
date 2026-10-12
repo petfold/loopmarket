@@ -42,7 +42,7 @@ GIVE_THINGS = ["vegetable-box", "fruit-box", "apple", "piano", "parcel", "piano-
 BROAD = ["goods", "produce", "small-item", "service", "lesson"]
 WANT_THINGS = GIVE_THINGS + BROAD + ["venue"]
 RECTANGLES = ["geo(48..49,16..17)", "geo(48.1..48.3,16.1..16.3)", "geo(48.2..48.25,16.2..16.25)", "geo(48.5..48.7,16.1..16.3)", "geo(49.5..50.5,14..15)", "geo(49.6..49.7,14.1..14.2)"]
-PLACES = ["my_home", "ljubljana", "market"]
+PLACES = ["my_home", "rome", "market"]
 ITEMS = [natural_id("serial", s) for s in ("a-1", "b-2")]
 MAKERS = [f"m{i}" for i in range(12)]
 
@@ -58,9 +58,9 @@ def catalogue() -> Ontology:
     cat.declare_descriptive(["made_in"])
     cat.load(dict(CATEGORIES))
     cat.dag.put("my_home", ["geo(48.2..48.25,16.2..16.25)"])         # a place under a rectangle
-    cat.dag.put("ljubljana", ["geo"])              # a region above two rectangles
-    cat.dag.put("geo(48.1..48.3,16.1..16.3)", ["ljubljana"])
-    cat.dag.put("geo(48.5..48.7,16.1..16.3)", ["ljubljana"])
+    cat.dag.put("rome", ["geo"])              # a region above two rectangles
+    cat.dag.put("geo(48.1..48.3,16.1..16.3)", ["rome"])
+    cat.dag.put("geo(48.5..48.7,16.1..16.3)", ["rome"])
     cat.dag.put("market", ["geo(49.6..49.7,14.1..14.2)", "venue"])  # a place filed under a category as well
     return cat
 
@@ -113,7 +113,7 @@ def _operator(rng, wanted: bool) -> list[str]:
     terms = [rng.choice(["transport", "transport", "transport(small-item)", "transport(goods)",
                          "transport(produce)", "transport(piano)", "transport(mystery-goods)"])]
     if not wanted or rng.random() < 0.5:
-        terms += [f"from({rng.choice([*RECTANGLES[:2], 'my_home', 'ljubljana', RECTANGLES[4]])})",
+        terms += [f"from({rng.choice([*RECTANGLES[:2], 'my_home', 'rome', RECTANGLES[4]])})",
                   f"to({rng.choice([RECTANGLES[4], RECTANGLES[5], 'market', RECTANGLES[0], RECTANGLES[3]])})"]
     return terms
 

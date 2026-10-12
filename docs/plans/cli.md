@@ -510,7 +510,7 @@ decide something the design left implicit.
   that night, it does: a role head takes the base dimension's nodes as
   parameters, so a term `head(param)` whose `param` is a node of the
   *pinned catalogue* — a place under a cell, a region above cells, a
-  floor under a building — is published as spelled (`ljubljana`,
+  floor under a building — is published as spelled (`rome`,
   `my_home_4th`, `from(my_home)` when the personal store is the
   catalogue) and ontodag orders it by the graph. The one substitution
   left is the same-root constraint's: a name only the personal layer

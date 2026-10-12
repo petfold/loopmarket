@@ -59,8 +59,8 @@ One ontodag adoption rule is load-bearing here: an item sits in the
 INTERSECTION of its parents, so two same-head terms on one give mean one
 thing meeting both — their meet, which ontodag stores as one value for a
 value dimension and, since 0.30.6, as one term per constraint for a
-graph-kind head (`option(apartment)` and `option(ljubljana-center)` for
-`option(apartment ljubljana-center)`); and ontodag refuses provably
+graph-kind head (`option(apartment)` and `option(rome-center)` for
+`option(apartment rome-center)`); and ontodag refuses provably
 disjoint values.
 """
 

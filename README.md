@@ -115,7 +115,7 @@ one-screen version; the design record with its reasons is
 
 Candidates come from one engine, ontodag's **parametric dimensions**:
 `DimensionIndex` files gives under exactly the terms they carry
-(`geo(46.0..46.1,14.4..14.6)`, `ljubljana`, `time(...)`, `from(my_home)` —
+(`geo(41.8..42.0,12.4..12.6)`, `rome`, `time(...)`, `from(my_home)` —
 rectangles, places, regions and floors, ordered by the graph), and every search — simple
 matches, aggregation, composed wants, composition — asks it **one**
 ontodag `get` per wanted thing: the want's categories as the query, items

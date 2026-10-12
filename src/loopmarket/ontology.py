@@ -216,7 +216,7 @@ class Ontology:
     def declare_graph_heads(self, heads: Iterable[str]) -> None:
         """Declare heads whose argument is a conjunction ontodag's graph kind
         orders, and which are *not* operators — `option(apartment item(h)
-        ljubljana-center)` (C1, 2026-09-29; options-and-cover.md §3.1). The
+        rome-center)` (C1, 2026-09-29; options-and-cover.md §3.1). The
         head goes under `graph-dimension` only, so a term matches by plain
         one-way containment (a narrower argument lies below a wider one: the
         held flat in the centre fits a want for an apartment in the city),

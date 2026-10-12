@@ -297,7 +297,7 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
     Names, since ontodag #15 (2026-09-12): a parameter that names a node
     of the *pinned catalogue* — a place under a rectangle, a region above
     rectangles, a floor under a building — is stored as spelled
-    (`ljubljana`, `my_home_4th`, `from(my_home)`): ontodag orders it by the
+    (`rome`, `my_home_4th`, `from(my_home)`): ontodag orders it by the
     graph, and the counterparty, matching under the same root, can. A
     name only the personal layer holds is one the root does not carry, so
     it publishes as the rectangle it hangs under (`from(my_home)` →

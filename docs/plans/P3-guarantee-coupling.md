@@ -411,8 +411,8 @@ shop with a person at the loopmarket interface reports its own state
 (and its own failures) through that person; a box has no one, so its
 liveness is exactly what a guarantee is for. Three claims per box:
 
-- **it exists** at the mapped place (Ljubljana has 203 mapped on OSM,
-  Pošta Slovenije, GLS and DPD; 48 with a check date);
+- **it exists** at the mapped place (the mid-sized city we counted has 203
+  mapped on OSM, from its national post, GLS and DPD; 48 with a check date);
 - **when it is accessible** — 24/7, a host's hours, or a locked lobby
   (29 of the 203 carry opening hours);
 - **its handover model** — whether a private person can hand a thing to

@@ -60,8 +60,8 @@ P is an ordinary v5 offer; **nothing about P changes.** The option O is a new
 offer by the same maker W:
 
 - `give`: a `Thing` whose concepts describe what the holder will be able to
-  take — `option(apartment item(h) ljubljana-center)`. Matching is one-way,
-  give within want, so a want `option(apartment ljubljana)` takes it.
+  take — `option(apartment item(h) rome-center)`. Matching is one-way,
+  give within want, so a want `option(apartment rome)` takes it.
   *(corrected 2026-09-25)* `option` is **not** a `descriptive` head: in
   loopmarket that marker opts a geo/time dimension head out of the two-way
   handover reading, and `_mark` refuses a non-dimension head

@@ -2151,7 +2151,7 @@ modelling error (Peter: a want is the wider cone, a give the narrower).
 
 - **Names stand in role terms** (ontodag #15, 2026-09-12). A role head
   takes the base dimension's nodes as parameters, so a catalogue name in
-  a role term is published as spelled — `where(ljubljana)` (a region above
+  a role term is published as spelled — `where(rome)` (a region above
   cells), `where(my_home_4th)` (a floor under a building), `from(my_home)`
   — and ontodag orders it by the graph. The CLI substitutes a value only
   for a *private* place (a name only the personal store holds, which the

@@ -136,7 +136,7 @@ ROLES = {"from": "geo", "to": "geo", "depart": "time"}
 RECTANGLES = ["geo(48..49,16..17)", "geo(48.1..48.3,16.1..16.3)", "geo(48.2..48.25,16.2..16.25)", "geo(48.21..48.22,16.21..16.22)", "geo(48.5..48.7,16.1..16.3)", "geo(49.5..50.5,14..15)"]
 # nodes a role term may name since ontodag #15: a place under a rectangle,
 # a floor under the place, a region above two rectangles (a lower bound, §14)
-PLACES = ["my_home", "my_home_4th", "ljubljana"]
+PLACES = ["my_home", "my_home_4th", "rome"]
 
 
 def roles_ontology():
@@ -148,9 +148,9 @@ def roles_ontology():
     ont.declare_descriptive(["made_in"])
     ont.dag.put("my_home", ["geo(48.2..48.25,16.2..16.25)"])
     ont.dag.put("my_home_4th", ["my_home"])
-    ont.dag.put("ljubljana", ["geo"])
-    ont.dag.put("geo(48.1..48.3,16.1..16.3)", ["ljubljana"])
-    ont.dag.put("geo(48.5..48.7,16.1..16.3)", ["ljubljana"])
+    ont.dag.put("rome", ["geo"])
+    ont.dag.put("geo(48.1..48.3,16.1..16.3)", ["rome"])
+    ont.dag.put("geo(48.5..48.7,16.1..16.3)", ["rome"])
     return ont
 
 
@@ -217,7 +217,7 @@ class TestRoleTerms:
         got = {(m.give.offer_id, m.want.offer_id)
                for m in candidate_matches_indexed(offers, ontology, now=NOW)}
         assert got == expected
-        assert any("my_home" in c or "ljubljana" in c for m in baseline
+        assert any("my_home" in c or "rome" in c for m in baseline
                    for c in m.give.thing.concepts + m.want.thing.concepts)
 
     def _matches(self, ontology, offers):
@@ -267,17 +267,17 @@ class TestRoleTerms:
         assert self._matches(ontology, [half, both, b]) == {("bruno", "amara"), ("chiara", "amara")}
 
     def test_names_in_role_terms_match_through_the_graph(self):
-        """ontodag #15: `from(my_home_4th)`, `from(ljubljana)` are filed as
+        """ontodag #15: `from(my_home_4th)`, `from(rome)` are filed as
         spelled and decided by the graph — either way round."""
         ontology = roles_ontology()
         floor = give("chiara", Thing(("vegetable-box", "from(my_home_4th)")), 50, **wide())
-        region = give("bruno", Thing(("vegetable-box", "from(ljubljana)")), 50, **wide())
+        region = give("bruno", Thing(("vegetable-box", "from(rome)")), 50, **wide())
         far = give("dora", Thing(("vegetable-box", "from(geo(49.5..50.5,14..15))")), 50, **wide())
         for wanted, expected in [("from(my_home)", {"chiara", "bruno"}),
                                  ("from(geo(48.1..48.3,16.1..16.3))", {"chiara", "bruno"}),
                                  ("from(geo(48..49,16..17))", {"chiara"}),     # the region's covering is a
                                  ("from(geo(45..51,11..23))", {"chiara", "dora"}),   # the other rectangle is inside it too
-                                 ("from(ljubljana)", {"chiara", "bruno"}),
+                                 ("from(rome)", {"chiara", "bruno"}),
                                  ("from(geo(49.5..50.5,14..15))", {"dora"})]:
             got = self._matches(ontology, [floor, region, far,
                                            want("amara", Thing(("produce", wanted)), 104, **wide())])
