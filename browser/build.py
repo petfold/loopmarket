@@ -46,6 +46,7 @@ def assemble(dist, base):
     wheels.append(base.wheel(REPO, os.path.join(dist, "wheels")))
     with open(os.path.join(dist, "wheels", "manifest.json"), "w") as fh:
         json.dump({"wheels": wheels}, fh, indent=1)
+    base.fingerprint(dist)
     return wheels
 
 
