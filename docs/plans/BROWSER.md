@@ -48,8 +48,8 @@ This document records what is loopmarket's own.
 
 ## 3. Identity (decided A, Peter, 2026-10-11)
 
-The maker's key is the key derived from one wallet signature, the same in
-every client (ontodag BROWSER.md §11). It does three jobs:
+The maker's key is one key, the same in every client (ontodag BROWSER.md
+§11). It does three jobs:
 
 - it owns the book's feed;
 - it signs offers exactly as now: a recoverable secp256k1 signature over
@@ -57,6 +57,15 @@ every client (ontodag BROWSER.md §11). It does three jobs:
 - it opens sealed handoffs, notices and cases, by ECDH with the same key.
 
 loopmarket's protocol therefore doesn't change.
+
+**For now, a key file** (ontodag's questions 37 and 38, decided 2026-10-13,
+its BROWSER.md §14.3). The page writes as `loop` does:
+- a random key, kept by the person in a plain file (the `bee_signer` value);
+- paid with the node's batches.
+
+Later, a wallet signature (dappdata) or Swarm ID carries that same key to
+a new device. It is not replaced, so offers, the book and the registry
+announcement never change maker.
 
 Consequences:
 

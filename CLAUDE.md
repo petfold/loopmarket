@@ -479,8 +479,11 @@ unknown-word hint names it (question 36). The flow is in
 ## Browser (identity decided 2026-10-11; the read-only page built 2026-10-12)
 
 `docs/plans/BROWSER.md`, over ontodag's `docs/plans/BROWSER.md`. The
-maker's key in a browser is one key derived from one wallet signature, the
-same in every client (Peter's option A). It owns the book's feed, signs
+maker's key in a browser is one key, the same in every client (Peter's
+option A). For now it is a random key in a plain file, as `loop setup`
+makes one; a wallet signature (dappdata) or Swarm ID will later carry that
+same key, so a maker never changes address (ontodag's questions 37 and 38,
+2026-10-13, its BROWSER.md §14.3). It owns the book's feed, signs
 offers as now and opens sealed records, so the protocol doesn't change;
 it needs a little xDAI to announce. Freedom pages can read now and publish
 once Freedom accepts page-signed chunks (their #647). Duties with
