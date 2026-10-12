@@ -18,9 +18,9 @@ Names: `bzz://loopmarket.gwei/` in Freedom Browser, `https://loopmarket.gwei.dom
 in any browser, and `http://localhost:1633/bzz/loopmarket.eth/` with a local Bee
 node such as Swarm Desktop, no gateway (all resolve the feed).
 
-Published: `bzz://ab6dbd46f29e307b70c378fb7439a9e18c445cc8c92edfdc3089a5452aea938c/`
+Published: `bzz://da66f81710db4ce3af801408dba20c4a1ae493ca74c49ae28da6781263438d0f/`
 (2026-10-12; Pyodide loaded from the shared folder `PYODIDE` in `app.js`;
-through a node: `http://localhost:1633/bzz/ab6dbd46f29e307b70c378fb7439a9e18c445cc8c92edfdc3089a5452aea938c/`;
+through a node: `http://localhost:1633/bzz/da66f81710db4ce3af801408dba20c4a1ae493ca74c49ae28da6781263438d0f/`;
 in any browser, serve `dist/` and add `?gateway=https://api.gateway.ethswarm.org`).
 
 | file | what it is |

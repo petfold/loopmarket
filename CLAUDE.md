@@ -492,7 +492,7 @@ Chromium and in real Freedom Browser (`browser/check.py`,
 `browser/freedom_check.cjs`). Its Swarm layer is ontodag's
 `demo/freedom/swarm.js`, copied in by `browser/build.py`.
 
-The published page: `bzz://ab6dbd46f29e307b70c378fb7439a9e18c445cc8c92edfdc3089a5452aea938c/`
+The published page: `bzz://da66f81710db4ce3af801408dba20c4a1ae493ca74c49ae28da6781263438d0f/`
 (2026-10-12), behind the feed manifest `a0e5384a…` and the name
 `loopmarket.gwei`; it loads the shared Pyodide and bundles ontodag's and recordstore's unreleased mains.
 
