@@ -16,6 +16,31 @@ const REGISTRY = {
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
+
+// Pyodide 0.27.7 is published once, as its own folder on Swarm, and every
+// page loads it from there: it is never stamped again with a page, and a
+// browser caches it under one address for every page and version. Until its
+// own folder is published, the copy inside the published ontodag page.
+// ?pyodide=URL names another (the checks serve a local copy).
+const PYODIDE = "e0f26cbbcf0985f518fc6ffcdcad9d6ff121b1a5bd10deea6be430e83be7926a/pyodide";
+
+function pyodideBase() {
+  const named = params.get("pyodide");
+  if (named) return new URL(named.endsWith("/") ? named : `${named}/`, location.href).href;
+  if (location.protocol === "bzz:") return `bzz://${PYODIDE}/`;
+  if (location.pathname.startsWith("/bzz/")) return `${location.origin}/bzz/${PYODIDE}/`;
+  return `${params.get("gateway") || "https://api.gateway.ethswarm.org"}/bzz/${PYODIDE}/`;
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error(`could not load ${src}`));
+    document.head.append(s);
+  });
+}
 let py, reader, folded = null;
 let busy = false;
 
@@ -131,7 +156,9 @@ async function refresh() {
 }
 
 async function boot() {
-  py = await loadPyodide({ indexURL: new URL("pyodide/", location.href).href });
+  const base = pyodideBase();
+  await loadScript(`${base}pyodide.js`);
+  py = await loadPyodide({ indexURL: base });
   status("Installing loopmarket…");
   const manifest = await (await fetch("wheels/manifest.json")).json();
   await py.loadPackage(manifest.wheels.map((w) => new URL(`wheels/${w}`, location.href).href));

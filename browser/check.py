@@ -28,6 +28,7 @@ import urllib.error
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+PYODIDE_DIR = os.path.join(os.path.dirname(os.path.dirname(HERE)), "ontodag", "demo", "pyodide", "node_modules", "pyodide")
 API = os.environ.get("BEE_API", "http://localhost:1633").rstrip("/")
 RPC, CONTRACT = "https://rpc.gnosischain.com", "0xD4379E494a488411D964BebDb210C0bf628d97af"
 
@@ -101,8 +102,17 @@ def standin(calls, method, params):
 
 
 class _Quiet(http.server.SimpleHTTPRequestHandler):
+    """dist/, with /pyodide/ answered from demo/pyodide's npm copy: the page
+    is told ?pyodide=/pyodide/ instead of fetching the shared folder."""
+
     def log_message(self, *args):
         pass
+
+    def translate_path(self, path):
+        clean = path.split("?", 1)[0]
+        if clean.startswith("/pyodide/"):
+            return os.path.join(PYODIDE_DIR, clean[len("/pyodide/"):])
+        return super().translate_path(path)
 
 
 def serve(directory):
@@ -149,6 +159,8 @@ async def check_page(url, freedom):
             await page.expose_function("__standin", answer)
             await page.add_init_script(FREEDOM_STANDIN)
         started = time.time()
+        if url.startswith("http://127.0.0.1"):           # served here: Pyodide from the npm copy
+            url += ("&" if "?" in url else "?") + "pyodide=/pyodide/"
         await page.goto(url)
         result = await page.evaluate("window.loopPage.ready")
         print(f"  page ready after {time.time() - started:.1f} s; source: {await page.inner_text('#source')}")

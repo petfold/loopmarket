@@ -5,7 +5,8 @@
 
 The page's Swarm layer (swarm.js and its vendored keccak) is ontodag's
 (demo/freedom/ in the ontodag checkout beside this one), copied in so there
-is one source; so are Pyodide's core files. The wheels are built from this
+is one source. Pyodide is not in it: the page loads the shared Pyodide
+folder on Swarm (app.js, PYODIDE), as ontodag's page does. The wheels are built from this
 checkout and from ontodag's and recordstore's beside it. Publishing reuses
 ontodag's build.py: one deterministic collection on a Bee node's /bzz, its
 reference printed before its retrievability is checked.
@@ -35,14 +36,11 @@ def ontodag_build():
 def assemble(dist, base):
     if os.path.isdir(dist):
         shutil.rmtree(dist)
-    os.makedirs(os.path.join(dist, "pyodide"))
     os.makedirs(os.path.join(dist, "wheels"))
     for f in ("index.html", "app.js", "registry.js"):
         shutil.copy(os.path.join(HERE, f), os.path.join(dist, f))
     shutil.copy(os.path.join(ONTODAG_PAGE, "swarm.js"), os.path.join(dist, "swarm.js"))
     shutil.copytree(os.path.join(ONTODAG_PAGE, "vendor"), os.path.join(dist, "vendor"))
-    for f in base.PYODIDE_FILES:
-        shutil.copy(os.path.join(base.PYODIDE, f), os.path.join(dist, "pyodide", f))
     wheels = [base.wheel(os.path.join(PROJECTS, p), os.path.join(dist, "wheels"))
               for p in ("recordstore", "ontodag")]
     wheels.append(base.wheel(REPO, os.path.join(dist, "wheels")))
