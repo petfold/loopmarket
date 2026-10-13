@@ -217,3 +217,117 @@ def test_a_fold_by_retrying_equals_the_waiting_fold():
     assert got == want
     assert json.loads(page.offers(now=NOW)) == json.loads(waiting.offers(now=NOW))
     assert runs <= len(js.held) + 1
+
+
+def test_the_pages_catalogue_pins_the_root_loop_setup_stores(tmp_path):
+    # Equal knowledge, equal root: the page's catalogue, committed over a
+    # memory store, pins what `loop setup`'s rs: catalogue pins, so offers
+    # made in the page match offers made with `loop`.
+    import ontodag
+
+    from loopmarket.cli.setup import build_catalogue
+    from loopmarket.ontology import Ontology
+    page = searching_market()
+    spec = f"rs:{tmp_path / 'cat'}"
+    root = build_catalogue(spec)
+    assert page.catalogue().root == root == Ontology(ontodag.open(spec).dag).root
+
+
+# The maker's book (BROWSER.md §3, §5b): offers made from lines as `loop give`
+# and `loop want` make them, signed with the maker's key, published at once.
+
+_MAKER_KEY = "11" * 32
+
+
+def maker_book(catalogue=None):
+    import pytest
+    pytest.importorskip("coincurve")
+    from loopmarket.browser import MakerBook
+    from loopmarket.ontology import Ontology
+    from loopmarket.sigs import maker_address
+    from tests.test_cli import CATALOGUE
+    catalogue = catalogue or Ontology().load(dict(CATALOGUE))
+    return MakerBook(maker_address(_MAKER_KEY), catalogue, now=NOW)
+
+
+def signed_publish(book, line, feed_root, blobs):
+    from loopmarket.sigs import sign_offer
+    prepared = json.loads(book.prepare(line))
+    assert "error" not in prepared, prepared
+    offer = book._pending[prepared["id"]]
+    return prepared, json.loads(book.publish(prepared["id"], sign_offer(offer, _MAKER_KEY), feed_root, blobs))
+
+
+def test_an_offer_is_made_signed_and_published_into_the_book():
+    from loopmarket.sigs import verify_offer_sig
+    book, blobs = maker_book(), MemoryBytesStore()
+    prepared, answer = signed_publish(book, "give piano-lesson 30", None, blobs)
+    assert "give     piano-lesson" in prepared["block"]
+    assert answer["id"] == prepared["id"]
+    published = OfferRegistry(RecordStore.at(answer["root"], blobs))
+    offer = published.get(answer["id"])
+    assert offer.maker == book.maker
+    assert verify_offer_sig(offer, published.signature(answer["id"]))
+    assert [r[0] for r in answer["mine"]["rows"]] == [answer["id"][:12]]
+
+
+def test_a_publish_keeps_what_another_device_published():
+    book, blobs = maker_book(), MemoryBytesStore()
+    _p, first = signed_publish(book, "give piano-lesson 30", None, blobs)
+    elsewhere = maker_book()          # the same key on another device, not told
+    _p, second = signed_publish(elsewhere, "want apple 9", first["root"], blobs)
+    _p, third = signed_publish(book, "give bicycle-repair 40", second["root"], blobs)
+    kinds = sorted(r[4] for r in third["mine"]["rows"])
+    assert kinds == ["apple", "bicycle-repair", "piano-lesson"]
+
+
+def test_withdrawing_is_a_published_record_and_once():
+    book, blobs = maker_book(), MemoryBytesStore()
+    prepared, answer = signed_publish(book, "give piano-lesson 30", None, blobs)
+    gone = json.loads(book.withdraw(prepared["id"], answer["root"], blobs))
+    assert gone["withdrawn"] == prepared["id"] and gone["mine"]["rows"] == []
+    assert OfferRegistry(RecordStore.at(gone["root"], blobs)).is_withdrawn(prepared["id"])
+    assert "already withdrawn" in json.loads(book.withdraw(prepared["id"], gone["root"], blobs))["error"]
+
+
+def test_a_signature_is_checked_by_whoever_recovers_it():
+    # In the page loop's signer does not install; the page's JavaScript
+    # recovers the address, and a signature that is not the maker's is
+    # still refused before anything is stored.
+    from loopmarket.browser import MakerBook
+    from loopmarket.ontology import Ontology
+    from tests.test_cli import CATALOGUE
+    maker = "0x" + "33" * 20
+    for recovered, published in ((maker, True), ("0x" + "44" * 20, False)):
+        book = MakerBook(maker, Ontology().load(dict(CATALOGUE)), now=NOW, recover=lambda oid, sig: recovered)
+        prepared = json.loads(book.prepare("give piano-lesson 30"))
+        answer = json.loads(book.publish(prepared["id"], "0x" + "00" * 65, None, MemoryBytesStore()))
+        assert ("root" in answer) == published, answer
+        if not published:
+            assert "does not recover to the offer's maker" in answer["error"]
+
+
+def test_what_cannot_be_published_says_why():
+    book, blobs = maker_book(), MemoryBytesStore()
+    assert "unknown category" in json.loads(book.prepare("give nonsense-thing 5"))["error"]
+    assert "not prepared" in json.loads(book.publish("ab" * 32, "0x00", None, blobs))["error"]
+    stranger_book = MemoryBytesStore()
+    reg = OfferRegistry(RecordStore(stranger_book))
+    oid = reg.publish(give("0x" + "22" * 20, Thing(("piano-lesson",)), 10, nonce=1, **W))
+    root = reg.commit()
+    assert "not yours" in json.loads(book.withdraw(oid, root, stranger_book))["error"]
+
+
+def test_an_offer_made_in_the_page_meets_one_made_with_loop():
+    # Under the default catalogue both pin one root; matching refuses mixed
+    # or different pins, so this is what lets page and laptop trade.
+    from loopmarket.matching import check_match
+    page = searching_market()
+    catalogue = page.catalogue()
+    book, blobs = maker_book(catalogue), MemoryBytesStore()
+    prepared, _answer = signed_publish(book, "give piano-lesson 30", None, blobs)
+    made_here = book.book.get(prepared["id"])
+    assert made_here.ontology_root == catalogue.root != ""
+    theirs = want("0x" + "22" * 20, Thing(("lesson",)), 35, nonce=2,
+                  valid=TimeWindow(NOW - 1, NOW + 30 * 86_400), **catalogue.pins)
+    assert check_match(made_here, theirs, catalogue, now=NOW) is not None

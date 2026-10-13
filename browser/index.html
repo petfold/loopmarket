@@ -52,12 +52,15 @@
   .search .err { color: var(--warn); }
   tr.newrow td:first-child::before { content: "new "; color: var(--accent); font-weight: 600; }
   code { font-family: var(--mono); font-size: 0.85rem; }
+  pre.block { font-family: var(--mono); font-size: 0.82rem; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; overflow-x: auto; margin: 8px 0; }
+  #makerresult { word-break: break-all; }
+  #makerresult.warn { color: var(--warn); }
 </style>
 </head>
 <body>
 <main>
   <h1>loopmarket on Swarm</h1>
-  <p class="sub">The market as the books announced on Gnosis say it is, read straight from Swarm in your browser: nothing installed, no key needed, nothing written to Swarm. Your saved searches stay in a file on this computer.</p>
+  <p class="sub">The market as the books announced on Gnosis say it is, read straight from Swarm in your browser: nothing installed, no key needed to read. With a key, your own offers are published into your book through your node. Your saved searches stay in a file on this computer.</p>
   <p class="guide"><a href="https://github.com/petfold/loopmarket/blob/main/docs/USER-GUIDE.md#112-the-market-in-a-browser" target="_blank" rel="noopener">User Guide: this page</a> · <a href="https://github.com/petfold/loopmarket/blob/main/docs/USER-GUIDE.md" target="_blank" rel="noopener">the whole guide</a></p>
 
   <div class="bar">
@@ -90,6 +93,37 @@
       <button id="searchbutton" class="primary">Save search</button>
     </div>
     <div id="searchresults"></div>
+  </div>
+
+  <div class="card" id="makercard">
+    <h2>Your offers</h2>
+    <p class="muted">Offers you make here are published at once into your book on Swarm, signed with your key, as <code>loop give</code> and <code>loop want</code> publish them: an offer means something from the moment it is published. Publishing goes through your own Bee node, which pays.</p>
+    <div class="bar">
+      <button id="keynew" disabled title="Make a key that owns your book and signs your offers, and save it as a file">New key</button>
+      <button id="keyopen" disabled title="Open the key file you saved (the bee_signer value loop uses)">Open key file…</button>
+      <span class="muted" id="keystate">No key yet: making offers needs one.</span>
+      <button id="announce" class="hidden" title="Say on the registry that your book is here, so folds read it: a transaction on Gnosis from your key's address">Announce my book</button>
+      <input type="file" id="keyfile" accept=".txt,.key,text/plain" class="hidden">
+    </div>
+    <div class="bar">
+      <select id="makerbatch" class="hidden" title="The postage batch that pays for the upload"></select>
+      <span class="muted" id="makernote"></span>
+    </div>
+    <div class="bar">
+      <input id="offerline" placeholder="give piano-lesson 30, or want apple 2kg 9" disabled>
+      <button id="prepare" class="primary" disabled>Prepare</button>
+      <button id="readmine" disabled title="Read your book as its feed has it, from this or another device">Read my book</button>
+    </div>
+    <div id="approval" class="hidden">
+      <pre class="block" id="block"></pre>
+      <div class="bar">
+        <button id="publishoffer" class="primary">Publish</button>
+        <button id="cancelprepare">Cancel</button>
+        <span class="muted">Publishing signs this offer with your key and puts it in your book on Swarm.</span>
+      </div>
+    </div>
+    <div id="makerresult" class="muted"></div>
+    <table id="mine" class="hidden"><thead></thead><tbody></tbody></table>
   </div>
 
   <div class="card">

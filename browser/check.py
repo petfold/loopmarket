@@ -8,6 +8,13 @@ recordstore's SwarmFeedPointer, the books through BeeBytesStore.
 
     python3 browser/build.py && python3 browser/check.py
     python3 browser/check.py --url http://localhost:1633/bzz/REF/   # served by the node
+    python3 browser/check.py --url ... --publish --batch ID         # and make an offer
+
+`--publish` (through the node only) makes an offer in the page under a
+throwaway key, as `loop give` would, publishes it into the key's book, reads
+the book back natively (SwarmFeedPointer, BeeBytesStore) and checks the
+offer, its signature and its catalogue pin, then withdraws it in the page
+and checks that too. The key is never printed.
 
 Needs a Bee node (BEE_API, default localhost:1633) that can reach the
 announced books, the `chain` extra (web3) for the native side, and
@@ -207,7 +214,91 @@ def native():
 IPHONE = "Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'iPhone' })"
 
 
-async def check_page(url, freedom, searched=(), mode=None, iphone=False):
+def _book_natively(address, topic):
+    """The key's book as its feed has it, read natively: (root, registry)."""
+    from recordstore import BeeBytesStore, RecordStore, SwarmFeedPointer
+
+    from loopmarket.registry import OfferRegistry
+    root = SwarmFeedPointer(API, topic, owner=address).get()
+    return root, (OfferRegistry(RecordStore.at(root, BeeBytesStore(API))) if root else None)
+
+
+async def check_maker(page):
+    """An offer made, published and withdrawn in the page under a throwaway
+    key, each step read back natively; the problems found."""
+    import secrets
+    import tempfile
+
+    from loopmarket.sigs import maker_address, verify_offer_sig
+    problems = []
+    if not await page.evaluate("window.loopPage.writing()"):
+        return ["the page has no node to publish through"]
+    secret = "0x" + secrets.token_hex(32)       # (check_searches already accepts the page's dialogs)
+    address = maker_address(secret)
+    with tempfile.TemporaryDirectory() as tmp:
+        keyfile = os.path.join(tmp, "key.txt")
+        with open(keyfile, "w") as fh:
+            fh.write(secret + "\n")
+        t = time.time()
+        async with page.expect_file_chooser() as chooser:
+            await page.click("#keyopen")
+        await (await chooser.value).set_files(keyfile)
+        await page.wait_for_function("window.loopPage.topic()", timeout=600_000)
+        owner = await page.evaluate("window.loopPage.owner()")
+        topic = await page.evaluate("window.loopPage.topic()")
+        print(f"  maker ready in {time.time() - t:.0f} s (the catalogue built in the page): book swarm:{topic}")
+        if owner != address:
+            problems.append("the page read another address from the key file")
+        await page.fill("#offerline", "give piano-lesson 30")
+        await page.click("#prepare")
+        await page.wait_for_selector("#approval:not(.hidden)")
+        block = await page.inner_text("#block")
+        if "piano-lesson" not in block or owner not in block:
+            problems.append(f"the approval block: {block[:200]!r}")
+        t = time.time()
+        await page.click("#publishoffer")
+        await page.wait_for_function("/^(Published|Not published)/.test(document.getElementById('makerresult').textContent)",
+                                     timeout=600_000)
+        said = await page.inner_text("#makerresult")
+        print(f"  publish: {said[:100]} ({time.time() - t:.0f} s)")
+        if not said.startswith("Published"):
+            return problems + [f"publishing failed: {said}"]
+        root, book = await asyncio.to_thread(_book_natively, owner, topic)
+        offers = [o for o in book.offers(include_filled=True)] if book else []
+        if len(offers) != 1:
+            return problems + [f"the book, read natively, holds {len(offers)} offers"]
+        offer = offers[0]
+        catalogue_root = await page.evaluate("window.loopPage.call('maker_start_root')")
+        if offer.maker != owner:
+            problems.append(f"the offer's maker is {offer.maker}")
+        if not verify_offer_sig(offer, book.signature(offer.offer_id) or ""):
+            problems.append("the offer's signature does not recover to its maker natively")
+        if offer.ontology_root != catalogue_root.get("root"):
+            problems.append(f"the offer pins {offer.ontology_root[:12]}, not the page's catalogue")
+        # Announcing with no xDAI: the page asks Gnosis what it would cost,
+        # sees the balance, and sends nothing (nothing is announced or spent).
+        await page.click("#announce")
+        await page.wait_for_function("/(xDAI|Not announced)/.test(document.getElementById('makerresult').textContent)",
+                                     timeout=120_000)
+        said = await page.inner_text("#makerresult")
+        print(f"  announce with an empty key: {said[:120]}")
+        if "has 0.000000 xDAI" not in said:
+            problems.append(f"announcing from an empty key: {said}")
+        t = time.time()
+        await page.click("#mine button")
+        await page.wait_for_function("/^(Withdrew|Not withdrawn)/.test(document.getElementById('makerresult').textContent)",
+                                     timeout=600_000)
+        said = await page.inner_text("#makerresult")
+        print(f"  withdraw: {said[:100]} ({time.time() - t:.0f} s)")
+        _root, book = await asyncio.to_thread(_book_natively, owner, topic)
+        if not book or not book.is_withdrawn(offer.offer_id):
+            problems.append(f"the withdrawal did not reach the book: {said}")
+    print(f"  your offers: key file, prepare, publish, read natively (maker, signature, catalogue pin), withdraw: "
+          f"{'ok' if not problems else problems}")
+    return problems
+
+
+async def check_page(url, freedom, searched=(), mode=None, iphone=False, publish=False):
     from playwright.async_api import async_playwright
     calls = {}
     async with async_playwright() as p:
@@ -234,6 +325,8 @@ async def check_page(url, freedom, searched=(), mode=None, iphone=False):
         stats = await page.evaluate("window.loopPage.stats()")
         print(f"  chunks fetched {stats['reads']} ({stats['bytes'] // 1024} KB); window.swarm calls {calls}")
         problems = await check_searches(page, searched) if rows is not None else []
+        if publish and rows is not None:
+            problems += await check_maker(page)
         await browser.close()
     return result, rows, problems
 
@@ -244,6 +337,8 @@ def main():
     ap.add_argument("--bridge", choices=("jspi", "retry"),
                     help="how Python waits for Swarm (default: the page decides); "
                          "retry is what Pyodide on iOS needs")
+    ap.add_argument("--publish", action="store_true",
+                    help="with --url: make, publish and withdraw an offer through the node")
     ap.add_argument("--iphone", action="store_true",
                     help="report an iPhone's platform, as Freedom on iOS does (Pyodide then takes its "
                          "JavaScript trampoline, and the page must read by retrying)")
@@ -253,7 +348,8 @@ def main():
     print(f"native: {len(want)} open offers, {len(folded['rejections'])} rejections")
     if args.url:
         print(f"over HTTP: {args.url}")
-        result, rows, problems = asyncio.run(check_page(args.url, freedom=False, searched=searched, mode=args.bridge, iphone=args.iphone))
+        result, rows, problems = asyncio.run(check_page(args.url, freedom=False, searched=searched, mode=args.bridge,
+                                                        iphone=args.iphone, publish=args.publish))
     else:
         server = serve(os.path.join(HERE, "dist"))
         url = f"http://127.0.0.1:{server.server_port}/index.html"

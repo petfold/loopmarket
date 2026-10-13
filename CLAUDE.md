@@ -476,7 +476,7 @@ places); `loop categories` looks through loop's catalogue, and the
 unknown-word hint names it (question 36). The flow is in
 `docs/plans/cli.md` §16.
 
-## Browser (identity decided 2026-10-11; the read-only page built 2026-10-12)
+## Browser (identity decided 2026-10-11; the read-only page built 2026-10-12; your offers 2026-10-14)
 
 `docs/plans/BROWSER.md`, over ontodag's `docs/plans/BROWSER.md`. The
 maker's key in a browser is one key, the same in every client (Peter's
@@ -495,9 +495,31 @@ Chromium and in real Freedom Browser (`browser/check.py`,
 `browser/freedom_check.cjs`). Its Swarm layer is ontodag's
 `demo/freedom/swarm.js`, copied in by `browser/build.py`.
 
+Your offers (2026-10-14, BROWSER.md §5c):
+- **The maker's half of writing** works through the person's own node:
+  `MakerBook` makes an offer from a line with loop's own code under the
+  default catalogue, committed so its root equals `loop setup`'s.
+- **The page** signs the offer id with the key file (ontodag's
+  `publish.js`, `Key.signHash`) and publishes into `swarm:loop-<address>`.
+  The signature check recovers in JavaScript (`attach_signature(...,
+  recover=)`).
+- **Withdraw** works the same way, and `browser/check.py --publish`
+  checks all of it through a node.
+- **Announce my book** (`browser/announce.js`) builds and signs the
+  transaction `loop announce` sends, an EIP-1559 call of
+  `announce(string,uint8)` on Gnosis, after asking with the fee; its
+  bytes are pinned against eth_account (`browser/test/`). The check
+  stops at an unfunded key; it has not been sent live (that needs xDAI
+  and Peter's word).
+- **Next:** drafts and the ledger.
+
 The published page: `bzz://56f9ce1b3a1a96ed875b786658ce8a9823b00d93cd9631c37a505c52a76b9dde/`
 (2026-10-12), behind the feed manifest `a0e5384a…` and the name
-`loopmarket.gwei`; it loads the shared Pyodide and bundles ontodag's and recordstore's unreleased mains.
+`loopmarket.gwei`; it loads the shared Pyodide. A version with your offers
+and announcing, not behind the names until Peter has tried it:
+`bzz://1a6bb105eedd1a0cd7f83a0099da520cc5eddbb91a18d92d47378a7570393308/` (2026-10-14).
+`browser/build.py --publish --no-feed` uploads a version without moving the
+names.
 
 ## Upstream to watch
 

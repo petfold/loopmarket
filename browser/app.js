@@ -4,10 +4,14 @@
 // window.swarm, or a node over HTTP. Python's synchronous store calls wait on
 // those reads through JSPI, so every call into Python is a callPromising.
 
-import { ChunkReader, BlobStore, FreedomSwarm, HttpSwarm, StoredChunks, topicOf } from "./swarm.js";
+import { ChunkReader, BlobStore, FreedomSwarm, HttpSwarm, StoredChunks, hex, topicOf, unhex } from "./swarm.js";
 import { standing } from "./registry.js";
-import { LocalFile } from "./localfile.js";
+import { LocalFile, download } from "./localfile.js";
 import { PythonCalls } from "./pycall.js";
+import { Key, NodeWriter, Stage, feedUpdate, uploadStaged } from "./publish.js";
+import { secp256k1 } from "./vendor/noble-curves/secp256k1.js";
+import { prepareAnnounce, send as sendTransaction } from "./announce.js";
+import { keccak_256 } from "./vendor/noble-hashes/sha3.js";
 
 // The LoopBookRegistry (loopmarket's DEFAULT_REGISTRY), deployed 2026-09-14.
 const REGISTRY = {
@@ -133,6 +137,8 @@ async function refresh() {
   try {
     status("Reading the registry on Gnosis…");
     const { announcements, via, logs } = await standing(REGISTRY);
+    announced = announcements.map((a) => ({ owner: a.owner, book: a.book }));
+    if (key) showKey();
     $("via").textContent = `${announcements.length} standing announcement${announcements.length === 1 ? "" : "s"} from ${logs} registry events, read through ${via}.`;
     status(`Finding the newest state of ${announcements.length} book${announcements.length === 1 ? "" : "s"}…`);
     await Promise.all(announcements.map(async (a) => {
@@ -271,6 +277,254 @@ async function searchAdd() {
 
 addEventListener("beforeunload", (e) => { if (searchChanged) { e.preventDefault(); e.returnValue = ""; } });
 
+// Your offers (BROWSER.md §3, §5b): a key the person keeps in a file (the
+// bee_signer value loop uses), offers made from lines by loop's own code
+// (loopmarket.browser.MakerBook), signed here, published at once into the
+// book loop setup names for the key (swarm:loop-<address>), through the node
+// that served the page (publish.js, ontodag's, copied in by build.py).
+let key = null;
+let writer = null;          // a NodeWriter, when the page came from a node
+let makerTopic = null;
+let prepared = null;        // {id, block} of the offer shown for approval
+let announced = [];         // the registry's standing announcements, last read
+const stage = new Stage();
+globalThis.loopStage = stage;
+
+// The address an offer signature recovers to, checksummed as loop's makers
+// are: what the book checks before it stores a signature (fail closed).
+// Python calls it synchronously; loop's own signer does not install here.
+function recoverMaker(offerId, sigHex) {
+  const sig = unhex(String(sigHex).replace(/^0x/, ""));
+  const point = secp256k1.Signature.fromCompact(sig.subarray(0, 64)).addRecoveryBit(sig[64])
+    .recoverPublicKey(unhex(String(offerId)));
+  const address = hex(keccak_256(point.toRawBytes(false).subarray(1)).subarray(12));
+  const nibbles = hex(keccak_256(new TextEncoder().encode(address)));
+  return "0x" + [...address].map((c, i) => (parseInt(nibbles[i], 16) >= 8 ? c.toUpperCase() : c)).join("");
+}
+globalThis.loopRecover = recoverMaker;
+
+function makerResult(text, warn = false) {
+  $("makerresult").textContent = text;
+  $("makerresult").classList.toggle("warn", warn);
+}
+
+function showKey(note = "") {
+  const mine = key && announced.find((a) => a.owner.toLowerCase() === key.checksummed.toLowerCase());
+  const book = makerTopic ? ` Your book: swarm:${makerTopic}.` : "";
+  const ann = !key ? "" : mine ? ` It is announced on the registry (${mine.book}).`
+    : " It is not announced on the registry yet, so folds do not read it: Announce my book (a transaction from your key's address, paid in xDAI), or loop announce with this key.";
+  $("announce").classList.toggle("hidden", !key || !makerTopic || Boolean(mine));
+  $("keystate").textContent = key ? `Key ${key.checksummed}.${book}${ann}${note ? ` ${note}` : ""}` : "No key yet: making offers needs one.";
+  const ready = Boolean(key && makerTopic);
+  for (const id of ["offerline", "prepare", "readmine"]) $(id).disabled = !ready;
+  $("publishoffer").disabled = !(ready && writer && $("makerbatch").value);
+}
+
+async function useKey(k, note) {
+  key = k;
+  status("Building the catalogue offers are made under (once per visit)…");
+  const started = await call("maker_start", key.checksummed);
+  makerTopic = started.topic;
+  status(`Ready to make offers under the catalogue ${started.catalogue_root.slice(0, 12)}…, the one loop setup builds.`);
+  showKey(note);
+  await readMine();
+}
+
+function keyNew() {
+  if (key && !confirm("Make a new key? Your book and offers stay under the key you have; keep its file.")) return;
+  const k = Key.generate();
+  const file = `loop-key-${k.address.slice(0, 6)}.txt`;
+  download(k.text(), file);
+  useKey(k, `Saved as ${file}, in your downloads unless your browser asked where. Keep that file: whoever has it can make offers as you, and without it you cannot withdraw them.`);
+}
+
+function keyOpen() {
+  const input = $("keyfile");
+  input.value = "";
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      await useKey(Key.fromText(await file.text()), `From ${file.name}.`);
+    } catch (e) {
+      makerResult(`${file.name}: ${e.message}`, true);
+    }
+  };
+  input.click();
+}
+
+// The book's newest root: through the node when the page has one (the
+// update checked against the key's address), or through what reads Swarm.
+async function bookNow() {
+  return writer ? writer.feedRoot(key.address, topicOf(makerTopic)) : reader.feedRoot(key.address, topicOf(makerTopic));
+}
+
+function showMine(mine) {
+  const table = $("mine");
+  table.classList.toggle("hidden", !mine.rows.length);
+  const head = document.createElement("tr");
+  head.append(...[...mine.columns, ""].map((c) => { const th = document.createElement("th"); th.textContent = c; return th; }));
+  table.tHead.replaceChildren(head);
+  table.tBodies[0].replaceChildren(...mine.rows.map((r) => {
+    const tr = document.createElement("tr");
+    r.forEach((v, i) => {
+      const col = mine.columns[i];
+      tr.append(cell(col === "maker" ? short(v) : v, col === "side" ? v : (col === "id" || col === "maker") ? "mono" : ""));
+    });
+    const td = document.createElement("td");
+    const w = document.createElement("button");
+    w.textContent = "Withdraw";
+    w.disabled = !writer;
+    w.onclick = () => withdrawOffer(r[0]);
+    td.append(w);
+    tr.append(td);
+    return tr;
+  }));
+}
+
+async function readMine() {
+  try {
+    const feed = await bookNow();
+    const answer = await call("maker_fetch", feed ? feed.root : "");
+    if (answer.error) return makerResult(answer.error, true);
+    showMine(answer.mine);
+    makerResult(feed ? `Your book, feed update ${feed.index}: ${answer.mine.rows.length} open offer${answer.mine.rows.length === 1 ? "" : "s"}.`
+      : "Your book has nothing published yet.");
+  } catch (e) {
+    makerResult(`Reading your book: ${e.message || e}`, true);
+  }
+}
+
+async function prepareOffer() {
+  const line = $("offerline").value.trim();
+  if (!line) return;
+  const answer = await call("maker_prepare", line);
+  if (answer.error) { $("approval").classList.add("hidden"); return makerResult(answer.error, true); }
+  prepared = answer;
+  $("block").textContent = answer.block;
+  $("approval").classList.remove("hidden");
+  makerResult(writer ? "Check the offer, then Publish." : $("makernote").textContent, !writer);
+}
+
+// Upload what a change to the book staged, then move its feed and read it
+// back: the same steps as ontodag's Publish.
+async function commitBook(what, change) {
+  const batch = $("makerbatch").value;
+  makerResult("Reading your book's feed…");
+  const feed = await bookNow();
+  const answer = await change(feed ? feed.root : "");
+  if (answer.error) throw new Error(answer.error);
+  await uploadStaged(stage, writer, batch, { progress: (t) => makerResult(`${what}: ${t}…`) });
+  const index = feed ? feed.index + 1 : 0;
+  makerResult(`${what}: pointing your book's feed at the new root…`);
+  const update = feedUpdate(key, topicOf(makerTopic), index, answer.root, Math.floor(Date.now() / 1000));
+  await writer.writeFeed(update, batch);
+  const now = await writer.feedRoot(key.address, topicOf(makerTopic));
+  if (!now || now.root !== answer.root) throw new Error("the feed did not read back the new root; try again");
+  answer.index = index;
+  return answer;
+}
+
+async function publishOffer() {
+  if (!prepared || !key || !writer || busy) return;
+  busy = true;
+  try {
+    const signature = `0x${hex(key.signHash(unhex(prepared.id)))}`;
+    const id = prepared.id;
+    const answer = await commitBook("Publishing", (root) => call("maker_publish", id, signature, root));
+    $("approval").classList.add("hidden");
+    $("offerline").value = "";
+    prepared = null;
+    showMine(answer.mine);
+    makerResult(`Published ${answer.id.slice(0, 12)} in swarm:${makerTopic}: root ${answer.root.slice(0, 12)}…, feed update ${answer.index}.`);
+  } catch (e) {
+    makerResult(`Not published: ${e.message || e}`, true);
+  } finally {
+    busy = false;
+  }
+}
+
+async function withdrawOffer(shortId) {
+  if (!key || !writer || busy) return;
+  const full = await call("maker_full_id", shortId);
+  if (full.error) return makerResult(full.error, true);
+  if (!confirm(`Withdraw ${shortId}? Whoever folds your book sees it withdrawn.`)) return;
+  busy = true;
+  try {
+    const answer = await commitBook("Withdrawing", (root) => call("maker_withdraw", full.id, root));
+    showMine(answer.mine);
+    makerResult(`Withdrew ${shortId}: root ${answer.root.slice(0, 12)}…, feed update ${answer.index}.`);
+  } catch (e) {
+    makerResult(`Not withdrawn: ${e.message || e}`, true);
+  } finally {
+    busy = false;
+  }
+}
+
+// Announcing (announce.js): what `loop announce` sends, from the key's
+// address, paid in xDAI; asked first, with the fee.
+async function announceBook() {
+  if (!key || !makerTopic || busy) return;
+  const book = `swarm:${makerTopic}`;
+  busy = true;
+  try {
+    makerResult("Asking Gnosis what announcing would cost…");
+    const { tx, fee, balance } = await prepareAnnounce(REGISTRY.rpc, REGISTRY.contract, key, book);
+    const xdai = (wei) => {
+      const x = Number(wei) / 1e18;                       // Gnosis fees are often below a millionth
+      const digits = x > 0 && x < 1e-6 ? Math.min(18, Math.ceil(-Math.log10(x)) + 1) : 6;
+      return `${x.toFixed(digits)} xDAI`;
+    };
+    if (balance < fee) {
+      makerResult(`Your key's address ${key.checksummed} has ${xdai(balance)}; announcing costs at most ${xdai(fee)}. Send it a little xDAI (0.001 is plenty), then announce.`, true);
+      return;
+    }
+    if (!confirm(`Announce ${book} on the registry? A transaction on Gnosis from ${key.checksummed}, costing at most ${xdai(fee)}. Anyone can then fold your book.`)) {
+      makerResult("Not announced.");
+      return;
+    }
+    makerResult("Announcing: sending the transaction and waiting for it…");
+    const done = await sendTransaction(REGISTRY.rpc, tx, key);
+    makerResult(`Announced ${book} in block ${done.block} (transaction ${done.hash}). Reading the market again…`);
+  } catch (e) {
+    makerResult(`Not announced: ${e.message || e}`, true);
+    return;
+  } finally {
+    busy = false;
+  }
+  await refresh();
+  showKey();
+}
+
+// Writing goes through a Bee node: the one that served this page (opened as
+// http://localhost:1633/bzz/…), or one named with ?node=URL.
+async function setUpWriting() {
+  const named = params.get("node");
+  const served = /^https?:$/.test(location.protocol) && location.pathname.startsWith("/bzz/") ? location.origin : null;
+  const base = named || served;
+  const via = "To publish, open this page through your own node (with Swarm Desktop: http://localhost:1633/bzz/loopmarket.eth/).";
+  if (!base) {
+    $("makernote").textContent = FreedomSwarm.present()
+      ? `Publishing from Freedom waits for it to accept a chunk the page signed (freedom-browser#647). ${via}`
+      : `Publishing needs your own Bee node, which pays for it. ${via}`;
+    return;
+  }
+  const node = new NodeWriter(base);
+  const batches = await node.batches();
+  if (batches === null) { $("makernote").textContent = `${base} is not a node with postage batches, so this page cannot publish through it. ${via}`; return; }
+  if (!batches.length) { $("makernote").textContent = `The node at ${base} has no usable postage batch. Buy one in Swarm Desktop, then reload this page.`; return; }
+  writer = node;
+  const select = $("makerbatch");
+  select.replaceChildren(...batches.map((b) => {
+    const o = document.createElement("option");
+    o.value = b.id;
+    o.textContent = `${b.label || `${b.id.slice(0, 8)}…`} · ${(b.ttl / 86400).toFixed(0)} days · ${Math.round(100 * b.full)}% full`;
+    return o;
+  }));
+  select.classList.remove("hidden");
+  $("makernote").textContent = `Publishing goes through the node at ${base}, paid from the batch chosen. Your key signs your offers and your book's feed; the page never stores it.`;
+}
+
 async function boot() {
   const base = pyodideBase();
   await loadScript(`${base}pyodide.js`);
@@ -321,7 +575,8 @@ searches = None
 
 def make_market(retry):
     """The market reader, its blobs read waiting on Swarm or by retrying."""
-    global market
+    global market, retrying
+    retrying = bool(retry)
     catalogue = getattr(market, "_catalogue", None)
     market = MarketPage(loopBlobs, bridge=RETRY if retry else None)
     market._catalogue = catalogue
@@ -372,6 +627,52 @@ def searches_text():
 
 def searches_saved(name):
     return searches.saved(name)
+
+# Your offers: loopmarket.browser.MakerBook over ontodag's StagedBlobs.
+maker = None
+retrying = False
+
+def maker_start(address):
+    global maker
+    import json
+    from loopmarket.browser import MakerBook
+    from js import loopRecover
+    maker = MakerBook(address, market.catalogue(), recover=lambda oid, sig: str(loopRecover(oid, sig)))
+    return json.dumps({"topic": maker.topic, "catalogue_root": maker.catalogue.root})
+
+def _staged():
+    from js import loopStage
+    from ontodag.browser import JsBytesStore, StagedBlobs
+    if retrying:
+        reader = JsBytesStore(loopBlobs, RETRY)
+    else:
+        from pyodide.ffi import run_sync
+        reader = JsBytesStore(loopBlobs, run_sync)
+    return StagedBlobs(loopStage, reader)
+
+def maker_prepare(line):
+    return maker.prepare(line)
+
+def maker_publish(offer_id, signature, root):
+    from ontodag.browser import needing
+    return needing(maker.publish, offer_id, signature, root or None, _staged())
+
+def maker_withdraw(offer_id, root):
+    from ontodag.browser import needing
+    return needing(maker.withdraw, offer_id, root or None, _staged())
+
+def maker_fetch(root):
+    from ontodag.browser import needing
+    return needing(maker.fetch, root or None, _staged())
+
+def maker_start_root():
+    import json
+    return json.dumps({"root": maker.catalogue.root})
+
+def maker_full_id(short):
+    import json
+    ids = [o.offer_id for o in maker.book.offers(include_filled=True) if o.offer_id.startswith(short)]
+    return json.dumps({"id": ids[0]} if len(ids) == 1 else {"error": f"{short} names {len(ids)} offers in your book"})
 `);
   searchFile = new LocalFile({ input: $("searchfile"), types: SEARCH_TYPES,
     pickers: !(source instanceof FreedomSwarm), refusedKey: "loopmarket-pickers-refused" });
@@ -384,6 +685,17 @@ def searches_saved(name):
   $("searchcats").onkeydown = (e) => { if (e.key === "Enter") searchAdd(); };
   calls.blobs = globalThis.loopBlobs;
   await calls.call("make_market", calls.choose(params.get("bridge")) === "retry");
+  await setUpWriting();
+  $("keynew").onclick = keyNew;
+  $("keyopen").onclick = keyOpen;
+  for (const id of ["keynew", "keyopen"]) $(id).disabled = false;
+  $("prepare").onclick = prepareOffer;
+  $("offerline").onkeydown = (e) => { if (e.key === "Enter") prepareOffer(); };
+  $("publishoffer").onclick = publishOffer;
+  $("cancelprepare").onclick = () => { prepared = null; $("approval").classList.add("hidden"); makerResult(""); };
+  $("readmine").onclick = readMine;
+  $("announce").onclick = announceBook;
+  $("makerbatch").onchange = () => showKey();
   if (calls.mode === "retry") showRetrying();
   $("refresh").disabled = false;
   $("filter").disabled = false;
@@ -395,5 +707,5 @@ def searches_saved(name):
 
 // For tests and the console.
 globalThis.loopPage = { refresh, call, stats: () => reader && reader.stats, connect: () => $("connect").click(), ready: null,
-  bridge: () => calls && calls.mode };
+  bridge: () => calls && calls.mode, owner: () => key && key.checksummed, writing: () => Boolean(writer), topic: () => makerTopic };
 globalThis.loopPage.ready = boot().then((r) => r, (e) => { status(`Could not start: ${e.message || e}`, true); console.error(e); return { error: String(e) }; });

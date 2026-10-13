@@ -9,7 +9,36 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
 
 ## [Unreleased]
 
+### Added
+
+- **Your offers in the market page** (`loopmarket.browser.MakerBook`,
+  BROWSER.md §5c). Opened through your own Bee node, the page makes an
+  offer from a line with loop's own code (`cli.entry.offer_from_line`),
+  shows loop's approval block, signs the offer id with a key the person
+  keeps in a file, and publishes it at once into the book `loop setup`
+  names for the key (`swarm:loop-<address>`). It reads the book's feed
+  first, so what another device published stays, then uploads through
+  the node, checks the upload is retrievable, and moves the feed. Withdraw
+  goes the same way. `browser/check.py --publish` does all of it through a
+  node under a throwaway key and reads the book back natively.
+- **Announce my book from the page** (`browser/announce.js`): the
+  transaction `loop announce` sends, an EIP-1559 call of
+  `announce(string,uint8)` on Gnosis, built, RLP-encoded and signed in the
+  page with the key file, after the page has shown the key's balance and
+  the most it can cost and asked. Its bytes equal eth_account's for the
+  same key and fields (`browser/test/`, run by `tests/test_page_js.py`).
+- **`OfferRegistry.attach_signature(..., recover=)`**: the recovery that
+  checks a signature (fail closed) may come from elsewhere; the page
+  recovers with its JavaScript secp256k1, where loop's signer does not
+  install.
+
 ### Fixed
+
+- **The page's catalogue pins the root `loop setup`'s catalogue has.**
+  Built in plain memory it had no root, so offers made under it would
+  have matched no offer made with `loop` (mixed pinning is refused). It
+  is now committed over a memory store, and its root equals the `rs:`
+  catalogue's (equal knowledge, equal root).
 
 - **The market page works on iPhones.** On iOS, Pyodide calls function
   pointers through a JavaScript trampoline, and JSPI cannot suspend Python

@@ -337,3 +337,40 @@ codes `/bytes` uploads without a level, and books are written through
 `BeeBytesStore`, which sends none, so a book's blobs over 4 KB come back
 coded (ontodag's journal has the finding). Checked again in Chromium and
 in real Freedom Browser.
+
+**Your offers from the page (2026-10-14, night)**, on Peter's word
+("start similarly on writing loopmarket from the web, and see how far you
+can get"); BROWSER.md §5c. Peter was away; nothing was announced and the
+names were not moved.
+- **`MakerBook`** makes an offer from a line with loop's own code
+  (`offer_from_line`), standing in for loop's session. Offers go into the
+  book `loop setup` names, `swarm:loop-<address[2:10]>`, and the feed is
+  read first, so another device's offers stay.
+- **Signing** uses ontodag's `publish.js` (`Key.signHash`). The signature
+  check recovers in JavaScript (`attach_signature(..., recover=)`),
+  because coincurve does not install under Pyodide.
+- **Found on the way:** built in plain memory, the page's catalogue had
+  no root. Its offers would have pinned nothing, and offers made with
+  `loop` refuse mixed pinning. It is now committed over a
+  `MemoryBytesStore`, and its root (`55b9805e…`) equals the `rs:`
+  catalogue's. It builds in 3.7 s in memory, against 4.6 s on disk.
+- **Announce my book** (`browser/announce.js`) builds the transaction
+  `loop announce` sends: an EIP-1559 call of `announce(string,uint8)` on
+  chain 100, RLP-encoded and signed in the page. Its bytes equal
+  eth_account's for the same key and fields (`browser/test/`, run by
+  `tests/test_page_js.py`).
+- **The fees:** Gnosis asked 9 wei base fee and a 1 wei tip, so a fee is
+  about 10⁻¹² xDAI. The page prints it with enough digits rather than
+  "0.000000".
+- **Checked:** the suite, lint, and `check.py --publish` through this
+  laptop's node against
+  `bzz://1a6bb105eedd1a0cd7f83a0099da520cc5eddbb91a18d92d47378a7570393308/`.
+  - **Key and publish:** key file, prepare, then publish in 14 s (feed
+    update 0). Read back natively, the offer had the right maker, a
+    signature that recovers to it, and the default catalogue's pin.
+  - **Announce:** with the unfunded throwaway key it stopped at the
+    balance.
+  - **Withdraw** took 12 s (update 1).
+  - **The fold:** the market fold still equals the native one.
+- **Next:** one live announcement with a funded key (Peter's word),
+  retract from the page, drafts and the ledger (§5b), Freedom after #647.

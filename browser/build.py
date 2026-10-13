@@ -37,9 +37,9 @@ def assemble(dist, base):
     if os.path.isdir(dist):
         shutil.rmtree(dist)
     os.makedirs(os.path.join(dist, "wheels"))
-    for f in ("index.html", "app.js", "registry.js"):
+    for f in ("index.html", "app.js", "registry.js", "announce.js"):
         shutil.copy(os.path.join(HERE, f), os.path.join(dist, f))
-    for f in ("swarm.js", "localfile.js", "pycall.js"):
+    for f in ("swarm.js", "localfile.js", "pycall.js", "publish.js"):
         shutil.copy(os.path.join(ONTODAG_PAGE, f), os.path.join(dist, f))
     shutil.copytree(os.path.join(ONTODAG_PAGE, "vendor"), os.path.join(dist, "vendor"))
     wheels = [base.wheel(os.path.join(PROJECTS, p), os.path.join(dist, "wheels"))
@@ -59,6 +59,8 @@ def main():
     ap.add_argument("--batch", default=os.environ.get("BEE_BATCH"))
     ap.add_argument("--no-build", action="store_true", help="publish dist/ as it is")
     ap.add_argument("--wait", type=float, default=20)
+    ap.add_argument("--no-feed", action="store_true",
+                    help="upload without moving loopmarket.gwei/.eth to it (a version to try first)")
     args = ap.parse_args()
     base = ontodag_build()
     if not args.no_build:
@@ -69,7 +71,8 @@ def main():
         api = args.api.rstrip("/")
         ref = base.upload(args.dist, api, args.batch)
         print(f"published: bzz://{ref}/  ({api}/bzz/{ref}/)", flush=True)
-        base.advance_feed("loopmarket", api, ref, args.batch)
+        if not args.no_feed:
+            base.advance_feed("loopmarket", api, ref, args.batch)
         ok = base.retrievable(api, ref, args.wait)
         print("retrievable" if ok else "NOT yet retrievable: check GET /stewardship later")
 

@@ -263,19 +263,22 @@ class OfferRegistry:
     def is_withdrawn(self, offer_id: str) -> bool:
         return self.store.contains(WITHDRAW + offer_id)
 
-    def attach_signature(self, offer_id: str, sig_hex: str) -> None:
+    def attach_signature(self, offer_id: str, sig_hex: str, *, recover=None) -> None:
         """Store a detached maker signature beside its offer (planned U8).
 
         The secondary authenticity layer, for offers circulating outside
         their home feed; feed ownership stays primary. Fail closed: a
         signature that does not recover to the offer's maker is refused,
         so the book never holds a sidecar that lies about who is speaking.
-        Needs the `sig` extra.
+        Needs the `sig` extra, unless `recover(offer_id, sig_hex)` (the
+        address a signature recovers to) comes from elsewhere: the browser
+        page recovers with its JavaScript secp256k1.
         """
-        from .sigs import recover_maker
+        if recover is None:
+            from .sigs import recover_maker as recover
 
         offer = self.get(offer_id)
-        if recover_maker(offer_id, sig_hex) != offer.maker:
+        if recover(offer_id, sig_hex) != offer.maker:
             raise ValueError("signature does not recover to the offer's maker")
         self.store.put(SIG + offer_id, sig_hex)
 

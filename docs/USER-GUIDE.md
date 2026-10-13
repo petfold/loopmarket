@@ -1553,10 +1553,11 @@ through your own node; in any browser, `https://loopmarket.gwei.domains/`,
 or serve the page's folder and add
 `?gateway=https://api.gateway.ethswarm.org`.
 
-It is read-only and needs no key. Clearing books are listed but not
-folded, since re-checking their loops needs the catalogue, and an offer
-naming a maker other than its book's owner is left out (the page has no
-signature check). Writing waits on the identity of BROWSER.md §3.
+Reading needs no key. Clearing books are listed but not folded, since
+re-checking their loops needs the catalogue, and an offer naming a maker
+other than its book's owner is left out (the page has no signature
+check in the fold). With a key file, the page also publishes your own
+offers (below).
 
 **Saved searches.** A saved search is a name and a list of categories,
 as `loop offers` takes them (`lesson`, `bicycle geo(41.8..42,12.4..12.6)`).
@@ -1589,6 +1590,34 @@ know is reported, since it could never match. In Python the list is
  ]
 }
 ```
+
+**Your offers.** Opened through your own Bee node
+(`http://localhost:1633/bzz/loopmarket.eth/`), the page makes and
+publishes offers as `loop give` and `loop want` do:
+
+1. **New key** makes the key that owns your book and signs your offers,
+   and saves it as a file; **Open key file…** reads it back. It is the
+   value `loop` takes as `bee_signer`, so the same file makes the laptop
+   the same maker.
+2. Type an offer line (`give piano-lesson 30`, `want apple 2kg 9`) and
+   **Prepare**: the page shows the approval block `loop` prints, made by
+   loop's own code under the default catalogue, so the offer pins the
+   catalogue root `loop setup` builds and matches offers made with `loop`.
+3. **Publish** signs the offer id with your key, puts the offer into your
+   book (`swarm:loop-` and your address's first 8 hex digits, the book
+   `loop setup` names), uploads it through the node, waits until the
+   network serves it, and moves the book's feed. What another device
+   published there stays.
+4. **Withdraw** beside one of your open offers publishes the withdrawal
+   the same way.
+
+5. **Announce my book**: a book is read by folds only once it is
+   announced on the registry, and the page says whether yours is.
+   Announcing is a transaction on Gnosis from your key's address, so the
+   address needs a little xDAI first (0.001 is plenty; the page says what
+   it holds and the most the transaction can cost). The page asks before
+   it signs, sends the transaction `loop announce` sends, and waits until
+   it is mined. `loop announce` with the same key file does the same.
 
 Offers themselves are never kept back in a local file: an offer means
 something only from the moment it is published (BROWSER.md §5b).

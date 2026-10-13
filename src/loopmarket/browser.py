@@ -83,13 +83,19 @@ class MarketPage:
                            "rejections": rejections})
 
     def catalogue(self):
-        """The default catalogue (`cli.setup.fill_catalogue`), built once."""
+        """The default catalogue (`cli.setup.fill_catalogue`), built once and
+        committed over a memory store, so its root is the one `loop setup`'s
+        `rs:` catalogue has (equal knowledge, equal root): offers made here
+        pin it and match offers made with `loop`."""
         if getattr(self, "_catalogue", None) is None:
-            from ontodag import OntoDAG
+            from recordstore import MemoryBytesStore, RecordStore
 
             from .cli.setup import fill_catalogue
             from .ontology import Ontology
-            self._catalogue = Ontology(fill_catalogue(OntoDAG()))
+            ontology = Ontology.persistent(RecordStore(MemoryBytesStore()))
+            fill_catalogue(ontology.dag)
+            ontology.dag.commit()
+            self._catalogue = ontology
         return self._catalogue
 
     def search(self, categories: str, now: int | None = None) -> str:
@@ -222,3 +228,117 @@ class SavedSearches:
             found["seen"].extend(new)
             self.changed = True
         return self.summary()
+
+
+class MakerBook:
+    """Your book as a maker, in the page (docs/plans/BROWSER.md §3, §5b).
+
+    An offer is made from a line exactly as `loop give` and `loop want`
+    make it (`prepare`, through `cli.entry.offer_from_line`, with this
+    object standing in for loop's session: maker, now, catalogue, book). The
+    page shows the approval block, signs the offer id with the maker's key
+    (in JavaScript) and `publish`es it at once: into the book as its feed
+    has it, read first, so what another device or `loop` published stays,
+    committed onto `blobs` (ontodag's `StagedBlobs`) for the page to upload
+    before it moves the feed. `withdraw` goes the same way. Nothing is
+    queued: an offer means something only from when it is published.
+
+    The book is the one `loop setup` names for this key,
+    `swarm:loop-<the address's first 8 hex digits>` (`topic`). Every answer
+    is JSON text. `recover(offer_id, signature)`, the address a signature
+    recovers to, checks each signature before it is stored (fail closed):
+    loop's own by default, the page's JavaScript secp256k1 in the page,
+    where loop's signer does not install."""
+
+    def __init__(self, maker: str, catalogue, now: int | None = None, recover=None):
+        from recordstore import MemoryBytesStore, RecordStore
+
+        from .registry import OfferRegistry
+        self.maker = maker
+        self.catalogue = catalogue
+        self._now = now
+        self._recover = recover
+        self.book = OfferRegistry(RecordStore(MemoryBytesStore()))
+        self._pending = {}
+
+    @property
+    def now(self) -> int:
+        return int(time.time()) if self._now is None else self._now
+
+    def view(self):
+        """What names resolve against, as loop's session's `view()`: here
+        the catalogue alone (the page keeps no personal layer)."""
+        return self.catalogue.dag
+
+    @property
+    def topic(self) -> str:
+        return f"loop-{self.maker[2:10].lower()}"
+
+    def _read(self, feed_root, blobs):
+        from recordstore import RecordStore
+
+        from .registry import OfferRegistry
+        return OfferRegistry(RecordStore(blobs, root=feed_root) if feed_root else RecordStore(blobs))
+
+    def _mine(self, book, now):
+        from .cli.render import _COLUMNS, _row
+        rows = [_row(o, now, book) for o in book.offers(now=now) if o.maker == self.maker]
+        rows.sort(key=lambda r: r[0])
+        return {"columns": list(_COLUMNS), "rows": rows}
+
+    def prepare(self, line: str) -> str:
+        """The offer a line makes, not yet published: its id (what the page
+        signs) and the approval block `loop` prints."""
+        from .cli.entry import offer_from_line
+        from .cli.render import render_offer
+        try:
+            offer = offer_from_line(line, self)
+        except ValueError as e:
+            return json.dumps({"error": str(e)})
+        if offer.maker != self.maker:
+            return json.dumps({"error": f"the offer's maker is {offer.maker}, not {self.maker}"})
+        self._pending[offer.offer_id] = offer
+        return json.dumps({"id": offer.offer_id, "kind": offer.kind, "block": render_offer(offer)})
+
+    def publish(self, offer_id: str, signature: str, feed_root: str | None, blobs) -> str:
+        """Publish a prepared offer with the maker's signature over its id:
+        into the book the feed holds (`feed_root`, or a new book), committed
+        onto `blobs`. The root to point the feed at, and the maker's offers."""
+        offer = self._pending.get(offer_id)
+        if offer is None:
+            return json.dumps({"error": "that offer was not prepared here; prepare it again"})
+        book = self._read(feed_root, blobs)
+        oid = book.publish(offer)
+        try:
+            book.attach_signature(oid, signature, recover=self._recover)
+        except ValueError as e:
+            return json.dumps({"error": f"not published: {e}"})
+        root = book.commit()
+        self.book = book
+        self._pending.pop(offer_id, None)
+        return json.dumps({"root": root, "id": oid, "mine": self._mine(book, self.now)})
+
+    def withdraw(self, offer_id: str, feed_root: str | None, blobs) -> str:
+        """Withdraw one of the maker's open offers, in the book the feed
+        holds: a published record, so whoever folds the book sees it."""
+        book = self._read(feed_root, blobs)
+        try:
+            offer = book.get(offer_id)
+        except KeyError:
+            return json.dumps({"error": f"{offer_id[:12]} is not in this book"})
+        if offer.maker != self.maker:
+            return json.dumps({"error": f"{offer_id[:12]} is {offer.maker}'s, not yours"})
+        if book.is_filled(offer_id):
+            return json.dumps({"error": f"{offer_id[:12]} is filled: a cleared leg is an obligation"})
+        if book.is_withdrawn(offer_id):
+            return json.dumps({"error": f"{offer_id[:12]} is already withdrawn"})
+        book.withdraw(offer_id)
+        root = book.commit()
+        self.book = book
+        return json.dumps({"root": root, "withdrawn": offer_id, "mine": self._mine(book, self.now)})
+
+    def fetch(self, feed_root: str | None, blobs) -> str:
+        """The book as its feed holds it: the maker's open offers, and what
+        the next offer's nonce and price memory read."""
+        self.book = self._read(feed_root, blobs)
+        return json.dumps({"root": feed_root, "mine": self._mine(self.book, self.now)})

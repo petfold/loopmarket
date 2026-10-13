@@ -1,7 +1,11 @@
 # loopmarket in a browser
 
-Status (2026-10-12): the read-only page (§5, step 1) is built and runs in
-Freedom Browser; writing waits on Freedom #647 and the key (§3). ontodag's
+Status (2026-10-14): the read-only page (§5, step 1) is built and runs in
+Freedom Browser. The maker's half of step 2, making, publishing and
+withdrawing offers under a key file through the person's own node, is
+built too (§5c), and so is announcing the book, though no announcement
+has been sent from the page yet. Drafts and the ledger are next;
+publishing from Freedom waits on Freedom #647. ontodag's
 `docs/plans/BROWSER.md` is the base:
 
 - the code runs under Pyodide;
@@ -199,6 +203,85 @@ bad commitment.
 Publishing waits on the write route (ontodag BROWSER.md §14.2) and the
 identity (§3). Order: saved searches first (useful at once, purely local,
 no stamps, no key), then drafts and the ledger, then Publish.
+
+## 5c. Your offers, built (2026-10-14)
+
+Peter asked for writing from the page, "similarly" to ontodag's Publish
+(ontodag BROWSER.md §16). It works as `loop give`, `loop want` and
+`loop withdraw` do:
+- **The key** is a random one in a file the person keeps (§3, ontodag's
+  questions 37 and 38): `0x` and 64 hex digits, the `bee_signer` value
+  `loop` takes.
+- **The book** is the one `loop setup` names for that key,
+  `swarm:loop-<the address's first 8 hex digits>`.
+- **The writer** is the page's `publish.js` (ontodag's, copied in by
+  `build.py`): the node that served the page and its batches, plain
+  uploads, `/stewardship`, the feed found by probing.
+
+In the page:
+- **Prepare** makes the offer from a line with loop's own code
+  (`MakerBook.prepare`, `cli.entry.offer_from_line`, the book standing in
+  for loop's session) and shows loop's approval block.
+- **The catalogue pin:** matching refuses mixed and different pins, so
+  the page builds the default catalogue (`fill_catalogue`) committed over
+  a memory store. Its root then equals the one `loop setup`'s `rs:`
+  catalogue has, `55b9805e…` with prelude 5 and core v13 (equal
+  knowledge, equal root; measured natively, 3.7 s against 4.6 s for the
+  `rs:` store). A test has an offer made by the page meet one made with
+  loop's API under that pin.
+- **Publish** signs the offer id with the key (`Key.signHash` in
+  `publish.js`: r, s and v as 0 or 1, byte for byte what loop's signer
+  writes, pinned by ontodag's test vector).
+  - **Python** (`MakerBook.publish`) reads the book as its feed has it, adds
+    the offer and its signature, and commits onto ontodag's `StagedBlobs`.
+  - **The signature check** is the book's own, fail closed. It recovers the
+    address with the page's JavaScript secp256k1 (`attach_signature(...,
+    recover=)`), since loop's signer, coincurve through swarmfs, does not
+    install under Pyodide.
+  - **The page** then uploads the staged blobs, waits until all are
+    retrievable, writes the feed update and reads it back.
+- **Withdraw** goes the same way. Your open offers are listed from the
+  book, and **Read my book** brings in what another device published.
+
+Checked:
+- **`tests/test_browser.py`:**
+  - publishing, a second device's offer kept, withdrawal;
+  - the errors;
+  - a signature refused by the recovery;
+  - the catalogue pin and a match under it.
+- **`browser/check.py --url … --publish`,** through Swarm Desktop's node
+  under a throwaway key (2026-10-14):
+  - published in 17 s (feed update 0), read back natively with the right
+    maker, a signature that recovers to it, and the default catalogue's
+    pin;
+  - withdrawn in 13 s (update 1), seen withdrawn natively;
+  - the market fold still matches the native fold.
+
+**Announce my book** (`browser/announce.js`) sends what `loop announce`
+sends: an EIP-1559 transaction on Gnosis (chain 100) from the key's
+address, calling `announce(string,uint8)` with the book and the maker
+role. The page asks the RPC for the nonce, a gas estimate (plus a fifth)
+and the fees (twice the base fee plus the tip, as web3 does), says what
+the key holds against the most it can cost, and asks before it signs.
+The transaction is RLP-encoded and signed in the page with the key file
+(`Key.signHash`), then sent, and the page waits for its receipt.
+
+- **`tests/test_page_js.py`** runs `browser/test/test_announce.mjs`: the
+  call data and the signed transaction equal, byte for byte, what
+  eth_account makes from the same key and fields
+  (`make_announce_vector.py`).
+- **`browser/check.py --publish`** presses Announce with the throwaway
+  key, which holds nothing, and expects the page to stop there with the
+  balance and the fee. On 2026-10-14 Gnosis asked 9 wei base fee and a
+  1 wei tip, so the fee was about a millionth of a millionth of an xDAI.
+
+Not yet:
+- **Announcing live:** no transaction has been sent from the page; that
+  needs a funded key and Peter's word. Retracting from the page is not
+  built (`loop retract` does it).
+- **Drafts and the ledger** (§5b).
+- **Freedom** (#647); **retry mode** is wired (`needing`) but not checked
+  through a node.
 
 ## 6. Open
 
