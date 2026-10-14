@@ -374,3 +374,30 @@ names were not moved.
   - **The fold:** the market fold still equals the native one.
 - **Next:** one live announcement with a funded key (Peter's word),
   retract from the page, drafts and the ledger (§5b), Freedom after #647.
+
+**The first announcement from the page (2026-10-14, morning)**, on
+Peter's word. A fresh key (`0xE2bFB7579ed1Be00c2A471f35a39003c997FeA8f`,
+`~/.loopmarket/page_maker_key`) got 0.001 xDAI from the chain key.
+- **Publish and announce:** with that key opened as a key file, the test
+  version `1a6bb105…` published `give piano-lesson 41.90,12.50+-5km 90`
+  (16 s) and announced `swarm:loop-e2bfb757`.
+  - The confirm said "costing at most 0.00000000000052 xDAI".
+  - Block 48747073, tx
+    `0xebb44dfbcacde58057eff95af47599593597c7825683c8a56e4edddddb59bd7a`,
+    4 s.
+- **Read natively:** a keyless reader in a clean home (loopmarket's main
+  from the checkout) listed both books with `loop announced`, and `loop
+  offers` folded the page's offer beside the test maker's.
+- **Withdraw:** from the page in a fresh session it first failed on the
+  node's 500s for the missing next feed update (ontodag's `publish.js`
+  gave up after about 8 s). With recordstore's retry budget in
+  `publish.js` and the page rebuilt (`5e0e4643…`), it went through in
+  72 s. The book stays announced, with no open offer.
+- **Rome:** the test maker's offer moved to Rome with `loop give` and
+  `loop withdraw` (`75337293…`, pinning the default catalogue
+  `55b9805e…`; the old one withdrawn). The book root `7249e198…` is
+  retrievable.
+- **The installed `loop`:** the system Python's `loop` is loopmarket
+  0.7.0, so these runs used the checkout with `LOOP_HOME`, `ONTODAG_HOME`,
+  `LOOP_CATALOGUE` and `BEE_*` set. Without its own home, `loop` took
+  odag's active store (Peter's `store.od`) as its catalogue.
