@@ -509,15 +509,18 @@ Your offers (2026-10-14, BROWSER.md §5c):
   transaction `loop announce` sends, an EIP-1559 call of
   `announce(string,uint8)` on Gnosis, after asking with the fee; its
   bytes are pinned against eth_account (`browser/test/`). The check
-  stops at an unfunded key; it has not been sent live (that needs xDAI
-  and Peter's word).
+  stops at an unfunded key. Sent live once on Peter's word (2026-10-14)
+  from the page maker key (`~/.loopmarket/page_maker_key`,
+  `0xE2bFB757…`, its book `swarm:loop-e2bfb757` announced and empty;
+  BROWSER.md §5c).
 - **Next:** drafts and the ledger.
 
 The published page: `bzz://56f9ce1b3a1a96ed875b786658ce8a9823b00d93cd9631c37a505c52a76b9dde/`
 (2026-10-12), behind the feed manifest `a0e5384a…` and the name
 `loopmarket.gwei`; it loads the shared Pyodide. A version with your offers
 and announcing, not behind the names until Peter has tried it:
-`bzz://1a6bb105eedd1a0cd7f83a0099da520cc5eddbb91a18d92d47378a7570393308/` (2026-10-14).
+`bzz://5e0e4643fb5b03c7d5a33d10b01b38f94b410ece8cc307e9852ec64d65256edd/` (2026-10-14,
+with ontodag's feed-probe fix).
 `browser/build.py --publish --no-feed` uploads a version without moving the
 names.
 

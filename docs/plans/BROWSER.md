@@ -275,10 +275,23 @@ The transaction is RLP-encoded and signed in the page with the key file
   balance and the fee. On 2026-10-14 Gnosis asked 9 wei base fee and a
   1 wei tip, so the fee was about a millionth of a millionth of an xDAI.
 
+**Live, on Peter's word (2026-10-14):** a fresh key
+(`0xE2bFB7579ed1Be00c2A471f35a39003c997FeA8f`), funded with 0.001 xDAI
+from the chain key, published an offer from the page and announced
+`swarm:loop-e2bfb757` from it: block 48747073, transaction
+`0xebb44dfbcacde58057eff95af47599593597c7825683c8a56e4edddddb59bd7a`, at
+most 5.2×10⁻¹³ xDAI. A reader with no key then listed the book with
+`loop announced` and its offer with `loop offers`. The offer was
+withdrawn afterwards from the page in a fresh session. The first try
+failed: probing for the next feed index, the page gave up on the node's
+500s for the missing update. ontodag's `publish.js` now retries a 500 as
+`SwarmFeedPointer` does, and the withdrawal took 72 s. The book stays
+announced, with no open offer. The cost: a write after the first now
+waits out the node's 500s for the next index, so `check.py --publish`
+withdrew in 63 s, where it took 11–13 s when the probe was lucky.
+
 Not yet:
-- **Announcing live:** no transaction has been sent from the page; that
-  needs a funded key and Peter's word. Retracting from the page is not
-  built (`loop retract` does it).
+- **Retracting from the page** (`loop retract` does it).
 - **Drafts and the ledger** (§5b).
 - **Freedom** (#647); **retry mode** is wired (`needing`) but not checked
   through a node.
