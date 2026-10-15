@@ -515,14 +515,14 @@ Your offers (2026-10-14, BROWSER.md §5c):
   BROWSER.md §5c).
 - **Next:** drafts and the ledger.
 
-The published page: `bzz://56f9ce1b3a1a96ed875b786658ce8a9823b00d93cd9631c37a505c52a76b9dde/`
-(2026-10-12), behind the feed manifest `a0e5384a…` and the name
-`loopmarket.gwei`; it loads the shared Pyodide. A version with your offers
-and announcing, not behind the names until Peter has tried it:
-`bzz://adf2e955fb6068c6b2c89e7312340c80bc89ae1787c2d1e94e1743faae8d2036/` (2026-10-15,
-with ontodag's feed-probe fix, the redundancy level named per blob as
-ontodag's question 47 decided, and whole-blob reads from a node or a
-gateway).
+The published page: `bzz://2abb4979d03acd202fe547cdb1902b86b06bd9ce16c341cd9cfe4d9a2e6b5442/`
+(2026-10-15, feed update 5, on Peter's word: loopmarket 0.18.0 with
+ontodag 0.34.0, your offers and announcing included), behind the feed
+manifest `a0e5384a…` and the names `loopmarket.gwei` and `loopmarket.eth`;
+it loads the shared Pyodide. Checked before the feed moved: through the
+node (with `--publish`), through Freedom's provider and as an iPhone
+reads, each equal to the native fold. Before it, `56f9ce1b…` (2026-10-12,
+read-only).
 `browser/build.py --publish --no-feed` uploads a version without moving the
 names.
 

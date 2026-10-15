@@ -401,3 +401,28 @@ Peter's word. A fresh key (`0xE2bFB7579ed1Be00c2A471f35a39003c997FeA8f`,
   0.7.0, so these runs used the checkout with `LOOP_HOME`, `ONTODAG_HOME`,
   `LOOP_CATALOGUE` and `BEE_*` set. Without its own home, `loop` took
   odag's active store (Peter's `store.od`) as its catalogue.
+
+## 2026-10-15 (evening): 0.18.0, the market page with your offers, Rome under registry 6
+
+On Peter's word ("do 1, 2, 3"), after ontodag 0.34.0 (registry 6.0):
+- **0.18.0 released.** The market page and its Python (MarketPage,
+  SavedSearches, MakerBook), `attach_signature(recover=)`, and the bare
+  spelling of a role's rectangle, floor `ontodag>=0.34.0`. Suite 471
+  passed, 4 skipped (the README's 475), lint clean; the wheel in a fresh
+  venv cleared both triangle examples; `publish.yml` green. From PyPI: uv
+  resolved 0.18.0 at the first try (`uv pip compile --no-cache`); the
+  installer in a fresh home without a node installed 0.18.0 with ontodag
+  0.34.0, and `give`, `offers` and `categories` worked; a venv from PyPI
+  cleared the triangle to the same book root as the local wheel.
+- **The market page, feed update 5:** `bzz://2abb4979…`, built from 0.18.0
+  and ontodag 0.34.0. Before the feed moved it was checked through the
+  node, with `--publish` (a throwaway key's book: publish 14 s, withdraw
+  13 s, read back natively), through Freedom's provider and as an iPhone
+  reads, each equal to the native fold. The feed's chunk at index 5 names
+  it (index 4 the read-only page), and the manifest, `loopmarket.eth` and
+  `loopmarket.gwei.domains` serve it.
+- **Rome under registry 6:** the test maker's offer re-posted as
+  `ff0abfa99a92…` (pins registry 6.0, contract 0.7, valid to 2026-11-14),
+  the registry 5 one (`75337293…`) withdrawn. A keyless reader in a clean
+  home, reading the registry on Gnosis and the books through the node,
+  lists exactly that offer, and so does the page.
