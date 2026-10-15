@@ -675,7 +675,7 @@ def maker_full_id(short):
     return json.dumps({"id": ids[0]} if len(ids) == 1 else {"error": f"{short} names {len(ids)} offers in your book"})
 `);
   searchFile = new LocalFile({ input: $("searchfile"), types: SEARCH_TYPES,
-    pickers: !(source instanceof FreedomSwarm), refusedKey: "loopmarket-pickers-refused" });
+    pickers: params.get("pickers") === "1" || !(source instanceof FreedomSwarm), refusedKey: "loopmarket-pickers-refused" });
   globalThis.loopPage.searchFile = searchFile;
   for (const id of ["searchnew", "searchopen"]) $(id).disabled = false;
   $("searchnew").onclick = searchNew;
