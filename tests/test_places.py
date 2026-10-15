@@ -38,17 +38,19 @@ def test_a_route_inside_the_wanted_rectangle_matches_by_containment():
         assert matches(ontology, [inside, wanted, elsewhere], engine) == {("bruno", "amara")}
 
 
-def test_the_helpers_write_a_value_by_geos_name_in_a_role():
+def test_the_helpers_write_a_role_s_rectangle_bare():
+    # ontodag's registry 6.0: a role of geo takes its rectangle as geo does
     ont = roles_ontology()
     assert ont.is_geo_role("from") and not ont.is_geo_role("geo")
     assert not ont.is_geo_role("depart")                 # a role of time
-    assert ont.geo_term("from", "48.1..48.3,16.1..16.3") == f"from({AROUND})"
+    assert ont.geo_term("from", "48.1..48.3,16.1..16.3") == "from(48.1..48.3,16.1..16.3)"
     assert ont.geo_term("geo", "48.1..48.3,16.1..16.3") == AROUND
 
 
 def test_bare_reads_a_role_term_as_its_coordinate():
     ont = roles_ontology()
-    assert ont.bare(f"to({AROUND})") == AROUND
+    assert ont.bare("to(48.1..48.3,16.1..16.3)") == AROUND
+    assert ont.bare(f"to({AROUND})") == AROUND           # by geo's name, as before registry 6.0
     assert ont.bare("from(my_home)") == "my_home"
     assert ont.bare("depart(2026-10-05)") == "time(2026-10-05)"
 

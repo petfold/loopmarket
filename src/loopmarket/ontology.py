@@ -417,7 +417,7 @@ class Ontology:
 
     def bare(self, term: str) -> str:
         """A role term respelled as the bare coordinate it denotes:
-        `from(my_home)` → `my_home` (a node), `to(geo(47..48,13..14))` →
+        `from(my_home)` → `my_home` (a node), `to(47..48,13..14)` →
         `geo(47..48,13..14)`, `depart(2026-10-05)` → `time(2026-10-05)`."""
         split = _dims.split_term(term)
         if split is None:
@@ -432,16 +432,15 @@ class Ontology:
         return f"{base}({param})"
 
     def is_geo_role(self, head: str) -> bool:
-        """Is `head` a role of `geo` (`from`, `to`)? In one a bare word
-        names a place and a value is written by geo's name,
-        `from(geo(47..48,13..14))` (ontodag's review question 14)."""
+        """Is `head` a role of `geo` (`from`, `to`)? In one a word names a
+        filed place (ontodag's review question 14) and a rectangle is
+        written bare, `from(47..48,13..14)` (ontodag's registry 6.0)."""
         return head != _dims.GEO_HEAD and self.base_head(head) == _dims.GEO_HEAD
 
     def geo_term(self, head: str, value: str) -> str:
         """`head`'s term for the geo value `value` (a parameter of `geo`):
-        `from(geo(47..48,13..14))` in a role of geo, else `head(value)`."""
-        if self.is_geo_role(head):
-            return f"{head}({_dims.GEO_HEAD}({value}))"
+        `from(47..48,13..14)`, as `geo` itself takes it; a role of geo
+        takes its rectangle bare since ontodag's registry 6.0."""
         return f"{head}({value})"
 
     def handover_heads(self) -> set[str]:
@@ -485,7 +484,7 @@ class Ontology:
         """Is `concept` vocabulary of this catalogue?
 
         A node is. So is a *parametric term of a declared dimension head*
-        — `from(geo(47..48,13..14))`, `mass(..11kg)` — although no such
+        — `from(47..48,13..14)`, `mass(..11kg)` — although no such
         node exists: the head is pinned by the catalogue root, the value
         grammar by the registry version, and ontodag orders these terms by
         computation (rectangle containment, interval arithmetic). Asking the DAG to order
@@ -624,8 +623,8 @@ class Ontology:
 
     def consistent(self, concepts: Iterable[str]) -> bool:
         """Can the conjunction be held at all? Two coordinates of one head
-        that provably share no point — `from(geo(47..48,13..14))` and
-        `from(geo(47..48,15..16))`, a place under the first and the second
+        that provably share no point — `from(47..48,13..14)` and
+        `from(47..48,15..16)`, a place under the first and the second
         — describe nothing: ontodag
         refuses to file such an item, so the index never holds it, and the
         exact checks agree by matching it against nothing (recall-exactness

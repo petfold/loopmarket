@@ -233,8 +233,8 @@ two squares that only partly overlap do not match.
 | `.declare_operator({category: (input_head, output_head)})` | `{"transport": ("from", "to"), "storage": ("depart", "arrive")}`: the category under the `operator` marker (created if absent), the two ends — roles of one dimension — under `operator-input`/`operator-output`; a give naming the category and both ends moves a thing along that dimension (composition, `P2-loop-selection.md` §10); the category's parenthesised argument is what it accepts. 0.5.0's `{base: (in, out)}` shape raises |
 | `.operator_of(term)` / `.argument(term)` | the operator category a term names (`transport(bicycle)` and bare `transport` → `transport`; None otherwise); the constraints of its argument in ontodag's canonical spelling (`transport(small-item mass(..8000g))` → `("mass(..8kg)", "small-item")`; bare → `()`; a term the catalogue refuses → `()`, and `known` is False) — the term is ontodag's graph kind (#19, 0.26.1) |
 | `.ends(concepts)` / `.accepts(concepts, operator_terms)` | the moves an operator give states, `[(base, input_term, output_term)]`; whether a thing fits every constraint of the operator terms' arguments (the payload check of `check_composition`; a term whose argument the catalogue cannot read accepts nothing, U7) |
-| `.base_head(head)` / `.coordinate(concepts, base)` / `.bare(term)` | a role's base head; the bare coordinate of `base` a conjunction states; a role term respelled as the bare coordinate it denotes (`to(geo(47..48,13..14))` → `geo(47..48,13..14)`; `from(shop)` → `shop`; `depart(2026-10-05)` → `time(2026-10-05)`) |
-| `.is_geo_role(head)` / `.geo_term(head, value)` | whether a head is a role of `geo`, in which a bare word names a place; `head`'s term for a geo value (`from(geo(47..48,13..14))` in a role, `geo(47..48,13..14)` under `geo`) |
+| `.base_head(head)` / `.coordinate(concepts, base)` / `.bare(term)` | a role's base head; the bare coordinate of `base` a conjunction states; a role term respelled as the bare coordinate it denotes (`to(47..48,13..14)` → `geo(47..48,13..14)`; `from(shop)` → `shop`; `depart(2026-10-05)` → `time(2026-10-05)`) |
+| `.is_geo_role(head)` / `.geo_term(head, value)` | whether a head is a role of `geo`, in which a word names a filed place; `head`'s term for a geo value (`from(47..48,13..14)` in a role, `geo(47..48,13..14)` under `geo`) |
 | `.declare_place(name, where, *, address="", adopted=None)` | the write `loop place` makes: `name` under `geo(where)`, `where` any parameter `geo` takes; ontodag's prelude adopted first where `geo` is not a rectangle head (`adopted()` called to say so; a store from before registry 5.0 is refused there, naming its migration); `address` kept on the node as settlement text |
 | `.head_kind(head)` | the registry kind a declared head orders values by, else `None` |
 | `.root` | canonical root of the last committed state, `''` if in-memory/uncommitted |
@@ -1237,8 +1237,8 @@ note; a private name with no such term is refused, never read as a
 literal. A bare coordinate literal (`46.05,14.50+-5km`, `46.05,14.50`, or
 bounds; §2) becomes the rectangle ontodag reads it as, in its canonical
 bounds, under the rectangle head the catalogue marks as a handover
-coordinate, and in a role of geo it is written by geo's name
-(`from(46.05,14.50+-5km)` → `from(geo(…))`); the old `LAT,LON,RADIUS` is
+coordinate, and a role of geo takes it bare (`from(46.05,14.50+-5km)` →
+`from(…)`, its bounds); the old `LAT,LON,RADIUS` is
 refused with the fix named; a bare relative time
 (`today..+7d`) is elaborated to fixed UTC under the calendar one. A term of a *linear* or
 *count* head (`mass(...)`, `count(...)`) is accepted by the parser and

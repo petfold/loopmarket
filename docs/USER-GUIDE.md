@@ -352,20 +352,20 @@ Things to notice:
 
   ```console
   $ loop want ride 'from(home)' 'time(today..+7d)' 5
-  want     from(geo(46.005033..46.094967,14.435157..14.564843)) geo(46.005033..46.094967,14.435157..14.564843) ride time(2026-10-01T00:00:00Z..2026-10-08T05:59:59Z)
+  want     from(46.005033..46.094967,14.435157..14.564843) geo(46.005033..46.094967,14.435157..14.564843) ride time(2026-10-01T00:00:00Z..2026-10-08T05:59:59Z)
   ...
-    note     from(home) → from(geo(46.005033..46.094967,14.435157..14.564843))
+    note     from(home) → from(46.005033..46.094967,14.435157..14.564843)
     note     time(today..+7d) → time(2026-10-01T00:00:00Z..2026-10-08T05:59:59Z)
   publish? [y/N] n
   ```
 
   `home` hangs under its geo rectangle, so the published term is
-  `from(geo(…))`, the rectangle by geo's name — public vocabulary — and the
-  approval block says so. In a role of `geo` a bare word is a *place*: type
-  a rectangle there by geo's name, `from(geo(46.0..46.1,14.4..14.6))`, or
-  as coordinates, `from(46.05,14.50+-5km)`; a bare word that is neither a
-  place the catalogue knows nor one of your own (`from(sydney)`,
-  `from(ljubljna)`) is refused, naming the way to file it. Your private
+  `from(…)`, the rectangle itself — public vocabulary — and the approval
+  block says so. In a role of `geo` a word is a *place*, and a rectangle is
+  written bare, `from(46.0..46.1,14.4..14.6)`, or as coordinates,
+  `from(46.05,14.50+-5km)`; a word that is neither a place the catalogue
+  knows nor one of your own (`from(sydney)`, `from(romme)`) is refused,
+  naming the way to file it. Your private
   name never leaves your machine; its value does: the square 5 km either
   way of the point, rounded outwards to millionths of a degree, is what the
   offer *says*.
@@ -1333,7 +1333,7 @@ $ loop place venue 46.051,14.506+-200m
 $ loop draft ticket want theatre-ticket hamlet 'time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)' venue
 ticket  want geo(46.049201..46.052799,14.503408..14.508592) hamlet theatre-ticket time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)
 $ loop draft ride want ride 'from(home)' 'to(venue)' 'time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z)'
-ride  want from(geo(46.005033..46.094967,14.435157..14.564843)) geo(46.005033..46.094967,14.435157..14.564843) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(geo(46.049201..46.052799,14.503408..14.508592))
+ride  want from(46.005033..46.094967,14.435157..14.564843) geo(46.005033..46.094967,14.435157..14.564843) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(46.049201..46.052799,14.503408..14.508592)
 $ loop draft evening ticket + ride       # compose: the same + as on a one-line want
 $ loop drafts                             # canonical lines; what you typed as notes beneath
 $ loop offer evening 60                   # the draft becomes an offer, one price for the lot
@@ -1341,7 +1341,7 @@ want     hamlet theatre-ticket + ride
   maker    amara
   part 1   geo(46.049201..46.052799,14.503408..14.508592) hamlet theatre-ticket time(2026-10-05T19:00:00Z..2026-10-05T21:59:59Z)
            quantity 1 unit — 1, indivisible
-  part 2   from(geo(46.005033..46.094967,14.435157..14.564843)) geo(46.005033..46.094967,14.435157..14.564843) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(geo(46.049201..46.052799,14.503408..14.508592))
+  part 2   from(46.005033..46.094967,14.435157..14.564843) geo(46.005033..46.094967,14.435157..14.564843) ride time(2026-10-05T17:00:00Z..2026-10-05T18:59:59Z) to(46.049201..46.052799,14.503408..14.508592)
            quantity 1 unit — 1, indivisible
   price    60 (the lot, on amara's scale; split across the parts at clearing)
   ...

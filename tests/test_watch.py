@@ -120,7 +120,7 @@ def test_the_courier_of_a_composed_leg_hears_of_its_fill_from_the_daemon(env, tm
     assert first == ""                                                  # nothing cleared yet
     assert second.count("filled   ") == 2
     assert f"filled   {ride[:12]} in loop" in second
-    assert f"{C} gives from(geo(41..42,1.5..2.8)) to(geo(41..42,1.5..2.8)) transport(small-item) to {B}" in second
+    assert f"{C} gives from(41..42,1.5..2.8) to(41..42,1.5..2.8) transport(small-item) to {B}" in second
     assert f"{C} receives piano-lesson from {B}" in second
     book = town.book()
     leg = next(l for l in book.loop_legs(book.loop_of(box)) if l.want == box)

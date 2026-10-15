@@ -74,6 +74,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   against a real node (the offers equal the same fold computed natively)
   and in real Freedom Browser.
 
+### Changed
+
+- **A role of geo takes its rectangle bare**, following ontodag's
+  registry 6.0 (its question 50): `from(48.1..48.3,16.1..16.3)`, as `geo`
+  itself does. `from(geo(…))` is still taken, and offers, drafts and the
+  approval block show the bare spelling. Under registry 6, offers pinned
+  to registry 5 are refused here until re-posted, as at every major.
+
 ## [0.17.1] — 2026-10-11
 
 ### Added

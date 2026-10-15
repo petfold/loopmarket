@@ -606,8 +606,8 @@ def test_role_terms_carry_the_name_and_match_by_the_graph(
     run.ok("want", "ride", f"from(geo({around}))", "my_home", "6")
     code, out, err = run("matches")
     assert code == 0 and "amara gives" in out and "bruno" in out
-    # a rectangle written by geo's name passes through unchanged...
-    assert f"from(geo({near}))" in run.ok("want", "ride", f"from(geo({near}))", "my_home", "6")
+    # a rectangle by geo's name is the same value, written bare...
+    assert f"from({near})" in run.ok("want", "ride", f"from(geo({near}))", "my_home", "6")
     # ...a bare word that is no place is refused, naming the way to file it
     # (in a role of geo a bare word is a place)...
     code, out, err = run("want", "ride", "from(nowhere)", "my_home", "6")
@@ -622,10 +622,10 @@ def test_role_terms_carry_the_name_and_match_by_the_graph(
     # `offers` filters through the same order
     assert len(run.ok("offers", f"from(geo({around}))", "--raw").splitlines()) == 3
     assert run.ok("offers", "from(zzzz)", "--raw") == ""
-    # coordinates in a role become a rectangle by geo's name, and a word
+    # coordinates in a role become its rectangle, written bare, and a word
     # by geo's name is no rectangle
     out = run.ok("want", "ride", "from(46.05,14.50±5km)", "my_home", "6")
-    assert f"from(46.05,14.50±5km) → from(geo({square('46.05,14.50±5km')}))" in out
+    assert f"from(46.05,14.50±5km) → from({square('46.05,14.50±5km')})" in out
     code, out, err = run("want", "ride", "from(geo(london))", "my_home", "6")
     assert code == 1 and "'london' is no rectangle" in err
 
@@ -937,9 +937,9 @@ def test_drafts_named_numbered_canonical_and_never_in_the_book(stage):
     stage.ok("draft", "ride", "want", *RIDE)
     stage.ok("draft", "want", "hamlet", "5")                # unnamed, priced
     listing = stage.ok("drafts")
-    assert f"ride  want from(geo({home})) geo({home}) person time(" in listing
+    assert f"ride  want from({home}) geo({home}) person time(" in listing
     assert "   typed ride want transport person from(home) to(venue)" in listing
-    assert f"   note  from(home) → from(geo({home}))" in listing   # a private place
+    assert f"   note  from(home) → from({home})" in listing   # a private place
     assert re.search(r"^3  want geo\(.*\) hamlet 5$", listing, re.M)  # price last
     assert stage.ok("mine", "--raw") == "" and stage.ok("offers", "--raw") == ""
     assert os.path.exists(os.path.join(os.environ["LOOP_HOME"], "drafts"))
@@ -1097,7 +1097,7 @@ def test_an_operator_argument_spans_tokens_and_matches_reversed(env, tmp_path, m
     monkeypatch.setenv("LOOP_MAKER", "bruno")
     run.ok("want", "transport(bicycle mass(5kg))", "from(geo(48.2..48.25,16.2..16.25))", "to(geo(48.12..48.15,16.12..16.15))", "6")
     out = run.ok("matches")
-    assert "amara gives from(geo(48.1..48.3,16.1..16.3)) to(geo(48.1..48.3,16.1..16.3)) transport(mass(..8kg) small-item) to bruno" in out
+    assert "amara gives from(48.1..48.3,16.1..16.3) to(48.1..48.3,16.1..16.3) transport(mass(..8kg) small-item) to bruno" in out
     monkeypatch.setenv("LOOP_MAKER", "chen")
     run.ok("want", "transport(piano)", "from(geo(48.2..48.25,16.2..16.25))", "to(geo(48.12..48.15,16.12..16.15))", "6")
     assert "chen" not in run.ok("matches")                  # the courier takes no pianos

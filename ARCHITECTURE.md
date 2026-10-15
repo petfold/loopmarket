@@ -309,8 +309,9 @@ are gone (ontodag's registry 5.0). So loopmarket's own geometry goes:
 `spacetime.py` (the geohash encoder and the finest cell holding a radius)
 is deleted, a coordinate literal at the prompt is ontodag's parameter
 typed bare (`46.05,14.50±5km`; the old `LAT,LON,RADIUS` is refused with
-the fix named), a private place hangs under a rectangle, and a role writes
-a value by geo's name, `from(geo(…))`. `loop place` stays, as the way to
+the fix named), a private place hangs under a rectangle, and a role takes
+a rectangle bare, `from(…)` (ontodag's registry 6.0; by geo's name,
+`from(geo(…))`, before it). `loop place` stays, as the way to
 name a private place and give it the address a handoff seals; it no longer
 computes anything. One effect to know: a cell rounded a place outwards to
 a coarse grid, so places near each other often shared a cell and matched;

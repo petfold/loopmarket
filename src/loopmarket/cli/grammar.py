@@ -301,7 +301,7 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
     graph, and the counterparty, matching under the same root, can. A
     name only the personal layer holds is one the root does not carry, so
     it publishes as the rectangle it hangs under (`from(my_home)` →
-    `from(geo(46.0..46.1,14.4..14.6))`) and the name stays private; a
+    `from(46.0..46.1,14.4..14.6)`) and the name stays private; a
     private region or floor has no single value and is refused — publish
     it to the catalogue, or give a rectangle. A name outside the dimension
     is refused by ontodag in its own words."""
@@ -365,8 +365,8 @@ def _elaborate_terms(session: "Session", concepts, ontology: Ontology):
             term = _canonical(ontology.geo_term(head, coords(param)), dag, [])
         elif kind == _dims.KIND_RECT and "(" not in param \
                 and ontology.is_geo_role(head):
-            # In a role of geo a bare word names a place (ontodag's review
-            # question 14), and a value is written by geo's name.
+            # In a role of geo a word names a filed place (ontodag's review
+            # question 14), and a rectangle is written bare (registry 6.0).
             raise ValueError(
                 f"{c}: {param!r} is no place the catalogue or your names "
                 f"know — `loop place {param} LAT,LON+-SIZE` files it under "
