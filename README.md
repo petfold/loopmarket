@@ -30,7 +30,7 @@ they were more efficient, safer and produced fewer conflicts
 ```console
 $ odag -f market.od put piano-lesson music-lesson   # the catalogue is ontodag's
 $ loop set catalogue market.od
-$ loop set maker amara; loop place home 46.05,14.50+-5km; loop set terms home
+$ loop set maker amara; loop place home 41.90,12.50+-5km; loop set terms home
 $ loop give piano-lesson 100                # I give this, priced on my scale
 $ loop want produce local weekly 104        # I want this, priced on my scale
 $ loop loops && loop clearing               # hunt profitable loops; run the clearing house
@@ -131,7 +131,7 @@ same code runs with the book on Swarm.
 
 ## What is built, and what is designed
 
-**Built (as of 0.17.1):** the full pipeline above runs
+**Built (as of 0.18.0):** the full pipeline above runs
 in memory — and, since 2026-09-12, from the command line (`loop`) — and since 2026-08-01 also end-to-end on a real Gnosis-mainnet
 Bee node — catalogue and book on Swarm, book head in a signed feed, fills
 atomic (the gated `tests/test_swarm_book.py`). Since 2026-08-21 the
@@ -195,7 +195,12 @@ arbitrator both sides accept, whose ruling is final** — the case (claim,
 answer, reasons) sealed through the books, the money moved by the escrow,
 and a personal view of arbitrators from the escrow's log (`loop claim`,
 `answer`, `hold`, `rule`, `arbitrators`; live on Gnosis the same day).
-Alpha; interfaces will move.
+Since 2026-10-12 the market can be read in a browser with nothing
+installed (`browser/`, at `loopmarket.gwei`, in Freedom Browser or any
+browser): the page reads the announced books and folds them with loop's
+own code; since 2026-10-14, opened through your own Bee node, it also
+makes, publishes and withdraws your offers and announces your book
+(User Guide §11.2). Alpha; interfaces will move.
 
 **P3 went ahead of its gates.** The guarantee fabric was built on Peter's
 decisions from 2026-09-19: the escrow, the counterparty gate, registers,
@@ -273,7 +278,7 @@ And two pairs more: **clearing** is the atomic commit that fixes obligations; **
 | [`P4-privacy.md`](docs/plans/P4-privacy.md) | Staged privacy: Tier 1 with zero new cryptography, the P2 format-freeze list, explicit dead/deferred rulings. |
 | [`ontodag-coupling.md`](docs/plans/ontodag-coupling.md) | The catalogue contract: dimension terms, unit families, match degrees, the upstream-vs-local tripwire table. |
 | [`cli.md`](docs/plans/cli.md) | The command line (designed 2026-09-11, **built 2026-09-12** as `loop`): ontodag's grammar plus quantity-first/price-last, every term the catalogue's, last-price memory, "declare in the direction you know" instead of a tolerance parameter, the approval block, batch scripts; what is still open (the upstream asks, §11). |
-| [`BROWSER.md`](docs/plans/BROWSER.md) | loopmarket in a browser: what runs under Pyodide as it is, what needs replacing (the catalogue, the book through ontodag's four calls on chunks, the registry through the wallet), the identity decided as one key from one wallet signature, what a page can't do (duties with deadlines). The read-only page is built (`browser/`, 2026-10-12) and runs in Freedom Browser. |
+| [`BROWSER.md`](docs/plans/BROWSER.md) | loopmarket in a browser: what runs under Pyodide as it is, what needs replacing (the catalogue, the book through ontodag's four calls on chunks, the registry through the wallet), the identity decided as one key from one wallet signature, what a page can't do (duties with deadlines). The page is built (`browser/`): it reads the market (2026-10-12) and, through your own node, publishes your offers and announces your book (2026-10-14); it runs in Freedom Browser. |
 | [`catalogue-bootstrap.md`](docs/plans/catalogue-bootstrap.md) | Seeding and governing the shared catalogue: seed taxonomies, the import pipeline, norms as protocol rules. |
 | [`adoption-and-thickness.md`](docs/plans/adoption-and-thickness.md) | Where the first loops come from: launch verticals, the broker surface, bridge liquidity, thickness engineering. |
 | [`THREATS.md`](docs/plans/THREATS.md) | The threat register, T1–T20 (the fixed T1–T9 by expected damage to a young system, then dated additions — T19, biometric linkage at the door; T20, a resolver's stake thinner than it reads); mirrored in factbond. |

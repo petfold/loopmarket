@@ -36,7 +36,7 @@ from .dimensions import DimensionIndex, candidate_matches_indexed
 from .graph import Circulation, ExchangeGraph, Loop, find_circulations
 from .clearing import LoopProposal, BookClearing, MockClearing, Receipt, Clearing
 
-__version__ = "0.17.1"
+__version__ = "0.18.0"
 
 __all__ = [
     "Acceptance",

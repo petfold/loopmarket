@@ -277,7 +277,7 @@ Writing:
 | `.publish_many(offers) -> [ids]` | |
 | `.withdraw(offer_id)` | monotone tombstone; survives merges; `KeyError` if the offer isn't in this book; re-publishing identical content does not un-withdraw |
 | `.absorb(other, *, clearing=True)` | re-assert another book's entire content as this writer's base; canonical addressing makes the re-commit reproduce the source root (clone verification). O(book). `clearing=False` leaves out `CLEARING_KEYSPACES` (`fill/`, `loop/`, `option/`, `exercise/`, `item/`): under a chain a proposer takes the makers' speech alone (question 25) |
-| `.attach_signature(offer_id, sig_hex)` | store a detached signature; `ValueError` unless it recovers to the offer's maker; needs `[sig]` |
+| `.attach_signature(offer_id, sig_hex, *, recover=None)` | store a detached signature; `ValueError` unless it recovers to the offer's maker; needs `[sig]`, unless `recover(offer_id, sig_hex)` (the address a signature recovers to) comes from elsewhere, as the page's does |
 | `.mark_filled(fills, loop_id, loop_record, extra=None)` | clearing's stroke: fills (whole, or per loop for a divisible give taken in part) + the loop record + `extra` records (holds, exercises, item claims) under one commit; **no wall clock** — a pure function of the decision |
 | `.publish_contact_card(address, sig_hex)` | `key/<address>`: a signature over sha256(`b"loopmarket contact card\n"` + address) from which anyone recovers the key's public key (`sigs.sign_contact_card`) — how a key with no signed offer, an arbitrator, is sealed to |
 | `.write_case(loop_id, offer_id, kind, side) -> key` | a sealed claim, answer or ruling (`case.sealed`) at `case/<loop>/<offer>/<kind>/<to>/<writer>`; the fold admits it only as its writer's speech under its writer's key |
@@ -1152,10 +1152,10 @@ so reruns inherit nothing.
 | `RuntimeError` | `Ontology.persistent` without `EagerOntoDAG` | missing optional machinery |
 | `TypeError` | `Ontology.commit` on in-memory catalogues | nothing to commit to |
 
-## 16b. `loopmarket.browser` — the read-only page's Python
+## 16b. `loopmarket.browser` — the market page's Python
 
 Runs under Pyodide in the page `browser/` (docs/plans/BROWSER.md §5a,
-§5b); answers are JSON text.
+§5b, §5c); answers are JSON text.
 
 | member | does |
 |---|---|
@@ -1168,6 +1168,10 @@ Runs under Pyodide in the page `browser/` (docs/plans/BROWSER.md §5a,
 | `SavedSearches.add(name, categories)` / `remove(name)` | add or change a search (a change forgets what it had seen) / remove one |
 | `SavedSearches.run(market, now=None)` | every search against the fold: its `rows`, and which are `new` (not yet seen), or its `error` |
 | `SavedSearches.mark_seen(name, ids_json)` | count these offer ids as seen by that search |
+| `MakerBook(maker, catalogue, now=None, recover=None)` | your book as a maker, the one `loop setup` names for the key (`topic`: `swarm:loop-` and the address's first 8 hex digits); `recover(offer_id, signature)`, the address a signature recovers to, checks each signature before it is stored (loop's own by default, the page's JavaScript secp256k1 in the page) |
+| `MakerBook.prepare(line)` | the offer a line makes, as `loop give` and `loop want` make it (`cli.entry.offer_from_line`), not yet published: its `id` (what the page signs) and the approval `block` `loop` prints |
+| `MakerBook.publish(offer_id, signature, feed_root, blobs)` | a prepared offer with the maker's signature over its id, into the book the feed holds (read first, so what another device published stays), committed onto `blobs` (ontodag's `StagedBlobs`): the `root` to point the feed at, and the maker's open offers (`mine`) |
+| `MakerBook.withdraw(offer_id, feed_root, blobs)` / `fetch(feed_root, blobs)` | withdraw one of the maker's open offers the same way (refused for a filled one) / the book as its feed holds it |
 
 An unreachable blob, or one whose chunks did not match their addresses,
 raises; a fold never answers with an empty book in its place.

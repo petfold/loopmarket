@@ -7,7 +7,13 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
-## [Unreleased]
+## [0.18.0] — 2026-10-15
+
+The market in a browser, and your offers from it; and ontodag 0.34's
+registry 6.0. A role of geo takes its rectangle bare, so an offer whose
+`from` or `to` names a rectangle gets a new spelling and so a new id;
+offers written under registry 5 keep their records and ids and are
+refused for matching until re-posted. Floor `ontodag>=0.34.0`.
 
 ### Added
 
@@ -32,6 +38,28 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   recovers with its JavaScript secp256k1, where loop's signer does not
   install.
 
+- **Saved searches in the market page** (`loopmarket.browser.SavedSearches`,
+  `MarketPage.search`, BROWSER.md §5b): a name and categories, as `loop
+  offers` takes them, run after every reading of the market, with the
+  offers not seen before marked. Kept in a local JSON file, never on
+  Swarm; saved back in place where the browser allows it, downloaded
+  where it does not (ontodag's `localfile.js`). The page builds the
+  default catalogue in memory for them (`cli.setup.fill_catalogue`, the
+  same root as `loop setup`'s; about 8 s, once per visit). `browser/check.py`
+  drives it through the page's buttons against the native search.
+- **A read-only market page for Freedom Browser** (`browser/`,
+  docs/plans/BROWSER.md §5a). The page runs loopmarket under Pyodide:
+  - it reads the books announced on Gnosis, through the browser's chain
+    access (`window.ethereum`) or the public RPC;
+  - it finds each book's newest root through its feed, over Freedom's
+    `window.swarm` or a node over HTTP;
+  - it folds the books with loopmarket's own `Aggregator` and lists the
+    open offers.
+
+  `loopmarket.browser.MarketPage` is its Python. Checked in Chromium
+  against a real node (the offers equal the same fold computed natively)
+  and in real Freedom Browser.
+
 ### Fixed
 
 - **The page's catalogue pins the root `loop setup`'s catalogue has.**
@@ -48,31 +76,6 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   `MarketPage(js_store, bridge=RETRY)`): a fold that reaches a blob not yet
   fetched stops, the page fetches it and folds again. `browser/check.py
   --iphone` runs the page as an iPhone does (ontodag BROWSER.md §15).
-
-### Added
-
-- **Saved searches in the market page** (`loopmarket.browser.SavedSearches`,
-  `MarketPage.search`, BROWSER.md §5b): a name and categories, as `loop
-  offers` takes them, run after every reading of the market, with the
-  offers not seen before marked. Kept in a local JSON file, never on
-  Swarm; saved back in place where the browser allows it, downloaded
-  where it does not (ontodag's `localfile.js`). The page builds the
-  default catalogue in memory for them (`cli.setup.fill_catalogue`, the
-  same root as `loop setup`'s; about 8 s, once per visit). `browser/check.py`
-  drives it through the page's buttons against the native search.
-
-- **A read-only market page for Freedom Browser** (`browser/`,
-  docs/plans/BROWSER.md §5a). The page runs loopmarket under Pyodide:
-  - it reads the books announced on Gnosis, through the browser's chain
-    access (`window.ethereum`) or the public RPC;
-  - it finds each book's newest root through its feed, over Freedom's
-    `window.swarm` or a node over HTTP;
-  - it folds the books with loopmarket's own `Aggregator` and lists the
-    open offers.
-
-  `loopmarket.browser.MarketPage` is its Python. Checked in Chromium
-  against a real node (the offers equal the same fold computed natively)
-  and in real Freedom Browser.
 
 ### Changed
 
