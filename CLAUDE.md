@@ -519,9 +519,10 @@ The published page: `bzz://56f9ce1b3a1a96ed875b786658ce8a9823b00d93cd9631c37a505
 (2026-10-12), behind the feed manifest `a0e5384a…` and the name
 `loopmarket.gwei`; it loads the shared Pyodide. A version with your offers
 and announcing, not behind the names until Peter has tried it:
-`bzz://e64302ea3d8f0e0a66bd02e5ca2443471ca0c85b8234e54d9a1b7d562b11a1d1/` (2026-10-15,
-with ontodag's feed-probe fix, and naming the redundancy level per blob as
-ontodag's question 47 decided).
+`bzz://adf2e955fb6068c6b2c89e7312340c80bc89ae1787c2d1e94e1743faae8d2036/` (2026-10-15,
+with ontodag's feed-probe fix, the redundancy level named per blob as
+ontodag's question 47 decided, and whole-blob reads from a node or a
+gateway).
 `browser/build.py --publish --no-feed` uploads a version without moving the
 names.
 

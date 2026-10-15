@@ -323,7 +323,7 @@ async def check_page(url, freedom, searched=(), mode=None, iphone=False, publish
         print(f"  registry: {await page.inner_text('#via')}")
         rows = (await page.evaluate("window.loopPage.call('offers', '')"))["rows"] if "error" not in result else None
         stats = await page.evaluate("window.loopPage.stats()")
-        print(f"  chunks fetched {stats['reads']} ({stats['bytes'] // 1024} KB); window.swarm calls {calls}")
+        print(f"  blobs and chunks fetched {stats['reads']} ({stats['bytes'] // 1024} KB); window.swarm calls {calls}")
         problems = await check_searches(page, searched) if rows is not None else []
         if publish and rows is not None:
             problems += await check_maker(page)

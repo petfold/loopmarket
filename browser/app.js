@@ -126,7 +126,7 @@ async function showOffers() {
 
 function showStats() {
   const s = reader.stats;
-  $("stats").textContent = `chunks fetched ${s.reads} (${(s.bytes / 1024).toFixed(0)} KB), kept from earlier visits ${s.stored}, reused ${s.cached}` +
+  $("stats").textContent = `blobs and chunks fetched ${s.reads} (${(s.bytes / 1024).toFixed(0)} KB), kept from earlier visits ${s.stored}, reused ${s.cached}` +
     (s.waits ? ` · waited for the read budget ${s.waits}×` : "");
 }
 
