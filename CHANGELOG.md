@@ -81,6 +81,7 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   itself does. `from(geo(…))` is still taken, and offers, drafts and the
   approval block show the bare spelling. Under registry 6, offers pinned
   to registry 5 are refused here until re-posted, as at every major.
+  Floor `ontodag>=0.34.0`.
 
 ## [0.17.1] — 2026-10-11
 

@@ -25,7 +25,8 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "ontodag>=0.32.0",        # catalogue: subsumption, dimensions, is_below, role heads;
+    "ontodag>=0.34.0",        # catalogue: subsumption, dimensions, is_below, role heads;
+                              # 0.34: a role's rectangle written bare (registry 6.0);
                               # 0.32: geo as rectangles, relative times in time(...);
                               # 0.31: a value in a role of geo by its base's name, ontodag.open
                               # taking nodes, overlaps, get(items_only=) (issues #14/#15/#16,

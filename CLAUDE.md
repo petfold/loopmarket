@@ -35,7 +35,7 @@ Economy essay (`docs/loop-economy.md`).
 ## The stack
 
 ```
-loopmarket  →  ontodag (>=0.32.0)  →  recordstore (>=0.22.2)  →  swarmfs  →  Swarm (optional)
+loopmarket  →  ontodag (>=0.34.0)  →  recordstore (>=0.22.2)  →  swarmfs  →  Swarm (optional)
 ```
 
 - **ontodag** (`../ontodag`): the shared catalogue. A want's terms are one
