@@ -43,9 +43,10 @@ sealed bids essential (otherwise the batch recreates the race). Penumbra
 runs the shape in production (per-block batches at a uniform clearing
 price, identities shielded — its designed flow encryption is unshipped,
 so amounts are revealed; `P4-privacy.md` §7); CoW Protocol is where the
-incentive engineering got
-tested at scale (~$3.7B/mo, arXiv:2408.12225), and this design adopts its
-mechanism wherever loopmarket's structure permits.
+incentive engineering got tested at scale (USD 3.7 billion in October
+2024, arXiv:2408.12225v2; on DefiLlama a peak of 12.7 billion in August
+2025, and about 3 billion in the 30 days to 2026-10-29), and this design
+adopts its mechanism wherever loopmarket's structure permits.
 
 The beat is explicitly *not* for thickness: dynamic-matching theory
 (Ashlagi et al., arXiv:1301.3509; the Akbarpour–Li–Gharan JPE 2020 line)
@@ -214,13 +215,13 @@ belongs to the objective in `P2-loop-selection.md`.
 
 ## 5. The fairness filter, generalized to cycles
 
-CoW's CIP-67 fair combinatorial auction (live June 20 2025) exists because
+CoW's CIP-67 fair combinatorial auction (live since mid-2025) exists because
 single-winner batching caused surplus shifting and cross-subsidization, and
 policing it ex post via EBBO was "significant operational overhead and a
 centralization factor." Its rules: per directed token pair, a **reference
 outcome** = the best single-pair bid; any batched bid delivering some pair
 less than its reference is discarded before winner selection — batching
-happens only if every group benefits. The theory (Cramton et al.,
+happens only if every group benefits. The theory (Canidio and Henneke,
 arXiv:2408.12225) frames this as cooperative-game fairness against an
 *endogenous* reference and proves the trade-off: "stronger fairness
 guarantees come at the expense of the market value of the assets
@@ -331,8 +332,8 @@ Adopted from CoW's CIP-38/CIP-67 lineage (decided 2026-08, lands with P2):
   proposals. cap(x) = max(−c_l, min(c_u, x)); rewards can go negative — a
   solver that wins and fails to settle owes the protocol. Upper cap
   c_u = β × settlement fees the solver's own settled loops generated (CoW:
-  β = 50% Ethereum/Arbitrum/Base, 100% elsewhere; loopmarket starts
-  conservative) plus a small fixed floor so young solvers with no fee
+  β = 50% on Ethereum, Arbitrum, Base and BNB, 100% elsewhere; loopmarket
+  starts conservative) plus a small fixed floor so young solvers with no fee
   history can earn. The cap is U13's budget discipline: rewards can never
   exceed revenue the solver's own settlements produced.
 - **Consistency pool**, weekly, budget = β × fees − performance rewards
@@ -347,7 +348,15 @@ Adopted from CoW's CIP-38/CIP-67 lineage (decided 2026-08, lands with P2):
   software quoting almost-loops — `adoption-and-thickness.md`), a quote is
   reward-eligible only if the quoter later proposed an execution at least
   as good and it survived the fairness filter — CoW's fix after solvers
-  baited users with quotes they never solved, worst on cheap L2s.
+  baited users with quotes they never solved, worst on cheap L2s. CoW
+  has since dropped it: under CIP-88 (in effect since 2026-10-06) a budget
+  of about 10% of protocol revenue pays, per executed order, the five
+  quotes closest to the executed price, weighted by 1/error². The reason
+  bears on this rule: a quote paid only if its quoter later beats it
+  teaches quoters to quote low, and CoW measured its solvers' quotes as
+  worse on average than their own bids for the same orders
+  (forum.cow.fi/t/3560). The pre-commitment stands as written until Peter
+  rules on it; it binds only once a quoting tier exists.
 - **Considered, not adopted**: a UniswapX-style exclusivity window for the
   first-committed discoverer, as search compensation — right where bids are
   public; under sealed submission it buys little and reintroduces a race

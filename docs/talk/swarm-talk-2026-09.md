@@ -265,15 +265,18 @@ Clearing prices are node potentials: Kirchhoff's voltage law in logs.**
 
 ### Slide 19 — Solvers: outside the protocol, competing, trusted with nothing
 
-**The CoW Protocol shape: anyone runs a solver; the best proposal wins;
-the solver is paid from the surplus it found — an endogenous spread
-bounded by the reserve bid.**
+**The CoW Protocol shape, minus the allowlist: anyone runs a solver; the
+best proposal wins; the solver is paid from the surplus it found — an
+endogenous spread bounded by the reserve bid.**
 **Solvers may be as clever, private and stochastic as they like. The
 baseline in the repo is deterministic and is the reserve bid.**
 
     Solvers are external to loopmarket proper, exactly as CoW's solvers
-    are external to the protocol. The repo ships one — the species the
-    others have to beat — and nothing in clearing depends on any of
+    are external to the protocol. CoW settles only through bonded,
+    allowlisted solvers (with KYC under CoW DAO's own bonding pool); a
+    beat here takes a proposal from anyone who posts the beat's bond,
+    which a successful challenge takes. The repo ships one — the species
+    the others have to beat — and nothing in clearing depends on any of
     them being honest. P2's batch auction: sealed proposals per beat,
     numeraire-free scoring, a fairness floor (P2-batch-auction.md).
 

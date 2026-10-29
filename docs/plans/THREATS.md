@@ -160,8 +160,8 @@ announcement-loss and batch top-up anomalies ride with
 
 **Attack.** A ring rotates lowball wins, shifts surplus between orders it
 controls, or games the fairness filter — the vectors named by the CIP-67
-theory (Cramton et al., arXiv:2408.12225): **overbid a standalone order
-to disqualify a rival's batch as unfair**, and **underbid batches
+theory (Canidio and Henneke, arXiv:2408.12225): **overbid a standalone
+order to disqualify a rival's batch as unfair**, and **underbid batches
 expecting weak competition**. Losing-bid information front-runs the next
 beat.
 

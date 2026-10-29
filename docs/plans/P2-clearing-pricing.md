@@ -157,18 +157,18 @@ canonical.
 
 ## 5. Precedence: uniform directional clearing binds
 
-CoW's fair combinatorial auction (CIP-67, live June 2025) requires uniform
-directional clearing prices — the same directed token pair clears at one
-price within a winning outcome — because differential pricing of one pair
-across batched orders is exactly the surplus-shifting CoW previously had to
-police as a slashable offence ("local token conservation"). The loopmarket
-analog, adopted here as the **precedence rule**: when the same directed
-(ask, bid) pair is consumed by more than one winning loop in a beat
-(divisible offers split across loops), that pair clears at **one rate** for
-the whole beat. One offer, one directed counterparty, one price — the
-structural block on shifting surplus between loops that share an offer, and
-on a solver constructing sibling loops to move value toward its own legs
-(T1-adjacent; see `THREATS.md`).
+CoW's fair combinatorial auction (CIP-67, live since mid-2025) requires
+uniform directional clearing prices — the same directed token pair clears
+at one price within a winning outcome — because differential pricing of one
+pair across batched orders is exactly the surplus-shifting CoW previously
+had to police as a slashable offence ("local token conservation"). The
+loopmarket analog, adopted here as the **precedence rule**: when the same
+directed (ask, bid) pair is consumed by more than one winning loop in a
+beat (divisible offers split across loops), that pair clears at **one
+rate** for the whole beat. One offer, one directed counterparty, one price
+— the structural block on shifting surplus between loops that share an
+offer, and on a solver constructing sibling loops to move value toward its
+own legs (T1-adjacent; see `THREATS.md`).
 
 The equal split cannot always survive this: two loops sharing an edge
 generally want two different deflators S₁^(1/n₁) ≠ S₂^(1/n₂). The rule of

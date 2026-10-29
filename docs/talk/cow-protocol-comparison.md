@@ -77,7 +77,7 @@ AMM price; loopmarket finds them where there is no AMM to beat.*
   On top come consistency rewards (bid quality times settlement success,
   counting market orders only since September 2026) and quote rewards (a
   budget of about 10% of protocol revenue, paid per order to the five most
-  accurate quotes).
+  accurate quotes; CIP-88, in effect since 2026-10-06).
 - **The protocol's fees.** 2 bps of volume (0.3 bps between correlated
   assets such as stablecoins), plus half of any improvement over the quote
   on market orders and half of the surplus on out-of-market limit orders
@@ -351,7 +351,7 @@ What it took, and where that lives:
 | marginal-contribution rewards (CIP-38, CIP-67), the consistency pool, the success rate | the reward template of §7 | designed, then struck with the no-fees ruling; the success rate kept |
 | the settlement deadline (3 blocks on Gnosis) | the beat's deadline (§2) | designed |
 | bond sizing from CoW's slashing record | solver bonds through factbond (P3-guarantee-coupling §6) | designed |
-| the CIP-72 rule on quote rewards | committed in advance for any quoting tier | designed; CoW has since replaced CIP-72 with CIP-88 |
+| the CIP-72 rule on quote rewards | committed in advance for any quoting tier | designed; CoW dropped it for CIP-88 on 2026-10-06 because it taught solvers to quote low, and whether loopmarket follows awaits Peter |
 
 What it refused, and why:
 
@@ -523,49 +523,65 @@ Where loopmarket is different by design:
 - a deterministic baseline any reader can replay;
 - delivery guarantees as part of the protocol.
 
-## 9. Check before the talk
+## 9. Corrected in our docs (2026-10-30)
 
-These turned up while comparing. None is fixed yet.
+The comparison turned up these errors in loopmarket's own documents. They
+are corrected; the list is here in case someone quotes an older copy.
 
-1. **A misattribution.** arXiv:2408.12225, the theory behind CIP-67, is by
-   Andrea Canidio and Felix Henneke (CoW Protocol), not "Cramton et al." as
-   `docs/plans/THREATS.md` (T3) and `docs/plans/P2-batch-auction.md` (§5)
-   say. Its current title (v4, July 2026) is *Fair Combinatorial Auctions:
-   Endogenous Best Execution in Blockchain Trade-Intent Markets*; v1
-   (August 2024) was *Combinatorial Auctions without a Numeraire: The Case
-   of Blockchain Trade-Intent Auctions*. CIP-67's authors are Haris
-   Angelidakis, Andrea Canidio, Felix Henneke and Bram van den Berg. Any of
-   them may be in the room.
-2. **CIP-67's date.** P2-batch-auction §5 says it went live on 20 June 2025,
-   and P2-clearing-pricing §5 says June 2025. The CIP, voted in mid-May
-   2025, planned activation on all chains "around May 20th, 2025". Say
-   "since mid-2025" unless the day is confirmed.
-3. **CIP-72 is gone.** CoW replaced it with CIP-88 (quote rewards from
-   about 10% of revenue, to the five most accurate quotes).
-   P2-batch-auction §7 and `adoption-and-thickness.md` still commit in
-   advance to "the CIP-72 rule".
-4. **β.** CoW's 50% share now applies on Ethereum, Arbitrum, Base and BNB;
-   P2-batch-auction §7 leaves out BNB.
-5. **The essay's CoW paragraph** (`docs/loop-economy.md`, "Nothing here is
-   untested").
-   - CoW now cuts an auction about once a block, not every thirty seconds.
-   - "Tens of billions of dollars" undersells it: about $187B since
-     December 2023 on DefiLlama alone.
-   - "Returning the discovered surplus to the traders" is less exact now
-     that the protocol takes half of any improvement over the quote
-     (capped at 0.98%) and 2 bps of volume.
-   - Later in the essay, "an open solver competition on a token exchange
-     would drive out the incumbent aggregators within two years" has no
-     source in the repo. Find one or soften it.
-6. **The Swarm talk's slide 19** says "The CoW Protocol shape: anyone runs
-   a solver". Anyone can write one, but only bonded and allowlisted solvers
-   settle, with KYC under CoW DAO's pool. BYOS is CoW's 2026 move to let
-   anyone propose routes through a bonded solver.
-7. **P2-batch-auction §1's "~$3.7B/mo"** is the 2024 paper's figure.
-   DefiLlama has about $3.0B for the last 30 days and a peak of about $12.7B
-   in August 2025.
-8. **MEV Blocker** is no longer CoW's: it was sold to Consensys's Special
-   Mechanisms Group in January 2026.
+1. **The paper's authors.** THREATS.md T3 and P2-batch-auction §5 credited
+   arXiv:2408.12225, the theory behind CIP-67, to "Cramton et al."; it is
+   by Andrea Canidio and Felix Henneke (CoW Protocol). Its title changed
+   with its versions: v1 (August 2024) *Combinatorial Auctions without a
+   Numeraire: The Case of Blockchain Trade-Intent Auctions*; v2 and v3
+   *Fair Combinatorial Auction for Blockchain Trade Intents: Being Fair
+   without Knowing What is Fair*; v4 (July 2026) *Fair Combinatorial
+   Auctions: Endogenous Best Execution in Blockchain Trade-Intent Markets*.
+   CIP-67's authors are Haris Angelidakis, Andrea Canidio, Felix Henneke
+   and Bram van den Berg. Any of them may be in the room.
+2. **A figure the paper does not contain.** P2-loop-selection §3 said
+   "~94% of CoW's production batches have ≤3 orders (arXiv:2408.12225)";
+   no version of the paper has it. It now cites what can be checked: only
+   6–7% of CoW's winning solutions contain more than one order (a
+   production solver's report, forum.cow.fi/t/3511). The argument it
+   supports, that exact packing is affordable because interaction is
+   sparse, stands.
+3. **CIP-67's date.** P2-batch-auction §5 said "live June 20 2025" and
+   P2-clearing-pricing §5 "June 2025"; both now say "since mid-2025". The
+   CIP planned activation on all chains "around May 20th, 2025", and no
+   announcement of the actual day turned up.
+4. **CIP-72 is gone.** CoW replaced it with CIP-88, in effect since
+   2026-10-06: a budget of about 10% of protocol revenue, paid per executed
+   order to the five quotes closest to the executed price, weighted by
+   1/error². CoW's reason: paying a quote only if its solver later bid at
+   least as well taught solvers to quote low. P2-batch-auction §7 and
+   adoption-and-thickness §6 now say so. loopmarket's own pre-committed
+   "CIP-72 rule" is unchanged; whether it follows CoW is Peter's to rule
+   on, and matters only once a quoting tier exists.
+5. **β.** P2-batch-auction §7 now lists BNB with Ethereum, Arbitrum and
+   Base.
+6. **CoW's volume.** P2-batch-auction §1's "~$3.7B/mo" was CoW's October
+   2024 volume (arXiv:2408.12225v2). It now gives that, DefiLlama's peak
+   of about $12.7B in August 2025 and about $3.0B in the 30 days to
+   2026-10-29.
+7. **The essay's CoW paragraph** (`docs/loop-economy.md`, "Nothing here is
+   untested") now says CoW freezes a batch "every twelve seconds or so"
+   (it said about thirty), returns the surplus "less the protocol's fee",
+   and has settled "well over a hundred billion dollars" (it said tens of
+   billions; DefiLlama has about $187B since December 2023). Later, the
+   unsourced claim that an open solver competition "would drive out the
+   incumbent aggregators within two years" now says it would, "within a
+   few years, win a quarter of the trade the incumbent aggregators had
+   held": CoW Swap had 26% of DEX-aggregator volume in January 2025, 1inch
+   30% (The Block, 2025-02-27).
+8. **The Swarm talk's slide 19** said "The CoW Protocol shape: anyone runs
+   a solver". It now says "minus the allowlist", and its notes say CoW
+   settles only through bonded, allowlisted solvers, with KYC under CoW
+   DAO's pool, while a beat takes a proposal from anyone who posts the
+   bond. BYOS is CoW's 2026 move to let anyone propose routes through a
+   bonded solver.
+
+Not in our docs, but worth knowing: MEV Blocker is no longer CoW's. It was
+sold to Consensys's Special Mechanisms Group in January 2026.
 
 Still accurate:
 
@@ -628,12 +644,16 @@ CoW forum:
 - BYOS RFP (June 2026): <https://forum.cow.fi/t/3469>; the bleu grant and
   its progress: <https://forum.cow.fi/t/3476>
 - Solana at 0 bps (September 2026): <https://forum.cow.fi/t/3557>
+- CIP-88, the quote competition redesign that replaced CIP-72 (in effect
+  since 2026-10-06), with the measurement that quotes were worse than the
+  same solvers' bids: <https://forum.cow.fi/t/3560>
 - CIP-73, the mandate to sell CoW DAO's stake in MEV Blocker:
   <https://forum.cow.fi/t/3222>
 
 Research and other sources:
 
-- Canidio and Henneke, arXiv:2408.12225 (v1 August 2024, v4 July 2026):
+- Canidio and Henneke, arXiv:2408.12225 (v1 August 2024, v4 July 2026;
+  v2 gives CoW's October 2024 volume, USD 3.7 billion):
   <https://arxiv.org/abs/2408.12225>
 - Zhang, *Incentives and Market Structure in Intent-Based Exchanges:
   Evidence from a Solver-Reward Reform*, arXiv:2607.21955 (CIP-74; solver
@@ -646,6 +666,9 @@ Research and other sources:
   <https://www.smg.org/memo/mevblocker>
 - DefiLlama, CoW Swap volumes:
   <https://api.llama.fi/summary/aggregators/cow-swap>
+- The Block, "CoW Swap surges to 26% market share, challenging 1inch for
+  DEX aggregator dominance" (2025-02-27; 1inch at 30%):
+  <https://www.theblock.co/post/343583/cow-swap-surges-to-26-market-share-challenging-1inch-for-dex-aggregator-dominance>
 
 loopmarket:
 

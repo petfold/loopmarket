@@ -104,16 +104,18 @@ filter (`P2-batch-auction.md`), objective value, deterministic selection.
 Scoring a submitted solution is polynomial; only finding the optimum is
 hard.
 
-Exactness is affordable where it matters: ~94% of CoW's production
-batches have ≤3 orders (arXiv:2408.12225) — combinatorial interaction is
-sparse. So the beat also runs the exact packing itself when the instance
-is small (decided 2026-08, lands with P2): below a pinned instance-size
-threshold N\*, winner determination solves the ILP exactly; above it, it
-falls back to the deterministic greedy (the baseline's disjoint
-extraction over the failure-aware objective). The fallback trigger is a
-function of instance size, **never wall-clock** — a timeout diverges
-across replicas and breaks U6's replication story. The baseline's output
-is also the beat's reserve bid; §6 preconditions that promotion.
+Exactness is affordable where it matters: combinatorial interaction is
+sparse. In CoW's production auctions only 6–7% of winning solutions
+contain more than one order (a production solver's report, September
+2026, forum.cow.fi/t/3511). So the beat also runs the exact packing
+itself when the instance is small (decided 2026-08, lands with P2):
+below a pinned instance-size threshold N\*, winner determination solves
+the ILP exactly; above it, it falls back to the deterministic greedy
+(the baseline's disjoint extraction over the failure-aware objective).
+The fallback trigger is a function of instance size, **never
+wall-clock** — a timeout diverges across replicas and breaks U6's
+replication story. The baseline's output is also the beat's reserve bid;
+§6 preconditions that promotion.
 
 ## 4. The failure-aware objective
 

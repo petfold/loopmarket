@@ -246,6 +246,10 @@ truth, near-misses never enter it, U7 stays strict. If broker software ever
 becomes a quoting tier, the CIP-72 rule is pre-committed
 (`P2-batch-auction.md` §7): a quote is reward-eligible only if the quoter
 later proposed an execution at least as good — brokers eat their own hints.
+CoW itself dropped that rule in October 2026 (under CIP-88 quotes are paid
+by their accuracy against the executed price), because it taught quoters
+to quote low; §7 there records it, and the pre-commitment stands until
+Peter rules on it.
 
 ## 7. Personal-token hygiene
 

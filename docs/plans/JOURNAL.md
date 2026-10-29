@@ -426,3 +426,23 @@ On Peter's word ("do 1, 2, 3"), after ontodag 0.34.0 (registry 6.0):
   the registry 5 one (`75337293…`) withdrawn. A keyless reader in a clean
   home, reading the registry on Gnosis and the books through the node,
   lists exactly that offer, and so does the page.
+
+## 2026-10-30: CoW Protocol compared, our CoW facts corrected
+
+- **The comparison** for the Devcon Q&A,
+  `docs/talk/cow-protocol-comparison.md` (2026-10-29): CoW's documentation
+  read from its source, its CIP threads on forum.cow.fi, all four versions
+  of arXiv:2408.12225 and DefiLlama; `BeatClearing` and `SealedBeat` on
+  Gnosis read with free `eth_call`s.
+- **The corrections**, on Peter's word ("fix them in the docs"); the
+  comparison's §9 lists each: arXiv:2408.12225 is Canidio and Henneke's,
+  not "Cramton et al." (THREATS T3, P2-batch-auction §5); a batch-size
+  figure that paper does not contain (P2-loop-selection §3), replaced by
+  a production solver's report; CIP-67 "live since mid-2025"; CIP-72
+  replaced by CIP-88 (P2-batch-auction §7, adoption-and-thickness §6);
+  BNB in the β list; CoW's volume; the essay's CoW paragraph and its
+  "drive out the incumbent aggregators" line; the Swarm talk's slide 19.
+- **Open for Peter:** CoW dropped CIP-72 on 2026-10-06 because paying a
+  quote only if its solver later bids at least as well taught solvers to
+  quote low. loopmarket's pre-committed "CIP-72 rule" for a future
+  quoting tier stands as written until Peter rules on it.
