@@ -7,6 +7,26 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
+## [0.18.1] — 2026-10-29
+
+ontodag 0.35.0, and one ontodag minor at a time. ontodag 0.35.0 ships core
+v14, and the default catalogue `loop setup` builds (ontodag's prelude and
+its `core` pack) moves with it: root `55b9805e…` under 0.34.0,
+`ea5f06c5…` under 0.35.0. Offers pinned to different catalogue roots never
+pair, and 0.18.0's open floor let installs since 2026-10-25 take 0.35.0
+while the market page and earlier installs stayed on core v13, so the
+market had quietly split in two.
+
+### Changed
+
+- **`ontodag>=0.35.0,<0.36.0`** (Peter, 2026-10-29): core v14 for
+  everyone, and a ceiling at the next minor, since a minor may move core
+  and so the default catalogue's root. Each ontodag minor becomes a
+  loopmarket release. Backward compatibility across catalogue versions is
+  not kept yet: an offer pinned to core v13 no longer pairs with one made
+  now, and a home set up under 0.34 keeps its v13 catalogue until `loop
+  setup` builds it again.
+
 ## [0.18.0] — 2026-10-15
 
 The market in a browser, and your offers from it; and ontodag 0.34's

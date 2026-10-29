@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "loopmarket"
-version = "0.18.0"
+version = "0.18.1"
 description = "Universal combinatorial marketplace: uniform offers over an OntoDAG catalogue, a versioned offer book on recordstore/Swarm, and solver agents hunting profitable loops"
 readme = "README.md"
 license = { text = "BSD-3-Clause" }
@@ -25,7 +25,10 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "ontodag>=0.34.0",        # catalogue: subsumption, dimensions, is_below, role heads;
+    "ontodag>=0.35.0,<0.36.0",  # catalogue: subsumption, dimensions, is_below, role heads;
+                              # one minor at a time: a minor may move core, and with it the
+                              # default catalogue's root, and offers pinned to different roots
+                              # never pair (0.35: core v14);
                               # 0.34: a role's rectangle written bare (registry 6.0);
                               # 0.32: geo as rectangles, relative times in time(...);
                               # 0.31: a value in a role of geo by its base's name, ontodag.open

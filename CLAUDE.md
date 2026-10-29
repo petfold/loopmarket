@@ -35,7 +35,7 @@ Economy essay (`docs/loop-economy.md`).
 ## The stack
 
 ```
-loopmarket  →  ontodag (>=0.34.0)  →  recordstore (>=0.22.2)  →  swarmfs  →  Swarm (optional)
+loopmarket  →  ontodag (>=0.35.0,<0.36.0)  →  recordstore (>=0.22.2)  →  swarmfs  →  Swarm (optional)
 ```
 
 - **ontodag** (`../ontodag`): the shared catalogue. A want's terms are one
@@ -47,7 +47,15 @@ loopmarket  →  ontodag (>=0.34.0)  →  recordstore (>=0.22.2)  →  swarmfs  
   public layer (`ontodag.open`, `ontodag.settings`, since 0.31) and still
   reads recordstore's private `_addressing_name`. Places are ontodag's
   rectangles and time terms its relative times (0.32: registry 5.0,
-  contract 0.7, surface 0.2).
+  contract 0.7, surface 0.2). **One ontodag minor at a time** (Peter,
+  2026-10-29, option A): a minor may move core, and with it the root of
+  the default catalogue `loop setup` builds (prelude plus `core`), and
+  offers pinned to different roots never pair; so the dependency is
+  `>=0.X.0,<0.(X+1).0`, and each ontodag minor is a loopmarket release
+  that moves the page and re-posts the test offers. Backward
+  compatibility across catalogue versions is not kept yet (Peter: not
+  until people use it for real). 0.35: core v14, default root
+  `ea5f06c5…` (0.34's was `55b9805e…`).
 - **recordstore**: the book's kernel: canonical roots, snapshots
   (`RecordStore.at(root, blobs)`; the attribute is `.blobs`), three-way
   merge, `commit(reconcile=True, resolver=...)`, proofs, extension proofs.
