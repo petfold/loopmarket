@@ -108,8 +108,8 @@ their book and announces the book once, on chain. Two: anyone can solve.
 A deterministic baseline solver is built in, and we expect smarter,
 specialist solvers. Three: solvers submit sealed proposals per batch.
 Four: clearing trusts no solver. It checks every leg again from scratch
-and commits all legs at once, and anyone can challenge it on chain for an
-hour. That is clearing. Five is settlement: the makers deliver, in the
+and commits all legs at once, and anyone can challenge a leg on chain.
+That is clearing. Five is settlement: the makers deliver, in the
 real world, with bonds in escrow. In a dispute, an arbitrator both sides
 accepted decides[, or factbond's bonded assertions, for high stakes among
 strangers]. Makers pay for their own storage, and a proposer pays gas and

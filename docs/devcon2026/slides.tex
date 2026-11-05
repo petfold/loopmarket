@@ -359,7 +359,7 @@
     \node[stage] (s1) at (0,0)   {{\footnotesize\bfseries\color{accent}1 Offer}\\[1mm]The maker signs it and writes it to their own book, a Swarm feed. The book is announced once, on chain.};
     \node[stage] (s2) at (29,0)  {{\footnotesize\bfseries\color{accent}2 Solve}\\[1mm]Anyone folds the books and hunts loops. A deterministic baseline is built in; smarter, specialist solvers are welcome.};
     \node[stage] (s3) at (58,0)  {{\footnotesize\bfseries\color{accent}3 Propose}\\[1mm]Sealed proposals per batch: commit, then reveal. A fixed rule picks the winners. No auctioneer.};
-    \node[stage] (s4) at (87,0)  {{\footnotesize\bfseries\color{accent}4 Clear}\\[1mm]Every leg is checked again from scratch, then all legs commit at once. Anyone may challenge on chain for an hour.};
+    \node[stage] (s4) at (87,0)  {{\footnotesize\bfseries\color{accent}4 Clear}\\[1mm]Every leg is checked again from scratch, then all legs commit at once. Anyone may challenge a leg on chain.};
     \node[stage, fill=accentlight, draw=accent] (s5) at (116,0) {{\footnotesize\bfseries\color{accent}5 Settle}\\[1mm]The makers deliver. Bonds wait in an escrow contract and return when nobody claims.};
     \foreach \a/\b in {s1/s2, s2/s3, s3/s4, s4/s5} { \draw[flow] (\a.east) -- (\b.west); }
     \draw[decorate, decoration={brace, amplitude=2mm}, soft] ($(s1.north west)+(0,1.5)$) -- node[note, above=2.5mm] {clearing: verifiable, nothing trusted} ($(s4.north east)+(0,1.5)$);
