@@ -512,6 +512,33 @@ standing metrics.
   freshness pull apart. Kidney-exchange batch-timing says thickness gains
   from longer batches are modest — start short, lengthen only on measured
   proposal-competition failure.
+- **Latency end to end** (to discuss with Peter, who asked for it on
+  2026-11-06). An urgent want cannot clear in time on today's deployment.
+  The example is the toothbrush wanted at a hotel reception by 00:35, with
+  the courier's run at 00:15–00:35 (the Devcon deck's backup slide). It
+  waits up to one sealed beat of 240 blocks (about 20 minutes), then
+  `BeatClearing`'s 720-block challenge window (about an hour) before
+  `finalize`. Under a chain, `watch` seals the courier's handoff only after
+  a finalized beat (question 25). That is about 1¼ hours before the courier
+  can start. The options:
+  1. **Shorter beats**, a parameter and a `SealedBeat` redeploy: 24 blocks
+     is about 2 minutes. Solvers must fold and solve inside the window,
+     batches get thinner, and the hour stays.
+  2. **Deliver on a checked, posted beat.** `watch` seals the handoff once
+     the beat is posted, the maker's client has run the challenger's dry
+     run on it and no earlier pending beat claims the same offers; the
+     maker finalizes it at the end of its window, before any later rival's
+     ends. No contract changes, but it revisits question 25: the beat's
+     arbiter can still cancel on semantic grounds, and the escrow reserves
+     deposits only at `finalize`.
+  3. **A fast lane.** Urgent offers skip the sealed beat and post directly
+     with `loop propose` (5 seconds in the 2026-09-18 live gate; CoW has
+     had fast-path orders since 2026). It is built, but first valid wins,
+     which brings back the latency race the beat exists to prevent.
+
+  Recommendation: 3 and 2 for urgent trades, and 1 at the next redeploy,
+  because the hour, not the 20 minutes, is what an urgent trade cannot
+  wait. Until this is settled, the Devcon deck states no protocol timings.
 - **Fairness-filter gaming materiality** (P2 + Phase-0 harness). CoW judges
   the overbid/underbid wrinkles negligible because 94% of batches have ≤3
   orders and exact optimization covers them; loopmarket's sparsity profile

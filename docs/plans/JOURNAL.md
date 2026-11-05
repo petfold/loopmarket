@@ -468,3 +468,9 @@ On Peter's word ("do 1, 2, 3"), after ontodag 0.34.0 (registry 6.0):
   call digital assets "currency". The deck links only to the
   repositories and the projects' pages, and its main slides name no
   crypto asset.
+- **Open for Peter: timings** (2026-11-06). On today's deployment an urgent
+  loop, such as the backup slide's toothbrush, waits about 1¼ hours before
+  the courier gets the address. Peter took the protocol timings off the
+  slides ("Anyone may challenge a leg on chain") and will discuss them
+  another day. The question, its three options and a recommendation are in
+  P2-batch-auction's open problems, "Latency end to end".
