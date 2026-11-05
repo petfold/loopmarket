@@ -446,3 +446,22 @@ On Peter's word ("do 1, 2, 3"), after ontodag 0.34.0 (registry 6.0):
   quote only if its solver later bids at least as well taught solvers to
   quote low. loopmarket's pre-committed "CIP-72 rule" for a future
   quoting tier stands as written until Peter rules on it.
+
+## 2026-11-05: the Devcon 8 lightning talk
+
+- **The deck**, `docs/devcon2026/` (`slides.tex`, `slides.pdf`,
+  `talk.md`), from Peter's brief `devcon.txt`: nine slides for five
+  minutes (the problem, the idea, the offer, loops, OntoDAG, Swarm, offer
+  to delivery, where it stands) and four backup slides. A QR code to the
+  repository is on the title slide and the last (Peter: "the QR code
+  would be good on the title slide too"), ontodag's on the last. The
+  three-way loop pays one leg in USDC (Peter: "one example should include
+  traditional USDC money").
+- **Checked against the code:** the ontodag words on the catalogue slide
+  against core v14 (`odag get food produce`: 117 items); the offer line on
+  slide 4, run in a scratch home; the challenger's reward in
+  `BeatClearing.challenge`.
+- **Devcon 8's speaker guidelines** (India) forbid promoting crypto assets
+  and QR codes or links that lead to trading, and ask speakers not to
+  call digital assets "currency". The deck links only to code; `talk.md`
+  says where a risk disclaimer would go if Peter wants one.

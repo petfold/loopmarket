@@ -1,0 +1,83 @@
+Let's prepare slides for my
+https://devcon.org/en/
+5-minute Lightning talk on Loop economy
+submitted and accepted title:
+The Loop Economy: A Universal Combinatorial Marketplace Without a Platform
+accepted submission and abstract
+https://cfp.devcon.org/devcon8/me/submissions/KFG7ZQ/
+https://cfp.devcon.org/devcon8/talk/KFG7ZQ
+
+The audience will be highly technical (it's a big Ethereum conference) but they may not be very familiar with market terms.
+You may look at docs/talk, the format can be similar, but a 5 minute talk must be different.
+At the bottom of each slide show the URL https://github.com/petfold/loopmarket and @petfold for contact
+
+5 minutes is not much time for a talk, so we cannot go into the details and have to talk about the problem, the existing poor solutions, and the principles and summary of the proposed solution in this project directory, also briefly mentioning ../ontodag and even more briefly ../factbond . I would also like to have a slide only about Swarm, and how its unique properties are highly suitable for this project (or how we designed the project with those unique properties.
+---
+Brief outline (can be modified):
+
+Slide 1
+
+Motivation:
+abstract principle:  we want better voluntary human cooperation between strangers, i.e. free markets (essential part of individual freedoms)
+practical problems: existing internet commerce is highly inefficient (search, browsing multiple websites, following conditions on each, and then hoping that what we find is good enough. We can never be sure we found the best (or even nearly best) deal. Amazon, eBay (centralised, take their fees and can censor) or your own webshop (if you want to sell) or searching for and browsing many individual retailers' sites. Huge search and discoverability problem. Most potential trades/interactions don't happen.
+
+Solution:
+a new kind of market: universal, combinatorial, and permissionless
+
+universal : any products and services, not just tokens (going beyond DEXes). Especially those that are possible to define formally.
+combinatorial: multiple offers are combined automatically to satisfy a want, let the algorithms do the searching
+permissionless: offers are registered on a permissionless, distributed, peer-to-peer "server", Swarm
+
+not search and browse, instead describe precisely what is offered as a give or a want, and loopmarket finds a solution
+ - 
+
+1 slide about Swarm:
+
+The real web3
+
+Decentralized server
+Infrastructure for data, applications, and communication
+Host and publish without relying on a single provider or platform
+Content identified by what it is, not where it lives (content-addressing and feeds)
+Access control & client side encryption and access control
+Prepay for storage (rent-a-storage, MB*month); no per-download charge to the publisher
+Values built into the protocol, trustless and permissionless network
+100% of protocol storage payments (BZZ) go to node operators
+network self-sufficient and resilient network
+storage prices adjust to supply and demand automatically with network utilization.
+Publishing without a hosting account.
+Content is distributed across thousands of independent nodes, so its availability does not depend on a single provider.
+
+one slide about what an offer is:
+
+the maker (offer maker)
+give/want
+what - using a Swarm-native categorisation system: OntoDAG
+where - where the offer is offered, precise geo coordinate box (GPS coordinates with tolerance)
+when - when the thing is given or wanted
+price (in own units) [don't waste too much time explaining the own units, maybe mention numeraire (ratio)]
+bond - a guarantee deposit or what is accepted
+adjudicator - agreed identity (key) of in case of dispute [keep it simple for now]
+
+one slide about the simple loops:
+simplest possible: Alica and Bob: Alice gives apples and Bob offers a ride (barter)
+show diagram
+
+Alice, Bob and C (what is the usual cryptography name for C?)
+give a 3-loop example (but don't use vegetable box)
+
+Make one slide about OntoDAG
+explain that categories are DAGs
+(showing an loopmarket-relevant example DAG)
+show space and time, put and get, terms in a basic way
+emphasise unique features of OntoDAG
+show github url
+
+how is the offer made (canonical), what happens, who pays for what, solvers (one built in, external smarter or specialist solver agents expected), loop proposal, clearing, settlement and possibly dispute. show factbond url but very detail
+
+Last slide overview of the done/planned status of the different parts of the project(s)
+show loopmarket (and maybe ontodag) QR codes
+
+extra slides in reserve with examples (may not have time for these in 5 minutes)
+
+You can deviate from this plan.
