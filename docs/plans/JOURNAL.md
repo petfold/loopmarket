@@ -455,13 +455,16 @@ On Peter's word ("do 1, 2, 3"), after ontodag 0.34.0 (registry 6.0):
   to delivery, where it stands) and four backup slides. A QR code to the
   repository is on the title slide and the last (Peter: "the QR code
   would be good on the title slide too"), ontodag's on the last. The
-  three-way loop pays one leg in USDC (Peter: "one example should include
-  traditional USDC money").
+  three-way loop pays one leg in money, $8 (Peter: first "traditional USDC
+  money", then "replace USDC with $ on all slides"), and every leg shows
+  its rate. The footers give the repository and loopmarket.eth.limo
+  (ontodag's two on its slide), and @petfold stands beside the name.
 - **Checked against the code:** the ontodag words on the catalogue slide
   against core v14 (`odag get food produce`: 117 items); the offer line on
   slide 4, run in a scratch home; the challenger's reward in
   `BeatClearing.challenge`.
 - **Devcon 8's speaker guidelines** (India) forbid promoting crypto assets
   and QR codes or links that lead to trading, and ask speakers not to
-  call digital assets "currency". The deck links only to code; `talk.md`
-  says where a risk disclaimer would go if Peter wants one.
+  call digital assets "currency". The deck links only to the
+  repositories and the projects' pages, and its main slides name no
+  crypto asset.

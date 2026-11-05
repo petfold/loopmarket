@@ -18,6 +18,8 @@ make clean      # everything but the PDF
 ```
 
 Needs `pdflatex` with beamer, TikZ, `qrcode`, `tgheros` and booktabs.
-Every slide's footer carries https://github.com/petfold/loopmarket and
-@petfold. The QR codes on slides 1 and 9 point to the loopmarket and
-ontodag repositories.
+The footers carry github.com/petfold/loopmarket and loopmarket.eth.limo
+(slide 6: ontodag's; the title slide has no GitHub link there, since its
+QR caption gives it). @petfold is beside the name on the title slide and
+at the foot of slide 9. The QR codes on slides 1 and 9 point to the
+loopmarket and ontodag repositories.

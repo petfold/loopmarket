@@ -55,12 +55,13 @@ price. We look for them where there is no AMM to beat.
 
 ### 4. One offer form for everything (30 s)
 
-Everything is one kind of record: an offer, signed by its maker. It says
-what, in terms from a shared catalogue; where, as a box of GPS
-coordinates; when, as a time window; and a price on the maker's own
-scale. That is a private unit where only ratios count, so k gives and m
-wants need k plus m numbers instead of k times m exchange rates. [It can
-carry a bond and name an arbitrator.] Its id is the hash of its canonical
+Everything is one kind of record: an offer, signed by its maker. Here
+Bob offers a ride from the Jio World Centre to the airport. It says
+what, in terms from a shared catalogue; where, as boxes of GPS
+coordinates; when, as a time window; and a price on Bob's own scale.
+That is a private unit where only ratios count, so k gives and m wants
+need k plus m numbers instead of k times m exchange rates. [It can carry
+a bond and name an arbitrator.] Its id is the hash of its canonical
 bytes. [The last line is the real command.]
 
 ### 5. Loops: the trade nobody could find (45 s)
@@ -68,13 +69,14 @@ bytes. [The last line is the real command.]
 Solvers combine offers into loops. The simplest is barter: Alice has
 apples and wants a ride; Bob drives to the airport and wants apples. That
 needs a double coincidence of wants, and it is rare. Now say Bob wants
-money, not apples, and Carol pays in USDC and wants apples. No two of
-them can trade, but the three can: apples to Carol, USDC to Bob, the ride
-to Alice. Money is just one more leg. The test: multiply the rates round
-the loop, and if the product is above one there is surplus. In minus
-logs that is a negative cycle, and Bellman–Ford finds it. [It is the
-search DEX arbitrage bots run,] except that here the surplus goes to the
-makers.
+money, not apples, and Carol pays dollars for apples. No two of them can
+trade, but the three can: apples to Carol, eight dollars to Bob, the ride
+to Alice. Money is just one more leg. The numbers on the arrows are the
+rates. Multiply them round the loop, and if the product is above one
+there is surplus: 1.44 for the pair, 1.728 for the three. [That is 1.2
+per leg in both, and clearing shares it equally.] In minus logs it is a
+negative cycle, and Bellman–Ford finds it, as in DEX arbitrage, except
+that here the makers keep the surplus.
 
 ### 6. OntoDAG: one relation, fits within (35 s)
 
@@ -96,7 +98,8 @@ identity is a key, with no account and no platform. Postage: the maker
 pays for their own book, and reading it costs them nothing. Thousands of
 independent nodes: nobody can delist an offer, and an aggregator that
 drops a book is caught by an absence proof. [Even the market page is a
-Swarm site.] The chain holds only what needs consensus.
+Swarm site: loopmarket.eth.limo, at the foot of every slide.] The chain
+holds only what needs consensus.
 
 ### 8. From offer to delivery (45 s)
 
@@ -131,16 +134,26 @@ Thank you. The code is behind the QR codes, and I'm @petfold.
 - **The problem and the idea are two slides**, because each needs its
   own half minute.
 - **The loops.** Alice and Bob barter apples for a ride. In the
-  three-way loop, Bob wants money instead of apples, and Carol pays in
-  USDC (Peter, 2026-11-05: "one example should include traditional USDC
-  money"). It has no vegetable box. Carol is the usual third name in
-  cryptography (Charlie is the other).
+  three-way loop Bob wants money instead of apples, and Carol pays $8
+  (Peter, 2026-11-05: one example with money, written as dollars). It has
+  no vegetable box. Carol is the usual third name in cryptography
+  (Charlie is the other).
+- **Rates on the legs** (Peter, 2026-11-05). They come from these
+  prices, each on its maker's own scale: Alice gives apples at 10 and
+  wants the ride at 12; Bob gives the ride at 5 and wants apples at 6 (or
+  the $8 at 9); Carol gives the $8 at 20 and wants apples at 16. A leg's
+  rate is the wanter's price over the giver's, so the pair multiplies to
+  0.6 × 2.4 = 1.44 and the three to 1.6 × 0.45 × 2.4 = 1.728: a gain of
+  1.2 per leg in both, which clearing shares equally.
 - **Arbitrator, not adjudicator**, on the offer card: in this repository
   an arbitrator is the key both parties chose; *adjudicator* names a rung
   of factbond's ladder (CLAUDE.md, conventions).
-- **No rates on the loop diagrams.** The edges say what moves, the centre
-  says ∏ r > 1, and the box under them defines r. The numbers are on
-  backup slide 11 (personal scales).
+- **The footers** carry github.com/petfold/loopmarket and
+  loopmarket.eth.limo, except on the title slide (no GitHub link, which
+  is under the QR code) and slide 6 (github.com/petfold/ontodag and
+  ontodag.eth.limo). @petfold is beside the name on the title slide and in
+  the middle of slide 9's footer. The QR codes carry `https://`, so that a
+  phone camera opens them as links; no URL on a slide shows it.
 
 ## Facts the slides rely on (checked 2026-11-05)
 
@@ -151,17 +164,21 @@ Thank you. The code is behind the QR codes, and I'm @petfold.
   `odag get food produce` returns 117 items, `almond apple apricot
   artichoke …`.
 - The command on slide 4 was run in a scratch home with ontodag 0.34's
-  `odag` and the installed `loop` (places `bkc` 19.065,72.865±1 km and
-  `bom` 19.09,72.87±2 km, `from`/`to` as roles of `geo`, `ride` under
+  `odag` and the installed `loop` (places `Jio` 19.065,72.865±1 km and
+  `BOM` 19.09,72.87±2 km, `from`/`to` as roles of `geo`, `ride` under
   `transportation`). It resolves to the rectangles on the card. `loop`
   takes UTC times with seconds, so 18:00–20:00 IST is written
   `12:30:00Z..14:30:00Z`. The bond and the arbitrator come from
-  settings, and the id on the card is not that run's.
+  settings, and the card shows no id from that run.
 - A challenge that proves a leg wrong pays the proposer's bond to the
   challenger (`BeatClearing.challenge`). The window is 720 blocks, about an
   hour on Gnosis. Batches are `SealedBeat`'s commit and reveal.
+- Clearing gives every leg of a loop the same gain (`graph.py`, the
+  uniform per-leg gain).
 - Sealed delivery details are ECIES to the counterparty's key, written
   into the maker's own book (`handoff.py`), not Swarm's ACT.
+- loopmarket.eth.limo and ontodag.eth.limo both answered with a page on
+  2026-11-05.
 - The Swarm properties are Peter's list in `devcon.txt`, shortened.
 
 ## Devcon 8's speaker guidelines
@@ -171,19 +188,14 @@ Devcon 8 is in India, and its speaker guidelines
 assets or regulated services. They also restrict QR codes and links that
 lead to trading, ask speakers not to call digital assets "currency",
 "securities", "custodian" or "depositories", and forbid live crypto
-transactions and profit promises. The deck is written to stay educational:
+transactions and profit promises. The deck stays educational:
 
-- the QR codes and links go only to source code on GitHub;
-- no asset is promoted, and USDC appears once as the example payment
-  leg (twice on backup slide 10), never called a currency;
+- the QR codes go to source code on GitHub, and the footers to the
+  repositories and the projects' pages on Swarm;
+- money appears as dollars, and no crypto asset is named on the nine main
+  slides; backup slide 12 says "tokens" only to compare CoW's mechanism;
 - nothing is sent on stage;
 - "surplus" is the makers' gain from a trade, not a return on anything.
-
-Clause 11(a) asks for a printed risk disclaimer on any display that
-references crypto products in material that promotes goods or services.
-This talk promotes nothing, so the deck carries none. If in doubt, either
-replace "8 USDC" with "money" on slide 5 or add the disclaimer's sentence
-under the loops.
 
 ## Before going on stage
 
