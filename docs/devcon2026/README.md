@@ -10,6 +10,9 @@ Platform*, Devcon 8, Mumbai, Lightning Stage, 6 November 2026, 11:00.
 - `talk.md`: the script with timings, where the deck departs from the
   brief, the facts it relies on, and the Devcon 8 guideline notes.
 - `devcon.txt`: the brief.
+- `30min/`: a 30-minute version of the same talk, with more loops and
+  circulations, five slides on OntoDAG and the market page as a dynamic
+  website on Swarm; its `notes.md` has the timing and speaker notes.
 
 ```
 make            # slides.pdf (pdflatex, two passes)

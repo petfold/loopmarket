@@ -479,3 +479,12 @@ On Peter's word ("do 1, 2, 3"), after ontodag 0.34.0 (registry 6.0):
   `watch` does not check the pending beats that fill one's offers. The
   question and its options are in the same open problems, "Makers' own
   challenges".
+- **The 30-minute version** (2026-11-06), `docs/devcon2026/30min/`: the
+  short deck's slides unchanged, plus a loop of five, the negative cycle,
+  selection, a circulation (a bookcase and a courier's
+  `transport(furniture)`), aggregation and capacity, parts, the
+  hypergraph, five OntoDAG slides (put and get, typed values, matching,
+  the pinned catalogue), the fold, the market page as a dynamic website
+  on Swarm, the sealed batch, optimistic clearing and settlement.
+  `notes.md` has the timing and speaker notes; its OntoDAG commands were
+  run in a scratch store.
