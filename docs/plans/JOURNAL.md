@@ -474,3 +474,8 @@ On Peter's word ("do 1, 2, 3"), after ontodag 0.34.0 (registry 6.0):
   slides ("Anyone may challenge a leg on chain") and will discuss them
   another day. The question, its three options and a recommendation are in
   P2-batch-auction's open problems, "Latency end to end".
+- **Open for Peter, with the timings: makers' own challenges**
+  (2026-11-06). `loop challenge` exists, but nothing runs it for a maker:
+  `watch` does not check the pending beats that fill one's offers. The
+  question and its options are in the same open problems, "Makers' own
+  challenges".

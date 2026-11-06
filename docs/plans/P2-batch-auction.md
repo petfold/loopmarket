@@ -539,6 +539,34 @@ standing metrics.
   Recommendation: 3 and 2 for urgent trades, and 1 at the next redeploy,
   because the hour, not the 20 minutes, is what an urgent trade cannot
   wait. Until this is settled, the Devcon deck states no protocol timings.
+- **Makers' own challenges** (to discuss with Peter together with the
+  latency question; he asked for it on 2026-11-06). A beat is checked only
+  when someone runs `loop challenge BEAT` by hand. `watch` does not look at
+  pending beats, and nothing picks out the beats that fill one of my
+  offers. The optimistic beat relies on watchers, and the makers a false
+  beat hurts most are the natural ones: it holds them to a trade they never
+  made, reserves their deposits and takes their offers off the market.
+  Today they are protected only if they run the command on every such beat
+  within the window. For example, a submitter posts a beat that fills Bob's
+  ride against a want that is not in the pinned book. Unless someone runs
+  `loop challenge` within the 720 blocks, `finalize` records the fill and
+  Bob's offer is gone. A second gap: when the submitter's clearing book
+  cannot be found, `loop challenge` reports "no evidence", and only the
+  bond (0.01 xDAI today) deters that. The options:
+  1. **`watch` checks the beats that touch my offers.** It dry-runs every
+     pending beat that fills one of my offers, challenges on a fault and
+     warns on "no evidence". This is small, on existing code
+     (`beat.challenge_beat`), but the maker's `loop` must run while the
+     window is open, like other duties with deadlines.
+  2. **A separate watcher for every beat**, not only mine: bounty hunting
+     on the same code, with more reads, paid only by the bond.
+  3. **Leave it manual** until there is real volume.
+
+  Recommendation: 1. It makes the people a false beat hurts into the
+  watchers, without paying anyone. The same dry run also serves option 2
+  of the latency question: a maker who has checked a posted beat can
+  deliver on it. Sizing bonds to the damage (solver bonds through
+  factbond) remains the deterrent for "no evidence".
 - **Fairness-filter gaming materiality** (P2 + Phase-0 harness). CoW judges
   the overbid/underbid wrinkles negligible because 94% of batches have ≤3
   orders and exact optimization covers them; loopmarket's sparsity profile
