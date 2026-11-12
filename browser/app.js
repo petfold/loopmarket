@@ -8,7 +8,7 @@ import { ChunkReader, BlobStore, FreedomSwarm, HttpSwarm, StoredChunks, hex, top
 import { standing } from "./registry.js";
 import { LocalFile, download } from "./localfile.js";
 import { PythonCalls } from "./pycall.js";
-import { Key, NodeWriter, Stage, feedUpdate, uploadStaged } from "./publish.js";
+import { FreedomWriter, Key, NodeWriter, Stage, feedUpdate, uploadStaged } from "./publish.js";
 import { secp256k1 } from "./vendor/noble-curves/secp256k1.js";
 import { prepareAnnounce, send as sendTransaction } from "./announce.js";
 import { keccak_256 } from "./vendor/noble-hashes/sha3.js";
@@ -280,10 +280,12 @@ addEventListener("beforeunload", (e) => { if (searchChanged) { e.preventDefault(
 // Your offers (BROWSER.md §3, §5b): a key the person keeps in a file (the
 // bee_signer value loop uses), offers made from lines by loop's own code
 // (loopmarket.browser.MakerBook), signed here, published at once into the
-// book loop setup names for the key (swarm:loop-<address>), through the node
-// that served the page (publish.js, ontodag's, copied in by build.py).
+// book loop setup names for the key (swarm:loop-<address>), through a node
+// that pays: the one that served the page, or Freedom Browser's own
+// (publish.js, ontodag's, copied in by build.py).
 let key = null;
-let writer = null;          // a NodeWriter, when the page came from a node
+let writer = null;          // a NodeWriter when the page came from a node, a FreedomWriter in Freedom
+let connected = () => {};   // told when Freedom has connected this site
 let makerTopic = null;
 let prepared = null;        // {id, block} of the offer shown for approval
 let announced = [];         // the registry's standing announcements, last read
@@ -317,7 +319,7 @@ function showKey(note = "") {
   $("keystate").textContent = key ? `Key ${key.checksummed}.${book}${ann}${note ? ` ${note}` : ""}` : "No key yet: making offers needs one.";
   const ready = Boolean(key && makerTopic);
   for (const id of ["offerline", "prepare", "readmine"]) $(id).disabled = !ready;
-  $("publishoffer").disabled = !(ready && writer && $("makerbatch").value);
+  $("publishoffer").disabled = !(ready && writer && (writer.choosesBatch || $("makerbatch").value));
 }
 
 async function useKey(k, note) {
@@ -409,7 +411,12 @@ async function prepareOffer() {
 // Upload what a change to the book staged, then move its feed and read it
 // back: the same steps as ontodag's Publish.
 async function commitBook(what, change) {
-  const batch = $("makerbatch").value;
+  const batch = writer.choosesBatch ? null : $("makerbatch").value;
+  if (writer.connect) {
+    makerResult("Asking Freedom to connect this site…");
+    await writer.connect();
+    connected();
+  }
   makerResult("Reading your book's feed…");
   const feed = await bookNow();
   const answer = await change(feed ? feed.root : "");
@@ -496,17 +503,23 @@ async function announceBook() {
   showKey();
 }
 
-// Writing goes through a Bee node: the one that served this page (opened as
-// http://localhost:1633/bzz/…), or one named with ?node=URL.
+// Writing goes through a node that pays: a Bee node, the one that served
+// this page (opened as http://localhost:1633/bzz/…) or one named with
+// ?node=URL; or, in Freedom Browser, Freedom's own node.
 async function setUpWriting() {
   const named = params.get("node");
   const served = /^https?:$/.test(location.protocol) && location.pathname.startsWith("/bzz/") ? location.origin : null;
   const base = named || served;
   const via = "To publish, open this page through your own node (with Swarm Desktop: http://localhost:1633/bzz/loopmarket.eth/).";
+  if (!base && FreedomSwarm.present()) {
+    const unable = await FreedomWriter.unable();
+    if (unable) { $("makernote").textContent = `${unable} ${via}`; return; }
+    writer = new FreedomWriter();
+    $("makernote").textContent = "Publishing goes through Freedom's own node, paid from its postage. Freedom asks you to confirm each chunk: tick \"Always allow this site to publish\" in its first prompt, or it asks for every one. Your key signs your offers and your book's feed; the page never stores it.";
+    return;
+  }
   if (!base) {
-    $("makernote").textContent = FreedomSwarm.present()
-      ? `Publishing from Freedom waits for it to accept a chunk the page signed (freedom-browser#647). ${via}`
-      : `Publishing needs your own Bee node, which pays for it. ${via}`;
+    $("makernote").textContent = `Publishing needs your own Bee node, which pays for it. ${via}`;
     return;
   }
   const node = new NodeWriter(base);
@@ -538,11 +551,11 @@ async function boot() {
   calls = new PythonCalls(py, globalThis.loopBlobs || null, {
     onRetry: async () => { showRetrying(); await calls.call("make_market", true); },
   });
-  const connected = { yes: false };
+  let isConnected = false;
   reader = new ChunkReader(source, {
     stored: await StoredChunks.open("loopmarket-swarm-chunks"),
     onRateLimit: (ms) => {
-      if (source instanceof FreedomSwarm && !connected.yes) {
+      if (source instanceof FreedomSwarm && !isConnected) {
         status(`Freedom lets a site that has not connected read only so much of Swarm a minute; waiting ${ms / 1000} s. Press "Read faster (connect)" to read five times as much.`, true);
         $("connect").classList.add("primary");
       } else {
@@ -553,13 +566,16 @@ async function boot() {
   globalThis.loopBlobs = new BlobStore(reader);
   if (source instanceof FreedomSwarm) {
     $("connect").classList.remove("hidden");
+    connected = () => {
+      isConnected = true;
+      $("connect").disabled = true;
+      $("connect").classList.remove("primary");
+      $("connect").textContent = "Connected";
+    };
     $("connect").onclick = async () => {
       try {
         await source.connect();
-        connected.yes = true;
-        $("connect").disabled = true;
-        $("connect").classList.remove("primary");
-        $("connect").textContent = "Connected";
+        connected();
       } catch (e) {
         status(`Freedom did not connect: ${e.message}`, true);
       }

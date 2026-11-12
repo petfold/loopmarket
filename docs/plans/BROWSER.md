@@ -4,8 +4,13 @@ Status (2026-10-14): the read-only page (§5, step 1) is built and runs in
 Freedom Browser. The maker's half of step 2, making, publishing and
 withdrawing offers under a key file through the person's own node, is
 built too (§5c), and so is announcing the book, though no announcement
-has been sent from the page yet. Drafts and the ledger are next;
-publishing from Freedom waits on Freedom #647. ontodag's
+has been sent from the page yet. Drafts and the ledger are next.
+
+Status (2026-11-13): Freedom built the request #647
+(`swarm_publishSingleOwnerChunk`, in its nightly of 2026-11-12), and the
+page publishes and withdraws through Freedom's own node on it (§5c).
+Checked against a stand-in for Freedom's provider and against bee-js, not
+yet in a real Freedom. ontodag's
 `docs/plans/BROWSER.md` is the base:
 
 - the code runs under Pyodide;
@@ -76,10 +81,10 @@ Consequences:
 - **Announcing and retracting** are transactions from that key's address,
   so it needs a little xDAI. The wallet funds it with one transaction, as
   `loop setup` funds loop's key from the Bee wallet on a desktop.
-- **In Freedom,** a page can read folds and offers now. Publishing needs
-  Freedom to accept a single-owner chunk the page signed (Freedom #647).
-  Writing under a Freedom identity would make the maker a different
-  address, so it isn't done.
+- **In Freedom,** a page reads folds and offers, and publishes since
+  Freedom takes a single-owner chunk the page signed (Freedom #647, built
+  in its nightly of 2026-11-12; §5c). Writing under a Freedom identity
+  would make the maker a different address, so it isn't done.
 - **On the desktop,** `loop setup` makes a random key or uses the Bee
   node's key (question 35, `cli.md` §16). Being the same maker in a
   browser and on a laptop needs the laptop to derive or import the
@@ -88,7 +93,9 @@ Consequences:
 The alternative, B, was the wallet itself: one approval per feed update,
 `personal_sign`-form offer signatures that loopmarket would have to accept
 as a second form, and still a derived key for opening sealed records,
-since no wallet does ECDH.
+since no wallet does ECDH. A wallet account as a feed's owner is now
+counted unsafe as well, and Freedom refuses one as the owner of a chunk
+the page signed (ontodag's BROWSER.md §6).
 
 ## 4. What a page can't do
 
@@ -111,8 +118,8 @@ since no wallet does ECDH.
    It needs no key, no postage and no request upstream, and works in
    Freedom and over a gateway.
 2. **A maker page** (give, want, withdraw, announce, retract) under the §3
-   key: with Weeb-3 or an HTTP node first, in Freedom once #647 is
-   accepted.
+   key: through an HTTP node first (§5c), then in Freedom on #647 (§5c,
+   2026-11-13). Weeb-3 is not tried.
 3. **Sealed messages and chain duties last.**
 
 ## 5a. The read-only page, built (2026-10-12)
@@ -290,11 +297,25 @@ announced, with no open offer. The cost: a write after the first now
 waits out the node's 500s for the next index, so `check.py --publish`
 withdrew in 63 s, where it took 11–13 s when the probe was lucky.
 
+**Through Freedom (2026-11-13).** In Freedom Browser the page publishes
+and withdraws through Freedom's own node, with ontodag's `FreedomWriter`
+(its BROWSER.md §16): the offer's blobs as the chunks of their plain
+trees, and the book's feed update as the single-owner chunk the key
+signed, which Freedom checks and stamps. Freedom chooses the batch and
+asks the person to confirm each chunk unless they let the site always
+publish. The book is the same `swarm:loop-<address>` as through a node,
+so a maker is one maker in both. Announcing was never the node's: it is a
+transaction from the key. Checked in ontodag (`test_freedom.mjs`, against
+a stand-in written from Freedom's source, and bee-js); not yet in a real
+Freedom, which needs its nightly of 2026-11-12 or the release after
+0.8.8 and a Freedom node with postage. The page behind `loopmarket.gwei`
+gets it with its next feed update.
+
 Not yet:
 - **Retracting from the page** (`loop retract` does it).
 - **Drafts and the ledger** (§5b).
-- **Freedom** (#647); **retry mode** is wired (`needing`) but not checked
-  through a node.
+- **A run in a real Freedom** (above); **retry mode** is wired
+  (`needing`) but not checked through a node.
 
 ## 6. Open
 

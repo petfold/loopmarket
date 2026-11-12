@@ -7,6 +7,20 @@ All notable changes to this project are documented here. The format is based on
 Started 2026-09-11. Releases are tag-driven (`v*` tags run
 `.github/workflows/publish.yml`, PyPI trusted publishing).
 
+## [Unreleased]
+
+### Added
+
+- **The market page publishes from Freedom Browser** (`docs/plans/BROWSER.md`
+  §5c). Freedom's nightly of 2026-11-12 takes a single-owner chunk the
+  page signed (asked for as freedom-browser#647), so a maker's key file
+  owns the same book, `swarm:loop-<address>`, there as through a node.
+  Making and withdrawing an offer go through Freedom's own node with
+  ontodag's `FreedomWriter`; Freedom pays, chooses the batch and asks the
+  person. Checked in ontodag against a stand-in written from Freedom's
+  source and against bee-js; not yet run in a real Freedom. The page
+  behind `loopmarket.gwei` gets it with its next feed update.
+
 ## [0.18.1] — 2026-10-29
 
 ontodag 0.35.0, and one ontodag minor at a time. ontodag 0.35.0 ships core
