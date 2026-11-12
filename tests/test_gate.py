@@ -220,3 +220,47 @@ def test_a_stale_pin_cannot_hide_a_revocation_and_a_root_cannot_drop_one():
     w.attester.heartbeat(NOW - 40)
     w.attester.commit()
     assert any("drops a revocation its predecessor held" in f for f in w.faults())
+
+
+def test_a_register_whose_records_do_not_read_fails_its_statement_and_stops_no_solver():
+    """A register is anyone's book, read at a pinned root. Mallory offers
+    dentistry too and presents a statement resting on registers of her own
+    whose heartbeat, chain link or accreditation is not a record of that
+    kind. The statement fails, with the step named (U7); raised out of the
+    gate, it ended the solver pass of every reader who weighed her offer,
+    and the honest dentist's loop with it."""
+    evil, mid, mallory = "0x" + "e1" * 20, "0x" + "e2" * 20, "0x" + "ee" * 20
+
+    def world(path, heartbeat=None, chain=None, accredit=None):
+        w = World()
+        offer = give(mallory, Thing(("dentistry", f"time({T})"), 10, "visit", step=1), 300,
+                     valid=TimeWindow(NOW - 10, NOW + 30 * 86_400), nonce=11)
+        st = Statement(subject=mallory, category="dentist-licensed", issuer=path[0], kind="attested",
+                       as_of=NOW - 1_000, until=WINDOW[1] + 86_400, evidence="ee" * 32, path=path, paid_by="subject")
+        w.book.publish(offer)
+        w.book.present(st)
+        w.book.commit()
+        registers = dict(w.registers)
+        for rid in path[:-1]:
+            store = RecordStore(w.blobs)
+            store.put("status/" + st.statement_id, {"state": "issued", "at": NOW - 1_000})
+            store.put("heartbeat", {"at": NOW - 100} if heartbeat is None else heartbeat)
+            store.put("chain", {"prev": None, "seq": 0} if chain is None else chain)
+            if accredit is not None and rid == path[1]:
+                store.put(f"accredit/{path[0]}/licence", accredit)
+            store.commit()
+            registers[rid] = Register(store)
+        return w, offer, st, registers
+
+    cases = [dict(heartbeat="x"), dict(heartbeat={"at": "yesterday"}), dict(heartbeat={}), dict(chain="x"),
+             dict(chain={}), dict(accredit="x", path=(evil, mid, CHAMBER)),
+             dict(accredit={}, path=(evil, mid, CHAMBER)),
+             dict(accredit={"since": "x", "until": "y"}, path=(evil, mid, CHAMBER))]
+    for case in cases:
+        w, offer, st, registers = world(case.pop("path", (evil, CHAMBER)), **case)
+        gate = w.gate(registers)
+        faults = gate.statement_faults(w.patient.requires.counterparty[0], st, w.patient, offer, _cat(), window=WINDOW)
+        assert any("does not read" in f for f in faults), (case, faults)
+        agent = SolverAgent(w.book, _cat(), clearing=None, solver_id="reader", registers=registers, span=SPANS.get)
+        _root, loops = agent.find_loops(now=NOW)                    # the pass runs, and the honest loop is found
+        assert len(loops) == 1 and all(mallory not in loop.nodes for loop in loops), case

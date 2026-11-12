@@ -146,7 +146,10 @@ def transfer_faults(give, wanter: str, register, *, since: int = 0) -> list[str]
     out = []
     for h in items:
         rec = register.holder(h)
-        if rec is None or rec["holder"].lower() != wanter.lower():
+        if rec is not None and not (isinstance(rec, dict) and isinstance(rec.get("holder"), str)
+                                    and type(rec.get("at")) is int):
+            out.append(f"item {h[:12]}'s record in the register does not read")     # anyone's book (U7)
+        elif rec is None or rec["holder"].lower() != wanter.lower():
             out.append(f"item {h[:12]} is not held by {wanter} in the register")
         elif rec["at"] < since:
             out.append(f"item {h[:12]} was recorded to {wanter} before the loop cleared")

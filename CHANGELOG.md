@@ -72,6 +72,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   so the beat and its bond were posted for a loop the clearing's own book
   then refused. A proposal is now judged at one instant, read once
   (`submit` and `rehearse` take `now`).
+- **A register whose records do not read fails its statement.** A
+  register is anyone's book, and the counterparty gate read its heartbeat,
+  chain link and accreditations as they came: one that was no record of
+  its kind raised out of the gate, and with it out of every solver pass
+  and clearing that weighed a statement resting on that register. The
+  statement now fails with its step named, as every requirement that
+  cannot be checked does (U7); so does a title register's item record
+  that does not read (`witness.transfer_faults`).
 
 ## [0.18.1] — 2026-10-29
 

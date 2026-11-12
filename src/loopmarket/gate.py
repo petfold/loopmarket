@@ -266,6 +266,20 @@ class CounterpartyGate:
 
     def _path_faults(self, roots, s: Statement, ontology: Ontology, window: Window,
                      self_bonded: bool, max_root_age: int | None) -> list[str]:
+        """Steps 2 to 4 and 7: the path, its registers, their freshness,
+        revocation and suspension. A register is anyone's book, read at the
+        root a proposal pinned. One whose records do not read (a heartbeat
+        that is no time, a chain link or an accreditation that is no record)
+        fails the statement that rests on it, as every requirement that
+        cannot be checked does (U7); raised, it ended every solver pass and
+        clearing that weighed the statement."""
+        try:
+            return self._read_path(roots, s, ontology, window, self_bonded, max_root_age)
+        except Exception as exc:                    # noqa: BLE001 — hostile input fails closed
+            return [f"2 a register on the path does not read ({type(exc).__name__})"]
+
+    def _read_path(self, roots, s: Statement, ontology: Ontology, window: Window,
+                   self_bonded: bool, max_root_age: int | None) -> list[str]:
         f: list[str] = []
         path = s.path
         if path[-1] not in roots:
