@@ -58,6 +58,13 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   every reader of the registry, and the default registry is public. Such
   a book is now a rejection with its owner's name (`loop fold` prints
   it), as the aggregator's own rule has it since 2026-10.
+- **A maker sees the loop that cleared its own offers.** A reader's own
+  book was folded in whole but left out of the maker books a clearing
+  book's loops are re-checked against. So in the fold of each party to a
+  loop that loop was rejected ("unknown offer: … is in no maker book"):
+  its offers stayed open there and `watch` reported no fill, while every
+  other reader saw them filled. A reader's own announced book is now
+  among the maker books of its own fold.
 
 ## [0.18.1] — 2026-10-29
 

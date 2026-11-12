@@ -129,7 +129,10 @@ class Session:
         against the maker books under this session's catalogue and gate,
         as clearing checks it, and admitted only if it holds (review item
         9); what the fold rejected, and why, is kept in `rejections`
-        (`loop fold` prints it). An announced book that
+        (`loop fold` prints it). My own book, when it is announced, is
+        folded with the others as well as taken whole: a clearing book's
+        loops are re-checked against the maker books, and a loop over my
+        offers holds only where mine is among them. An announced book that
         cannot be read is a rejection, never the end of the fold: anyone
         may announce one. `peers` are books you trust by spec,
         without an owner: a plain OR-set union (`absorb`) — the shared
@@ -162,21 +165,21 @@ class Session:
                              **(self._gate_reads() if clearing else {}))
             unread, unreadable = [], []
             for ann in announced:
+                mine = ann.spec() in (_book_spec(), f"{_book_spec()}@{ann.owner}")
                 try:
-                    peer = _open_book(ann.spec())
+                    peer = self.book if mine else _open_book(ann.spec())
                 except Exception as exc:                # the maker's postage, not our omission
                     if not _registry_is_default():
                         print(f"loop: {ann.owner}: {exc}", file=_err())
                     unread.append(exc)
                     continue
-                if ann.spec() == _book_spec() or ann.spec() == \
-                        f"{_book_spec()}@{ann.owner}":
-                    continue                            # my own book is already in
                 try:
                     staged = OfferRegistry(RecordStore(blobs))
                     staged.absorb(peer)
                     staged.commit()
                 except Exception as exc:                # noqa: BLE001 — hostile input fails closed
+                    if mine:
+                        raise                           # my own book not reading is mine to hear of
                     unreadable.append((ann.owner, "*", f"unreadable book ({type(exc).__name__})"))
                     continue
                 agg.announce(ann.owner, staged.store, role=ann.role)

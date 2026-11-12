@@ -1207,6 +1207,33 @@ def _three_makers_announced(tmp_path, monkeypatch):
         run.ok("announce")
 
 
+def test_a_maker_sees_the_loop_that_cleared_its_own_offers(env, tmp_path, monkeypatch):
+    """A clearing house clears the three makers' triangle in a book of its
+    own and announces it. Every reader's fold re-checks that loop against
+    the maker books, and a maker's own book is one of them: left out of
+    the re-check, each of the three found the loop over its offers
+    rejected ("in no maker book") and its offers still open, while a
+    stranger saw them filled, so the parties were the ones who never
+    heard."""
+    _three_makers_announced(tmp_path, monkeypatch)
+    monkeypatch.setenv("LOOP_MAKER", "house")
+    monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'house'}")
+    monkeypatch.setenv("LOOP_PEERS", ",".join(f"rs:{tmp_path / m}" for m in ("amara", "bruno", "chen")))
+    house = Runner()
+    assert "cleared" in house.ok("clearing")
+    house.ok("announce", "--role", "clearing")
+    monkeypatch.delenv("LOOP_PEERS")
+    for reader in ("dana", "amara", "bruno", "chen"):
+        monkeypatch.setenv("LOOP_MAKER", reader)
+        monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / reader}")
+        run = Runner()
+        code, _out, err = run("fold")
+        assert code == 0 and "rejected" not in err, reader
+        assert run.ok("offers", "--raw") == "", reader                 # all six filled, for a party too
+        if reader != "dana":
+            assert len([row for row in run.ok("watch", "--once").splitlines() if row.startswith("filled")]) == 2
+
+
 def test_an_announced_book_that_cannot_be_read_does_not_stop_the_fold(env, tmp_path, monkeypatch):
     """Anyone may announce a book, and one whose bytes do not read (its
     root names a blob that is not there, or its blobs are not what their
