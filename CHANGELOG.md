@@ -65,6 +65,13 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   its offers stayed open there and `watch` reported no fill, while every
   other reader saw them filled. A reader's own announced book is now
   among the maker books of its own fold.
+- **A beat that is posted is a loop the book takes.** `ChainClearing`
+  read the clock three times: for the beat's evidence, for the rehearsal,
+  and again for the commit after the beat was on chain. An offer whose
+  validity ended in between passed the rehearsal and failed the commit,
+  so the beat and its bond were posted for a loop the clearing's own book
+  then refused. A proposal is now judged at one instant, read once
+  (`submit` and `rehearse` take `now`).
 
 ## [0.18.1] — 2026-10-29
 

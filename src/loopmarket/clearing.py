@@ -260,10 +260,14 @@ class BookClearing:
             return on_chain > 0
         return offer.thing.exhausted(q(offer.thing.qty) - on_chain)
 
-    def submit(self, proposal: LoopProposal) -> Receipt:
+    def submit(self, proposal: LoopProposal, *, now: int | None = None) -> Receipt:
+        """The checklist, then the commit. `now` is the instant it is judged
+        at, this clearing's clock read once when not given: a caller that
+        acts between a rehearsal and the commit passes the same instant to
+        both (`ChainClearing`)."""
         loop = proposal.circulation
         lid = loop.loop_id
-        now = int(self.clock())
+        now = int(self.clock()) if now is None else int(now)
 
         def reject(reason: str) -> Receipt:
             return Receipt(False, lid, reason)
@@ -593,16 +597,17 @@ class BookClearing:
                                                  taken=taken, whole=whole)]
         return out
 
-    def rehearse(self, proposal: LoopProposal) -> Receipt:
+    def rehearse(self, proposal: LoopProposal, *, now: int | None = None) -> Receipt:
         """The whole checklist, nothing committed: the verdict a proposal
-        would get here. `ChainClearing` runs it before posting a beat; a
-        challenger runs it against the beat's snapshot."""
+        would get here, at `now` (this clearing's clock when not given).
+        `ChainClearing` runs it before posting a beat; a challenger runs it
+        against the beat's snapshot."""
         dry = BookClearing(_Dry(self.registry), self.ontology, min_surplus=self.min_surplus,
                            require_per_node=self.require_per_node, clock=self.clock,
                            verifiable_oracles=self.verifiable_oracles, reads=self.reads,
                            register_at=self.register_at, span=self.span,
                            register_latest=self.register_latest, resolver_profile=self.resolver_profile)
-        return dry.submit(proposal)
+        return dry.submit(proposal, now=now)
 
 
 #: The name this class had until 2026-10, kept for one release (review item
@@ -647,10 +652,14 @@ class ChainClearing(BookClearing):
             type(registry.store).at(root, registry.store.blobs)))
         self.beats: dict[str, int] = {}
 
-    def submit(self, proposal: LoopProposal) -> Receipt:
+    def submit(self, proposal: LoopProposal, *, now: int | None = None) -> Receipt:
         from .beat import submission
         lid = proposal.circulation.loop_id
-        now = self.clock()
+        # One instant for the evidence, the rehearsal and the commit. Read
+        # again after the beat was posted, the clock can have passed the end
+        # of an offer's validity or of a hold, and the book then refused a
+        # loop whose beat, and bond, were already on chain.
+        now = int(self.clock()) if now is None else int(now)
         try:
             snapshot = self.snapshot_of(proposal.book_root)
             # the holds and item claims this clearing would write, and the
@@ -664,7 +673,7 @@ class ChainClearing(BookClearing):
         except Exception as exc:  # noqa: BLE001 — the proposal's evidence cannot be built
             return Receipt(False, lid, f"beat: {exc}")
         # the local checklist first, without committing
-        verdict = self.rehearse(proposal)
+        verdict = self.rehearse(proposal, now=now)
         if not verdict.accepted:
             return verdict
         # then the contract's own verifier on every leg, for free (eth_call):
@@ -686,7 +695,7 @@ class ChainClearing(BookClearing):
             beat, _receipt = self.beat_client.submit(sub)
         except Exception as exc:  # noqa: BLE001
             return Receipt(False, lid, f"beat refused: {exc}")
-        receipt = super().submit(proposal)
+        receipt = super().submit(proposal, now=now)
         if receipt.accepted:
             self.beats[lid] = beat
             return Receipt(True, lid, f"beat {beat}", receipt.book_root)
