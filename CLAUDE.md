@@ -493,8 +493,10 @@ makes one; a wallet signature (dappdata) or Swarm ID will later carry that
 same key, so a maker never changes address (ontodag's questions 37 and 38,
 2026-10-13, its BROWSER.md §14.3). It owns the book's feed, signs
 offers as now and opens sealed records, so the protocol doesn't change;
-it needs a little xDAI to announce. Freedom pages can read now and publish
-once Freedom accepts page-signed chunks (their #647). Duties with
+it needs a little xDAI to announce. Freedom pages read, and publish
+through Freedom's own node since it takes a chunk the page signed (their
+#647, in the nightly of 2026-11-12; built here 2026-11-13 with ontodag's
+`FreedomWriter`, not yet run in a real Freedom). Duties with
 deadlines need `loop` on a machine that stays on. The read-only page is
 `browser/` with `loopmarket.browser`: the registry through the browser's
 chain access or the public RPC, each book's root through its feed, the

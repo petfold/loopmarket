@@ -488,3 +488,18 @@ On Peter's word ("do 1, 2, 3"), after ontodag 0.34.0 (registry 6.0):
   on Swarm, the sealed batch, optimistic clearing and settlement.
   `notes.md` has the timing and speaker notes; its OntoDAG commands were
   run in a scratch store.
+
+## 2026-11-13 (night): the page publishes from Freedom
+
+Peter away, with Meinhard's message that the meeting's list is done.
+Freedom #647 is closed: its nightly of 2026-11-12 publishes a
+single-owner chunk the page signed (`swarm_publishSingleOwnerChunk`). So
+the page's writer in Freedom is ontodag's new `FreedomWriter`
+(`browser/app.js`, `setUpWriting` and `commitBook`): the offer's blobs
+chunk by chunk, the book's feed update as the chunk the maker's key
+signed, the batch chosen by Freedom, which asks the person. A node that
+served the page or one named with `?node=` still comes first. The story,
+what was checked (a stand-in written from Freedom's source, bee-js) and
+why nothing ran in a real Freedom are in ontodag's journal of the same
+night; `browser/check.py` did not run here either, since this laptop has
+no Playwright. BROWSER.md §5c has the state.
