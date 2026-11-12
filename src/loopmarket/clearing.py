@@ -35,7 +35,7 @@ from .matching import (check_aggregate, check_composition, check_match, check_pa
                        version_fault)
 from .ontology import Ontology
 from .reads import Reads, authorities, reads_of
-from .registry import FILL, OFFER, LegRecord, OfferRegistry, taken_on_chain
+from .registry import EXERCISE, FILL, ITEM, OFFER, OPTION, LegRecord, OfferRegistry, taken_on_chain
 from .register import named_registers
 from .gate import CounterpartyGate
 from . import items
@@ -363,7 +363,8 @@ class BookClearing:
             return "indivisible legs without per-node surplus"
         return None
 
-    def recheck(self, record: dict, written: dict | None = None, *, loop_id: str | None = None) -> str | None:
+    def recheck(self, record: dict, written: dict | None = None, *, loop_id: str | None = None,
+                claims: dict | None = None, holds: dict | None = None) -> str | None:
         """Re-derive a cleared loop from its `loop/` record against this
         clearing's book: what every reader's fold asks of each loop in a
         clearing book before admitting it (review item 9, decided by Peter
@@ -377,8 +378,11 @@ class BookClearing:
         (`balance_fault`). Given `written`, the `fill/` and `option/`
         records the book holds naming the loop, they must be exactly the
         ones clearing it writes: a fill that takes more than the leg, or
-        an offer the loop never touched, hides it. None when it holds, else
-        the reason.
+        an offer the loop never touched, hides it. Given `claims`, the
+        `item/` and `exercise/` records the book holds under the loop, each
+        must be one clearing it could have written (`claims_fault`; `holds`
+        are the book's `option/` records). None when it holds, else the
+        reason.
 
         Judged at the record's own time (`found_at`), so every reader's fold
         reaches the same answer whenever it runs. Not asked, because none is
@@ -429,6 +433,74 @@ class BookClearing:
             if wrong:
                 return (f"its fills and holds are not the ones clearing it writes "
                         f"({len(wrong)} differ, first {wrong[0][:40]}…)")
+        if claims:
+            return self.claims_fault(loop, claims, holds or {}, now=now)
+        return None
+
+    def claims_fault(self, loop, claims: dict, holds: dict, *, now: int) -> str | None:
+        """Why the `item/` and `exercise/` records a book holds under a loop
+        are not ones clearing it writes (`hold_records`), or None. The fold
+        asks it of every loop in a clearing book: taken on the loop's id
+        alone, a claim for a maker the loop never touched kept that maker's
+        item out of every other loop, an exercise emptied a hold its holder
+        had paid for, and a record that was no record stopped the solver
+        that read it.
+
+        An item claim is for a give of the loop: under its maker, on an item
+        its thing names (an option's: its underlying's), naming that offer,
+        with an end clearing could have set. That is the option's exercise
+        window's end; else the leg's handover window's or the give's
+        validity's, either one, since which it was depended on the
+        clearing's clock; and any end where this reader cannot read the
+        want's time term. An exercise is of a give the loop took, from a hold
+        the book holds for the leg's wanter, of no more than the leg took or
+        the hold keeps. `holds` are the book's `option/` records."""
+        lid = loop.loop_id
+        gate = CounterpartyGate.over(self.registry, {}, now=now, span=self.span)
+        claimable: dict[str, tuple] = {}      # item/ key -> (the offer it names, the ends clearing could set)
+        exercisable: dict[str, tuple] = {}    # a give's id -> (the leg's wanter, what the leg took of it)
+        for leg in loop.legs:
+            for i, g in enumerate(leg.gives):
+                if g.v >= 6 and g.underlying:
+                    subject, ends = self.registry.get(g.underlying), {int(g.exercise.end)}
+                else:
+                    subject = g
+                    ends = {int(g.valid.end) if g.valid.end is not None else 2 ** 62}
+                    _start, end = gate.window(leg.want)
+                    if end > now:
+                        ends.add(end)
+                    elif self.span is None and any(isinstance(c, str) and c.startswith("time(")
+                                                   for p in leg.want.parts for c in p.concepts):
+                        ends = None
+                    exercisable[g.offer_id] = (leg.want.maker, leg.taken(i))
+                for h in items.ids(subject.thing.concepts):
+                    claimable[f"{ITEM}{h}/{g.maker}/{lid}"] = (subject.offer_id, ends)
+        used: dict[str, Fraction] = {}
+        for key in sorted(claims):
+            rec = claims[key]
+            if key.startswith(ITEM):
+                known = claimable.get(key)
+                until = rec.get("until") if isinstance(rec, dict) else None
+                if (known is None or set(rec) != {"offer", "until"} or rec["offer"] != known[0]
+                        or type(until) is not int or not 0 <= until <= 2 ** 62
+                        or (known[1] is not None and until not in known[1])):
+                    return f"its item claims are not the ones clearing it writes (first {key[:40]}…)"
+                continue
+            oid, _, rest = key[len(EXERCISE):].partition("/")
+            hold = holds.get(f"{OPTION}{oid}/{rest.partition('/')[0]}")
+            took = exercisable.get(oid)
+            qty = kept = None
+            if (took is not None and isinstance(rec, dict) and set(rec) == {"qty"} and isinstance(rec["qty"], str)
+                    and isinstance(hold, dict) and isinstance(hold.get("qty"), str) and hold.get("holder") == took[0]):
+                try:
+                    qty, kept = q(rec["qty"]), q(hold["qty"])
+                except (ValueError, ZeroDivisionError):
+                    qty = kept = None
+            if qty is None or not 0 < qty <= min(took[1], kept):
+                return f"its exercises are not the ones clearing it writes (first {key[:40]}…)"
+            used[oid] = used.get(oid, Fraction(0)) + qty
+            if used[oid] > took[1]:
+                return f"its exercises take more of {oid[:12]} than the loop took"
         return None
 
     def verify_leg(self, leg, *, now: int, reads: Reads | None = None, available: dict | None = None,

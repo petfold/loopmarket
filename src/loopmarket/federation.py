@@ -317,7 +317,8 @@ class Aggregator:
         re-derived against the maker books folded so far by
         `BookClearing.recheck` — the clearing checklist's own steps, at the
         loop record's time — and its fills and holds must be exactly the
-        ones clearing it writes. A failure is an attributed rejection with
+        ones clearing it writes, its item claims and exercises ones clearing
+        it could have written. A failure is an attributed rejection with
         its reason, `reject/<owner>/loop/<loop id>`; a record naming a loop
         the book does not hold is rejected on its own. Returns the root of
         what is left ('' when nothing is)."""
@@ -325,10 +326,14 @@ class Aggregator:
         loops = {key[len(LOOP):]: rec for key, rec in records.items() if key.startswith(LOOP)}
         named = {key: _loops_named(key, rec) for key, rec in records.items() if not key.startswith(LOOP)}
         written: dict[str, dict] = {}       # loop id -> its fills and holds, one pass over the book
+        claims: dict[str, dict] = {}        # loop id -> the item claims and exercises under it
+        holds = {key: rec for key, rec in records.items() if key.startswith(OPTION)}
         for key, lids in named.items():
             if key.startswith((FILL, OPTION)):
                 for lid in lids:
                     written.setdefault(lid, {})[key] = records[key]
+            elif key.startswith((ITEM, EXERCISE)):
+                claims.setdefault(lids[-1], {})[key] = records[key]     # an exercise's own loop, not its option's
         checker = None
         if self.ontology is not None and makers_root:
             from .clearing import BookClearing
@@ -341,7 +346,8 @@ class Aggregator:
                           else "no maker book is folded: its offers are unknown")
             else:
                 try:
-                    reason = checker.recheck(loops[lid], written.get(lid, {}), loop_id=lid)
+                    reason = checker.recheck(loops[lid], written.get(lid, {}), loop_id=lid,
+                                             claims=claims.get(lid), holds=holds)
                 except Exception as exc:   # noqa: BLE001 — hostile input fails closed
                     reason = f"unreadable loop record ({type(exc).__name__})"
             if reason:

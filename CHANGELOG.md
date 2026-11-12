@@ -29,6 +29,28 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   given. An older Freedom refuses them once and downloads from then on,
   as before.
 
+### Fixed
+
+- **A clearing book's item claims and exercises are checked at the fold**
+  (the 2026-11 review, `docs/plans/REVIEW_2026-11.md`). The fold re-checked
+  a clearing book's loops, fills and holds (review item 9) but took its
+  `item/` and `exercise/` records on the loop's id alone. So anyone could
+  announce a clearing book holding one valid loop, their own or a copy of
+  someone's, and add records under it:
+  - a claim on another maker's item, after which that maker's offer of it
+    cleared for no reader (the per-item rule read the planted claim);
+  - an exercise that emptied a hold its holder had paid for, or one with
+    a negative quantity that held an offer back from everyone;
+  - a record that was no record, which raised in every solver pass that
+    read it.
+
+  Each such record must now be one clearing its loop could have written
+  (`BookClearing.claims_fault`): a claim for a give of the loop, under its
+  maker, on an item it names, with that offer and an end clearing could
+  have set; an exercise of a give the loop took, from a hold the book
+  holds for the leg's wanter, of no more than the leg took. Otherwise the
+  loop is rejected with its records, as for a wrong fill.
+
 ## [0.18.1] — 2026-10-29
 
 ontodag 0.35.0, and one ontodag minor at a time. ontodag 0.35.0 ships core
