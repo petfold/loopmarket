@@ -50,6 +50,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   have set; an exercise of a give the loop took, from a hold the book
   holds for the leg's wanter, of no more than the leg took. Otherwise the
   loop is rejected with its records, as for a wrong fill.
+- **An announced book that cannot be read no longer stops the fold.** The
+  command line read every announced book whole before the fold's own guard
+  saw it, so one book whose bytes did not read (a root naming a blob that
+  is gone, a value that is not JSON, a key that is not UTF-8, a value
+  nested 100,000 deep) ended `offers`, `fold`, `loops` and `watch` for
+  every reader of the registry, and the default registry is public. Such
+  a book is now a rejection with its owner's name (`loop fold` prints
+  it), as the aggregator's own rule has it since 2026-10.
 
 ## [0.18.1] — 2026-10-29
 

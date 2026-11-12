@@ -129,7 +129,9 @@ class Session:
         against the maker books under this session's catalogue and gate,
         as clearing checks it, and admitted only if it holds (review item
         9); what the fold rejected, and why, is kept in `rejections`
-        (`loop fold` prints it). `peers` are books you trust by spec,
+        (`loop fold` prints it). An announced book that
+        cannot be read is a rejection, never the end of the fold: anyone
+        may announce one. `peers` are books you trust by spec,
         without an owner: a plain OR-set union (`absorb`) — the shared
         dev/demo shape. Then the U11 check.
 
@@ -158,7 +160,7 @@ class Session:
                              ontology=self.catalogue if clearing else None,
                              chain=(_configured("beat") or "").startswith("chain:"),
                              **(self._gate_reads() if clearing else {}))
-            unread = []
+            unread, unreadable = [], []
             for ann in announced:
                 try:
                     peer = _open_book(ann.spec())
@@ -170,9 +172,13 @@ class Session:
                 if ann.spec() == _book_spec() or ann.spec() == \
                         f"{_book_spec()}@{ann.owner}":
                     continue                            # my own book is already in
-                staged = OfferRegistry(RecordStore(blobs))
-                staged.absorb(peer)
-                staged.commit()
+                try:
+                    staged = OfferRegistry(RecordStore(blobs))
+                    staged.absorb(peer)
+                    staged.commit()
+                except Exception as exc:                # noqa: BLE001 — hostile input fails closed
+                    unreadable.append((ann.owner, "*", f"unreadable book ({type(exc).__name__})"))
+                    continue
                 agg.announce(ann.owner, staged.store, role=ann.role)
             if unread and _registry_is_default():
                 print(f"loop: {len(unread)} of the {len(announced)} books announced on Gnosis "
@@ -188,6 +194,7 @@ class Session:
                                    for key, rec in provenance.items("reject/")]
                 self.rivals = [rec for _key, rec in provenance.items("rival/")]
                 contested = rival_claims(provenance)
+            self.rejections += unreadable
         for spec in specs:
             folded.absorb(_open_book(spec))
         folded.commit()

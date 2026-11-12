@@ -1191,6 +1191,52 @@ def test_the_fold_rejects_an_invented_loop_and_says_why(env, tmp_path, monkeypat
     assert "surplus" in run.ok("loops")                               # the real loop is still there
 
 
+def _three_makers_announced(tmp_path, monkeypatch):
+    """Amara, Bruno and Chen each in an `rs:` book of their own, the
+    triangle's six offers, every book announced on a file registry."""
+    monkeypatch.setenv("LOOP_REGISTRY", f"file:{tmp_path / 'registry'}")
+    monkeypatch.setenv("LOOP_CATALOGUE", TRIANGLE_OD)
+    for maker, lines in (("amara", (("give", "piano-lesson", "100"), ("want", "produce", "local", "weekly", "104"))),
+                         ("bruno", (("give", "vegetable-box", "50"), ("want", "bicycle-repair", "52"))),
+                         ("chen", (("give", "bicycle-repair", "80"), ("want", "music-lesson", "83")))):
+        monkeypatch.setenv("LOOP_MAKER", maker)
+        monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / maker}")
+        run = Runner()
+        for line in lines:
+            run.ok(*line)
+        run.ok("announce")
+
+
+def test_an_announced_book_that_cannot_be_read_does_not_stop_the_fold(env, tmp_path, monkeypatch):
+    """Anyone may announce a book, and one whose bytes do not read (its
+    root names a blob that is not there, or its blobs are not what their
+    names say) is a rejection with its owner's name. Read before the fold's
+    own guard, it ended `offers`, `fold`, `loops` and `watch` for every
+    reader of the registry."""
+    import shutil
+    from loopmarket.announce import open_announcements
+    _three_makers_announced(tmp_path, monkeypatch)
+    channel = open_announcements(f"file:{tmp_path / 'registry'}")
+    gone = tmp_path / "gone"
+    (gone / "blobs").mkdir(parents=True)
+    (gone / "root").write_text("ab" * 32)                              # an expired chunk, say
+    channel.announce(f"rs:{gone}", owner="mallory")
+    garbled = tmp_path / "garbled"
+    shutil.copytree(tmp_path / "amara", garbled)
+    for blob in (garbled / "blobs").rglob("*"):
+        if blob.is_file():
+            blob.write_bytes(b"\xff\xfe not what its name says")
+    channel.announce(f"rs:{garbled}", owner="mallet")
+    monkeypatch.setenv("LOOP_MAKER", "bruno")
+    monkeypatch.setenv("LOOP_BOOK", f"rs:{tmp_path / 'bruno'}")
+    run = Runner()
+    assert len(run.ok("offers", "--raw").splitlines()) == 6            # the honest books stand
+    code, _out, err = run("fold")
+    assert code == 0
+    assert "rejected mallory *: unreadable book" in err and "rejected mallet *: unreadable book" in err
+    assert "surplus" in run.ok("loops")                                # and the triangle is still found
+
+
 def test_where_a_clearing_contract_is_set_book_fills_hide_nothing(loop, monkeypatch):
     """Review item 9: with a clearing contract set, an offer counts as
     filled only by what its finalized beats recorded, so a fill in a book
