@@ -49,7 +49,11 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   maker, on an item it names, with that offer and an end clearing could
   have set; an exercise of a give the loop took, from a hold the book
   holds for the leg's wanter, of no more than the leg took. Otherwise the
-  loop is rejected with its records, as for a wrong fill.
+  loop is rejected with its records, as for a wrong fill. All of a book's
+  exercises of one hold together take no more than the hold keeps, so a
+  hold spent in one loop is not spent again in the next; and a hold whose
+  exercises outrun it keeps nothing, never less (`OfferRegistry.held`),
+  so it cannot take from another holder's hold.
 - **An announced book that cannot be read no longer stops the fold.** The
   command line read every announced book whole before the fold's own guard
   saw it, so one book whose bytes did not read (a root naming a blob that

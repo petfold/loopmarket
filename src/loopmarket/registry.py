@@ -404,8 +404,10 @@ class OfferRegistry:
 
     def held(self, offer_id: str, now: int) -> Fraction:
         """What active holds keep of an offer at `now`: a function of time,
-        so expiry needs no write (§3.6)."""
-        return sum((self.hold_left(offer_id, lid) for lid, rec in self.holds(offer_id)
+        so expiry needs no write (§3.6). A hold keeps nothing once it is
+        used up, and never less than nothing: one hold's records cannot
+        take from what another holder's hold keeps."""
+        return sum((max(self.hold_left(offer_id, lid), Fraction(0)) for lid, rec in self.holds(offer_id)
                     if now < int(rec["until"])), Fraction(0))
 
     def held_by(self, offer_id: str, holder: str, now: int) -> Fraction:

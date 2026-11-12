@@ -368,7 +368,7 @@ class BookClearing:
         return None
 
     def recheck(self, record: dict, written: dict | None = None, *, loop_id: str | None = None,
-                claims: dict | None = None, holds: dict | None = None) -> str | None:
+                claims: dict | None = None, holds: dict | None = None, exercised: dict | None = None) -> str | None:
         """Re-derive a cleared loop from its `loop/` record against this
         clearing's book: what every reader's fold asks of each loop in a
         clearing book before admitting it (review item 9, decided by Peter
@@ -385,8 +385,8 @@ class BookClearing:
         an offer the loop never touched, hides it. Given `claims`, the
         `item/` and `exercise/` records the book holds under the loop, each
         must be one clearing it could have written (`claims_fault`; `holds`
-        are the book's `option/` records). None when it holds, else the
-        reason.
+        are the book's `option/` records, `exercised` what all the book's
+        exercises take of each). None when it holds, else the reason.
 
         Judged at the record's own time (`found_at`), so every reader's fold
         reaches the same answer whenever it runs. Not asked, because none is
@@ -438,10 +438,10 @@ class BookClearing:
                 return (f"its fills and holds are not the ones clearing it writes "
                         f"({len(wrong)} differ, first {wrong[0][:40]}…)")
         if claims:
-            return self.claims_fault(loop, claims, holds or {}, now=now)
+            return self.claims_fault(loop, claims, holds or {}, now=now, exercised=exercised)
         return None
 
-    def claims_fault(self, loop, claims: dict, holds: dict, *, now: int) -> str | None:
+    def claims_fault(self, loop, claims: dict, holds: dict, *, now: int, exercised: dict | None = None) -> str | None:
         """Why the `item/` and `exercise/` records a book holds under a loop
         are not ones clearing it writes (`hold_records`), or None. The fold
         asks it of every loop in a clearing book: taken on the loop's id
@@ -458,7 +458,10 @@ class BookClearing:
         clearing's clock; and any end where this reader cannot read the
         want's time term. An exercise is of a give the loop took, from a hold
         the book holds for the leg's wanter, of no more than the leg took or
-        the hold keeps. `holds` are the book's `option/` records."""
+        the hold keeps; and all the book's exercises of one hold together
+        (`exercised`, by the hold's key) take no more than it keeps, or a
+        hold spent in one loop could be spent again in the next. `holds` are
+        the book's `option/` records."""
         lid = loop.loop_id
         gate = CounterpartyGate.over(self.registry, {}, now=now, span=self.span)
         claimable: dict[str, tuple] = {}      # item/ key -> (the offer it names, the ends clearing could set)
@@ -491,7 +494,8 @@ class BookClearing:
                     return f"its item claims are not the ones clearing it writes (first {key[:40]}…)"
                 continue
             oid, _, rest = key[len(EXERCISE):].partition("/")
-            hold = holds.get(f"{OPTION}{oid}/{rest.partition('/')[0]}")
+            hold_key = f"{OPTION}{oid}/{rest.partition('/')[0]}"
+            hold = holds.get(hold_key)
             took = exercisable.get(oid)
             qty = kept = None
             if (took is not None and isinstance(rec, dict) and set(rec) == {"qty"} and isinstance(rec["qty"], str)
@@ -500,7 +504,7 @@ class BookClearing:
                     qty, kept = q(rec["qty"]), q(hold["qty"])
                 except (ValueError, ZeroDivisionError):
                     qty = kept = None
-            if qty is None or not 0 < qty <= min(took[1], kept):
+            if qty is None or not 0 < qty <= min(took[1], kept) or (exercised or {}).get(hold_key, qty) > kept:
                 return f"its exercises are not the ones clearing it writes (first {key[:40]}…)"
             used[oid] = used.get(oid, Fraction(0)) + qty
             if used[oid] > took[1]:

@@ -217,3 +217,122 @@ def test_an_exercise_clearing_did_not_write_rejects_its_loop():
         assert f"clearing-0/loop/{exercise_loop}" in reasons, forge
         assert "exercise" in reasons[f"clearing-0/loop/{exercise_loop}"], forge
         assert f"clearing-0/loop/{option_loop}" not in reasons, forge       # the option's own loop stands
+
+
+def test_a_hold_that_is_used_up_cannot_be_exercised_again():
+    """The farmer's 15 kg of grain; hanna and karl each hold 5. In the
+    window hanna takes 5 by exercising and 5 more from the free remainder,
+    so the last 5 are karl's. A book holding hanna's loops adds a second
+    exercise of her spent hold under her second loop: each exercise is
+    within the hold and within its own leg, and together they take the hold
+    twice. Admitted, hanna's hold read as minus 5, which took karl's hold
+    from what is held, and a stranger's loop took the grain karl had paid
+    to keep."""
+    from loopmarket.clearing import LoopProposal
+    from loopmarket.graph import Circulation
+    from loopmarket.matching import Leg
+    now, long = 10_000, dict(valid=TimeWindow(0, 20_000))
+    opened, end = now + 100, now + 1_000
+    grain = give("farmer", Thing(("grain",), 15, "kg", divisible=True), 150, **long, nonce=1)
+
+    def option(nonce):
+        return give("farmer", Thing(("option(grain)",), 5, "kg"), 5, **long, nonce=nonce, underlying=grain.offer_id,
+                    exercise=TimeWindow(opened, end))
+
+    def one(maker, what, price, nonce, kind=give):
+        return kind(maker, Thing((what,)), price, **long, nonce=nonce)
+
+    o = {"grain": grain, "opt_h": option(2), "opt_k": option(3),
+         "f_lesson": one("farmer", "lesson", 12, 4, want), "f_pear": one("farmer", "pear", 12, 5, want),
+         "f_painting": one("farmer", "painting", 60, 6, want), "f_apple": one("farmer", "apple", 60, 7, want),
+         "f_car": one("farmer", "car", 60, 8, want),
+         "h_opt": want("hanna", Thing(("option(grain)",), 5, "kg"), 12, **long, nonce=9),
+         "h_lesson": one("hanna", "lesson", 10, 10),
+         "h_grain_a": want("hanna", Thing(("grain",), 5, "kg"), 80, **long, nonce=11),
+         "h_painting": one("hanna", "painting", 20, 12),
+         "h_grain_b": want("hanna", Thing(("grain",), 5, "kg"), 80, **long, nonce=13),
+         "h_apple": one("hanna", "apple", 20, 14),
+         "k_opt": want("karl", Thing(("option(grain)",), 5, "kg"), 12, **long, nonce=15),
+         "k_pear": one("karl", "pear", 10, 16),
+         "x_grain": want("xavier", Thing(("grain",), 5, "kg"), 80, **long, nonce=17),
+         "x_car": one("xavier", "car", 20, 18)}
+    cat = _cat()
+    cat.load({"grain": []})
+    blobs = MemoryBytesStore()
+    makers = {}
+    for offer in o.values():
+        makers.setdefault(offer.maker, OfferRegistry(RecordStore(blobs))).publish(offer)
+    for reg in makers.values():
+        reg.commit()
+    honest = OfferRegistry(RecordStore(blobs))               # one clearing, to make the records as clearing writes them
+    honest.publish_many(o.values())
+    honest.commit()
+
+    def loop(*pairs):
+        return Circulation(tuple(Leg(o[w], (o[g],)) for g, w in pairs))
+
+    ids = {}
+    for name, circ, at in (("opt_h", loop(("opt_h", "h_opt"), ("h_lesson", "f_lesson")), now),
+                           ("opt_k", loop(("opt_k", "k_opt"), ("k_pear", "f_pear")), now),
+                           ("a", loop(("grain", "h_grain_a"), ("h_painting", "f_painting")), opened + 1),
+                           ("b", loop(("grain", "h_grain_b"), ("h_apple", "f_apple")), opened + 1)):
+        receipt = BookClearing(honest, cat, clock=lambda: at).submit(LoopProposal(circ, "", "", "s", at))
+        assert receipt.accepted, (name, receipt.reason)
+        ids[name] = receipt.loop_id
+    assert honest.hold_left(grain.offer_id, ids["opt_h"]) == 0 and honest.hold_left(grain.offer_id, ids["opt_k"]) == 5
+
+    def book_of(names, extra=()):
+        wanted = {ids[n] for n in names}
+        book = OfferRegistry(RecordStore(blobs))
+        for key, rec in honest.store.items():
+            named = [part for part in key.split("/") if part in ids.values()]
+            if isinstance(rec, dict) and rec.get("loop") in ids.values():
+                named.append(rec["loop"])
+            if not key.startswith("offer/") and named and set(named) <= wanted:
+                book.store.put(key, rec)
+        for key, rec in extra:
+            book.store.put(key, rec)
+        book.store.commit()
+        return book
+
+    def folded(extra=()):
+        agg = Aggregator(lambda: RecordStore(blobs), ontology=cat)
+        for owner, reg in makers.items():
+            agg.announce(owner, reg.store)
+        agg.announce("clearing-0", book_of(["opt_k"]).store, role=CLEARING)
+        agg.announce("clearing-1", book_of(["opt_h", "a", "b"], extra).store, role=CLEARING)
+        manifest = agg.fold()
+        return OfferRegistry(RecordStore(blobs, root=manifest.book_root)), _rejections(manifest, blobs)
+
+    thief = LoopProposal(loop(("grain", "x_grain"), ("x_car", "f_car")), "", "", "s", opened + 2)
+
+    def karls_grain_is_kept(book):
+        """Karl's 5 kg are neither taken nor on offer to anyone else."""
+        gone = book.taken(grain.offer_id) + book.available(grain.offer_id, opened + 2)
+        return book.hold_left(grain.offer_id, ids["opt_k"]) == 5 and gone + 5 <= 15
+
+    book, rejections = folded()
+    assert rejections == {} and book.held(grain.offer_id, opened + 2) == 5 and karls_grain_is_kept(book)
+    assert not BookClearing(book, cat, clock=lambda: opened + 2).rehearse(thief).accepted
+    again = (f"exercise/{grain.offer_id}/{ids['opt_h']}/{ids['b']}", {"qty": "5"})
+    book, rejections = folded([again])
+    # the two exercises are each within the hold, and wrong together: both loops of that book go
+    assert {f"clearing-1/loop/{ids['a']}", f"clearing-1/loop/{ids['b']}"} <= set(rejections)
+    assert all("exercise" in rejections[f"clearing-1/loop/{ids[n]}"] for n in "ab")
+    assert karls_grain_is_kept(book)
+
+
+def test_a_hold_keeps_nothing_less_than_nothing():
+    """What is held of an offer is the sum of what each hold still keeps. A
+    hold whose exercises outrun it (records from a book not folded through
+    the check above, a peer's say) keeps nothing, and takes nothing from
+    another holder's hold."""
+    book = OfferRegistry(RecordStore(MemoryBytesStore()))
+    flat = give("landlord", Thing(("flat",), 10, "lease"), 100, **W, nonce=1)
+    book.publish(flat)
+    for loop, holder in (("aa" * 32, "h1"), ("bb" * 32, "h2")):
+        book.store.put(f"option/{flat.offer_id}/{loop}", {"option": "cc" * 32, "holder": holder, "until": NOW + 10,
+                                                           "qty": "5"})
+    book.store.put(f"exercise/{flat.offer_id}/{'aa' * 32}/{'dd' * 32}", {"qty": "9"})
+    assert book.hold_left(flat.offer_id, "aa" * 32) == -4
+    assert book.held(flat.offer_id, NOW) == 5

@@ -328,6 +328,16 @@ class Aggregator:
         written: dict[str, dict] = {}       # loop id -> its fills and holds, one pass over the book
         claims: dict[str, dict] = {}        # loop id -> the item claims and exercises under it
         holds = {key: rec for key, rec in records.items() if key.startswith(OPTION)}
+        exercised: dict[str, Fraction] = {}  # a hold's key -> what all the book's exercises take of it
+        for key, rec in records.items():
+            if key.startswith(EXERCISE) and isinstance(rec, dict) and isinstance(rec.get("qty"), str):
+                oid, _, rest = key[len(EXERCISE):].partition("/")
+                try:
+                    taken = q(rec["qty"])
+                except (ValueError, ZeroDivisionError):
+                    continue                 # no quantity: its own loop is rejected for it
+                hold_key = f"{OPTION}{oid}/{rest.partition('/')[0]}"
+                exercised[hold_key] = exercised.get(hold_key, Fraction(0)) + taken
         for key, lids in named.items():
             if key.startswith((FILL, OPTION)):
                 for lid in lids:
@@ -347,7 +357,7 @@ class Aggregator:
             else:
                 try:
                     reason = checker.recheck(loops[lid], written.get(lid, {}), loop_id=lid,
-                                             claims=claims.get(lid), holds=holds)
+                                             claims=claims.get(lid), holds=holds, exercised=exercised)
                 except Exception as exc:   # noqa: BLE001 — hostile input fails closed
                     reason = f"unreadable loop record ({type(exc).__name__})"
             if reason:
