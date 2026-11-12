@@ -690,8 +690,7 @@ def maker_full_id(short):
     ids = [o.offer_id for o in maker.book.offers(include_filled=True) if o.offer_id.startswith(short)]
     return json.dumps({"id": ids[0]} if len(ids) == 1 else {"error": f"{short} names {len(ids)} offers in your book"})
 `);
-  searchFile = new LocalFile({ input: $("searchfile"), types: SEARCH_TYPES,
-    pickers: params.get("pickers") === "1" || !(source instanceof FreedomSwarm), refusedKey: "loopmarket-pickers-refused" });
+  searchFile = new LocalFile({ input: $("searchfile"), types: SEARCH_TYPES, refusedKey: "loopmarket-pickers-refused" });
   globalThis.loopPage.searchFile = searchFile;
   for (const id of ["searchnew", "searchopen"]) $(id).disabled = false;
   $("searchnew").onclick = searchNew;

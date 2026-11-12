@@ -21,6 +21,14 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   source and against bee-js; not yet run in a real Freedom. The page
   behind `loopmarket.gwei` gets it with its next feed update.
 
+### Changed
+
+- **In Freedom the page saves your searches back to their file**
+  (ontodag's question 48): the file pickers are on by default there now
+  that Freedom 0.8.8 is released, which grants a page the file it was
+  given. An older Freedom refuses them once and downloads from then on,
+  as before.
+
 ## [0.18.1] — 2026-10-29
 
 ontodag 0.35.0, and one ontodag minor at a time. ontodag 0.35.0 ships core
