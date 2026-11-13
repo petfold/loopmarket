@@ -439,12 +439,11 @@ Fixed that night, each with a test: the fold checks a clearing book's
 `item/` and `exercise/` records (`clearing.claims_fault`), a spent hold
 cannot be exercised again, an announced book that cannot be read is a
 rejection line, a maker's own book is among the maker books of its own
-fold, `ChainClearing` reads the clock once, and a register whose records
-do not read fails its statement. Open:
+fold (and only its own: another maker's book under the same topic name
+is theirs, `cli.stores._announcer`), `ChainClearing` reads the clock
+once, and a register whose records do not read fails its statement.
+Open:
 
-- **R5b-18**, a gap in the own-book fix: `Session.fold` takes any
-  announced `swarm:TOPIC@OTHER` with my topic for my own book. Fix it
-  first.
 - **Questions 54 to 62** for Peter (the review's §3): a clearing book
   dated into the past, a bound on a book's size, the per-node check on
   divisible loops, an offer's catalogue pin, a place named with a
@@ -456,7 +455,7 @@ do not read fails its statement. Open:
   and they are deployed). They are on Peter's laptop,
   `~/claude-night-2026-11-13/reports/`, with every reviewer's full
   report and scripts; they need confirming on eth-tester.
-- Apart from the six fixes and two open findings (R3-2, R3-5), the
+- Apart from the seven fixes and two open findings (R3-2, R3-5), the
   findings were reproduced by their reviewer and not re-run since.
 
 ## Conventions

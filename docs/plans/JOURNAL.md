@@ -526,7 +526,8 @@ hour).
 The usage limit ran out at about 02:30 and came back at 05:30, so the
 second pass (re-running every reviewer's reproduction, and the plain
 fixes of §4) was not done. The review document says which findings were
-re-run. R5b-18 is a gap in `b1ae2ef` and is the first thing to fix.
+re-run. R5b-18, a gap in `b1ae2ef`, was fixed in the last half hour
+(`8ba89c1`: another maker's book under my topic name is theirs).
 
 The contracts' findings were kept out of the repository, which is
 public: they are on the laptop under `~/claude-night-2026-11-13/`, with
