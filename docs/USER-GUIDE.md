@@ -893,7 +893,7 @@ rest of a bundle's limits: the loop must still close (every component's
 seller paid by something they want), and one composed leg must stay
 small enough to verify on chain in one call (a few million gas a leg).
 
-**On chain** (since 2026-09-29; `BeatClearing` at `0xC475…11d4` today): a beat
+**On chain** (since 2026-09-29; `BeatClearing` at `0x4A35…5cF4` today): a beat
 commits the holds its option legs write, the contract records them at
 finalize, and the remainder a leg is checked against counts every active
 hold but the taker's own — so a beat in which someone other than the
