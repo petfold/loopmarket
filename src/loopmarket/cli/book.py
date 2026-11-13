@@ -13,7 +13,7 @@ from .options import _option_demand, _options_on
 from .render import _concepts, _num, _print_table, _row, _state, render_offer
 from .settings import _book_spec, _configured, _err, _peer_specs
 from .spellings import _iso
-from .stores import Session, _resolve_id
+from .stores import Session, _announcer, _resolve_id
 
 
 def cmd_mine(args, session, out):
@@ -82,17 +82,10 @@ def cmd_matches(args, session, out):
 def _owner_for_announcing(session) -> str:
     """Who announces: on chain the transaction's sender, i.e. bee_signer's
     address; on the file and memory channels the configured maker."""
-    key = _configured("bee_signer")
-    if key:
-        try:
-            from ..sigs import maker_address
-            return maker_address(key)
-        except Exception:
-            pass
-    maker = _configured("maker")
-    if not maker:
+    owner = _announcer()
+    if not owner:
         raise ValueError("announcing needs an identity: set bee_signer (or maker)")
-    return maker
+    return owner
 
 
 def cmd_announce(args, session, out):

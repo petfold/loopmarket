@@ -165,7 +165,10 @@ class Session:
                              **(self._gate_reads() if clearing else {}))
             unread, unreadable = [], []
             for ann in announced:
-                mine = ann.spec() in (_book_spec(), f"{_book_spec()}@{ann.owner}")
+                # mine when the announcement is mine: another maker may keep a
+                # book under the same topic name
+                mine = ann.spec() == _book_spec() or (
+                    ann.book == _book_spec() and ann.owner.lower() == (_announcer() or "").lower())
                 try:
                     peer = self.book if mine else _open_book(ann.spec())
                 except Exception as exc:                # the maker's postage, not our omission
@@ -333,6 +336,20 @@ class Session:
         raise ValueError(
             "no maker identity: `loop set maker NAME` (or set bee_signer with "
             "the sig extra installed, and the key's address is your name)")
+
+
+def _announcer() -> str | None:
+    """Whose announcements are mine: on chain the transaction's sender,
+    i.e. bee_signer's address; on the file and memory channels the
+    configured maker. None with neither."""
+    key = _configured("bee_signer")
+    if key:
+        try:
+            from ..sigs import maker_address
+            return maker_address(key)
+        except Exception:  # noqa: BLE001 — the sig extra is optional
+            pass
+    return _configured("maker") or None
 
 
 def _resolve_id(session: Session, prefix: str, *, mine_only: bool) -> str:

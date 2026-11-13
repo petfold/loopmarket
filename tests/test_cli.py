@@ -1234,6 +1234,35 @@ def test_a_maker_sees_the_loop_that_cleared_its_own_offers(env, tmp_path, monkey
             assert len([row for row in run.ok("watch", "--once").splitlines() if row.startswith("filled")]) == 2
 
 
+def test_two_makers_under_one_swarm_topic_see_each_other(env, tmp_path, monkeypatch):
+    """A book is mine when the announcement is mine: its owner is my
+    identity and its book my spec. Another maker's book under the same
+    topic name is that maker's (the 2026-11 review, R5b-18: it was taken
+    for my own, my book was folded under their name, and their offers
+    never reached my fold). No node: a `swarm:` book is a directory per
+    owner here."""
+    real_open = cli.stores._open_book
+
+    def a_directory_per_owner(spec):
+        if not spec.startswith("swarm:"):
+            return real_open(spec)
+        topic, _, owner = spec[len("swarm:"):].partition("@")
+        return real_open(f"rs:{tmp_path / 'feeds' / (owner or os.environ['LOOP_MAKER']) / topic}")
+    monkeypatch.setattr(cli.stores, "_open_book", a_directory_per_owner)
+    monkeypatch.setenv("LOOP_REGISTRY", f"file:{tmp_path / 'registry'}")
+    monkeypatch.setenv("LOOP_CATALOGUE", TRIANGLE_OD)
+    monkeypatch.setenv("LOOP_BOOK", "swarm:offers")
+    for maker, thing in (("amara", "piano-lesson"), ("bruno", "vegetable-box")):
+        monkeypatch.setenv("LOOP_MAKER", maker)
+        run = Runner()
+        run.ok("give", thing, "50")
+        run.ok("announce")
+    for maker in ("amara", "bruno"):
+        monkeypatch.setenv("LOOP_MAKER", maker)
+        rows = [line.split("\t") for line in Runner().ok("offers", "--raw").splitlines()]
+        assert sorted((row[2], row[4]) for row in rows) == [("amara", "piano-lesson"), ("bruno", "vegetable-box")]
+
+
 def test_an_announced_book_that_cannot_be_read_does_not_stop_the_fold(env, tmp_path, monkeypatch):
     """Anyone may announce a book, and one whose bytes do not read (its
     root names a blob that is not there, or its blobs are not what their

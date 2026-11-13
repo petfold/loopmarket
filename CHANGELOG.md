@@ -69,6 +69,13 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   its offers stayed open there and `watch` reported no fill, while every
   other reader saw them filled. A reader's own announced book is now
   among the maker books of its own fold.
+- **Two makers under one Swarm topic name see each other.** The fold
+  took an announced `swarm:TOPIC` for the reader's own book whenever
+  the topic was the reader's, whoever announced it. Another maker's book
+  under the same topic was then never read: its offers were missing
+  from the reader's fold, without a word. A book is the reader's own
+  when the announcement's owner is the reader's identity and its book
+  the reader's.
 - **A beat that is posted is a loop the book takes.** `ChainClearing`
   read the clock three times: for the beat's evidence, for the rehearsal,
   and again for the commit after the beat was on chain. An offer whose
