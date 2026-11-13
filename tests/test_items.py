@@ -122,3 +122,15 @@ def test_an_option_on_an_item_claims_it_until_the_window_ends():
     gate = CounterpartyGate.over(book, {}, now=NOW + 20)
     assert gate.item_fault(again).startswith("seller already holds an open claim on item")
     assert CounterpartyGate.over(book, {}, now=NOW + 501).item_fault(again) == ""
+
+
+def test_an_item_id_followed_by_a_newline_is_no_whole_id():
+    """`$` also matches before a trailing newline, so `item(<64 hex>\\n)`
+    passed for a whole id and lay below the real item on the prefix kind:
+    a second offer of one item, past the per-item rule (the 2026-11
+    review, R1-8)."""
+    h = "ab" * 32
+    assert well_formed((f"item({h})",)) and term(h) == f"item({h})"
+    assert not well_formed((f"item({h}\n)",))
+    with pytest.raises(ValueError):
+        term(h + "\n")

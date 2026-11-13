@@ -86,6 +86,10 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   prints as where 100/3 was meant. And a decimal of more than about 16
   digits was printed through a float, so the approval block, `show` and
   `offers` showed another number than the offer holds.
+- **An item id followed by a newline is no whole id.** `item(<64 hex>\n)`
+  passed the guard that makes an item term an equality, and lay below
+  the real item: a maker's second offer of one item went past the
+  per-item rule.
 - **A beat that is posted is a loop the book takes.** `ChainClearing`
   read the clock three times: for the beat's evidence, for the rehearsal,
   and again for the commit after the beat was on chain. An offer whose

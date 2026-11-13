@@ -80,7 +80,7 @@ def tagged_id(fingerprint: str, tagger: str, binding_evidence: str = "") -> str:
 
 
 def term(h: str, head: str = "item") -> str:
-    if not _HEX64.match(h):
+    if not _HEX64.fullmatch(h):
         raise ValueError(f"{h!r} is not an item id (64 lowercase hex)")
     return f"{head}({h})"
 
@@ -99,4 +99,4 @@ def well_formed(concepts, heads=ITEM_HEADS) -> bool:
     """Every item term names a whole id — the stopgap's guard that makes the
     prefix kind an equality (a shortened id would contain every item it
     prefixes)."""
-    return all(_HEX64.match(h) for h in ids(concepts, heads))
+    return all(_HEX64.fullmatch(h) for h in ids(concepts, heads))
