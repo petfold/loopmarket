@@ -431,6 +431,34 @@ only the makers' records of the fold, the fold records rival loops
 instead of failing U11, and `watch` seals a handoff only once a
 finalized beat recorded its loop; without a chain U11 stays.
 
+## The 2026-11 review
+
+`docs/plans/REVIEW_2026-11.md` (2026-11-13, a discussion draft: nothing
+in it is decided). Eight reviewers, every finding reproduced by a script.
+Fixed that night, each with a test: the fold checks a clearing book's
+`item/` and `exercise/` records (`clearing.claims_fault`), a spent hold
+cannot be exercised again, an announced book that cannot be read is a
+rejection line, a maker's own book is among the maker books of its own
+fold, `ChainClearing` reads the clock once, and a register whose records
+do not read fails its statement. Open:
+
+- **R5b-18**, a gap in the own-book fix: `Session.fold` takes any
+  announced `swarm:TOPIC@OTHER` with my topic for my own book. Fix it
+  first.
+- **Questions 54 to 62** for Peter (the review's §3): a clearing book
+  dated into the past, a bound on a book's size, the per-node check on
+  divisible loops, an offer's catalogue pin, a place named with a
+  catalogue word, which side `bond` is for, `export`/`import`, a batch's
+  exit code, `?pyodide=`.
+- **The findings not fixed** (§4), most of them plain defects: admit no
+  wrong-typed record first.
+- **The contracts' findings are not in the repository** (it is public
+  and they are deployed). They are on Peter's laptop,
+  `~/claude-night-2026-11-13/reports/`, with every reviewer's full
+  report and scripts; they need confirming on eth-tester.
+- Apart from the six fixes and two open findings (R3-2, R3-5), the
+  findings were reproduced by their reviewer and not re-run since.
+
 ## Conventions
 
 - `src/` layout; tests with pytest from the repo root.
@@ -555,7 +583,8 @@ names.
 1. `git status` and `git log --oneline -5` here, and in ontodag before
    relying on its behaviour. Check "Upstream to watch" above (`gh api
    repos/ofek/coincurve/releases/latest`).
-2. Read "The 2026-10 review" and "Roadmap (state)" above.
+2. Read "The 2026-11 review", "The 2026-10 review" and "Roadmap
+   (state)" above.
 3. Before changing code, run the suite or the test files the change
    touches; `tests/test_boundaries.py` always.
 4. When the state, a rule or a decision changes, update its line here in

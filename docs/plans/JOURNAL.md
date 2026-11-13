@@ -503,3 +503,35 @@ what was checked (a stand-in written from Freedom's source, bee-js) and
 why nothing ran in a real Freedom are in ontodag's journal of the same
 night; `browser/check.py` did not run here either, since this laptop has
 no Playwright. BROWSER.md §5c has the state.
+
+## 2026-11-13 (night): the review
+
+Peter, before leaving: "start a full code review of loopmarket and its
+documentation. You have 5 hours (until 6am)." Eight reviewers, one area
+each (the model and matching, loops and clearing, the fold, the
+contracts, the command line in two halves, the newcomer documents, the
+reference documents with the browser page), each told to reproduce a
+finding with a script before reporting it. 157 findings came back, some
+of them one defect seen from two sides.
+
+Fixed as the reports came in, each with a test that fails on the code
+before it: `ebe4903` (the fold checks a clearing book's item claims and
+exercises), `cdd503d` (an announced book that cannot be read is a
+rejection), `b1ae2ef` (a maker's own book in its own fold), `e1d1a6f`
+(`ChainClearing` reads the clock once), `99ff8e6` (a register whose
+records do not read), `e44cdd2` (a spent hold cannot be exercised
+again: the reviewer of clearing found that gap in `ebe4903` within the
+hour).
+
+The usage limit ran out at about 02:30 and came back at 05:30, so the
+second pass (re-running every reviewer's reproduction, and the plain
+fixes of §4) was not done. The review document says which findings were
+re-run. R5b-18 is a gap in `b1ae2ef` and is the first thing to fix.
+
+The contracts' findings were kept out of the repository, which is
+public: they are on the laptop under `~/claude-night-2026-11-13/`, with
+all eight reports in full and the reviewers' scripts. The reviewer ran
+the shipped artifacts on an interpreter of its own (no eth-tester on
+this laptop), so they need confirming before any is acted on.
+
+Nothing was released, deployed or spent. `docs/plans/REVIEW_2026-11.md`.
