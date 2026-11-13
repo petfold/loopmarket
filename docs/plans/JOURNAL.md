@@ -528,7 +528,9 @@ second pass (re-running every reviewer's reproduction, and the plain
 fixes of §4) was not done. The review document says which findings were
 re-run. R5b-18, a gap in `b1ae2ef`, was fixed in the last half hour
 (`8ba89c1`: another maker's book under my topic name is theirs), and
-with it R5a F18 (`bde3afc`: an empty offer id names no offer).
+with it R5a F18 (`bde3afc`: an empty offer id names no offer), two U9
+slips of the command line (`d6d3068`, R5a F7 and F8) and R1-8
+(`7165575`: an item id followed by a newline).
 
 The contracts' findings were kept out of the repository, which is
 public: they are on the laptop under `~/claude-night-2026-11-13/`, with

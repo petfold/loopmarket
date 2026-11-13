@@ -441,8 +441,9 @@ cannot be exercised again, an announced book that cannot be read is a
 rejection line, a maker's own book is among the maker books of its own
 fold (and only its own: another maker's book under the same topic name
 is theirs, `cli.stores._announcer`), `ChainClearing` reads the clock
-once, a register whose records do not read fails its statement, and
-an empty offer id names no offer. Open:
+once, a register whose records do not read fails its statement, an
+empty offer id names no offer, a reused price and a long decimal stay
+exact (U9), and an item id followed by a newline is no whole id. Open:
 
 - **Questions 54 to 62** for Peter (the review's §3): a clearing book
   dated into the past, a bound on a book's size, the per-node check on
@@ -455,7 +456,7 @@ an empty offer id names no offer. Open:
   and they are deployed). They are on Peter's laptop,
   `~/claude-night-2026-11-13/reports/`, with every reviewer's full
   report and scripts; they need confirming on eth-tester.
-- Apart from the eight fixes and two open findings (R3-2, R3-5), the
+- Apart from those fixes and two open findings (R3-2, R3-5), the
   findings were reproduced by their reviewer and not re-run since.
 
 ## Conventions

@@ -282,7 +282,7 @@ And two pairs more: **clearing** is the atomic commit that fixes obligations; **
 | [`catalogue-bootstrap.md`](docs/plans/catalogue-bootstrap.md) | Seeding and governing the shared catalogue: seed taxonomies, the import pipeline, norms as protocol rules. |
 | [`adoption-and-thickness.md`](docs/plans/adoption-and-thickness.md) | Where the first loops come from: launch verticals, the broker surface, bridge liquidity, thickness engineering. |
 | [`THREATS.md`](docs/plans/THREATS.md) | The threat register, T1–T20 (the fixed T1–T9 by expected damage to a young system, then dated additions — T19, biometric linkage at the door; T20, a resolver's stake thinner than it reads); mirrored in factbond. |
-| [`REVIEW_2026-11.md`](docs/plans/REVIEW_2026-11.md) | The review of 2026-11-13: eight defects fixed (what a stranger's announced book could do to every reader's fold), questions 54 to 62 for Peter, and the findings not yet fixed, by area. Discussion draft. |
+| [`REVIEW_2026-11.md`](docs/plans/REVIEW_2026-11.md) | The review of 2026-11-13: eleven defects fixed (what a stranger's announced book could do to every reader's fold), questions 54 to 62 for Peter, and the findings not yet fixed, by area. Discussion draft. |
 | [swarm-da](https://github.com/petfold/swarm-da) (separate repo) | Memo, 2026-09-09: what building this book on Swarm taught about Swarm as a data-availability layer — the archival-DA opportunity, Bee's push-sync receipts as the half-built publication primitive, and what loopmarket sheds the day they are exposed and anchored. |
 
 **Phase ↔ document map.** P1 (federation): `P1-federated-book.md`,
