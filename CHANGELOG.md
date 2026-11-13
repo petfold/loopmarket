@@ -76,6 +76,10 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   from the reader's fold, without a word. A book is the reader's own
   when the announcement's owner is the reader's identity and its book
   the reader's.
+- **An empty offer id names no offer.** `loop withdraw "$ID"` with the
+  variable unset withdrew the maker's only offer, for good: every id
+  starts with the empty prefix. `withdraw`, `show`, `option` and
+  `exercise` now refuse it.
 - **A beat that is posted is a loop the book takes.** `ChainClearing`
   read the clock three times: for the beat's evidence, for the rehearsal,
   and again for the commit after the beat was on chain. An offer whose

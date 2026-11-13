@@ -697,6 +697,18 @@ def test_withdraw_tombstones_only_my_open_offers(loop, monkeypatch):
     assert oid[:12] in loop.ok("mine", "--raw")  # but still mine, all states
 
 
+def test_an_empty_id_names_no_offer(loop):
+    """`loop withdraw "$ID"` with ID unset withdrew my only offer, for
+    good: every id starts with the empty prefix (the 2026-11 review,
+    R5a F18)."""
+    oid = loop.ok("give", "apple", "home", "5").strip().splitlines()[-1]
+    for command in ("withdraw", "show", "option"):
+        code, out, err = loop(command, "")
+        assert code == 1 and "an empty offer id names no offer" in err
+    assert "withdrawn" not in loop.ok("show", oid[:10])
+    assert oid[:12] in loop.ok("offers", "--raw")
+
+
 def test_offers_filters_through_satisfies(loop):
     loop.ok("give", "apple", "home", "5")
     loop.ok("give", "piano-lesson", "home", "100")

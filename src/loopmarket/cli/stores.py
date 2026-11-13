@@ -354,7 +354,11 @@ def _announcer() -> str | None:
 
 def _resolve_id(session: Session, prefix: str, *, mine_only: bool) -> str:
     """The whole id of the one offer `prefix` names: one of mine in my book
-    (`mine_only`), else any in the fold."""
+    (`mine_only`), else any in the fold. An empty prefix names none:
+    every id starts with it, and a script's unset variable must not
+    withdraw the one offer I have."""
+    if not prefix:
+        raise ValueError("an empty offer id names no offer")
     book = session.book if mine_only else session.fold()
     matches = sorted({o.offer_id for o in book.offers(include_filled=True)
                       if o.offer_id.startswith(prefix)
