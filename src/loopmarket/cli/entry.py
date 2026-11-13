@@ -12,7 +12,7 @@ import shlex
 import sys
 
 from ..ontology import Ontology
-from ..schema import GIVE, WANT, Offer, Parts, Thing, TimeWindow, give, want
+from ..schema import GIVE, WANT, Offer, Parts, Thing, TimeWindow, give, q, want
 from .drafts import _VERBS, _find_draft, _part_from_record, _read_drafts, _write_drafts
 from .grammar import (_PRICE_RE, Composed, Parsed, Part, _resolve_part, parse_offer_tokens,
                       parse_want_line, part_line)
@@ -58,7 +58,7 @@ def _offer_from_part(session: Session, side: str, part: Part, price,
                 f"the last {side} of {' '.join(_bare_key(thing.concepts))} "
                 f"was priced per {source.thing.unit}, this one is per "
                 f"{thing.unit} — type the price")
-        price = unit_price * qty
+        price = unit_price * q(qty)             # no quantity typed is the float 1.0 (U9)
         reused = True
         age = now - source.nonce // 1000
         notes.append(

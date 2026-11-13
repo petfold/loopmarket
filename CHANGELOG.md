@@ -80,6 +80,12 @@ Started 2026-09-11. Releases are tag-driven (`v*` tags run
   variable unset withdrew the maker's only offer, for good: every id
   starts with the empty prefix. `withdraw`, `show`, `option` and
   `exercise` now refuse it.
+- **The command line keeps two more numbers exact (U9).** A price reused
+  from the memory with no quantity typed was multiplied by the float 1.0,
+  so `give 3 apple 100` then `give apple` stored the decimal a float
+  prints as where 100/3 was meant. And a decimal of more than about 16
+  digits was printed through a float, so the approval block, `show` and
+  `offers` showed another number than the offer holds.
 - **A beat that is posted is a loop the book takes.** `ChainClearing`
   read the clock three times: for the beat's evidence, for the rehearsal,
   and again for the commit after the beat was on chain. An offer whose

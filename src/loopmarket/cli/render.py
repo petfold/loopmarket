@@ -37,7 +37,8 @@ def _num(x) -> str:
         k = 0
         while (f.denominator * 10 ** k) % 1 or (f.numerator * 10 ** k) % f.denominator:
             k += 1
-        return f"{f.numerator * 10 ** k // f.denominator / 10 ** k:.{k}f}"
+        whole, places = divmod(abs(f.numerator) * 10 ** k // f.denominator, 10 ** k)
+        return f"{'-' if f < 0 else ''}{whole}.{places:0{k}d}"   # in integers: no float between (U9)
     return f"{f.numerator}/{f.denominator}"
 
 

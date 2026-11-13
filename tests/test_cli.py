@@ -469,6 +469,28 @@ def test_price_memory_never_reads_other_makers(loop, monkeypatch):
     assert code == 1 and "by bruno to reuse" in err
 
 
+def test_a_reused_price_is_exact_when_no_quantity_is_typed(loop):
+    """`give 3 apple 100`, then `give apple`: the reused price is 100/3.
+    With no quantity typed the thing's quantity is the float 1.0, and a
+    Fraction times a float is a float, so the offer held the decimal that
+    float prints as (U9; the 2026-11 review, R5a F8)."""
+    from fractions import Fraction
+    loop.ok("give", "3", "apple", "home", "100")
+    loop.ok("give", "apple", "home")
+    amounts = sorted(o.tokens.amount for o in cli.Session().book.offers(include_filled=True))
+    assert amounts == [Fraction(100, 3), Fraction(100)]
+
+
+def test_a_number_is_printed_as_it_is_however_long():
+    """`_num` divided through a binary float, so a decimal of more than
+    about 16 digits printed as another number, and two offers showed one
+    price (U9; the 2026-11 review, R5a F7)."""
+    from fractions import Fraction
+    from loopmarket.cli.render import _num
+    for text in ("12345678901234567.89", "9007199254740993.5", "1.0000000000000001", "12.5", "0.05"):
+        assert _num(Fraction(text)) == text
+
+
 def test_reused_price_refuses_in_a_batch_under_confirm_auto(loop, monkeypatch):
     """Peter's ruling, 2026-09-12: a script that omits a price publishes a
     number nobody saw — refuse the line, name the way out."""
